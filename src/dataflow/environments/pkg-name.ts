@@ -5,6 +5,7 @@ export const enum PkgName {
 	Compiler    = 'compiler',
 	Graphics    = 'graphics',
 	GrDevices   = 'grDevices',
+	Grid        = 'grid',
 	Methods     = 'methods',
 	Parallel    = 'parallel',
 	Stats       = 'stats',

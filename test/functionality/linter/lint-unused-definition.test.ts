@@ -62,7 +62,10 @@ print(x)`,
 				/* S4/S7 generic dispatcher passed to setGeneric - runs on every dispatch, so not unused */
 				'setGeneric("replaceEntries", function(x, map, ...) standardGeneric("replaceEntries"))',
 				/* same, with a braced dispatcher body */
-				'setGeneric("bar", function(obj) { standardGeneric("bar") })'
+				'setGeneric("bar", function(obj) { standardGeneric("bar") })',
+				/* #2811: `assign` reads `var` for the name, it binds `myvar` */
+				'var <- list(name = "myvar", value = 42); assign(var$name, var$value, envir = environment())',
+				'x <- "a"\nassign(x, 3)\nprint(a)'
 			]) {
 				assertLinter(program, parser, program, 'unused-definitions', []);
 			}

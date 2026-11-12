@@ -160,8 +160,6 @@ print(x)`, emptyGraph().autoPrints([18, 23]).autoPrints([19], true)
 				.defineVariable('7', 'x', { definedBy: ['8', '9'] })
 				.constant('13', { cds: [{ id: '19', when: true, byPromise: true }] })
 				.defineVariable('12', 'x', { definedBy: ['13', '14'], cds: [{ id: '19', when: true, byPromise: true }] })
-				.markIdForUnknownSideEffects('18')
-				.markIdForUnknownSideEffects('23')
 		);
 	});
 	describe('Escaped Identifiers Should Still Be Resolved', () => {

@@ -4,12 +4,14 @@
  * signature browser never disagree about what flowR knows.
  */
 import zlib from 'zlib';
+import ts from 'typescript';
 import { ExportFlag, PropFlags } from './sigdb-page/export-flags';
 import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { MergedSignatureSource, SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../src/project/sigdb/reader';
 import { defaultSigDbPaths } from '../src/project/sigdb/manifest';
+import { FnPropNames } from '../src/project/sigdb/schema';
 /* the plain function lists rather than the query module, which would pull in half the analyzer */
 import { LibraryFunctions } from '../src/queries/catalog/dependencies-query/function-info/library-functions';
 import { SourceFunctions } from '../src/queries/catalog/dependencies-query/function-info/source-functions';
@@ -18,12 +20,17 @@ import { computeWriteFunctions } from '../src/queries/catalog/dependencies-query
 import { BuiltInIndex } from '../src/dataflow/environments/query-fn-props';
 import { VisualizeFunctions } from '../src/queries/catalog/dependencies-query/function-info/visualize-functions';
 import { TestFunctions } from '../src/queries/catalog/dependencies-query/function-info/test-functions';
-import { statisticsFunctions } from '../src/queries/catalog/dependencies-query/function-info/statistics-functions';
+import { functionsTagged } from '../src/queries/catalog/dependencies-query/function-info/tagged-functions';
+import { SemanticCallTag } from '../src/dataflow/environments/built-in-props';
 import { BasePrimitiveTopics, DefaultBuiltinConfig, statedSignatures, type StatedSignature } from '../src/dataflow/environments/default-builtin-config';
 import { type BrandedIdentifier, type BrandedNamespace, Identifier, PkgName } from '../src/dataflow/environments/identifier';
-import { baseRExportOwner } from '../src/util/r-base-packages';
+import { AttachedBasePackageSet, baseRExportOwner } from '../src/util/r-base-packages';
 import { RGroupGenerics, S4GroupOfMember } from '../src/dataflow/environments/group-generics';
 import { RBasePackageStore } from '../src/data/r-base-packages.generated';
+import { builtInGuards, namesWithGuards } from '../src/dataflow/fn/guards/built-in-guards';
+import type { AmbientWordsOnPage, Guards } from './sigdb-page/database';
+import { AmbientFamilyInfo, AmbientVerbInfo } from '../src/dataflow/environments/ambient-effect';
+import { guardsTuple } from './sigdb-page/contract-tuple';
 
 export interface PackageEntry {
 	readonly name:      BrandedNamespace;
@@ -69,6 +76,68 @@ export interface SigIndex {
 	readonly topicsComplete: boolean;
 	/** the S4 group generic a name belongs to (`sin` to `Math`), see {@link S4GroupOfMember} */
 	readonly groups:         ReadonlyMap<BrandedIdentifier, string>;
+}
+
+/** What the page shows of the guards of the base packages, as `pkg::name ->` {@link Guards}. */
+export function guardsForPage(): Record<string, Guards> {
+	return Object.fromEntries(namesWithGuards().flatMap(([pkg, name]) => {
+		const shown = guardsTuple(builtInGuards(name, pkg));
+		return shown === undefined ? [] : [[`${pkg}::${name}`, shown]];
+	}));
+}
+
+/**
+ * What the words of a signature mean that the vocabulary of {@link CallProps} and {@link ArgProps} does not word itself: the
+ * semantic tags (`draws-graphics`) and the properties the database records (`can-throw`), read off their documentation in the code,
+ * which is the one place they are explained.
+ */
+export function wordDocsForPage(): Record<string, string> {
+	const docs: Record<string, string> = {};
+	const read = (file: string, enumName: string, keyOf: (member: ts.EnumMember) => string | undefined) => {
+		const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+		source.forEachChild(node => {
+			if(!ts.isEnumDeclaration(node) || node.name.text !== enumName) {
+				return;
+			}
+			for(const member of node.members) {
+				const key = keyOf(member);
+				const doc = ts.getJSDocCommentsAndTags(member).map(d => ts.getTextOfJSDocComment((d as ts.JSDoc).comment) ?? '').join(' ');
+				if(key !== undefined && doc !== '') {
+					docs[key] = doc.replace(/\s*\(see [^)]*\)/g, '').replace(/\{@link\s+(?:[^}|]*\|)?([^}]*)\}/g, (_, shown: string) => shown.split('.').at(-1) ?? shown).replace(/\s+/g, ' ').trim();
+				}
+			}
+		});
+	};
+	read(path.join('src', 'dataflow', 'environments', 'built-in-props.ts'), 'SemanticCallTag', member => member.initializer && ts.isStringLiteral(member.initializer) ? member.initializer.text : undefined);
+	const names = new Set(Object.values(FnPropNames));
+	read(path.join('src', 'project', 'sigdb', 'schema.ts'), 'FnProp', member => {
+		const kebab = member.name.getText().replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+		return names.has(kebab) ? kebab : undefined;
+	});
+	return docs;
+}
+
+/** The words a page needs to speak of the parts of the global state and the accesses to them, see {@link AmbientFamilyInfo}. */
+export function ambientWordsForPage(): AmbientWordsOnPage {
+	return {
+		families: Object.fromEntries(Object.entries(AmbientFamilyInfo).map(([family, { label, description, of }]) => [family, [label, description, of ?? '']])),
+		verbs:    Object.fromEntries(Object.entries(AmbientVerbInfo).map(([verb, { label, description }]) => [verb, [label, description]]))
+	};
+}
+
+/**
+ * What flowR answers about each function as it returns it, which a page shows on demand: the `builtIns` entry of the
+ * `inspect-fn-guards` query per `pkg::name` with a contract, and the ambient summary of `:signature` per `pkg::name` that
+ * touches the global state. Gzipped and base64-encoded, as only a reader opening one of them needs it.
+ */
+export function rawForPage(stated: ReadonlyMap<string, readonly StatedSignature[]>): string {
+	const contracts = Object.fromEntries(namesWithGuards().flatMap(([pkg, name]) => {
+		const guards = builtInGuards(name, pkg);
+		return guards === undefined ? [] : [[`${pkg}::${name}`, guards]];
+	}));
+	const ambient = Object.fromEntries([...stated].flatMap(([name, entries]) =>
+		entries.flatMap(({ pkg, ambient }) => ambient === undefined ? [] : [[`${pkg}::${name}`, ambient]])));
+	return zlib.gzipSync(Buffer.from(JSON.stringify({ contracts, ambient })), { level: 9 }).toString('base64');
 }
 
 /** one exported name, as much of it as fits in a page */
@@ -249,13 +318,14 @@ function statedWithRealPackages(baseNames: ReadonlySet<BrandedNamespace>, topics
  */
 function builtInKinds(): Map<string, string[]> {
 	const categories: Record<string, readonly { name: string }[]> = {
-		library:    LibraryFunctions,
-		source:     SourceFunctions,
-		read:       computeReadFunctions(DefaultBuiltinConfig),
-		write:      computeWriteFunctions(DefaultBuiltinConfig),
-		visualize:  VisualizeFunctions,
-		test:       TestFunctions,
-		statistics: statisticsFunctions(BuiltInIndex.default())
+		library:     LibraryFunctions,
+		source:      SourceFunctions,
+		read:        computeReadFunctions(DefaultBuiltinConfig),
+		write:       computeWriteFunctions(DefaultBuiltinConfig),
+		visualize:   VisualizeFunctions,
+		test:        TestFunctions,
+		statistics:  functionsTagged(BuiltInIndex.default(), SemanticCallTag.Statistics),
+		interactive: functionsTagged(BuiltInIndex.default(), SemanticCallTag.Interactive)
 	};
 	const kinds = new Map<string, string[]>();
 	/* flowR's own built-in definitions: `:`, `<-`, `TRUE` and the rest of what it understands without
@@ -355,7 +425,7 @@ export function encode(packages: readonly PackageEntry[], stated: ReadonlyMap<st
 	}
 	owners.delete('');   // an empty name would split the blob apart when the page reads it back
 	return {
-		packages: packages.map(p => [p.name, p.version, p.base ? '1' : '0', p.downloads, p.exports.size,
+		packages: packages.map(p => [p.name, p.version, p.base ? (AttachedBasePackageSet.has(p.name) ? '2' : '1') : '0', p.downloads, p.exports.size,
 			p.releases, p.since, p.archived ? '1' : '0', p.files.join('|'), p.source ?? ''].join('\t')).join('\n'),
 		/* alphabetical, which is what lets gzip fold the shared prefixes; a page ranks its own hits */
 		names: [...owners.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))

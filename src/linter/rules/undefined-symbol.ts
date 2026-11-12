@@ -11,6 +11,7 @@ import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { FileRole } from '../../project/context/flowr-file';
+import { datasetShape } from '../../util/r-datasets';
 import { AttachedBasePackages, BaseDatasets, baseRExportOwner } from '../../util/r-base-packages';
 import { nonBaseImports } from './unused-import';
 import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -102,24 +103,30 @@ function declaredGlobalVariables(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyze
 	return names;
 }
 
+/** what {@link getArgumentStringValue} gives for a value it cannot tell, as the dependencies query has it */
+const UnknownValue = 'unknown';
+
 /** the calls binding the name they are handed as a string, which flowR does not link to the reads of that name */
 const NameBindingFunctions = new Set(['assign', 'delayedAssign']);
 
 /**
  * The names bound by the `assign(name, value)` calls of the code, as far as flowR resolves `name`:
  * `assign(paste0("year", i), ...)` in a loop over `2000:2025` binds `year2000` to `year2025`.
+ * `undefined` if one of them binds a name flowR cannot tell (`lapply(1:3, function(i) assign(paste0("g", i), i))`), which may be any.
  */
-function assignedNames(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<BrandedIdentifier> {
+function assignedNames(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<BrandedIdentifier> | undefined {
 	const names = new Set<BrandedIdentifier>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(!callsBuiltIn(graph, id, NameBindingFunctions)) {
 			continue;
 		}
 		const values = getArgumentStringValue(ctx.config.solver.variables, graph, vertex, 0, 'x', true, ctx);
-		for(const str of values?.values().flatMap(v => [...v]) ?? []) {
-			if(str !== undefined) {
-				names.add(str);
-			}
+		const found = values === undefined ? [] : [...values.values().flatMap(v => [...v])];
+		if(found.length === 0 || found.some(str => str === undefined || str === UnknownValue)) {
+			return undefined;
+		}
+		for(const str of found) {
+			names.add(str as BrandedIdentifier);
 		}
 	}
 	return names;
@@ -204,8 +211,12 @@ export const UNDEFINED_SYMBOL = {
 		/* a package may re-export what it imports, as dplyr does tibble's `as_tibble` */
 		const src = deps.signatures().sources();
 		const importedByLoaded = new Set(loadedPackages.flatMap(p => src.isBaseR(p.name) ? [] : nonBaseImports(src, p.name, p.resolvedVersion)));
+		const loadedNames = new Set<BrandedNamespace>(loadedPackages.map(p => p.name));
+		/* the database records no data sets, which a loaded package makes available as lazy data */
+		const isDatasetOfLoadedPackage = (name: BrandedIdentifier): boolean =>
+			datasetShape(name, undefined, pkg => loadedNames.has(pkg)) !== undefined;
 		const isExportedByLoadedPackage = memoize((name: BrandedIdentifier): boolean =>
-			loadedPackages.some(p => p.has(name)) || (importedByLoaded.size > 0 && deps.packagesExporting(name).some(p => importedByLoaded.has(p))));
+			loadedPackages.some(p => p.has(name)) || isDatasetOfLoadedPackage(name) || (importedByLoaded.size > 0 && deps.packagesExporting(name).some(p => importedByLoaded.has(p))));
 
 		// hint an unloaded package that exports `name` (e.g. `ggplot` -> `ggplot2`), from the package database
 		const attached = new Set(AttachedBasePackages);
@@ -248,7 +259,7 @@ export const UNDEFINED_SYMBOL = {
 				return suppress('declaredGlobal');
 			}
 			// forward-referenced closure binding flowR's dataflow did not link (unconditional bindings only)
-			if(isDefinedInEnclosingScope(graph, scopeDefined, id, name) || (kind === 'variable' && namespace === undefined && boundByAssign.has(name))) {
+			if(isDefinedInEnclosingScope(graph, scopeDefined, id, name) || (kind === 'variable' && namespace === undefined && (boundByAssign === undefined || boundByAssign.has(name)))) {
 				return suppress('enclosingScope');
 			}
 			// consumed by non-standard evaluation (quoting), hence not an ordinary read

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 17:31:23 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-10, 21:10:40 UTC (v2.17.5), do not edit directly._
 <h2 id="Ambient Access Query">Ambient Access Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 What code reads and writes of the global state\
@@ -21,9 +21,9 @@ Without criteria, the query answers for every file and for the whole project (`<
 
 _Results (prettified and summarized):_
 
-Query: **ambient-access** (55 ms)\
-&nbsp;&nbsp;&nbsp;╰ **<file 1>**: reads: #option:*, #option:digits, #options writes: #env, #env:A, #option:digits, #options\
-&nbsp;&nbsp;&nbsp;╰ **<project>**: reads: #option:*, #option:digits, #options writes: #env, #env:A, #option:digits, #options
+Query: **ambient-access** (26 ms)\
+&nbsp;&nbsp;&nbsp;╰ **<file 1>**: reads: #option:*, #option:digits, #options, #sink writes: #env, #env:A, #option:digits, #options, #sink:output\
+&nbsp;&nbsp;&nbsp;╰ **<project>**: reads: #option:*, #option:digits, #options, #sink writes: #env, #env:A, #option:digits, #options, #sink:output
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -32,7 +32,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{"ambient-access":{".meta":{},"results":{"<file 1>":{"reads":["#option:*","#option:digits","#options"],"writes":["#env","#env:A","#option:digits","#options"],"assumed":[],"variables":[],"draws":[]},"<project>":{"reads":["#option:*","#option:digits","#options"],"writes":["#env","#env:A","#option:digits","#options"],"assumed":[],"variables":[],"draws":[]}}},".meta":{}}
+{"ambient-access":{".meta":{},"results":{"<file 1>":{"reads":["#option:*","#option:digits","#options","#sink"],"writes":["#env","#env:A","#option:digits","#options","#sink:output"],"assumed":[],"kills":[],"variables":[],"draws":[]},"<project>":{"reads":["#option:*","#option:digits","#options","#sink"],"writes":["#env","#env:A","#option:digits","#options","#sink:output"],"assumed":[],"kills":[],"variables":[],"draws":[]}}},".meta":{}}
 ```
 
 </details>
@@ -58,8 +58,8 @@ Set `functions` to also learn what calling each function accesses:
 
 _Results (prettified and summarized):_
 
-Query: **ambient-access** (28 ms)\
-&nbsp;&nbsp;&nbsp;╰ **2^**: reads: #option:*, #option:digits, #options writes: #option:digits, #options\
+Query: **ambient-access** (13 ms)\
+&nbsp;&nbsp;&nbsp;╰ **2^**: reads: #option:*, #option:digits, #options, #sink writes: #option:digits, #options, #sink:output\
 &nbsp;&nbsp;&nbsp;╰ **function 7**: reads: #option:*, #option:digits writes: #option:digits, #options
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -69,7 +69,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{"ambient-access":{".meta":{},"results":{"2^":{"reads":["#option:*","#option:digits","#options"],"writes":["#option:digits","#options"],"assumed":[],"variables":[],"draws":[]}},"functions":{"7":{"reads":["#option:*","#option:digits"],"writes":["#option:digits","#options"],"assumed":[],"variables":[],"draws":[]}}},".meta":{}}
+{"ambient-access":{".meta":{},"results":{"2^":{"reads":["#option:*","#option:digits","#options","#sink"],"writes":["#option:digits","#options","#sink:output"],"assumed":[],"kills":[],"variables":[],"draws":[]}},"functions":{"7":{"reads":["#option:*","#option:digits"],"writes":["#option:digits","#options"],"assumed":[],"kills":[],"variables":[],"draws":[]}}},".meta":{}}
 ```
 
 </details>

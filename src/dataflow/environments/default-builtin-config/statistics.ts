@@ -1,9 +1,9 @@
 import { sig, Forced } from './shared-signatures';
-import { fn, pkg, stats, Primitive, Overrides, readsFile, writesFile } from './define-helpers';
+import { base, fn, pkg, stats, utils, Primitive, Overrides, readsFile, writesFile } from './define-helpers';
 import { Identifier, PkgName } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
-import { AmbientStateAccessType } from '../built-in-kinds';
+import { Ambient } from '../ambient-effect';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 
 /** The built-in definitions of the stats package and statistical modeling packages. */
@@ -33,6 +33,8 @@ export const StatsDefinitions = [
 		{ superAssignment: true, sig: sig({ '...': 0, list: ArgProp.Value, package: 0, 'lib.loc': 0, verbose: 0, envir: 0, overwrite: 0 }) }),
 	fn(pkg(PkgName.Inferference, 'interference'), BuiltInProcName.Apply, { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand', libFn: true }),
 	fn([...stats('setNames'), ...pkg(PkgName.FastUtils, 'setNames')], BuiltInProcName.Default, { props: CallProp.Pure, sig: sig({ object: Forced.Value, nm: Forced.Value }) }),
+	fn(base('scale'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Transforms] }),
+	fn(utils('combn'), BuiltInProcName.DefaultReadAllArgs),
 	fn(stats('filter'), BuiltInProcName.DefaultReadAllArgs,
 		{ props: CallProp.Pure, sig: sig({ x: Forced.Value, filter: Forced.Value, method: Forced.Flag, sides: Forced.Value, circular: Forced.Flag, init: Forced.Value }) }),
 	fn(stats('step'), BuiltInProcName.DefaultReadAllArgs,
@@ -41,5 +43,5 @@ export const StatsDefinitions = [
 		{ overrides: true, assumePrimitive: true }),
 	fn([...stats('princomp'), Identifier.from(['rmvnorm', 'mvtnorm']), Identifier.from(['randomForest', 'randomForest']), Identifier.from(['rvonmises', 'circular']),
 		...Identifier.fromAll('permute', ['permute', 'shuffle', 'shuffleSet']), ...pkg(PkgName.Dplyr, 'sample_n', 'sample_frac')], BuiltInProcName.DefaultReadAllArgs,
-	{ ambient: { type: AmbientStateAccessType.DrawRng }, tags: [SemanticCallTag.Random] }, Overrides),
+	{ ambient: Ambient.rng.adds, tags: [SemanticCallTag.Random] }, Overrides),
 ] as const satisfies AnyBuiltInDefinition[];

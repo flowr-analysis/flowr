@@ -16,7 +16,7 @@ import type { DependencyInfo } from '../../queries/catalog/dependencies-query/de
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import { type BrandedIdentifier, Identifier } from '../../dataflow/environments/identifier';
 import { ArgProp, type FnSig } from '../../dataflow/environments/built-in-props';
-import { type AmbientStateAccess, AmbientStateAccessType } from '../../dataflow/internal/process/functions/call/built-in/built-in-ambient-state';
+import { Ambient, type AmbientEffects, AmbientPart, AmbientVerb } from '../../dataflow/environments/ambient-effect';
 import { OperatorUsedAs } from '../../dataflow/environments/default-builtin-config/base-operators';
 
 /** What removing code for a set of criteria takes out of the program. */
@@ -27,13 +27,13 @@ export interface RemovalSliceResult {
 	readonly result:  ReadonlySet<NodeId>
 }
 
-type StatedConfig = { readonly ambient?: AmbientStateAccess | readonly AmbientStateAccess[], readonly sig?: FnSig };
+type StatedConfig = { readonly ambient?: AmbientEffects, readonly sig?: FnSig };
 function builtInNames(stated: (config: StatedConfig) => boolean): ReadonlySet<BrandedIdentifier> {
 	return new Set(DefaultBuiltinConfig.flatMap(d => d.type === 'function' && stated((d.config ?? {}) as StatedConfig) ? d.names.map(name => String(Identifier.getName(name))) : []));
 }
-const accesses = (type: AmbientStateAccessType) => (config: StatedConfig) => [config.ambient ?? []].flat().some(access => access.type === type);
-const DeviceOpeners = builtInNames(accesses(AmbientStateAccessType.OpenDevice));
-const DeviceClosers = builtInNames(accesses(AmbientStateAccessType.CloseDevice));
+const accesses = (verb: AmbientVerb) => (config: StatedConfig) => Ambient.list(config.ambient).some(effect => effect.family === AmbientPart.Device && effect.access === verb);
+const DeviceOpeners = builtInNames(accesses(AmbientVerb.Opens));
+const DeviceClosers = builtInNames(accesses(AmbientVerb.Closes));
 /* a call handing back its argument is that argument: `invisible(dev.off())` closes the device */
 const PassingOn = builtInNames(config => ((config.sig?.[0]?.[1] ?? 0) & ArgProp.Alias) !== 0);
 

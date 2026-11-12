@@ -1,9 +1,11 @@
 import { inferFunctions } from './function-props';
 import { exceptionsOfFunction } from './exceptions-of-function';
-import { promiseDependencies, promiseForcing, settleDefinitionsInPromises, settleJumpsInPromises, strictnessOfEach } from './strict-function';
+import { promiseDependencies, promiseForcing, promiseForcingPoints, promiseRaises, settleDefinitionsInPromises, settleJumpsInPromises, strictnessOfEach } from './strict-function';
 import { isHigherOrder } from './higher-order-function';
 import { argumentRolesOfFunctions } from './argument-roles';
 import { reflectiveRolesOf } from './frame-reflection';
+import { guardsOfFunctions, summarizeClauses } from './guards/function-guards';
+import { builtInGuards } from './guards/built-in-guards';
 import { argForImpl, classDeclarationOfImpl, declaredClassesImpl, superClassesOfImpl, toSigClassesImpl } from './class-declaration';
 import { DfgVertex } from '../graph/vertex';
 import { ArgProps, CallProps, FnSig } from '../environments/built-in-props';
@@ -13,6 +15,7 @@ import { Quoted } from '../internal/process/functions/call/quoted';
 import { Deferred } from '../internal/process/functions/call/deferred';
 import { UnsupportedFunctions } from '../../abstract-interpretation/unsupported-functions';
 import type { DataflowGraphVertexInfo } from '../graph/vertex';
+import type { DecodedFunction } from '../../project/sigdb/decode';
 
 /**
  * The one helper to ask what a function *does*: what it makes of its arguments, what it may raise, which formals it forces, and what it declares as a class.
@@ -32,12 +35,22 @@ export const FunctionSemantics = {
 	settleDefinitionsInPromises,
 	/** What a node within promises depends on for running at all. */
 	promiseDependencies,
+	/** Where a promise bound to a variable may be forced. */
+	promiseForcingPoints,
 	/** How surely the holder of a promise forces it. */
 	promiseForcing,
+	/** Whether an error within a promise surely leaves its holder. */
+	promiseRaises,
 	/** Whether one definition is higher-order, i.e. whether it calls what it is handed. */
 	isHigherOrder,
 	/** The roles of several definitions' formals, sharing the built-in lookups. */
 	argumentRoles:   argumentRolesOfFunctions,
+	/** What several definitions ask of the calls they return from. */
+	guards:          guardsOfFunctions,
+	/** The conditions of some clauses of a definition in R syntax. */
+	guardSummary:    summarizeClauses,
+	/** What a function of the base packages asks for, what the signature database answers as {@link DecodedFunction.guards} as well. */
+	builtInGuards,
 	/** The reflective argument bits of one definition. */
 	frameReflection: reflectiveRolesOf,
 	/** What one *call* of a function means: what flowR states about it, how R binds its arguments, and which of them it does not simply evaluate. */

@@ -1,3 +1,5 @@
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation, KillReference, ControlDependency } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '../known-call-handling';
@@ -7,10 +9,11 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
-import { Identifier, ReferenceType, type BrandedIdentifier } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType, type BrandedIdentifier, type IdentifierDefinition } from '../../../../../environments/identifier';
+import type { DataflowGraph } from '../../../../../graph/graph';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
@@ -42,8 +45,11 @@ interface RmFrameArg<OtherInfo> {
 	readonly arg:    RArgument<OtherInfo & ParentInformation>;
 }
 
-/** whether `value` is a call to the *built-in* `ls`/`objects` that lists (and thus clears) the whole scope */
-function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+/** the formals of `ls`, which R matches by unique prefix (`all = TRUE` is `all.names = TRUE`) */
+const LsFormals: readonly BrandedIdentifier[] = ['name', 'pos', 'envir', 'all.names', 'pattern', 'sorted'];
+
+/** whether `value` is a call to the *built-in* `ls`/`objects` that lists (and thus clears) the whole scope, or the whole of `target`, the environment `rm` removes from (`rm(list = ls(e), envir = e)`) */
+function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, target?: RNode<OtherInfo & ParentInformation>): boolean {
 	if(!RFunctionCall.isNamed(value)) {
 		return false;
 	}
@@ -51,13 +57,32 @@ function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>,
 	if((fn !== 'ls' && fn !== 'objects') || (ns !== undefined && ns !== 'base')) {
 		return false;
 	}
-	// a `pattern`/`envir` argument restricts the listing, so only a plain listing clears everything
-	const listsEverything = value.arguments.every(a => RArgument.isNamed(a) && ['all.names', 'sorted'].includes(Identifier.getName(a.name.content)));
+	// a `pattern` argument restricts the listing, and so does an environment that is not the one removed from, only a plain listing clears everything
+	const listsEverything = value.arguments.every((a, i) => {
+		if(RArgument.isEmpty(a)) {
+			return false;
+		}
+		const formal = a.name === undefined ? undefined : findByPrefixIfUnique(Identifier.getName(a.name.content), LsFormals);
+		if(formal === 'all.names' || formal === 'sorted') {
+			return true;
+		}
+		/* the first unnamed argument is `name`, an environment is taken as is */
+		return (formal === 'envir' || formal === 'name' || (a.name === undefined && i === 0)) && isSameEnvironment(a.value, target, data);
+	});
 	if(!listsEverything) {
 		return false;
 	}
 	// an explicit `base::` is always the built-in; otherwise only when `ls` is not shadowed
 	return ns === 'base' || Resolve.isBuiltIn(fn, data.environment, ReferenceType.Function);
+}
+
+/** whether both nodes are the same variable, bound by the same definitions */
+function isSameEnvironment<OtherInfo>(a: RNode<OtherInfo & ParentInformation> | undefined, b: RNode<OtherInfo & ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+	if(!RSymbol.is(a) || !RSymbol.is(b) || a.content !== b.content) {
+		return false;
+	}
+	const [da, db] = [Resolve.byName(a.content, data.environment), Resolve.byName(b.content, data.environment)];
+	return da !== undefined && da.length > 0 && da.length === db?.length && da.every(d => db.some(o => o.nodeId === d.nodeId));
 }
 
 /** How a formal of `rm` contributes to the removal. */
@@ -101,20 +126,21 @@ function collectDotArg<OtherInfo>(targets: RmTargets<OtherInfo>, value: RNode<Ot
 }
 
 /** Resolves the `list=` argument, recognizing a whole-scope clear via built-in `ls()` and concrete string vectors. */
-function collectListArg<OtherInfo>(targets: RmTargets<OtherInfo>, value: RNode<OtherInfo & ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): void {
+function collectListArg<OtherInfo>(targets: RmTargets<OtherInfo>, value: RNode<OtherInfo & ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, envir: RNode<OtherInfo & ParentInformation> | undefined): void {
 	if(!value) {
 		return;
 	}
 	if(RString.is(value)) {
 		targets.names.push({ name: value.content.str, nodeId: value.info.id });
-	} else if(isBuiltInLsCall(value, data)) {
+	} else if(isBuiltInLsCall(value, data, envir)) {
 		targets.all = true;
 	} else {
 		const elements = NodeValue.setOf(value.info.id, data)?.elements;
 		if(!elements || elements.length === 0) {
 			targets.unknown = true;
 		} else {
-			for(const r of elements) {
+			// `list = c("a", "b")` (or a variable holding it) is a vector: it removes every one of its strings
+			for(const r of elements.flatMap(e => e.type === 'vector' && isValue(e.elements) ? e.elements : [e])) {
 				if(r.type === 'string' && isValue(r.value)) {
 					targets.names.push({ name: r.value.str, nodeId: value.info.id });
 				} else {
@@ -131,6 +157,7 @@ function collectRmTargets<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): RmTargets<OtherInfo> {
 	const targets: RmTargets<OtherInfo> = { names: [], all: false, unknown: false };
+	const envirArg = RArgument.findNamed(args, 'envir')?.value;
 	for(const arg of args) {
 		if(RArgument.isEmpty(arg)) {
 			continue;
@@ -140,7 +167,7 @@ function collectRmTargets<OtherInfo>(
 				collectDotArg(targets, arg.value);
 				break;
 			case 'names':
-				collectListArg(targets, arg.value, data);
+				collectListArg(targets, arg.value, data, envirArg);
 				break;
 			case 'frame': {
 				const formal = arg.name?.content as RmFrameArg<OtherInfo>['formal'];
@@ -163,7 +190,7 @@ function collectRmTargets<OtherInfo>(
 function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: readonly ControlDependency[] | undefined, killedBy: NodeId): KillReference[] {
 	const kills: KillReference[] = [];
 	if(targets.all) {
-		kills.push({ kind: 'all', cds });
+		kills.push({ kind: 'all', cds, killedBy });
 	}
 	if(targets.unknown) {
 		kills.push({ kind: 'unknown', cds });
@@ -174,9 +201,24 @@ function buildKills<OtherInfo>(targets: RmTargets<OtherInfo>, cds: readonly Cont
 	return kills;
 }
 
+/**
+ * Whether `rm` removes a binding or warns that there is none depends on the definitions it removes, so the call reads them:
+ * each name looked up with `definitionsOf` where `rm` removes it, the read going to `at` of each definition.
+ */
+function readRemoved<OtherInfo>(graph: DataflowGraph, rootId: NodeId, targets: RmTargets<OtherInfo>, definitionsOf: (name: BrandedIdentifier) => readonly IdentifierDefinition[] | undefined, at: (d: IdentifierDefinition) => NodeId = d => d.nodeId): void {
+	for(const { name } of targets.names) {
+		for(const definition of definitionsOf(Identifier.getName(name)) ?? []) {
+			if(!NodeId.isBuiltIn(at(definition))) {
+				graph.addEdge(rootId, at(definition), EdgeType.Reads);
+			}
+		}
+	}
+}
+
 /** Removes the targets from a tracked custom environment (`rm(..., envir=e)`) instead of the lexical scope. */
 function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirResolution<OtherInfo>, targets: RmTargets<OtherInfo>, rootId: NodeId, cds: readonly ControlDependency[] | undefined): DataflowInformation {
 	const closureFrame = envir.envDef.closureFrame === true;
+	readRemoved(res.graph, rootId, targets, name => envir.envirData.environment.current.memory.get(name), d => d.definedAt);
 	const newEnvState = applyKills(envir.envDef.envState, buildKills(targets, cds, rootId), closureFrame);
 	if(closureFrame) {
 		res.graph.addEdge(rootId, envir.envirNodeId, EdgeType.Reads);
@@ -234,21 +276,26 @@ export function processRm<OtherInfo>(
 		/* a function removing from the global frame removes for its callers, as `<<-` defines for them */
 		if(envir?.stack === 'global') {
 			res.graph.addEdge(rootId, envir.envirNodeId, EdgeType.Reads);
+			const global = envir.envirData.environment.current;
+			readRemoved(res.graph, rootId, targets, name => global.boundForSuper(name));
 			return { ...res, environment: applyGlobalKills(res.environment, buildKills(targets, data.cds, rootId)) };
 		}
 		// `rm(x, envir=e)` removes from a tracked custom environment instead of the lexical scope
 		if(envir !== undefined && envir.stack === undefined && targets.frame.formal === 'envir' && data.ctx.config.solver.trackEnvironments) {
 			return removeFromCustomEnv(res, envir, targets, rootId, data.cds);
 		}
-		// any other frame we cannot identify, so the one we are analyzing stays untouched
+		/* any other frame, that of a function around or one we cannot identify, leaves the one we are analyzing untouched, but what it removes there is out of reach */
+		handleUnknownSideEffect(res.graph, res.environment, rootId);
 		return res;
 	}
 
+	readRemoved(res.graph, rootId, targets, name => Resolve.byName(name, data.environment));
 	// apply to our own environment so threading reflects it, and emit the kills so a merging parent can re-apply
 	const kills = buildKills(targets, data.cds, rootId);
 	if(kills.length === 0) {
 		return res;
 	}
 	const names = targets.all || targets.unknown ? undefined : targets.names.map(n => n.name);
-	return { ...res, environment: ambientWritesOfRelease(res.graph, applyKills(res.environment, kills), names, rootId, data.cds), kill: kills };
+	/* the removal stays noted, so a later read of the name, which R then finds elsewhere (lazy data, a built-in), reads the removal, see `readRemovals` */
+	return { ...res, environment: ambientWritesOfRelease(res.graph, applyKills(res.environment, kills, true), names, rootId, data.cds), kill: kills };
 }

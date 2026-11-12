@@ -1,4 +1,4 @@
-import type { BrandedIdentifier } from './identifier';
+import { type BrandedIdentifier, Identifier } from './identifier';
 /** R's group generics, kept apart from the builtin configuration so anything may ask about them without pulling the whole dataflow setup in (the signature database does, and that would be a cycle). */
 
 const Arith = ['+', '-', '*', '/', '^', '**', '%%', '%/%'] as const;
@@ -54,7 +54,7 @@ export function s3GroupGenericMembers(name: BrandedIdentifier): readonly Branded
 }
 
 /** the S3 groups, `Ops` standing for the three S4 groups it unites and `Math` covering `Math2` */
-const S3Groups = ['Ops', 'Math', 'Summary', 'Complex', 'matrixOps'] as const;
+export const S3Groups = ['Ops', 'Math', 'Summary', 'Complex', 'matrixOps'] as const;
 
 const S3GroupOfMember: ReadonlyMap<BrandedIdentifier, BrandedIdentifier> = new Map(
 	S3Groups.flatMap(group => (s3GroupGenericMembers(group) ?? []).map(member => [member, group as string])));
@@ -62,6 +62,16 @@ const S3GroupOfMember: ReadonlyMap<BrandedIdentifier, BrandedIdentifier> = new M
 /** The S3 group generic whose `<group>.<class>` methods a call of `name` may dispatch to (`==` to `Ops`), `undefined` for a name in none. */
 export function s3GroupGenericOf(name: BrandedIdentifier): BrandedIdentifier | undefined {
 	return S3GroupOfMember.get(name);
+}
+
+/** the primitives that are another one, whose methods alone they run (`as.numeric(x)` runs `as.double.<class>`) */
+const DispatchesAs: ReadonlyMap<BrandedIdentifier, BrandedIdentifier> = new Map([['as.numeric', 'as.double']]);
+
+/** The names whose `<name>.<class>` methods a call of `name` may dispatch to: its own and that of the S3 group generic it is a member of. */
+export function s3MethodPrefixesOf(name: Identifier): readonly BrandedIdentifier[] {
+	const plain = DispatchesAs.get(Identifier.getName(name)) ?? Identifier.getName(name);
+	const group = s3GroupGenericOf(plain);
+	return group === undefined ? [plain] : [plain, group];
 }
 
 /** Whether `name` is one of R's group generics (see {@link RGroupGenerics}). */

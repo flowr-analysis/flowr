@@ -12,7 +12,7 @@ describe('Dataflow rm', { concurrent: false }, withShell(shell => {
 		'x <- 2\nrm(x)\nx',
 		emptyGraph().autoPrints([7], true)
 			.defineVariable('1@x', 'x', { definedBy: ['1@<-', '1@2'] })
-			.call('2@rm', 'rm', [argumentInCall('4')], { onlyBuiltIn: true, origin: [BuiltInProcName.Rm], reads: [NodeId.toBuiltIn('rm')] })
+			.call('2@rm', 'rm', [argumentInCall('4')], { onlyBuiltIn: true, origin: [BuiltInProcName.Rm], reads: [NodeId.toBuiltIn('rm'), '1@x'] })
 			.calls('2@rm', NodeId.toBuiltIn('rm'))
 			.returns('1@<-', '1@x')
 			.use('2@x')

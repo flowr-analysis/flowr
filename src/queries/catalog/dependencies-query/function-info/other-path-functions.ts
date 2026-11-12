@@ -18,7 +18,7 @@ export const OtherPathFunctions: FunctionInfo[] = [
 	{ package: 'base', name: 'file.symlink',  argIdx: 0, argName: 'from',  resolveValue: true },
 	{ package: 'base', name: 'file.link',     argIdx: 0, argName: 'from',  resolveValue: true },
 	{ package: 'base', name: 'Sys.junction',  argIdx: 0, argName: 'from',  resolveValue: true },
-	{ package: 'base', name: 'dir.exists',    argIdx: 0, argName: 'path',  resolveValue: true },
+	{ package: 'base', name: 'dir.exists',    argIdx: 0, argName: 'paths', resolveValue: true },
 	{ package: 'base', name: 'list.files',    argIdx: 0, argName: 'path',  resolveValue: true, defaultValue: '.' },
 	{ package: 'base', name: 'list.dirs',     argIdx: 0, argName: 'path',  resolveValue: true, defaultValue: '.' },
 	{ package: 'base', name: 'dir',           argIdx: 0, argName: 'path',  resolveValue: true, defaultValue: '.' }

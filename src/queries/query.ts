@@ -79,6 +79,8 @@ import type {
 import {
 	InspectFnPropsQueryDefinition
 } from './catalog/inspect-fn-props-query/inspect-fn-props-query-format';
+import type { InspectFnGuardsQuery } from './catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
+import { InspectFnGuardsQueryDefinition } from './catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
 import type { DoesCallQuery } from './catalog/does-call-query/does-call-query-format';
 import { DoesCallQueryDefinition } from './catalog/does-call-query/does-call-query-format';
 import type {
@@ -104,6 +106,7 @@ import {
 } from './catalog/guess-dep-versions-query/guess-dep-versions-query-format';
 import { AbsintQueryDefinition, type AbsintQuery } from './catalog/absint-query/absint-query-format';
 import { type CodeClonesQuery, CodeClonesQueryDefinition } from './catalog/code-clones-query/code-clones-query-format';
+import { type DataColumnsQuery, DataColumnsQueryDefinition } from './catalog/data-columns-query/data-columns-query-format';
 import {
 	type FunctionInfoQuery,
 	FunctionInfoQueryDefinition
@@ -133,6 +136,7 @@ export type Query = CallContextQuery
     | InspectHigherOrderQuery
 	| InspectRecursionQuery
 	| InspectFnPropsQuery
+	| InspectFnGuardsQuery
 	| AmbientAccessQuery
 	| ResolveValueQuery
 	| ProjectQuery
@@ -146,6 +150,7 @@ export type Query = CallContextQuery
 	| GuessDepVersionsQuery
 	| FunctionInfoQuery
 	| CodeClonesQuery
+	| DataColumnsQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -218,6 +223,7 @@ export const SupportedQueries = {
 	'inspect-higher-order': InspectHigherOrderQueryDefinition,
 	'inspect-recursion':    InspectRecursionQueryDefinition,
 	'inspect-fn-props':     InspectFnPropsQueryDefinition,
+	'inspect-fn-guards':    InspectFnGuardsQueryDefinition,
 	'ambient-access':       AmbientAccessQueryDefinition,
 	'resolve-value':        ResolveValueQueryDefinition,
 	'project':              ProjectQueryDefinition,
@@ -227,7 +233,8 @@ export const SupportedQueries = {
 	'dice':                 DiceQueryDefinition,
 	'guess-dep-versions':   GuessDepVersionsQueryDefinition,
 	'function-info':        FunctionInfoQueryDefinition,
-	'code-clones':          CodeClonesQueryDefinition
+	'code-clones':          CodeClonesQueryDefinition,
+	'data-columns':         DataColumnsQueryDefinition
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
@@ -253,10 +260,8 @@ export async function executeQueriesOfSameType<SpecificQuery extends Query>(data
 function runExecutor(data: BasicQueryData, type: SupportedQueryTypes, queries: readonly Query[]): Promise<BaseQueryResult> {
 	const definition = SupportedQueries[type] as SupportedQuery | undefined;
 	guard(definition !== undefined, `Unsupported query type: ${type}`);
-	/* a query asks for the targets of many calls of a graph it leaves as it is; without an analyzer the executor is the one to fail */
-	const graph = (data.analyzer as typeof data.analyzer | undefined)?.peekDataflow()?.graph;
 	const run = (): Promise<BaseQueryResult> => definition.executor(data, queries as never);
-	return graph === undefined ? run() : graph.sharingTargetWalks(run);
+	return run();
 }
 
 /** Groups the queries by type in the order the types first occur, unfolding virtual queries into the queries they stand for. */

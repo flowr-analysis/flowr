@@ -27,6 +27,9 @@ import { startAndEndsWith, matchByPrefixOrSubsequence } from '../../util/text/st
 import type { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { instrumentDataflowCount } from '../../dataflow/instrument/instrument-dataflow-count';
 import { exitSafe } from '../../util/proc';
+import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
+import { Identifier } from '../../dataflow/environments/identifier';
+import { datasetsOf } from '../../util/r-datasets';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -93,8 +96,58 @@ export function computeCompletions(line: string, config: FlowrConfig): [string[]
 		}
 	}
 
+	/* a plain R line, which runs in R: the name typed last completes to what R finds without the script binding it */
+	if(line.trim().length > 0 && !line.trimStart().startsWith(':')) {
+		return completeRName(line);
+	}
 	// if no command is already typed, just return all commands that match
 	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
+}
+
+/** the most names a plain R line is offered, the first ones in order */
+const MaxRNames = 40;
+
+/** the functions flowR knows and the data sets R always finds (`penguins`), by name, with the packages they come from */
+let rNames: ReadonlyMap<string, readonly string[]> | undefined;
+
+/** whether the end of `line` is within a string or a comment, where nothing names an R object */
+function endsInText(line: string): boolean {
+	let quote: string | undefined;
+	for(let at = 0; at < line.length; at++) {
+		const c = line[at];
+		if(quote !== undefined) {
+			quote = c === '\\' ? (at++, quote) : c === quote ? undefined : quote;
+		} else if(c === '"' || c === "'" || c === '`') {
+			quote = c;
+		} else if(c === '#') {
+			return true;
+		}
+	}
+	return quote !== undefined;
+}
+
+/**
+ * Completes the name `line` ends in, as `Vi` to `View`, from {@link rNames}, only from the package named in
+ * `base::pri`. Nothing after `$` or `@`, which name a column or slot, within a number, a string, or a comment.
+ */
+function completeRName(line: string): [string[], string, ReadonlyMap<string, string>] {
+	rNames ??= (() => {
+		const found = new Map<string, string[]>();
+		const add = (name: string, pkg: string) => found.set(name, [...found.get(name) ?? [], pkg]);
+		datasetsOf('datasets').forEach(name => add(String(name), 'datasets'));
+		DefaultBuiltinConfig.forEach(d => d.names.forEach(id => add(String(Identifier.getName(id)), String(Identifier.getNamespace(id) ?? ''))));
+		return found;
+	})();
+	const typed = /(?:([A-Za-z][\w.]*):::?)?((?<![\w.$@])[A-Za-z.][\w.]*)$/.exec(line);
+	if(typed === null || endsInText(line) || /^\.\d/.test(typed[2])) {
+		return [[], '', new Map()];
+	}
+	const [, pkg, fragment] = typed;
+	const known = rNames;
+	const found = [...known.keys()].filter(name => name.startsWith(fragment) && name !== fragment && (pkg === undefined || known.get(name)?.includes(pkg)))
+		.sort((a, b) => a.length - b.length || a.localeCompare(b)).slice(0, MaxRNames);
+	const what = (name: string) => known.get(name)?.includes('datasets') ? 'data set of datasets' : 'flowR built-in';
+	return [found, fragment, new Map(found.map(name => [name, `${name}  ${what(name)}`]))];
 }
 
 /**

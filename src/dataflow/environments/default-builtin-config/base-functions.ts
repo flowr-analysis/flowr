@@ -1,27 +1,51 @@
 import { fn, constant, replacement, pkg, base, utils, stats, Primitive, Overrides, Deprecated } from './define-helpers';
-import { ExitPointType, KnownHooks, Unquote, Top, AmbientStateAccessType } from '../built-in-kinds';
+import { ExitPointType, KnownHooks, Unquote, Top } from '../built-in-kinds';
+import { Ambient } from '../ambient-effect';
 import { Identifier, PkgName } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { BuiltInEvalName } from '../built-in-eval-name';
 import { NseArguments } from '../../internal/process/functions/call/nse-kind';
 import { ArgProp, CallProp, type FnSig, SemanticCallTag } from '../built-in-props';
-import { AmbientStateName, KeyedState } from '../ambient-state-name';
+import { KeyedState } from '../ambient-state-name';
 import { SigXY, SigX, SigXDots, SigShape, SigXTable, SigDots, SigUnique, SigDotsDeparsed, sig, Forced } from './shared-signatures';
-import { StackEnvKind, StackEnvBuiltins, SetsAnyEnvVar, CopiesFiles, WithSig, ReadPrintingOptions, PrintDispatched, SetsEntryNamedBy, SetsEntry, LibrarySearchPath, DetachSearchPath, AttachSearchPath } from './shared-configs';
+import { StackEnvKind, StackEnvBuiltins, SetsAnyEnvVar, CopiesFiles, WithSig, ReadPrintingOptions, PrintDispatched, ReadsNumberFormat, SetsEntryNamedBy, SetsEntry, LibrarySearchPath, DetachSearchPath, AttachSearchPath } from './shared-configs';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 import type { DefaultBuiltInProcessorConfiguration } from '../built-in';
 
+const SinkSig = sig({ file: ArgProp.Resource });
+/** `sink(file)` diverts the output of the `type`, `sink()` ends the diversion */
+const SinkArg = (arg: string, is: readonly (string | null)[]) => ({ arg, formals: ['file', 'append', 'type', 'split'], is }) as const;
+const SinkStack = (family: typeof Ambient.sink, types: readonly (string | null)[], others: readonly (string | null)[]) =>
+	[{ ...family.opens, when: SinkArg('type', types), unless: SinkArg('file', [null]) }, { ...family.closes, when: SinkArg('file', [null]), unless: SinkArg('type', others) }] as const;
+
+/** a kind among the arguments (`set.seed(1, "Wichmann-Hill")`) reseeds the generator from its current state, which changes the stream as well */
+const SetsRngKind = (formals: readonly string[]) => [{ ...Ambient.rng.adds, when: { besides: formals } }, { ...Ambient.rngKind.writes, when: { besides: formals } }] as const;
+
+/* closing a connection flushes what was written through it, so the file it leaves holds those writes */
+const ClosesConnection = [Ambient.files.reads, Ambient.files.writes] as const;
+/* removing a file tells whether it was there, and the path may name a directory */
+const RemovesFiles = (removed: FnSig) => ({ ambient: [Ambient.directories.adds, { ...Ambient.files.reads, sig: removed }], tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: removed });
+
+/** what signaling or reporting a condition asks of it, any method of them may run */
+const ConditionAccessors = ['conditionMessage', 'conditionCall', 'as.character', 'as.vector'];
+
 /** what signals a message or a warning, handing on what it is given */
 const Signals: DefaultBuiltInProcessorConfiguration = {
-	keepArgumentOut:       true,
-	hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ },
-	props:                 CallProp.Invisible,
-	tags:                  [SemanticCallTag.Prints],
-	sig:                   sig({ '...': ArgProp.Alias | ArgProp.Forced })
+	keepArgumentOut: true,
+	props:           CallProp.Invisible,
+	tags:            [SemanticCallTag.Prints],
+	ambient:         Ambient.messageSink.adds,
+	sig:             sig({ '...': ArgProp.Alias | ArgProp.Forced }),
+	dispatches:      ConditionAccessors
 };
 
+/** what muffles the conditions its code signals */
+const Suppresses: DefaultBuiltInProcessorConfiguration = { keepArgumentOut: true, sig: sig({ expr: ArgProp.Alias | ArgProp.Forced, classes: ArgProp.Value }) };
+
+/** the restarts a signal establishes for its handlers, invoking them resumes the signaling call */
+const MuffleRestarts: readonly string[] = ['muffleWarning', 'muffleMessage'];
 /** what signals an error */
-const Throws: DefaultBuiltInProcessorConfiguration = { useAsProcessor: BuiltInProcName.Stop, cfg: ExitPointType.Error, props: CallProp.Throws, sig: sig({ '...': ArgProp.Forced }) };
+const Throws: DefaultBuiltInProcessorConfiguration = { useAsProcessor: BuiltInProcName.Stop, cfg: ExitPointType.Error, props: CallProp.Throws, sig: sig({ '...': ArgProp.Forced }), dispatches: ConditionAccessors };
 
 /** The built-in definitions of the base package. */
 export const BaseDefinitions = [
@@ -43,7 +67,9 @@ export const BaseDefinitions = [
 	fn(base('t'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Transforms], sig: SigXDots }, Primitive),
 	/* an {@link BuiltInEvalName} marks what the value solver folds; a test checks the names against the handler tables */
 	/* the result follows from how large the argument is, not from what is in it, so it is bounded (`Narrows`) */
-	fn(base('length', 'lengths', 'nrow', 'ncol', 'NROW', 'NCOL', 'dim', 'is.null', 'is.factor', 'is.vector', 'is.matrix', 'is.data.frame', 'is.numeric', 'is.character', 'is.logical',
+	/* their bodies ask `dim(x)` and `length(x)`, which dispatch on the class of `x` */
+	fn(base('nrow', 'ncol', 'NROW', 'NCOL'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Narrows], sig: SigShape, dispatches: ['dim', 'length'] }, Primitive),
+	fn(base('length', 'lengths', 'dim', 'is.null', 'is.factor', 'is.vector', 'is.matrix', 'is.data.frame', 'is.numeric', 'is.character', 'is.logical',
 		'is.function', 'is.list', 'is.double', 'is.integer', 'is.complex', 'is.raw', 'is.single', 'is.ordered'), BuiltInProcName.DefaultReadAllArgs,
 	{ props: CallProp.Pure, tags: [SemanticCallTag.Narrows], sig: SigShape }, Primitive),
 	/* the names and the class are read off the argument, so whatever it carries can show up in the result */
@@ -54,16 +80,16 @@ export const BaseDefinitions = [
 	fn(base('missing'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ x: ArgProp.Presence }) }, Primitive),
 	/* they fold everything they are handed into one result */
 	fn(base('sum', 'prod', 'min', 'max', 'range', 'pmin', 'pmax', 'order', 'any'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: SigDots }, Primitive),
-	fn(base('data.frame', 'table'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: SigDotsDeparsed }, Primitive),
+	fn(base('data.frame', 'table'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: SigDotsDeparsed, dispatches: ['as.data.frame', 'as.character', 'as.vector', 'length', 'names', 'unique'] }, Primitive),
 	fn(base('cbind', 'rbind'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Transforms], sig: SigDotsDeparsed }, Primitive),
 	/* the separator sits behind the `...`, so R (and the {@link FnSig}) only ever matches it by its full name */
-	fn(base('paste', 'paste0'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ '...': Forced.Value, sep: Forced.Value }), dispatches: ['as.character'] },
+	fn(base('paste', 'paste0'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: ReadsNumberFormat, sig: sig({ '...': Forced.Value, sep: Forced.Value }), dispatches: ['as.character', 'as.vector'] },
 		{ assumePrimitive: true, evalHandler: BuiltInEvalName.StringFn }),
-	fn(base('file.path'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ '...': Forced.Value, fsep: Forced.Value }), dispatches: ['as.character'] },
+	fn(base('file.path'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: ReadsNumberFormat, sig: sig({ '...': Forced.Value, fsep: Forced.Value }), dispatches: ['as.character', 'as.vector'] },
 		{ assumePrimitive: true, evalHandler: BuiltInEvalName.StringFn }),
 	/* `x` carries the data, whatever follows only tunes the result */
 	fn([...Identifier.fromAll(PkgName.Base, ['mean', /* running summaries & reordering */ 'cumsum', 'cumprod', 'cummax', 'cummin', 'diff', 'sort', 'rev', 'unique', 'duplicated',
-		/* coercion */ 'as.character', 'as.matrix', 'as.data.frame', 'as.factor', 'as.raw', 'as.list', 'as.array', 'factor', 'as.ordered']), ...utils('head', 'tail'), ...stats('var', 'sd',
+		/* coercion */ 'as.matrix', 'as.data.frame', 'as.factor', 'as.raw', 'as.list', 'as.array', 'factor', 'as.ordered']), ...utils('head', 'tail'), ...stats('var', 'sd',
 		'median', 'quantile')], BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: SigXDots }, Primitive),
 	/* a number or a logical carries none of the text it was converted from */
 	fn(base('as.integer', 'as.logical', 'as.numeric', 'as.double', 'as.complex', 'as.single'), BuiltInProcName.DefaultReadAllArgs,
@@ -111,11 +137,12 @@ export const BaseDefinitions = [
 	/* the rest of the pure computations, where no single shape fits */
 	fn([...Identifier.fromAll(PkgName.Base, ['rep', 'rep.int', 'seq.int', 'append', 'complex', 'matrix', 'array', 'prop.table', 'colSums', 'rowSums', 'colMeans', 'rowMeans', 'solve',
 		'det', 'eigen', 'aperm', /* string */ 'grep', 'sub', 'gsub', 'substr', 'substring', 'strsplit', 'strrep', 'chartr', 'strtoi', 'shQuote', 'regexpr', 'gregexpr', 'regexec', 'format',
-		'formatC', /* regmatches yields a substring of its subject, so what flows in flows out */ 'regmatches']), ...stats('cor', 'cov', 'xtabs')], BuiltInProcName.DefaultReadAllArgs,
+		/* regmatches yields a substring of its subject, so what flows in flows out */ 'regmatches']), ...stats('cor', 'cov', 'xtabs')], BuiltInProcName.DefaultReadAllArgs,
 	{ props: CallProp.Pure }, Primitive),
 
 	/* indices and index sequences: bounded by the shape of what they are handed, never by its contents */
-	fn(base('which', 'which.max', 'which.min', 'seq_len', 'seq_along'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Narrows] }, Primitive),
+	/* `seq_along(x)` asks `length(x)` and `which.max(x)` asks `xtfrm(x)` */
+	fn(base('which', 'which.max', 'which.min', 'seq_len', 'seq_along'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Narrows], dispatches: ['length', 'xtfrm'] }, Primitive),
 	/* `seq` dispatches, so `...` really is all it declares; the named formals belong to `seq.default`/`seq.int` */
 	fn(base('seq'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ '...': Forced.Value }) }, Primitive),
 	fn(base('scan'), BuiltInProcName.DefaultReadAllArgs,
@@ -135,18 +162,24 @@ export const BaseDefinitions = [
 		{ tags: [SemanticCallTag.Opens, SemanticCallTag.Network, SemanticCallTag.Reads], sig: sig({ host: Forced.Resource }) }),
 	fn(base('rawConnection'), BuiltInProcName.DefaultReadAllArgs, { tags: [SemanticCallTag.Opens], sig: sig({ object: Forced.Value }) }),
 	fn(base('stdout', 'stderr', 'stdin'), BuiltInProcName.Default, { tags: [SemanticCallTag.Console] }),
+	/* how many diversions are on the stack */
+	fn(base('sink.number'), BuiltInProcName.Default, { ambient: { ...Ambient.sink.reads, member: 'every' } }),
+	/* what was written into a text connection, pushed back lines are read before the rest */
+	fn(base('textConnectionValue'), BuiltInProcName.DefaultReadAllArgs, { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ con: Forced.Resource }) }),
+	fn(base('pushBack'), BuiltInProcName.DefaultReadAllArgs,
+		{ props: CallProp.Invisible, ambient: Ambient.files.writes, sig: sig({ data: Forced.Value, connection: Forced.Handle, newLine: Forced.Flag, encoding: Forced.Flag }) }),
 	fn(base('textConnection'), BuiltInProcName.DefaultReadAllArgs,
-		{ ambient: { type: AmbientStateAccessType.OpenTextConnection }, tags: [SemanticCallTag.Opens], sig: sig({ object: Forced.Value }) }),
+		{ ambient: Ambient.textConnection.opens, tags: [SemanticCallTag.Opens], sig: sig({ object: Forced.Value }) }),
 	/* the calls ending what an opener started, each stating the argument holding the handle */
 	/* opening a connection decides where it reads and whether a write appends, which later uses of it depend on */
 	fn(base('open', 'open.connection', 'seek'), BuiltInProcName.DefaultReadAllArgs,
 		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ con: Forced.Resource | ArgProp.Handle, '...': Forced.Value }) }),
 	fn(base('close'), BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Invisible | CallProp.Generic, ambient: { type: AmbientStateAccessType.WriteFiles }, tags: [SemanticCallTag.Closes], sig: sig({ con: Forced.Handle, '...': Forced.Value }) }),
+		{ props: CallProp.Invisible | CallProp.Generic, ambient: ClosesConnection, tags: [SemanticCallTag.Closes], sig: sig({ con: Forced.Handle, '...': Forced.Value }) }),
 	fn(base('close.connection'), BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Invisible, ambient: { type: AmbientStateAccessType.WriteFiles }, tags: [SemanticCallTag.Closes], sig: sig({ con: Forced.Handle, type: Forced.Flag, '...': Forced.Value }) }),
+		{ props: CallProp.Invisible, ambient: ClosesConnection, tags: [SemanticCallTag.Closes], sig: sig({ con: Forced.Handle, type: Forced.Flag, '...': Forced.Value }) }),
 	fn(base('flush'), BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Invisible | CallProp.Generic, ambient: { type: AmbientStateAccessType.WriteFiles }, sig: sig({ con: Forced.Handle }) }),
+		{ props: CallProp.Invisible | CallProp.Generic, ambient: Ambient.files.writes, sig: sig({ con: Forced.Handle }) }),
 	fn(base('closeAllConnections'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Invisible, tags: [SemanticCallTag.Closes] }),
 	fn(base('readLines', 'readBin', 'readChar'), BuiltInProcName.DefaultReadAllArgs, { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ con: Forced.Resource }) }),
 	fn(base('readRDS', 'dget'), BuiltInProcName.DefaultReadAllArgs, { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ file: Forced.Resource }) }),
@@ -159,34 +192,34 @@ export const BaseDefinitions = [
 	fn(base('save'), BuiltInProcName.DefaultReadAllArgs,
 		{ namesIn: ['...', 'list'], props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ '...': Forced.Value, list: Forced.Value, file: Forced.Resource }) }),
 	fn(base('save.image'), BuiltInProcName.EnvContents, { props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ file: Forced.Resource }) }),
-	fn(base('dir.exists'), BuiltInProcName.DefaultReadAllArgs, { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ path: Forced.Resource }) }),
+	fn(base('dir.exists'), BuiltInProcName.DefaultReadAllArgs, { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ paths: Forced.Resource }) }),
 	fn(base('file.access'), BuiltInProcName.DefaultReadAllArgs, { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ names: Forced.Resource, mode: Forced.Flag }) }),
 	fn([...base('normalizePath'), ...pkg(PkgName.Fs, 'path_abs', 'path_real')], BuiltInProcName.DefaultReadAllArgs,
-		{ ambient: { type: AmbientStateAccessType.GetWorkingDirectory }, props: CallProp.Ambient, sig: sig({ path: Forced.Value, winslash: Forced.Flag, mustWork: Forced.Flag }) }),
+		{ ambient: Ambient.wd.reads, props: CallProp.Ambient, sig: sig({ path: Forced.Value, winslash: Forced.Flag, mustWork: Forced.Flag }) }),
 	fn(base('dput'), BuiltInProcName.DefaultReadAllArgs,
 		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes, SemanticCallTag.Prints], sig: sig({ x: Forced.Value, file: Forced.Resource | ArgProp.Optional }) }),
 	fn(base('write'), BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes, SemanticCallTag.Prints], sig: sig({ x: Forced.Value, file: Forced.Resource }) }),
+		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes, SemanticCallTag.Prints], sig: sig({ x: Forced.Value, file: Forced.Resource, ncolumns: Forced.Value, append: Forced.Flag }) }),
 	fn(base('write.dcf'), BuiltInProcName.DefaultReadAllArgs,
 		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ x: Forced.Value, file: Forced.Resource | ArgProp.Optional }) }),
 	fn(base('jitter'), BuiltInProcName.DefaultReadAllArgs,
-		{ ambient: { type: AmbientStateAccessType.DrawRng }, tags: [SemanticCallTag.Random], sig: sig({ x: ArgProp.NoDefault, factor: 0, amount: 0 }) }, Primitive),
+		{ ambient: Ambient.rng.adds, tags: [SemanticCallTag.Random], sig: sig({ x: ArgProp.NoDefault, factor: 0, amount: 0 }) }, Primitive),
 	fn([...base('sample', 'sample.int'), ...stats('runif', 'rnorm', 'rbinom', 'rpois', 'rexp', 'rgamma', 'rbeta', 'rcauchy', 'rchisq', 'rgeom', 'rhyper', 'rlnorm', 'rlogis',
 		'rmultinom', 'rnbinom', 'rsignrank', 'rt', 'rf', 'rweibull', 'rwilcox', 'arima.sim', 'simulate', 'kmeans')], BuiltInProcName.DefaultReadAllArgs,
-	{ ambient: { type: AmbientStateAccessType.DrawRng }, tags: [SemanticCallTag.Random] }),
+	{ ambient: Ambient.rng.adds, tags: [SemanticCallTag.Random] }),
 	fn(base('expression'), BuiltInProcName.Default, { props: CallProp.Lang, sig: sig({ '...': ArgProp.Nse }) }, Primitive),
 	fn(base('reg.finalizer'), BuiltInProcName.Default,
-		{ ambient: { type: AmbientStateAccessType.RegisterFinalizer }, sig: sig({ e: ArgProp.Forced, f: ArgProp.Forced, onexit: Forced.Flag }) }),
-	fn(base('gc'), BuiltInProcName.Default, { ambient: { type: AmbientStateAccessType.RunFinalizers }, sig: sig({ verbose: Forced.Flag, reset: Forced.Flag, full: Forced.Flag }) }),
-	fn(base('rm'), BuiltInProcName.Rm, { props: CallProp.Invisible | CallProp.Scope, sig: sig({ '...': 0, list: ArgProp.Forced, pos: 0, envir: ArgProp.Forced, inherits: ArgProp.Forced }) }, Primitive),
+		{ ambient: Ambient.finalizers.adds, sig: sig({ e: ArgProp.Forced, f: ArgProp.Forced, onexit: Forced.Flag }) }),
+	fn(base('gc'), BuiltInProcName.Default, { ambient: Ambient.finalizers.reads, sig: sig({ verbose: Forced.Flag, reset: Forced.Flag, full: Forced.Flag }) }),
+	fn(base('rm', 'remove'), BuiltInProcName.Rm, { props: CallProp.Invisible | CallProp.Scope, sig: sig({ '...': 0, list: ArgProp.Forced, pos: 0, envir: ArgProp.Forced, inherits: ArgProp.Forced }) }, Primitive),
 	/* they read the state they set, so both bits apply */
 	fn(base('options'), BuiltInProcName.Default,
-		{ ambient: { type: AmbientStateAccessType.SetOptions }, props: CallProp.Invisible | CallProp.Ambient | CallProp.Configures, sig: sig({ '...': ArgProp.Forced }) }),
+		{ ambient: [{ ...Ambient.option.writes, member: { from: 'argument-names' }, unless: 'query' }, { ...Ambient.option.reads, member: { from: 'unnamed', quoted: true }, when: 'query' }], props: CallProp.Invisible | CallProp.Ambient | CallProp.Configures, sig: sig({ '...': ArgProp.Forced }) }),
 	/* `Sys.putenv` is defunct in current R, older scripts still use it */
 	fn(base('Sys.setenv', 'Sys.putenv'), BuiltInProcName.Default,
-		{ ambient: { type: AmbientStateAccessType.SetKeyed, state: KeyedState.Env, keys: { from: 'argument-names' } }, props: CallProp.Invisible | CallProp.Configures, sig: sig({ '...': ArgProp.Forced }) }),
+		{ ambient: { ...Ambient.env.writes, member: { from: 'argument-names' } }, props: CallProp.Invisible | CallProp.Configures, sig: sig({ '...': ArgProp.Forced }) }),
 	fn(base('Sys.unsetenv'), BuiltInProcName.Default,
-		{ ambient: SetsEntryNamedBy(KeyedState.Env, ['x'], 'x'), props: CallProp.Invisible | CallProp.Configures, sig: sig({ '...': ArgProp.Forced }) }),
+		{ ambient: { ...Ambient.env.kills, member: SetsEntryNamedBy(KeyedState.Env, ['x'], 'x').member }, props: CallProp.Invisible | CallProp.Configures, sig: sig({ '...': ArgProp.Forced }) }),
 	fn(base('Sys.setlocale'), BuiltInProcName.Default,
 		{ ambient: SetsEntryNamedBy(KeyedState.Locale, ['category', 'locale'], 'category', { fallback: 'LC_ALL' }), hasUnknownSideEffects: true, props: CallProp.Invisible | CallProp.Configures, sig: sig({ '...': ArgProp.Forced }) }),
 	/* the language is the environment variable `LANGUAGE`, which the translations of messages follow */
@@ -194,8 +227,9 @@ export const BaseDefinitions = [
 		{ ambient: [SetsEntry(KeyedState.Locale, 'LANGUAGE'), SetsEntry(KeyedState.Env, 'LANGUAGE')], hasUnknownSideEffects: true, props: CallProp.Invisible | CallProp.Configures, sig: sig({ '...': ArgProp.Forced }) }),
 	fn([...base('mapply'), ...pkg(PkgName.Functools, 'Mapply')], BuiltInProcName.Apply,
 		{ indexOfFunction: 0, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ FUN: ArgProp.Callee, '...': ArgProp.Value }) }),
+	/* `X` is turned into a list first, by its `as.list` method */
 	fn(base('lapply', 'sapply', 'vapply'), BuiltInProcName.Apply,
-		{ indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ X: ArgProp.Value, FUN: ArgProp.Callee, '...': ArgProp.Value }) }),
+		{ indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ X: ArgProp.Value, FUN: ArgProp.Callee, '...': ArgProp.Value }), dispatches: ['as.list', 'as.vector', 'length', 'names'] }),
 	/* `vapply` takes the shape of the result before its `...`, so naming it keeps the positions honest */
 	fn(base('vapply'), BuiltInProcName.Apply,
 		{ indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ X: ArgProp.Value, FUN: ArgProp.Callee, 'FUN.VALUE': ArgProp.Shape, '...': ArgProp.Value }) },
@@ -207,39 +241,41 @@ export const BaseDefinitions = [
 	fn(base('outer'), BuiltInProcName.Apply,
 		{ indexOfFunction: 2, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ X: ArgProp.Value, Y: ArgProp.Value, FUN: ArgProp.Callee, '...': ArgProp.Value }) }),
 	fn(base('Filter'), BuiltInProcName.Apply,
-		{ indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ f: ArgProp.Callee, x: ArgProp.Value }) }),
+		{ indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ f: ArgProp.Callee, x: ArgProp.Value }), dispatches: ['as.list', 'as.vector', '['] }),
 	fn(base('Find', 'Position'), BuiltInProcName.Apply,
 		{ indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ f: ArgProp.Callee, x: ArgProp.Value, right: ArgProp.Flag, nomatch: ArgProp.Value }) }),
 	fn(base('replicate'), BuiltInProcName.Default, { props: CallProp.MayPure, sig: sig({ n: Forced.Value, expr: ArgProp.Value, simplify: ArgProp.Flag }) }),
 	fn(base('Reduce'), BuiltInProcName.Apply,
-		{ indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, folds: ['x', 'init'], props: CallProp.MayPure, sig: sig({ f: ArgProp.Callee, x: ArgProp.Value, init: ArgProp.Value, right: ArgProp.Flag, accumulate: ArgProp.Flag, simplify: ArgProp.Flag }) }),
+		{ indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, folds: ['x', 'init'], props: CallProp.MayPure, sig: sig({ f: ArgProp.Callee, x: ArgProp.Value, init: ArgProp.Value, right: ArgProp.Flag, accumulate: ArgProp.Flag, simplify: ArgProp.Flag }), dispatches: ['as.list', 'as.vector', 'length'] }),
 	fn(base('rapply'), BuiltInProcName.Apply,
 		{ indexOfFunction: 1, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure, sig: sig({ object: ArgProp.NoDefault, f: ArgProp.NoDefault, classes: ArgProp.Forced, deflt: ArgProp.Forced, how: ArgProp.Forced, '...': 0 }) }),
 	fn(base('print'), BuiltInProcName.Default,
-		{ keepArgumentOut: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ }, ambient: PrintDispatched, props: CallProp.Invisible | CallProp.Generic, tags: [SemanticCallTag.Prints], sig: sig({ x: ArgProp.Alias | ArgProp.Forced, '...': Forced.Value }), dispatches: ['show', 'format'] }),
+		{ keepArgumentOut: true, ambient: PrintDispatched, props: CallProp.Invisible | CallProp.Generic, tags: [SemanticCallTag.Prints], sig: sig({ x: ArgProp.Alias | ArgProp.Forced, '...': Forced.Value }), dispatches: ['show', 'format'] }),
 	fn(base('message'), BuiltInProcName.Default, { ...Signals, signals: ['simpleMessage', 'message', 'condition'] }),
 	fn(base('warning'), BuiltInProcName.Default, { ...Signals, signals: ['simpleWarning', 'warning', 'condition'] }),
 	fn([...pkg(PkgName.Rlang, 'warn'), ...pkg(PkgName.Msgr, 'info')], BuiltInProcName.Default, Signals),
+	fn(base('packageStartupMessage'), BuiltInProcName.Default, { ...Signals, signals: ['packageStartupMessage', 'simpleMessage', 'message', 'condition'] }),
 	fn(base('invisible'), BuiltInProcName.Default, { keepArgumentOut: true, props: CallProp.Pure | CallProp.Invisible, sig: sig({ x: ArgProp.Alias | ArgProp.Forced }) }, Primitive),
 	fn(base('force', 'identity'), BuiltInProcName.Default, { keepArgumentOut: true, props: CallProp.Pure, sig: sig({ x: ArgProp.Alias | ArgProp.Forced }) }),
 	fn(base('I'), BuiltInProcName.Default, { keepArgumentOut: true, props: CallProp.Pure, sig: sig({ x: Forced.Value }) }),
-	fn(base('suppressWarnings', 'suppressMessages', 'suppressPackageStartupMessages'), BuiltInProcName.Default,
-		{ keepArgumentOut: true, sig: sig({ expr: ArgProp.Alias | ArgProp.Forced, classes: ArgProp.Value }) }),
+	fn(base('suppressWarnings'), BuiltInProcName.Default, { ...Suppresses, muffles: ['warning'] }),
+	fn(base('suppressMessages'), BuiltInProcName.Default, { ...Suppresses, muffles: ['message'] }),
+	fn(base('suppressPackageStartupMessages'), BuiltInProcName.Default, { ...Suppresses, muffles: ['packageStartupMessage'] }),
 	/* it changes into a directory that has to exist, so it reads the files as well */
 	fn(base('setwd'), BuiltInProcName.Default,
-		{ ambient: { type: AmbientStateAccessType.SetWorkingDirectory }, props: CallProp.Invisible | CallProp.Ambient | CallProp.Configures, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ dir: ArgProp.Value | Forced.Resource }) }),
+		{ ambient: [Ambient.wd.reads, Ambient.directories.reads, Ambient.wd.writes], props: CallProp.Invisible | CallProp.Ambient | CallProp.Configures, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ dir: ArgProp.Value | Forced.Resource }) }),
 	/* `Sys.umask()` only reports the mask, a mode sets it and hands back the old one invisibly */
 	fn(base('Sys.umask'), BuiltInProcName.Default,
-		{ ambient: { type: AmbientStateAccessType.SetState, state: AmbientStateName.umask, queryWithoutArguments: true }, props: CallProp.Invisible | CallProp.Configures, sig: sig({ mode: Forced.Value }) }),
+		{ ambient: { ...Ambient.umask.writes, unless: 'no-arguments' }, props: CallProp.Invisible | CallProp.Configures, sig: sig({ mode: Forced.Value }) }),
 	fn(base('set.seed'), BuiltInProcName.Default,
-		{ ambient: { type: AmbientStateAccessType.SetRng }, props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.Random], sig: sig({ seed: Forced.Value, kind: Forced.Value, 'normal.kind': Forced.Value, 'sample.kind': Forced.Value }) }),
+		{ ambient: [Ambient.rngKind.reads, Ambient.rng.writes, ...SetsRngKind(['seed'])], props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.Random], sig: sig({ seed: Forced.Value, kind: Forced.Value, 'normal.kind': Forced.Value, 'sample.kind': Forced.Value }) }),
 	fn(base('RNGversion'), BuiltInProcName.Default,
-		{ ambient: { type: AmbientStateAccessType.SetRng, kindFrom: 0 }, props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.Random], sig: sig({ vstr: Forced.Value }) }),
+		{ ambient: [Ambient.rngKind.reads, ...SetsRngKind([])], props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.Random], sig: sig({ vstr: Forced.Value }) }),
 	fn(base('RNGkind'), BuiltInProcName.Default,
-		{ ambient: { type: AmbientStateAccessType.SetRng, kindFrom: 0 }, props: CallProp.Configures, tags: [SemanticCallTag.Random], sig: sig({ kind: Forced.Value, 'normal.kind': Forced.Value, 'sample.kind': Forced.Value }) }),
+		{ ambient: [Ambient.rngKind.reads, ...SetsRngKind([])], props: CallProp.Configures, tags: [SemanticCallTag.Random], sig: sig({ kind: Forced.Value, 'normal.kind': Forced.Value, 'sample.kind': Forced.Value }) }),
 	fn(base('body', 'formals'), BuiltInProcName.Default, { hasUnknownSideEffects: true, props: CallProp.Lang, sig: sig({ fun: Forced.Value }) }, Primitive),
 	fn(base('.libPaths'), BuiltInProcName.Default,
-		{ props: CallProp.Configures, ambient: { type: AmbientStateAccessType.SetState, state: AmbientStateName.libPaths, queryWithoutArguments: true }, sig: sig({ new: Forced.Value, 'include.site': Forced.Flag }) }),
+		{ props: CallProp.Configures, ambient: { ...Ambient.libPaths.writes, unless: 'no-arguments' }, sig: sig({ new: Forced.Value, 'include.site': Forced.Flag }) }),
 	fn(base('addTaskCallback'), BuiltInProcName.Default,
 		{ hasUnknownSideEffects: true, props: CallProp.Configures, sig: sig({ f: ArgProp.Forced | ArgProp.Callee, data: Forced.Value, name: Forced.Value }) }),
 	fn(base('setHook'), BuiltInProcName.Default,
@@ -256,20 +292,26 @@ export const BaseDefinitions = [
 		{ includeFunctionCall: true, supportFunctionCall: false, keepEnvironment: true, tags: [SemanticCallTag.Eval], sig: sig({ expr: Forced.Value | ArgProp.Injectable, envir: Forced.Value, enclos: Forced.Value }) },
 		Primitive),
 	fn(base('cat'), BuiltInProcName.Default,
-		{ hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ }, ambient: ReadPrintingOptions, props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes, SemanticCallTag.Prints], sig: sig({ '...': Forced.Value, file: Forced.Resource | ArgProp.Optional }) }),
+		{ ambient: [ReadPrintingOptions, { ...Ambient.messageSink.adds, when: { arg: 'file', formals: ['...', 'file'], calls: ['stderr'] } }], props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes, SemanticCallTag.Prints], sig: sig({ '...': Forced.Value, file: Forced.Resource | ArgProp.Optional, sep: Forced.Value, fill: Forced.Value, labels: Forced.Value, append: Forced.Flag }) }),
 	fn(base('switch'), BuiltInProcName.Default, { alternativeArgsFrom: 1, useAsProcessor: BuiltInProcName.Switch, props: CallProp.Pure, sig: sig({ EXPR: Forced.Value }) }),
 	fn(base('stop'), BuiltInProcName.Default, { ...Throws, signals: ['simpleError', 'error', 'condition'] }),
+	/* ends the program: nothing after it runs, so it is an exit like a raise for everything that follows (no handler catches it, but treating it as one only keeps more) */
+	fn(base('quit', 'q'), BuiltInProcName.Default, { cfg: ExitPointType.Error, props: CallProp.Throws, sig: sig({ save: Forced.Value, status: Forced.Value, runLast: Forced.Value }) }),
 	/* their classes depend on more than the message (`class = `, a glue template evaluated in the caller) */
 	fn([...pkg(PkgName.Rlang, 'abort'), ...pkg(PkgName.Cli, 'cli_abort'), ...pkg(PkgName.RmethodsS3, 'throw'), ...pkg(PkgName.Roo, 'throw'),
 		/* R.oo re-exports R.methodsS3::throw */ ...pkg(PkgName.Purrr, 'stop_bad_type', 'stop_bad_element_type', 'stop_bad_element_length')], BuiltInProcName.Default, Throws),
 	/* the block is evaluated whatever happens, the handlers only when something does, and an error keeps the value from coming back */
-	fn(base('try'), BuiltInProcName.Try, { block: 'expr', handlers: {}, sig: sig({ expr: Forced.Value }) }, Primitive),
+	fn(base('try'), BuiltInProcName.Try, { block: 'expr', handlers: {}, ambient: [{ ...Ambient.messageSink.adds, unless: { flag: 'silent' } }, Ambient.errorMessage.adds], sig: sig({ expr: Forced.Value }), dispatches: ConditionAccessors }, Primitive),
+	/* an error it catches may set the last error message */
 	fn([...base('tryCatch'), ...pkg(PkgName.TryCatchLog, 'tryCatchLog')], BuiltInProcName.Try,
-		{ block: 'expr', handlers: { error: 'error', finally: 'finally' }, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee, finally: ArgProp.Nse }) }, Primitive),
+		{ block: 'expr', handlers: { error: 'error', finally: 'finally' }, ambient: Ambient.errorMessage.adds, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee, finally: ArgProp.Nse }) }, Primitive),
+	fn(base('geterrmessage'), BuiltInProcName.Default, { ambient: Ambient.errorMessage.reads, props: CallProp.Ambient }),
 	fn(base('withCallingHandlers'), BuiltInProcName.Try, { block: 'expr', aborts: false, handlers: {}, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee }) }, Primitive),
 	/* its handlers run on what the session signals from then on */
 	fn(base('globalCallingHandlers'), BuiltInProcName.Try, { aborts: false, handlers: {}, sig: sig({ '...': ArgProp.Callee }) }, Primitive),
-	fn(base('invokeRestart'), BuiltInProcName.Default, { sig: sig({ r: Forced.Value, '...': Forced.Value }) }, Primitive),
+	/* invoking a restart leaves the code for the function of that name, one muffling a signal resumes where the signal was raised */
+	fn(base('withRestarts'), BuiltInProcName.Try, { block: 'expr', handlers: { error: 'error' }, sig: sig({ expr: Forced.Value, '...': ArgProp.Callee }) }),
+	fn(base('invokeRestart'), BuiltInProcName.Default, { cfg: ExitPointType.Error, cfgUnless: { arg: 'r', formals: ['r'], is: MuffleRestarts }, props: CallProp.Throws, sig: sig({ r: Forced.Value, '...': Forced.Value }) }, Primitive),
 	fn([...base('stopifnot'), ...pkg(PkgName.AssertThat, 'assert_that')], BuiltInProcName.StopIfNot,
 		{ props: CallProp.Invisible | CallProp.Throws, sig: sig({ '...': 0, exprs: ArgProp.NoDefault, exprObject: ArgProp.NoDefault, local: 0 }) }),
 	/* it hands back what it evaluated invisibly, so a top-level `source()` prints nothing of its own */
@@ -317,6 +359,10 @@ export const BaseDefinitions = [
 	fn(base('makeActiveBinding'), BuiltInProcName.Assignment,
 		{ targetVariable: true, mayHaveMoreArgs: true, callsSource: true, environmentArg: 'env', props: CallProp.Scope | CallProp.Invisible, sig: sig({ sym: ArgProp.Value, fun: ArgProp.Callee, env: ArgProp.Written }) },
 		Primitive),
+	/* a locked binding makes every later write to it fail, and each of them fails if there is no binding to act on */
+	fn(base('lockBinding', 'unlockBinding'), BuiltInProcName.Get, { returnsValue: false, hasUnknownSideEffects: true, locks: true, props: CallProp.Invisible, sig: sig({ sym: Forced.Value, env: Forced.Value }) }),
+	fn(base('bindingIsLocked', 'bindingIsActive'), BuiltInProcName.Get, { returnsValue: false, props: CallProp.Pure, sig: sig({ sym: Forced.Value, env: Forced.Value }) }),
+	fn(base('lockEnvironment'), BuiltInProcName.Default, { hasUnknownSideEffects: true, locks: true, props: CallProp.Invisible, sig: sig({ env: Forced.Value, bindings: Forced.Flag }) }),
 	fn(base('delayedAssign'), BuiltInProcName.Assignment,
 		{ keepEnvironment: true, quoteSource: true, targetVariable: true, mayHaveMoreArgs: true, environmentArg: 'assign.env', props: CallProp.Invisible | CallProp.Scope, sig: sig({ x: ArgProp.NoDefault, value: ArgProp.NoDefault | ArgProp.Nse, 'eval.env': Forced.Value, 'assign.env': ArgProp.Forced | ArgProp.Written }) },
 		Primitive),
@@ -368,25 +414,27 @@ export const BaseDefinitions = [
 		{ libFn: true, unknownOnNonZeroArg: true, props: CallProp.Lang, frame: ArgProp.Nse, tags: [SemanticCallTag.Frames], sig: sig({ which: ArgProp.Forced }) }),
 	fn(base('c'), BuiltInProcName.Vector, { props: CallProp.Pure, sig: sig({ '...': ArgProp.Value }) }, { assumePrimitive: true, evalHandler: BuiltInEvalName.Vector }),
 	fn(base('sys.on.exit', 'asNamespace', 'unname'), BuiltInProcName.Default, { hasUnknownSideEffects: true }),
-	/* they create, move, or delete files */
+	/* they create, move, or delete files, and as we do not know which paths are directories, the directories as well */
 	fn([...base('dir.create'), ...pkg(PkgName.Fs, 'dir_create')], BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ path: Forced.Resource, '...': ArgProp.Flag }) }),
+		{ props: CallProp.Invisible, ambient: Ambient.directories.adds, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ path: Forced.Resource, '...': ArgProp.Flag }) }),
 	fn(base('unlink'), BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ x: Forced.Resource, recursive: ArgProp.Flag, force: ArgProp.Flag, expand: ArgProp.Flag }) }),
+		{ props: CallProp.Invisible, ...RemovesFiles(sig({ x: Forced.Resource, recursive: ArgProp.Flag, force: ArgProp.Flag, expand: ArgProp.Flag })) }),
 	fn(base('Sys.chmod'), BuiltInProcName.DefaultReadAllArgs,
 		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ paths: Forced.Resource, mode: ArgProp.Flag, use_umask: ArgProp.Flag }) }),
 	fn([...base('file.create'), ...pkg(PkgName.Fs, 'file_create', 'file_touch')], BuiltInProcName.DefaultReadAllArgs,
 		{ tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ '...': Forced.Resource, showWarnings: ArgProp.Flag }) }),
-	fn([...base('file.remove', 'Sys.junction'), ...pkg(PkgName.Fs, 'file_delete', 'dir_delete', 'link_delete')], BuiltInProcName.Default,
-		{ hasUnknownSideEffects: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes] }),
+	fn(base('file.remove'), BuiltInProcName.Default, { hasUnknownSideEffects: true, ...RemovesFiles(sig({ '...': Forced.Resource })) }),
+	fn(pkg(PkgName.Fs, 'file_delete', 'dir_delete', 'link_delete'), BuiltInProcName.Default, { hasUnknownSideEffects: true, ...RemovesFiles(sig({ path: Forced.Resource })) }),
+	fn(base('Sys.junction'), BuiltInProcName.Default, { hasUnknownSideEffects: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes] }),
 	fn(base('file.copy', 'file.link', 'file.symlink'), BuiltInProcName.Default,
 		{ tags: CopiesFiles, sig: sig({ from: Forced.Resource, to: Forced.Resource | ArgProp.Written, overwrite: ArgProp.Flag, recursive: ArgProp.Flag, 'copy.mode': ArgProp.Flag, 'copy.date': ArgProp.Flag }) }),
 	/* a moved file is gone from where it was */
-	fn(base('file.rename'), BuiltInProcName.Default, { hasUnknownSideEffects: true, tags: CopiesFiles, sig: sig({ from: Forced.Resource, to: Forced.Resource | ArgProp.Written }) }),
+	fn(base('file.rename'), BuiltInProcName.Default, { hasUnknownSideEffects: true, ambient: Ambient.directories.adds, tags: CopiesFiles, sig: sig({ from: Forced.Resource, to: Forced.Resource | ArgProp.Written }) }),
 	fn(base('file.append'), BuiltInProcName.Default, { tags: CopiesFiles, sig: sig({ file1: Forced.Resource | ArgProp.Written, file2: Forced.Resource }) }),
 	/* `sink` diverts the output, `par`/`tpar` set (or query) the parameters of the current device */
 	fn(base('sink'), BuiltInProcName.Default,
-		{ ambient: { type: AmbientStateAccessType.SetState, state: AmbientStateName.sink }, props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ file: ArgProp.Resource }) }),
+		/* `append = TRUE` keeps what the file held, so a diversion reads it */
+		{ ambient: [{ ...Ambient.files.reads, sig: SinkSig }, ...SinkStack(Ambient.sink, ['output', null], ['message']), ...SinkStack(Ambient.messageSink, ['message'], ['output', null])], props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: SinkSig }),
 	fn(base('on.exit'), BuiltInProcName.RegisterHook,
 		{ props: CallProp.Invisible, hook: KnownHooks.OnFnExit, args: { expr: { idx: 0, name: 'expr' }, add: { idx: 1, name: 'add', default: false }, after: { idx: 2, name: 'after', default: true } }, sig: sig({ expr: ArgProp.Nse, add: ArgProp.Forced, after: ArgProp.Forced }) },
 		Primitive),
@@ -417,13 +465,22 @@ export const BaseDefinitions = [
 	fn(base('getNativeSymbolInfo'), BuiltInProcName.Default, { props: CallProp.Ffi, sig: sig({ '...': ArgProp.Forced }) }),
 	/* ambient state: options, environment variables, the clock, the session itself */
 	fn(base('Sys.getenv'), BuiltInProcName.Default,
-		{ props: CallProp.Ambient, ambient: { type: AmbientStateAccessType.ReadKeyed, state: KeyedState.Env, keys: { from: 'parameter', signature: ['x', 'unset', 'names', 'allowEmpty'], names: ['x'] } }, sig: sig({ '...': ArgProp.Forced }) }),
-	fn(base('Sys.info', 'Sys.getpid', 'getRversion', 'R.Version', 'Sys.time', 'Sys.Date', 'Sys.timezone', 'date', 'proc.time', 'interactive'), BuiltInProcName.Default,
+		{ props: CallProp.Ambient, ambient: { ...Ambient.env.reads, member: { from: 'parameter', signature: ['x', 'unset', 'names', 'allowEmpty'], names: ['x'] }, handsBack: true }, sig: sig({ '...': ArgProp.Forced }) }),
+	/* turning a number into text reads `scipen` and `OutDec` */
+	fn(base('as.character', 'toString', 'formatC'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: ReadsNumberFormat, sig: SigXDots }, Primitive),
+	/* it formats each number with `format`, applied to `x` as a list */
+	fn(base('prettyNum'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: PrintDispatched, sig: SigXDots, dispatches: ['as.list', 'as.vector'] }, Primitive),
+	/* the local date and time zone follow `TZ` */
+	fn(base('Sys.Date', 'Sys.timezone', 'date'), BuiltInProcName.Default, { ambient: { ...Ambient.env.reads, member: { from: 'constant', keys: ['TZ'] } }, props: CallProp.Ambient, sig: sig({ '...': ArgProp.Forced }) }),
+	fn(base('Sys.getlocale'), BuiltInProcName.Default, { ambient: { ...Ambient.locale.reads, member: { from: 'parameter', signature: ['category'], names: ['category'], fallback: 'LC_ALL' } }, sig: sig({ category: ArgProp.Forced }) }),
+	/* a numeric color is an index into the palette */
+	fn(pkg(PkgName.GrDevices, 'col2rgb', 'adjustcolor', 'colorRampPalette', 'colorRamp'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, ambient: Ambient.palette.reads, sig: SigXDots }),
+	fn(base('Sys.info', 'Sys.getpid', 'getRversion', 'R.Version', 'Sys.time', 'proc.time', 'interactive'), BuiltInProcName.Default,
 		{ props: CallProp.Ambient, sig: sig({ '...': ArgProp.Forced }) }),
-	fn(base('getwd'), BuiltInProcName.Default, { ambient: { type: AmbientStateAccessType.GetWorkingDirectory }, props: CallProp.Ambient, sig: sig({ '...': ArgProp.Forced }) }),
+	fn(base('getwd'), BuiltInProcName.Default, { ambient: Ambient.wd.reads, props: CallProp.Ambient, sig: sig({ '...': ArgProp.Forced }) }),
 	fn([...base('search', 'searchpaths'), ...utils('find', 'apropos')], BuiltInProcName.Default,
-		{ ambient: { type: AmbientStateAccessType.ReadState, state: AmbientStateName.allOf(KeyedState.SearchPath) }, props: CallProp.Ambient, sig: sig({ '...': ArgProp.Forced }) }),
-	fn(base('getOption'), BuiltInProcName.Default, { ambient: { type: AmbientStateAccessType.GetOption }, props: CallProp.Ambient, sig: sig({ '...': ArgProp.Forced }) }),
+		{ ambient: Ambient.searchPath.reads, props: CallProp.Ambient, sig: sig({ '...': ArgProp.Forced }) }),
+	fn(base('getOption'), BuiltInProcName.Default, { ambient: { ...Ambient.option.reads, member: { from: 'parameter', signature: ['x', 'default'], names: ['x'] }, handsBack: true }, props: CallProp.Ambient, sig: sig({ '...': ArgProp.Forced }) }),
 	fn(base('commandArgs'), BuiltInProcName.Default, { props: CallProp.Ambient, tags: [SemanticCallTag.CommandLine], sig: sig({ '...': ArgProp.Forced }) }),
 	/* system commands */
 	fn(base('system'), BuiltInProcName.Default,
@@ -438,6 +495,14 @@ export const BaseDefinitions = [
 	/* whatever the user types, picks, or sends along with a request */
 	fn([...base('readline', 'file.choose'), ...utils('askYesNo', 'choose.files', 'choose.dir', 'menu', 'select.list', 'winDialogString', 'winDialog')], BuiltInProcName.Default,
 		{ tags: [SemanticCallTag.User], sig: sig({ '...': ArgProp.Forced }) }),
+	/* what opens a viewer, an editor, or the debugger, which only an interactive session has: `View(df)` left in a script does nothing under `Rscript` */
+	fn(utils('View'), BuiltInProcName.Default,
+		{ props: CallProp.Invisible, tags: [SemanticCallTag.Interactive], sig: sig({ x: Forced.Value, title: Forced.Value }) }),
+	/* `edit` and `data.entry` hand back what was edited, the others return invisibly */
+	fn([...utils('edit', 'de', 'data.entry')], BuiltInProcName.Default,
+		{ tags: [SemanticCallTag.Interactive], sig: sig({ '...': ArgProp.Forced }) }),
+	fn([...utils('fix', 'file.edit', 'page', 'recover'), ...base('browser', 'debug', 'debugonce', 'undebug')], BuiltInProcName.Default,
+		{ props: CallProp.Invisible, tags: [SemanticCallTag.Interactive], sig: sig({ '...': ArgProp.Forced }) }),
 	/* they only make up a path, they do not go near the file system, so `File` would be wrong here */
 	fn(base('tempfile', 'tempdir'), BuiltInProcName.Default, { tags: [SemanticCallTag.TempFile], sig: sig({ '...': ArgProp.Forced }) }),
 	/* they are all mapped to `<-` but we separate super assignments */
@@ -447,7 +512,7 @@ export const BaseDefinitions = [
 	replacement(base('body', 'formals'), ['<-', '<<-'],
 		{ readIndices: true, props: CallProp.Scope | CallProp.Lang, sig: sig({ fun: ArgProp.Value, value: ArgProp.Value | ArgProp.Injectable }) }),
 	/* the string and shape functions R declares formals for, restated one by one: the group above gives them what they do, this gives them the arguments they do it with (the names are R's own) */
-	fn(base('sprintf'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ fmt: Forced.Value, '...': Forced.Value }), dispatches: ['as.character'] },
+	fn(base('sprintf'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ fmt: Forced.Value, '...': Forced.Value }), dispatches: ['as.character', 'as.vector'] },
 		{ assumePrimitive: true, evalHandler: BuiltInEvalName.StringFn }),
 	fn(base('format'), BuiltInProcName.DefaultReadAllArgs, { ambient: PrintDispatched, props: CallProp.Pure, sig: SigXDots }, { overrides: true, assumePrimitive: true }),
 	fn(base('grep'), BuiltInProcName.DefaultReadAllArgs,

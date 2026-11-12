@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 15:21:58 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-10, 21:10:40 UTC (v2.17.5), do not edit directly._
 <h2 id="Signature Query">Signature Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Inspects the signature database: packages, function signatures, source and documentation links.\
@@ -72,6 +72,6 @@ functions you only half-remember: `{ package: '*', parameters: ['data', 'mapping
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Signature Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/signature-query/signature-query-executor.ts#L918"><code><span title="Executes the signature query. With no package it summarizes the loaded databases. A glob in package/function or a multi-version version triggers a wildcard search (matching packages or functions). Otherwise a single exact package (optionally at an exact version) yields its full view, or the detailed function view.">executeSignatureQuery</span></code></a>.
+The Signature Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/signature-query/signature-query-executor.ts#L919"><code><span title="Executes the signature query. With no package it summarizes the loaded databases. A glob in package/function or a multi-version version triggers a wildcard search (matching packages or functions). Otherwise a single exact package (optionally at an exact version) yields its full view, or the detailed function view.">executeSignatureQuery</span></code></a>.
 
 </details>

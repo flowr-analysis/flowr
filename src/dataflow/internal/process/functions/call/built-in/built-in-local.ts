@@ -2,7 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { updateNestedFunctionClosures } from './built-in-function-definition';
 import { processDataflowFor } from '../../../../../processor';
-import { DataflowInformation, ExitPointType } from '../../../../../info';
+import { DataflowInformation, type ExitPoint, ExitPointType, withCds } from '../../../../../info';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -12,13 +12,15 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { convertFnArguments, patchFunctionCall } from '../common';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, type IdentifierReference, isInGraphDefinition, ReferenceType } from '../../../../../environments/identifier';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { type EnvirResolution, envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { REnvironment } from '../../../../../environments/environment';
+import { REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
+import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 
 
 export interface LocalFunctionConfiguration {
@@ -97,7 +99,7 @@ export function processLocal<OtherInfo>(
 	const baseResult = {
 		hooks:             dfExpr.hooks.concat(dfEnv.hooks),
 		environment:       dfExpr.environment,
-		exitPoints:        dfEnv.exitPoints.concat(dfExpr.exitPoints.filter(e => e.type !== ExitPointType.Return)),
+		exitPoints:        dfEnv.exitPoints.concat(exitsPassingReturn(dfExpr.exitPoints, rootId)),
 		graph,
 		entryPoint:        rootId,
 		cfgEntry,
@@ -123,10 +125,44 @@ export function evaluateInEnvir<OtherInfo>(
 	updateNestedFunctionClosures(dfExpr.graph, dfExpr.environment, []);
 	if(envir !== undefined) {
 		const environment = { level: data.environment.level, current: REnvironment.adoptSearchPath(data.environment.current, dfExpr.environment.current) };
-		return routeWrittenToEnvir({ ...dfExpr, environment }, envir, rootId, data.environment);
+		const own = envir.envirData.environment.current;
+		const idMap = data.completeAst.idMap;
+		/* a function the environment binds itself, as an active binding is, is looked up there: `evalq(a, e)` runs the `a` of `e` */
+		const boundInEnvir = (ref: IdentifierReference) => {
+			const defs = (ref.name === undefined ? undefined : own.lookup(Identifier.getName(ref.name)))?.filter(d => isInGraphDefinition(d) && d.value?.some(v => RFunctionDefinition.is(idMap.get(v))));
+			for(const def of defs ?? []) {
+				dfExpr.graph.addEdge(ref.nodeId, def.nodeId, EdgeType.Reads);
+			}
+			return defs !== undefined && defs.length > 0;
+		};
+		const linked = { ...dfExpr, environment, in: dfExpr.in.filter(r => !boundInEnvir(r)), unknownReferences: dfExpr.unknownReferences.filter(r => !boundInEnvir(r)) };
+		const routed = routeWrittenToEnvir(linked, envir, rootId, data.environment);
+		return { ...routed, environment: sessionStateWrittenBy(dfExpr, routed.environment) };
 	}
 	const environment = REnvironment.popLocal(dfExpr.environment);
 	/* definitions of the local scope vanish with it, only what escaped it may bubble up */
 	const out = dfExpr.out.filter(o => o.name !== undefined && Resolve.byNameAndType(o.name, environment, o.type)?.some(d => d.nodeId === o.nodeId));
 	return { ...dfExpr, environment, out };
+}
+
+/** The state of the session `dfExpr` writes (options, sinks, the device) is the same whatever environment it is evaluated in, so it stays written for the caller as well: `local(options(digits = 3), envir = e)`. */
+function sessionStateWrittenBy(dfExpr: DataflowInformation, environment: REnvironmentInformation): REnvironmentInformation {
+	for(const [name, definitions] of REnvironment.findGlobal(dfExpr.environment.current).memory) {
+		for(const definition of AmbientStateName.is(name) ? definitions : []) {
+			if(dfExpr.graph.hasVertex(definition.nodeId)) {
+				/* the caller keeps what it knew besides, as the evaluation need not have replaced it */
+				environment = REnvironment.define({ ...definition, name }, true, environment, true);
+			}
+		}
+	}
+	return environment;
+}
+
+/**
+ * The exits that leave a construct `return` leaves only itself (`local`, `eval`). If there is such a `return`, it may preempt
+ * every other exit, which therefore only happens if the construct is not left that way.
+ */
+export function exitsPassingReturn(exits: readonly ExitPoint[], rootId: NodeId): ExitPoint[] {
+	const returns = exits.some(e => e.type === ExitPointType.Return);
+	return exits.filter(e => e.type !== ExitPointType.Return).map(e => returns && e.type !== ExitPointType.Default ? { ...e, cds: withCds(e.cds, [{ id: rootId, when: true }]) } : e);
 }

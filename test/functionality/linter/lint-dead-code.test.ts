@@ -14,6 +14,8 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		describe('simple', () => {
 			assertLinter('none', parser, 'x <- 1', 'dead-code', []);
+			assertLinter('a stop in a default read later keeps the body before the read live', parser, 'f <- function(x = stop("need x")) {\n  cat("A")\n  x\n}\nf(1)', 'dead-code', []);
+			assertLinter('a stop in a default read later keeps the read live', parser, 'f <- function(a, x = stop("need x")) {\n  y <- a\n  x\n}\nf(1)', 'dead-code', []);
 			/* the variables a load restores are made up for the call, they are no code of their own */
 			assertLinter('a load restoring what the program saved', parser, 'x <- 5\nsave(x, file = "x.RData")\nrm(x)\nload("x.RData")\nprint(x)', 'dead-code', []);
 			assertLinter('always', parser, 'if(TRUE) 1 else 2', 'dead-code', [
@@ -57,6 +59,9 @@ print(2)
 				{ certainty: LintingResultCertainty.Certain, loc: [2, 1, 2, 1] },
 				{ certainty: LintingResultCertainty.Certain, loc: [3, 1, 3, 8], quickFix: [{ type: 'remove', loc: [3, 1, 3, 8], description: 'Remove the unreachable code' }] }
 			]);
+			assertLinter('a stop in an argument forced within tryCatch stops nothing', parser, 'f <- function(x) tryCatch(x, error = function(e) 1)\nf(stop("a"))\nprint(2)', 'dead-code', []);
+			assertLinter('a stop in an argument forced within try stops nothing', parser, 'f <- function(x) { r <- try(x, silent = TRUE); class(r) }\nf(stop("a"))\nprint(2)', 'dead-code', []);
+			assertLinter('a while condition on an outer variable the body redefines locally is not constant', parser, 'k <- 0\ng <- function() {\n  while(k < 2) {\n    k <- k + 1\n    if(runif(1) > 2) return(1)\n  }\n  cat("live")\n}\ng()', 'dead-code', []);
 			assertLinter('try complex', parser, 'f <- function() { try(stop(1)); 2 }; f(); stop(1); 2', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 52, 1, 52], quickFix: [{ type: 'remove', loc: [1, 52, 1, 52], description: 'Remove the unreachable code' }] }
 			]);
@@ -114,6 +119,10 @@ print(2)
 		describe('on.exit defers its expression', () => {
 			// on.exit(expr) registers expr to run at function exit
 			assertLinter('on.exit(return) does not poison enclosing function', parser, 'f <- function() {\n  on.exit(return(3))\n  x <- 1\n  x\n}', 'dead-code', []);
+			assertLinter('a return in a local may preempt the stops after it, so the local does not surely stop', parser, 'f <- function(a, cc) {\n  local({\n    if(!a) return(1)\n    if(cc) stop("x")\n    stop("y")\n  })\n  cat("live")\n}', 'dead-code', []);
+			assertLinter('a return in evaluated code leaves only the eval', parser, 'g <- function() {\n  eval(quote(return(1)))\n  cat("live")\n}\ng()', 'dead-code', []);
+			assertLinter('a return in parsed evaluated code leaves only the eval', parser, 'g <- function() {\n  eval(parse(text = "return(1)"))\n  cat("live")\n}\ng()', 'dead-code', []);
+			assertLinter('a stop in evaluated code still leaves the function', parser, 'g <- function() {\n  eval(quote(stop("x")))\n  cat("dead")\n}\ng()', 'dead-code', [{ certainty: LintingResultCertainty.Certain, loc: [3, 3, 3, 13], quickFix: [{ type: 'remove', loc: [3, 3, 3, 13], description: 'Remove the unreachable code' }] }]);
 		});
 
 		describe('switch arms are mutually exclusive', () => {
@@ -130,6 +139,8 @@ print(2)
 				{ certainty: LintingResultCertainty.Certain, loc: [4, 3, 4, 7], quickFix: [{ type: 'remove', loc: [4, 3, 4, 7], description: 'Remove the unreachable code' }] }
 			]);
 			assertLinter('empty fall-through arms are not dead', parser, 'f <- function(k) {\n  switch(k, a =, b = 2, c = 3)\n  after <- 1\n  after\n}', 'dead-code', []);
+			assertLinter('a call of several possible callees that only some stop is not certain to stop', parser, 'g <- function(k) {\n  h <- function() stop("e")\n  if(k) h <- function() 1\n  h()\n  cat("maybe")\n}\ng(TRUE)', 'dead-code', []);
+			assertLinter('a call of several possible callees that all stop stops', parser, 'g <- function(k) {\n  h <- function() stop("a")\n  if(k) h <- function() stop("b")\n  h()\n  cat("dead")\n}', 'dead-code', [{ certainty: LintingResultCertainty.Certain, loc: [5, 3, 5, 13], quickFix: [{ type: 'remove', loc: [5, 3, 5, 13], description: 'Remove the unreachable code' }] }]);
 		});
 
 		describe('switch with a constant selector', () => {
@@ -168,10 +179,65 @@ print(2)
 			]);
 		});
 
+		/* #2810: an `else if` without a final `else` may take neither branch, so what follows still runs */
+		describe('returns in an else-if chain without a final else', () => {
+			assertLinter('braced chain', parser, 'test <- function(x, a, b, c) {\n\tif (x %in% 1:2) {\n\t\treturn(a)\n\t} else if (x %in% 3:4) {\n\t\treturn(b)\n\t}\n\tc\n}', 'dead-code', []);
+			assertLinter('unbraced chain', parser, 'test <- function(x, a, b, c) { if (x %in% 1:2) return(a) else if (x %in% 3:4) return(b) ; c }', 'dead-code', []);
+			assertLinter('a while whose condition stops is analyzed and leaves the body dead', parser, 'r <- tryCatch(while(stop("e")) cat("dead"), error = function(e) NULL)\ncat("live")', 'dead-code', [{ certainty: LintingResultCertainty.Certain, loc: [1, 32, 1, 42], quickFix: [emptied([1, 32, 1, 42])] }]);
+			assertLinter('called with a value no branch takes', parser, 'test <- function(x, a, b, c) { if (x %in% 1:2) return(a) else if (x %in% 3:4) return(b) ; c }\ntest(5, 1, 2, 3)', 'dead-code', []);
+			assertLinter('a symbol condition', parser, 'f <- function(x, y) { if (x) return(1) else if (y) return(2) ; 3 }', 'dead-code', []);
+			assertLinter('a chain in a for body', parser, 'f <- function(x) { for(i in x) { if(i == 1) return(1) else if(i == 2) return(2) }; 3 }', 'dead-code', []);
+			assertLinter('a chain of breaks in a repeat', parser, 'repeat { if(a) break else if(b) next }; 3', 'dead-code', []);
+			assertLinter('a chain of stops in a tryCatch', parser, 'tryCatch({ if(a) stop("x") else if(b) stop("y") }, error = function(e) 1); 3', 'dead-code', []);
+			assertLinter('a chain nested in an else', parser, 'f <- function(a, b, c) { if(a) { return(1) } else { if(b) return(2) else if(c) return(3) }; 4 }', 'dead-code', []);
+			assertLinter('a stop after a conditional return of a local function is not certain', parser, 'f <- function(cc) {\n  g <- function() {\n    if(!cc) return(1)\n    stop("x")\n  }\n  g()\n  cat("live")\n}', 'dead-code', []);
+			assertLinter('an unconditional stop in a local function still ends the callers', parser, 'f <- function(cc) {\n  g <- function() {\n    stop("x")\n    cat("dead")\n  }\n  g()\n  cat("dead too")\n}', 'dead-code', [{ certainty: LintingResultCertainty.Certain, loc: [4, 5, 4, 15], quickFix: [{ type: 'remove', loc: [4, 5, 4, 15], description: 'Remove the unreachable code' }] }, { certainty: LintingResultCertainty.Certain, loc: [7, 3, 7, 17], quickFix: [{ type: 'remove', loc: [7, 3, 7, 17], description: 'Remove the unreachable code' }] }]);
+			assertLinter('a long chain', parser, 'f <- function(a, b, c, d) { if(a) return(1) else if(b) return(2) else if(c) return(3) else if(d) return(4); 5 }', 'dead-code', []);
+			assertLinter('a chain in a local', parser, 'local({ if(a) return(1) else if(b) return(2); 3 })', 'dead-code', []);
+			assertLinter('an inner if-else under a then whose else-if has no else', parser, 'f <- function(a, b) { if(a) { if(b) return(1) else return(2) } else if(b) return(3); 4 }', 'dead-code', []);
+			assertLinter('a full inner if-else under a full if', parser, 'f <- function(a, b) { if(a) { if(b) return(1) else return(2) } else return(3); 4 }', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 80, 1, 80], quickFix: [{ type: 'remove', loc: [1, 80, 1, 80], description: 'Remove the unreachable code' }] }
+			]);
+			assertLinter('a final else makes the tail dead', parser, 'f <- function(x, y) { if (x) return(1) else if (y) return(2) else return(4) ; 3 }', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 79, 1, 79], quickFix: [{ type: 'remove', loc: [1, 79, 1, 79], description: 'Remove the unreachable code' }] }
+			]);
+		});
+
+		/* an exiting handler leaves the block where something signals, so what the block does after that may not happen */
+		describe('exits a handler may preempt', () => {
+			assertLinter('an error caught from an apply', parser, 'f <- function() {\n  tryCatch({\n    invisible(sapply(1:2, function(j) stop("x")))\n    return(1)\n  }, error = function(e) NULL)\n  cat("live")\n}\nf()', 'dead-code', []);
+			assertLinter('an error caught from a callee', parser, 'g <- function(j) stop("x")\nf <- function() {\n  tryCatch({\n    g(1)\n    return(1)\n  }, error = function(e) NULL)\n  cat("live")\n}\nf()', 'dead-code', []);
+			assertLinter('a warning caught before the return', parser, 'f <- function() {\n  tryCatch({\n    log(-1)\n    return(1)\n  }, warning = function(w) NULL)\n  cat("live")\n}\nf()', 'dead-code', []);
+			assertLinter('a warning caught before next', parser, 'for(i in 1:3) {\n  tryCatch({\n    log(-i)\n    next\n  }, warning = function(w) NULL)\n  cat("live")\n}', 'dead-code', []);
+			assertLinter('nothing signals before the return', parser, 'f <- function() { tryCatch({ x <- 2; return(x) }, error = function(e) NULL); cat("dead") }\nf()', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 78, 1, 88], quickFix: [{ type: 'remove', loc: [1, 78, 1, 88], description: 'Remove the unreachable code' }] }
+			]);
+		});
+
+		/* a variable a promise writes is written where a read forces the promise */
+		describe('writes of a forced promise', () => {
+			assertLinter('a read forces the write', parser, 'x <- FALSE\ndelayedAssign("y", x <- TRUE)\ny\nif (x) cat("live") else cat("dead")', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [4, 25, 4, 35], quickFix: [emptied([4, 25, 4, 35])] }
+			]);
+			assertLinter('a read that may not happen', parser, 'x <- FALSE\ndelayedAssign("y", x <- TRUE)\nif(runif(1) > 2) y\nif (x) cat("a") else cat("b")', 'dead-code', []);
+			assertLinter('without a read nothing is written', parser, 'x <- FALSE\ndelayedAssign("y", x <- TRUE)\nif (x) cat("dead") else cat("live")', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [3, 8, 3, 18], quickFix: [emptied([3, 8, 3, 18])] }
+			]);
+		});
+
+		describe('promises leaving the function', () => {
+			assertLinter('a forced return', parser, 'f <- function() {\n  delayedAssign("p", return(1))\n  p\n  cat("dead")\n}\nf()', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [4, 3, 4, 13], quickFix: [{ type: 'remove', loc: [4, 3, 4, 13], description: 'Remove the unreachable code' }] }
+			]);
+			assertLinter('a raise that is never forced', parser, 'f <- function() {\n  delayedAssign("p", stop("boom"))\n  if(runif(1) > 2) p\n  cat("live")\n}\nf()', 'dead-code', []);
+		});
+
 		describe('reflective name arguments', () => {
 			assertLinter('exists', parser, 'x <- 1\nif(exists("x")) print(1)', 'dead-code', []);
 			assertLinter('get', parser, 'x <- 1\nprint(get("x"))', 'dead-code', []);
 			assertLinter('get with envir', parser, 'e <- new.env()\nassign("x", 1, envir = e)\nprint(get("x", envir = e))', 'dead-code', []);
+			assertLinter('a return on the right of || leaves only when the left is false', parser, 'f <- function(cc) {\n  local({\n    cc || return(1)\n    stop("x")\n  })\n  cat("live")\n}', 'dead-code', []);
+			assertLinter('a stop after a return on the right of && is not certain', parser, 'g <- function(cc) {\n  cc && return(1)\n  stop("x")\n}\nr <- tryCatch(g(TRUE), error = function(e) 0)\ncat("live")', 'dead-code', []);
 		});
 
 		describe('loops', () => {
@@ -181,6 +247,18 @@ print(2)
 			assertLinter('a condition the loop changes for its next iteration', parser, 'run <- TRUE\ns <- FALSE\nwhile(run) {\n  if(s) run <- FALSE\n  s <- TRUE\n}\nprint("done")', 'dead-code', []);
 			assertLinter('after infinite while', parser, 'while(TRUE){ foo }; 2', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 21, 1, 21], quickFix: [{ type: 'remove', loc: [1, 21, 1, 21], description: 'Remove the unreachable code' }] }
+			]);
+			assertLinter('a stop in a for body that may not run', parser, 'for(i in seq_len(0)) stop("never")\nprint("alive")', 'dead-code', []);
+			assertLinter('a stop in a while body that may not run', parser, 'while(x) stop("never")\nprint("alive")', 'dead-code', []);
+			assertLinter('a return in a for body that may not run', parser, 'f <- function(x) { for(i in x) return(1); 2 }\nprint(f(integer(0)))', 'dead-code', []);
+		});
+
+		describe('quoted and delayed code', () => {
+			assertLinter('a quoted stop', parser, 'quote(stop("e"))\nprint("alive")', 'dead-code', []);
+			assertLinter('a quoted stop in a block', parser, 'quote({ x <- 1; stop("e") })\nprint("alive")', 'dead-code', []);
+			assertLinter('a delayed stop', parser, 'delayedAssign("p", stop("lazy"))\nprint("alive")', 'dead-code', []);
+			assertLinter('a quoted stop an eval runs', parser, 'e <- quote(stop("e"))\neval(e)\nprint("dead")', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [3, 1, 3, 13], quickFix: [{ type: 'remove', loc: [3, 1, 3, 13], description: 'Remove the unreachable code' }] }
 			]);
 		});
 	});

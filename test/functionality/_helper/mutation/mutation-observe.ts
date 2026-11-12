@@ -12,6 +12,11 @@ import { replProcessAnswer } from '../../../../src/cli/repl/core';
 import { voidFormatter } from '../../../../src/util/text/ansi';
 import { analyzerFor, MutationProgram, type MutationTarget } from './mutation-program';
 import type { MutationPass } from './mutation-passes';
+import type { Column, Line } from '../../../../src/util/range';
+import { RoleInParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/role';
+import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { RExpressionList } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 /** the slice of `code` for `criterion`, which is empty where the criterion resolves to nothing */
 export async function slice(parser: KnownParser, { code, criterion }: MutationTarget): Promise<string> {
@@ -142,4 +147,41 @@ export async function observeRepl(parser: KnownParser, target: MutationTarget): 
 		linter:       linterFindings(neutralized(await replLines(parser, ':query @linter'), target.renames)),
 		graphs:       neutralized(graphs, target.renames).map(l => l.replace(/\s+/g, ''))
 	};
+}
+
+/** the marker a statement the dead code rule reports gets in {@link markDeadCode}, printed if R ever reaches it */
+export const DeadCodeMarker = '@@REACHED-DEAD@@';
+
+/**
+ * `code` with a marker printed in front of every statement the dead code rule reports, so a run that prints
+ * {@link DeadCodeMarker} reached code flowR claims is unreachable. Unbraced bodies get braces, which keeps the meaning.
+ */
+export async function markDeadCode(parser: KnownParser, code: string): Promise<string> {
+	const analyzer = await analyzerFor(parser, code);
+	const linter = await analyzer.query({ type: 'linter', rules: ['dead-code'] });
+	const found = linter.results['dead-code'];
+	const dead = found === undefined || 'error' in found ? [] : found.results;
+	const idMap = (await analyzer.normalize()).idMap;
+	const lines = code.split('\n');
+	const offset = (line: Line, column: Column) => lines.slice(0, line - 1).reduce((sum, l) => sum + l.length + 1, 0) + column - 1;
+	const insertions: { at: number, text: string, order: number }[] = [];
+	for(const { involvedId, loc } of dead) {
+		if(loc === undefined) {
+			continue;
+		}
+		const ids = Array.isArray(involvedId) ? involvedId : [involvedId];
+		const own = ids.map(id => id === undefined ? undefined : idMap.get(id)).find(n => n?.info.role === RoleInParent.ExpressionListChild
+			&& [n.info.fullRange, n.location].some(l => l?.join() === loc.join()));
+		if(own === undefined) {
+			continue;
+		}
+		const parent = idMap.get(own.info.parent as NodeId) as RExpressionList<ParentInformation> | undefined;
+		const unbraced = parent !== undefined && parent.grouping === undefined && parent.info.parent !== undefined;
+		const mark = `cat("${DeadCodeMarker}\\n"); `;
+		insertions.push({ at: offset(loc[0], loc[1]), text: unbraced ? `{ ${mark}` : mark, order: 0 });
+		if(unbraced) {
+			insertions.push({ at: offset(loc[2], loc[3]) + 1, text: ' }', order: 1 });
+		}
+	}
+	return insertions.sort((a, b) => b.at - a.at || b.order - a.order).reduce((c, i) => c.slice(0, i.at) + i.text + c.slice(i.at), code);
 }

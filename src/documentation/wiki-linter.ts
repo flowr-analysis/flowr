@@ -83,6 +83,14 @@ read.csv("https://example.com/data.csv")
 download.file("https://foo.bar")
 `
 	},
+	'interactive-functions': {
+		configType: 'InteractiveFunctionsConfig', ruleType:   'INTERACTIVE_FUNCTIONS', testfile:   'lint-interactive-functions',
+		example:    `
+p <- penguins
+View(p)
+if(interactive()) browser()
+`
+	},
 	'file-path-validity': {
 		configType: 'FilePathValidityConfig', ruleType:   'FILE_PATH_VALIDITY', testfile:   'lint-file-path-validity',
 		example:    { code: 'survey <- read.csv("data/Survey.csv")', files: { 'R/survey.csv': 'id,value\n1,2\n' } }
@@ -145,6 +153,10 @@ scale_it <- function(values) {
 	'useless-loop': {
 		configType: 'UselessLoopConfig', ruleType:   'USELESS_LOOP', testfile:   'lint-useless-loop',
 		example:    'for(i in c(1)) { print(i) }'
+	},
+	'call-contracts': {
+		configType: 'CallContractsConfig', ruleType:   'CALL_CONTRACTS', testfile:   'lint-call-contracts',
+		example:    'f <- function(x, n) { stopifnot(length(x) >= n); x }\nf(1:3, 5)\ng <- function(how = c("fast", "exact")) match.arg(how)\ng("slow")\ncombn(4, -1)\nstrsplit(1, "a")'
 	},
 	'stop-call': {
 		configType: 'StopWithCallConfig', ruleType:   'STOP_WITH_CALL_ARG', testfile:   'lint-stop-call',

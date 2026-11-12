@@ -8,7 +8,7 @@ import { attachExportVertex, attachLibrary } from './built-in-library';
 import type { NamedInGraphIdentifierDefinition, BrandedIdentifier, BrandedNamespace, IdentifierDefinition, IdentifierReference } from '../../../../../environments/identifier';
 import { Frame, type MemoryView } from '../../../../../environments/frame-memory';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
-import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RLoopConstructs, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RProject } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { ProgramOrder } from '../../../../program-order';
 import { Resolve } from '../../../../../environments/resolve-helper';
@@ -17,8 +17,8 @@ import { Identifier, ReferenceType } from '../../../../../environments/identifie
 import { drawingWritesDevice, hiddenSideEffects, reachesBuiltInLate, readsOfHiddenBuiltIn, writesOfHiddenBuiltIn } from './built-in-ambient-state';
 import { DefaultMap, memoize } from '../../../../../../util/collections/defaultmap';
 import { Dataflow } from '../../../../../graph/df-helper';
-import { AmbientStateName } from '../../../../../environments/ambient-state-name';
-import { AmbientAccess } from '../../../../../graph/ambient-access';
+import { type AmbientFamily, AmbientStateName, GraphicsDevices, OutputSinks } from '../../../../../environments/ambient-state-name';
+import { AmbientAccess, AmbientAccessKind } from '../../../../../graph/ambient-access';
 import { BuiltInIndex, callFnProps, queryFnProps } from '../../../../../environments/query-fn-props';
 import { ArgProp, type BuiltInFnInfo, FnSig } from '../../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
@@ -38,6 +38,7 @@ import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nod
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { RValue } from '../../../../../eval/values/r-value';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { removedNameOf } from '../../../../../environments/removal-marker';
 import { isBaseRPackage } from '../../../../../../util/r-base-packages';
 
 /**
@@ -81,6 +82,12 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 	let later: ((call: NodeId, name: BrandedIdentifier) => readonly NodeId[]) | undefined;
 	let forcing: ((holder: NodeId, inner: NodeId) => Ternary) | undefined;
 	let order: PromiseOrder | undefined;
+	let functions: ReadonlyMap<NodeId, AmbientAccess> | undefined;
+	/* the global state a closure changes while it runs, which a promise it forces may see */
+	const changedBy = (fns: readonly NodeId[]) => {
+		functions ??= ambientAccessOfFunctions(graph);
+		return Monoid.fold(AmbientAccess.monoid, fns.map(fn => functions?.get(fn) ?? AmbientAccess.empty));
+	};
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		/* a function of a package flowR has no body for forces its arguments as its signature states, see `keptPromisesOfPackageCall` */
 		const kept = Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => !NodeId.isBuiltIn(t) && DfgVertex.isFunctionDefinition(graph.getVertex(t)))
@@ -103,6 +110,10 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 			for(const node of ids) {
 				write(DfgVertex.isVariableDefinition(graph.getVertex(node)) ? nameOf(node) : undefined, node, ids);
 			}
+		}
+		const closures = kept === undefined ? Dataflow.calleeIdsOf(graph, id).filter(t => !NodeId.isBuiltIn(t)) : [];
+		for(const { ids } of closures.length > 0 ? args : []) {
+			linkAmbientReadsToWrites(graph, ids, () => changedBy(closures));
 		}
 		for(const { ids, at } of args) {
 			/* whether the promise may be forced after the call, asked only once a read has a later definition to see */
@@ -138,6 +149,9 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 	for(const [fn] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		const definition = idMap.get(fn);
 		for(const parameter of RFunctionDefinition.is(definition) ? definition.parameters : []) {
+			if(parameter.defaultValue !== undefined) {
+				linkAmbientReadsToWrites(graph, RNode.collectAllIds(parameter.defaultValue), () => changedBy([fn]));
+			}
 			for(const read of parameter.defaultValue === undefined ? [] : RNode.collectAllIds(parameter.defaultValue)) {
 				const name = DfgVertex.isUse(graph.getVertex(read)) ? nameOf(read) : undefined;
 				if(name !== undefined) {
@@ -146,6 +160,129 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 			}
 		}
 	}
+}
+
+/** A promise (`delayedAssign`) forced where its name is not read at the top level, by a call running a closure that reads it or by an access of an environment holding it, changes the state at that point, which later code reading the state sees. */
+export function linkStateWritesOfForcedPromises(this: void, graph: DataflowGraph): void {
+	let readers: ReadonlyMap<NodeId, ReadonlySet<AmbientStateName>> | undefined;
+	for(const [id] of graph.verticesOfType(VertexType.FunctionCall)) {
+		const binding = FunctionSemantics.call.quoted.promisedBinding(graph, id);
+		const promise = binding === undefined ? [] : Dataflow.targetsOf(graph, id, EdgeType.NonStandardEvaluation);
+		const calls = promise.flatMap(p => [...RNode.collectAllIds(graph.idMap?.get(p))]).filter(c => DfgVertex.isFunctionCall(graph.getVertex(c)));
+		/* the calls of the promise changing the state, which run where it is forced even if its value goes unused */
+		const writers = calls.filter(c => ambientAccessOf(graph, [c])[AmbientAccessKind.Write].size > 0);
+		const written = writers.length === 0 ? [] : [...ambientAccessOf(graph, writers)[AmbientAccessKind.Write].keys()];
+		if(binding === undefined || written.length === 0) {
+			continue;
+		}
+		readers ??= new Map([...graph.ambientAccessIds()].map(r => [r, new Set(graph.ambientAccessOf(r)?.[AmbientAccessKind.Read].keys())]));
+		for(const site of FunctionSemantics.promiseForcingPoints(binding, graph)) {
+			for(const writer of writers) {
+				graph.addEdge(site, writer, EdgeType.Reads);
+			}
+			const statement = ProgramOrder.runsOnceAt(site, graph);
+			if(statement === undefined || written.every(name => graph.ambientAccessOf(site)?.[AmbientAccessKind.Write].has(name))) {
+				continue;
+			}
+			for(const expr of promise) {
+				graph.addEdge(site, expr, EdgeType.Reads);
+			}
+			for(const [reader, reads] of readers) {
+				if(written.some(name => reads.has(name)) && ProgramOrder.offset(reader, statement, graph) > 0) {
+					graph.addEdge(reader, site, EdgeType.Reads);
+				}
+			}
+		}
+	}
+}
+
+/** The families of instances a scope may open one of for its code, see {@link linkUsesOfScopedInstances}. */
+const ScopedInstances: readonly AmbientFamily[] = [OutputSinks, GraphicsDevices];
+
+/** A scope opening an instance for its code (`capture.output`, `with_png`) ends it afterward, so it reads every use of it within its arguments, in the functions they call as well (`capture.output(f())` reads what `f` prints). */
+export function linkUsesOfScopedInstances(this: void, graph: DataflowGraph): void {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return;
+	}
+	let functions: ReadonlyMap<NodeId, AmbientAccess> | undefined;
+	for(const id of graph.ambientAccessIds()) {
+		/* a scope changes the states of the instance it opens in its own frame only */
+		const local = graph.ambientAccessOf(id)?.[AmbientAccessKind.Local];
+		const scoped = ScopedInstances.filter(family => local?.has(family.used) && local.has(family.opened));
+		const vertex = graph.getVertex(id);
+		if(scoped.length === 0 || !DfgVertex.isFunctionCall(vertex)) {
+			continue;
+		}
+		const code = vertex.args.filter(FunctionArgument.isNotEmpty).flatMap(a => [...RNode.collectAllIds(idMap.get(a.nodeId))]);
+		functions ??= ambientAccessOfFunctions(graph);
+		const writes = ambientAccessOf(graph, code, { functions })[AmbientAccessKind.Write];
+		for(const writer of scoped.flatMap(family => [...writes.get(family.used) ?? []])) {
+			if(writer !== id) {
+				graph.addEdge(id, writer, EdgeType.Reads);
+			}
+		}
+	}
+}
+
+/** What a body runs after a call of a closure within it sees the global state that closure changes, which the body, processed before it learned of the callee, does not know of: `f <- function() { g(); print(pi) }` with `g` setting the `digits` option. */
+export function linkStatementsAfterCallsOfClosures(this: void, graph: DataflowGraph): void {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return;
+	}
+	let functions: ReadonlyMap<NodeId, AmbientAccess> | undefined;
+	for(const [id] of graph.verticesOfType(VertexType.FunctionCall)) {
+		const closures = graph.isRoot(id) ? [] : Dataflow.calleeIdsOf(graph, id).filter(t => !NodeId.isBuiltIn(t) && DfgVertex.isFunctionDefinition(graph.getVertex(t)));
+		const after = closures.length === 0 ? undefined : runsAfterWithinFunction(id, idMap);
+		if(after === undefined || after.size === 0) {
+			continue;
+		}
+		const changed = () => {
+			functions ??= ambientAccessOfFunctions(graph);
+			return Monoid.fold(AmbientAccess.monoid, closures.map(fn => functions?.get(fn) ?? AmbientAccess.empty));
+		};
+		for(const reader of linkAmbientReadsToWrites(graph, after, changed)) {
+			/* the reader sees the write only as the call runs it */
+			graph.addEdge(reader, id, EdgeType.Reads);
+		}
+	}
+}
+
+/** The nodes the function holding `id` may run after it: the later statements of each block around it, and all of a loop around it. */
+function runsAfterWithinFunction(id: NodeId, idMap: AstIdMap): Set<NodeId> {
+	const after = new Set<NodeId>();
+	const add = (nodes: readonly RNode<ParentInformation>[]) => nodes.forEach(n => RNode.collectAllIdsWithStop(n, RFunctionDefinition.is).forEach(i => after.add(i)));
+	let node = idMap.get(id);
+	for(let parent = node && RNode.directParent(node, idMap); parent !== undefined && node !== undefined && !RFunctionDefinition.is(parent); parent = RNode.directParent(parent, idMap)) {
+		if(RExpressionList.is(parent)) {
+			add(parent.children.slice(parent.children.indexOf(node) + 1));
+		} else if(RLoopConstructs.is(parent)) {
+			add([parent]);
+		}
+		node = parent;
+	}
+	return after;
+}
+
+/** The calls among `ids` of a promise read the global state where it is forced, after what the function forcing it may have `changed` (`function(code) { set.seed(1); code }`); returns the readers so linked. */
+function linkAmbientReadsToWrites(graph: DataflowGraph, ids: ReadonlySet<NodeId>, changed: () => AmbientAccess): NodeId[] {
+	let access: AmbientAccess | undefined;
+	const readers: NodeId[] = [];
+	for(const node of ids) {
+		for(const name of graph.ambientAccessOf(node)?.[AmbientAccessKind.Read].keys() ?? []) {
+			access ??= changed();
+			for(const kind of [AmbientAccessKind.Write, AmbientAccessKind.Local, AmbientAccessKind.Assumed]) {
+				for(const writer of access[kind].get(name) ?? []) {
+					if(!ids.has(writer)) {
+						graph.addEdge(node, writer, EdgeType.Reads);
+						readers.push(node);
+					}
+				}
+			}
+		}
+	}
+	return readers;
 }
 
 /** Whether the branches of `fn` a node stands under are taken in the frame `call` makes: a parameter holds what that call hands it, so a condition on it may be constant there. */
@@ -708,7 +845,7 @@ function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment
 					continue;
 				}
 				environment = REnvironment.define(def, false, environment);
-				linkReadsAfter(graph, id, def, open, definitionsNamed);
+				linkReadsAfter(graph, id, def, open, definitionsNamed, defs);
 				grew = true;
 			}
 		}
@@ -717,10 +854,12 @@ function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment
 }
 
 /** A read that may run after `call` and sees a definition the call may replace (or nothing, as with the `open` reads) may see `def` instead, as with a callee only the call binds: `g <- function(f) f(); x <- 1; g(function() x <<- 2); print(x)`, or `g(runif)`. */
-function linkReadsAfter(graph: DataflowGraph, call: NodeId, def: NamedDefinition, open: readonly IdentifierReference[], definitionsNamed: (name: BrandedIdentifier) => readonly NodeId[]): void {
+function linkReadsAfter(graph: DataflowGraph, call: NodeId, def: NamedDefinition, open: readonly IdentifierReference[], definitionsNamed: (name: BrandedIdentifier) => readonly NodeId[], escaped: ReadonlyMap<NodeId, readonly NamedDefinition[]>): void {
 	const before = graph.getVertex(call)?.environment;
 	const visible = before === undefined ? definitionsNamed(def.name) : Resolve.byName(def.name, before)?.map(d => d.nodeId) ?? [];
-	const replaced = new Set([...visible, ...Dataflow.sourcesOf(graph, call, EdgeType.SideEffectOnCall)]);
+	/* a write of the call that escapes under another name (`par` beside `plot` in the body) replaces nothing of this one */
+	const sameName = (id: NodeId) => escaped.get(id)?.some(d => d.name === def.name) ?? true;
+	const replaced = new Set([...visible, ...Dataflow.sourcesOf(graph, call, EdgeType.SideEffectOnCall).filter(sameName)]);
 	const readers = new Set(open.filter(r => r.name === def.name).map(r => r.nodeId));
 	for(const [id] of graph.vertices(true)) {
 		/* an argument reads the value of a call, not a name the call may define (an ambient state is defined at its call) */
@@ -789,7 +928,8 @@ export function ambientAccessOfFunctions(this: void, from: AmbientSource): Map<N
 		...Dataflow.callsIn(fdef, graph).map(([call]) => accessOfCall(graph, call, environment)),
 		{
 			...AmbientAccess.empty,
-			variables: Relation.fromPairs(escaped(id, fdef).flatMap(def => names.get(def) ?? []).filter(({ name }) => !AmbientStateName.is(name)).map(({ name, nodeId }) => [name, nodeId]))
+			/* removing a global is a write of it, as far as what a function binds goes */
+			variables: Relation.fromPairs(escaped(id, fdef).flatMap(def => names.get(def) ?? []).filter(({ name }) => !AmbientStateName.is(name)).map(({ name, nodeId }) => [removedNameOf(name), nodeId]))
 		}
 	]));
 }

@@ -18,6 +18,7 @@ import { linkFieldReads } from '../../../../linker';
 import type { FnSig } from '../../../../../environments/built-in-props';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { REnvironment } from '../../../../../environments/environment';
+import { noteOwnMethod, noteUnknownMethods } from './built-in-expression-list';
 
 /**
  * Processes a call listing what an environment holds (`ls`, `objects`), which reads every binding in it: the
@@ -87,6 +88,7 @@ export function processListToEnv<OtherInfo>(
 	const literal = listLiteralOf(first, data);
 	if(literal === undefined) {
 		handleUnknownSideEffect(result.graph, result.environment, rootId);
+		noteUnknownMethods(result.environment, rootId);
 		return result;
 	}
 
@@ -108,12 +110,14 @@ export function processListToEnv<OtherInfo>(
 	}
 	if(written.length === 0) {
 		handleUnknownSideEffect(result.graph, result.environment, rootId);
+		noteUnknownMethods(result.environment, rootId);
 		return result;
 	}
 
 	let environment = result.environment;
 	for(const definition of written) {
 		environment = REnvironment.define(definition, false, environment);
+		noteOwnMethod(definition.name, environment, data.ctx);
 	}
 	const defined = { ...result, environment, out: [...result.out, ...written] };
 

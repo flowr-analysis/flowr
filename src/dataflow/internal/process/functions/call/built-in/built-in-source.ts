@@ -1,5 +1,8 @@
 import type { IdentifierReference } from '../../../../../environments/identifier';
-import { type AmbientStateAccess, applyAmbientStateAccess } from './built-in-ambient-state';
+import { bindsUnknownNames } from './built-in-expression-list';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { applyAmbientEffects } from './built-in-ambient-state';
+import type { AmbientEffects } from '../../../../../environments/ambient-effect';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } from '../../../../../../config';
@@ -25,7 +28,6 @@ import { guard, isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
 import { RPath } from '../../../../../../util/files';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../../../../../../gas';
-import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import type { RProjectFile } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
@@ -138,7 +140,7 @@ export function processSourceCall<OtherInfo>(
 		includeFunctionCall?: boolean,
 		/** should this function call be followed, even when the configuration disables it? */
 		forceFollow?:         boolean
-		ambient?:             AmbientStateAccess | readonly AmbientStateAccess[]
+		ambient?:             AmbientEffects
 		/** the formals, to find the file and the environment however they are passed */
 		sig?:                 FnSig
 		/** the formal naming the environment to evaluate in, `local` for `source` (`TRUE`/`FALSE` there name the caller's frame or the global one) */
@@ -150,7 +152,7 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument === undefined) {
 		dataflowLogger.warn('Expected a file argument for source, skipping');
 		const unknown = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
-		handleUnknownSideEffect(unknown.graph, unknown.environment, rootId);
+		bindsUnknownNames(unknown.graph, unknown.environment, rootId);
 		return unknown;
 	}
 	const localArg = bound.get(config.envIn ?? 'local');
@@ -162,11 +164,11 @@ export function processSourceCall<OtherInfo>(
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Source }).information
 		: DataflowInformation.initialize(rootId, data);
-	const withAmbient = (): DataflowInformation => config.ambient === undefined ? information : applyAmbientStateAccess(information, args, rootId, data, config.ambient);
+	const withAmbient = (): DataflowInformation => config.ambient === undefined ? information : applyAmbientEffects(information, args, rootId, data, config.ambient);
 
 	if(!config.forceFollow && data.ctx.config.ignoreSourceCalls) {
 		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFileArgument)} (disabled in config file)`);
-		handleUnknownSideEffect(information.graph, information.environment, rootId);
+		bindsUnknownNames(information.graph, information.environment, rootId);
 		return withAmbient();
 	}
 
@@ -179,7 +181,7 @@ export function processSourceCall<OtherInfo>(
 	const path = sourceFile?.length === 1 ? RString.unquote(sourceFile[0]) : undefined;
 	const filepath = path ? findSource(data.ctx.config.solver.resolveSource, path, data) : undefined;
 	if(localArg !== undefined && !RLogical.is(localArg.value) && resolution === undefined) {
-		handleUnknownSideEffect(information.graph, information.environment, rootId);
+		bindsUnknownNames(information.graph, information.environment, rootId);
 		return withAmbient();
 	}
 	if(filepath !== undefined && filepath.length > 0) {
@@ -220,7 +222,7 @@ export function processSourceCall<OtherInfo>(
 	}
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`);
-	handleUnknownSideEffect(information.graph, information.environment, rootId);
+	bindsUnknownNames(information.graph, information.environment, rootId);
 	return withAmbient();
 }
 
@@ -248,20 +250,20 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 
 		if(textRequest === undefined && request.request === 'file') {
 			dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}: file does not exist`);
-			handleUnknownSideEffect(information.graph, information.environment, rootId);
+			bindsUnknownNames(information.graph, information.environment, rootId);
 			return information;
 		}
 		guard(textRequest !== undefined, `Expected text request to be defined for sourced file ${JSON.stringify(request)}`);
 		const ext = textRequest.path ? /\.[^.]*$/.exec(textRequest.path)?.[0].toLowerCase() : undefined;
 		if(ext !== undefined && ext !== '.r') {
 			expensiveTrace(dataflowLogger, () => `Skipping source of non-R file ${JSON.stringify(textRequest.path)}`);
-			handleUnknownSideEffect(information.graph, information.environment, rootId);
+			bindsUnknownNames(information.graph, information.environment, rootId);
 			return information;
 		}
 		const gasLevel = data.ctx.gas.checkGas(GasFeatureKey.Source);
 		if(gasLevel >= GasLevel.Critical) {
 			dataflowLogger.warn(`Skipping source of ${JSON.stringify(request)} due to resource pressure (gas: critical). See ${GasWikiRef}`);
-			handleUnknownSideEffect(information.graph, information.environment, rootId);
+			bindsUnknownNames(information.graph, information.environment, rootId);
 			return information;
 		} else if(gasLevel >= GasLevel.Problematic) {
 			dataflowLogger.warn(`Approaching resource limits for source of ${JSON.stringify(request)} (gas: problematic). See ${GasWikiRef}`);
@@ -296,7 +298,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 	} catch(e) {
 		dataflowLogger.error(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`);
 		dataflowLogger.error((e as Error).stack);
-		handleUnknownSideEffect(information.graph, information.environment, rootId);
+		bindsUnknownNames(information.graph, information.environment, rootId);
 		return information;
 	}
 

@@ -507,8 +507,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.reads('3@x', '2@x')
 					.call('3@print', 'print', [argumentInCall('3@x')], { reads: [NodeId.toBuiltIn('print')], returns: ['3@x'] })
 					.calls('3@print', NodeId.toBuiltIn('print'))
-					.reads('3@print', '3@x')
-					.markIdForUnknownSideEffects('3@print'),
+					.reads('3@print', '3@x'),
 				{
 					resolveIdsAsCriterion: true
 				}

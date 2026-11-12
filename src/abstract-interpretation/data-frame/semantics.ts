@@ -424,34 +424,27 @@ function applyJoinSemantics(
 		}
 		return interval1.bottom();
 	};
-	// Creating the Cartesian product of two intervals by keeping the lower bound and multiplying the upper bounds
+	// Creating the Cartesian product of two intervals by keeping the lower bound and multiplying the upper bounds (but never below the upper bound of the rows kept anyway)
 	const productInterval = (lower: PosIntervalDomain, interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
 		if(lower.isValue() && interval1.isValue() && interval2.isValue()) {
-			return new PosIntervalDomain([lower.lower, interval1.upper * interval2.upper]);
+			return new PosIntervalDomain([lower.lower, Math.max(lower.upper, interval1.upper * interval2.upper)]);
 		}
 		return lower.bottom();
 	};
 	let duplicateCols: string[] | undefined;  // columns that may be renamed due to occurring in both data frames
-	let productRows: boolean;  // whether the resulting rows may be a Cartesian product of the rows of the data frames
 
 	if(options?.natural) {
-		const commonCols = value.colnames.intersect(other.colnames).upper();
 		duplicateCols = [];
-		productRows = commonCols !== Bottom && commonCols !== Top && commonCols.size === 0;
 	} else if(by === undefined) {
 		duplicateCols = undefined;
-		productRows = true;
 	} else if(by.length === 0) {
 		const commonCols = value.colnames.intersect(other.colnames).upper();
 		duplicateCols = commonCols !== Bottom ? commonCols !== Top ? [...commonCols] : undefined : [];
-		productRows = true;
 	} else if(by.every(isNotUndefined)) {
 		const remainingCols = value.colnames.intersect(other.colnames).subtract(setRange(by)).upper();
 		duplicateCols = remainingCols !== Bottom ? remainingCols !== Top ? [...remainingCols] : undefined : [];
-		productRows = false;
 	} else {
 		duplicateCols = undefined;
-		productRows = false;
 	}
 	const joinType = options?.join ?? JoinType.Inner;
 	let rows: PosIntervalDomain;
@@ -475,7 +468,8 @@ function applyJoinSemantics(
 	return value.create({
 		colnames: duplicateCols === undefined ? value.colnames.top() : duplicateCols.length > 0 ? value.colnames.union(other.colnames).subtract(setRange(duplicateCols)).widenUp() : value.colnames.union(other.colnames),
 		cols:     by !== undefined ? value.cols.add(other.cols).subtract([by.length, by.length]) : mergeInterval(value.cols, other.cols),
-		rows:     productRows ? productInterval(rows, value.rows, other.rows) : rows
+		// the keys need not be unique, so every row of one may match every row of the other
+		rows:     productInterval(rows, value.rows, other.rows)
 	});
 }
 

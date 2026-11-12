@@ -13,6 +13,7 @@ import { resetOnFullInvalidation } from '../cache/flowr-cache';
 import { isSigDbEnabled } from '../../config';
 import { RRange } from '../../util/r-version';
 import { uniqueArray } from '../../util/collections/arrays';
+import { withGuards } from '../sigdb/guarded-source';
 import { signatureDbOf, type SignatureDb } from '../sigdb/signature-db';
 
 /**
@@ -185,7 +186,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		if(!isSigDbEnabled(this.ctx.config)) {
 			return [];
 		}
-		return this.plugins.flatMap(p => [...p.signatureSources(this.ctx.config)]);
+		return this.plugins.flatMap(p => p.signatureSources(this.ctx.config).map(source => withGuards(source)));
 	}
 
 	public signatureOf(id: Identifier, version?: string): DecodedFunction | undefined {

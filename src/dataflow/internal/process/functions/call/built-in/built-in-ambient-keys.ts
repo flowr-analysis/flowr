@@ -27,9 +27,9 @@ export type AmbientKeys = {
 	readonly from:   'unnamed'
 	readonly quoted: boolean
 } | {
-	/** the call always sets this entry, like `Sys.setLanguage` sets `LANGUAGE` */
+	/** the call always names these entries, like `Sys.setLanguage` sets `LANGUAGE` */
 	readonly from: 'constant'
-	readonly key:  string
+	readonly keys: readonly string[]
 } | {
 	/** the entries a parameter names, like `Sys.setlocale(category = "LC_ALL")` or `detach(package:dplyr)` */
 	readonly from:      'parameter'
@@ -71,7 +71,7 @@ function quotedName<OtherInfo>(node: RNodeWithParent<OtherInfo>): BrandedIdentif
 }
 
 /** Whether the value at `node` is `TRUE`, {@link Ternary.Never} if there is no flag. */
-function flagValue<OtherInfo>(node: RNodeWithParent<OtherInfo> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): Ternary {
+export function flagValue<OtherInfo>(node: RNodeWithParent<OtherInfo> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): Ternary {
 	const values = node === undefined ? [] : NodeValue.setOf(node.info.id, data)?.elements;
 	if(node === undefined) {
 		return Ternary.Never;
@@ -99,7 +99,7 @@ function parameterKeys<OtherInfo>(keys: AmbientKeys & { readonly from: 'paramete
 export function keysOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): readonly BrandedIdentifier[] {
 	switch(keys.from) {
 		case 'constant':
-			return [keys.key];
+			return keys.keys;
 		case 'argument-names':
 			return args.flatMap((a): readonly BrandedIdentifier[] => {
 				if(a === EmptyArgument) {

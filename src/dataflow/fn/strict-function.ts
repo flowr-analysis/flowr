@@ -9,7 +9,8 @@ import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role'
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ExitPoint } from '../info';
-import { ControlDependency } from '../info';
+import { ControlDependency, ExitPointType } from '../info';
+import { errorEscapes } from '../internal/linker';
 import type { DataflowGraph } from '../graph/graph';
 import { DfEdge, EdgeType } from '../graph/edge';
 import { NodeValue } from '../eval/resolve/node-value';
@@ -435,11 +436,9 @@ function computeStrictness(id: NodeId, state: StrictnessState): FunctionStrictne
 export function strictnessOfEach(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, { ctx }: FunctionStrictnessesOptions = {}): Record<NodeId, FunctionStrictness> {
 	const state = strictnessStateOf(graph, ctx);
 	const result: Record<NodeId, FunctionStrictness> = {};
-	graph.sharingTargetWalks(() => {
-		for(const id of ids) {
-			result[id] = strictnessOf(id, state);
-		}
-	});
+	for(const id of ids) {
+		result[id] = strictnessOf(id, state);
+	}
 	return result;
 }
 
@@ -465,8 +464,10 @@ function forcingPointsOf(params: readonly NodeId[], graph: DataflowGraph, idMap:
 		const element = isElementRead(param, graph);
 		const binding = element ? Dataflow.targetsOf(graph, param, EdgeType.Reads).find(t => idMap.get(t)?.info.role === RoleInParent.ParameterName) : param;
 		const owner = idMap.get(idMap.get(binding ?? -1)?.info.parent ?? -1)?.info.parent;
-		for(const read of element ? [param] : Dataflow.sourcesOf(graph, param, EdgeType.Reads)) {
-			found.push(read);
+		/* a promise bound outside of every function (`delayedAssign`) is forced by each call running a closure reading it */
+		const global = !element && !DfgVertex.isFunctionDefinition(graph.getVertex(owner ?? ''));
+		for(const read of element ? [param] : Dataflow.sourcesOf(graph, param, global ? EdgeType.Reads | EdgeType.DefinedByOnCall : EdgeType.Reads)) {
+			found.push(read, ...global ? callersOf(read, graph, idMap) : []);
 			/* only a closure within the function owning the parameter captures it, a read elsewhere is no call of one */
 			const closures: NodeId[] = [];
 			let closure = RNode.findEnclosing(read, idMap, RFunctionDefinition.is);
@@ -493,6 +494,21 @@ function forcingPointsOf(params: readonly NodeId[], graph: DataflowGraph, idMap:
 	return found;
 }
 
+/** The calls running the closures holding `id`, and those running the closures holding these calls in turn. */
+function callersOf(id: NodeId, graph: DataflowGraph, idMap: AstIdMap, seen = new Set<NodeId>()): NodeId[] {
+	const closure = RNode.strictlyEnclosingFunction(id, idMap);
+	if(closure === undefined || seen.has(closure)) {
+		return [];
+	}
+	seen.add(closure);
+	return Dataflow.sourcesOf(graph, closure, EdgeType.Calls).flatMap(call => [call, ...callersOf(call, graph, idMap, seen)]);
+}
+
+/** Where the promise bound to `binding` may be forced, see {@link promiseDependencies}. */
+export function promiseForcingPoints(this: void, binding: NodeId, graph: DataflowGraph): NodeId[] {
+	return graph.idMap === undefined ? [] : forcingPointsOf([binding], graph, graph.idMap);
+}
+
 /** What a node within promises depends on to run: the holder of each `byPromise` dependency and where that promise may be forced. */
 export function promiseDependencies(this: void, id: NodeId, graph: DataflowGraph): NodeId[] {
 	const idMap = graph.idMap;
@@ -501,19 +517,50 @@ export function promiseDependencies(this: void, id: NodeId, graph: DataflowGraph
 		return found;
 	}
 	for(const cd of graph.getVertex(id)?.cds ?? []) {
-		if(cd.byPromise !== true) {
-			continue;
-		}
-		const call = graph.getVertex(cd.id);
-		if(DfgVertex.isFunctionCall(call)) {
-			const argument = RNode.findEnclosing(id, idMap, n => n.info.parent === cd.id);
-			const bound = argument === undefined ? [] : boundParameters(call, argument, idMap, graph) ?? [];
-			found.push(cd.id, ...forcingPointsOf(bound, graph, idMap));
-		} else {
-			found.push(...forcingPointsOf([cd.id], graph, idMap));
+		if(cd.byPromise === true) {
+			const forcing = forcingPointsOfPromise(cd.id, id, graph, idMap);
+			found.push(...DfgVertex.isFunctionCall(graph.getVertex(cd.id)) ? [cd.id] : [], ...forcing, ...forcing.flatMap(at => catchersOf(at, idMap, graph)));
 		}
 	}
 	return found;
+}
+
+/** The calls catching what is raised at `at` before it leaves its function, as `try(a)` does for what forcing the promise `a` raises. */
+function catchersOf(this: void, at: NodeId, idMap: AstIdMap, graph: DataflowGraph): NodeId[] {
+	const found: NodeId[] = [];
+	for(const node of RNode.iterateParents(idMap.get(at), idMap)) {
+		if(RFunctionDefinition.is(node)) {
+			break;
+		} else if(DfgVertex.hasOrigin(graph.getVertex(node.info.id), BuiltInProcName.Try)) {
+			found.push(node.info.id);
+		}
+	}
+	return found;
+}
+
+/** Where the promise that `holder` (a call handed it, or the binding of a `delayedAssign`) holds and `inner` lies in may be forced. */
+function forcingPointsOfPromise(holder: NodeId, inner: NodeId, graph: DataflowGraph, idMap: AstIdMap): NodeId[] {
+	const call = graph.getVertex(holder);
+	if(!DfgVertex.isFunctionCall(call)) {
+		return forcingPointsOf([holder], graph, idMap);
+	}
+	const argument = RNode.findEnclosing(inner, idMap, n => n.info.parent === holder);
+	return forcingPointsOf(argument === undefined ? [] : boundParameters(call, argument, idMap, graph) ?? [], graph, idMap);
+}
+
+/** Whether an error raised within the promise may be caught where it is forced, as `tryCatch(x, error = ...)` does within the callee. */
+function caughtWhereForced(holder: NodeId, inner: NodeId, graph: DataflowGraph): boolean {
+	const idMap = graph.idMap;
+	return idMap === undefined || forcingPointsOfPromise(holder, inner, graph, idMap).some(at => {
+		const fn = idMap.get(RNode.findEnclosing(at, idMap, RFunctionDefinition.is) ?? '');
+		return !errorEscapes(at, RFunctionDefinition.is(fn) ? fn.body.info.id : undefined, idMap, graph);
+	});
+}
+
+/** Whether an error raised by `inner` within the promise of `holder` surely leaves the holder: the holder always forces it and nowhere catches it. */
+export function promiseRaises(this: void, graph: DataflowGraph, options: FunctionStrictnessesOptions = {}): (holder: NodeId, inner: NodeId) => boolean {
+	const forcing = promiseForcing(graph, options);
+	return (holder, inner) => forcing(holder, inner) === Ternary.Always && !caughtWhereForced(holder, inner, graph);
 }
 
 /** How surely the holder of a promise forces it, asked for a node `inner` within the promise. */
@@ -594,13 +641,20 @@ export function settleDefinitionsInPromises(this: void, graph: DataflowGraph, { 
 	}
 }
 
+function isParameterName(id: NodeId, graph: DataflowGraph): boolean {
+	const node = graph.idMap?.get(id);
+	const parent = node === undefined ? undefined : graph.idMap?.get(node.info.parent as NodeId);
+	return RParameter.is(parent) && parent.name === node;
+}
+
 /** Drops the resume of a jump within a promise ({@link ControlFlow.promise}) once the linked holder surely forces it. */
 export function settleJumpsInPromises(this: void, graph: DataflowGraph, topLevel: readonly ExitPoint[], { ctx }: FunctionStrictnessesOptions = {}): void {
 	const forcing = promiseForcing(graph, { ctx });
 	const definitions = graph.verticesOfType(VertexType.FunctionDefinition).map(([, definition]) => definition.exitPoints);
 	for(const exit of [topLevel, ...definitions].flat()) {
 		for(const cd of exit.cds ?? []) {
-			if(cd.byPromise === true && forcing(cd.id, exit.nodeId) === Ternary.Always) {
+			/* a default sits in front of the body in the control flow, but R forces it where the parameter is first read, so the body before that read still runs */
+			if(cd.byPromise === true && !isParameterName(cd.id, graph) && forcing(cd.id, exit.nodeId) === Ternary.Always && (exit.type !== ExitPointType.Error || !caughtWhereForced(cd.id, exit.nodeId, graph))) {
 				graph.removeEdgeType(exit.nodeId, cd.id, EdgeType.FlowEdge);
 			}
 		}

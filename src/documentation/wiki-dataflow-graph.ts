@@ -38,6 +38,7 @@ import type { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-s
 import type { KnownParser } from '../r-bridge/parser';
 import type { MermaidMarkdownMark } from '../util/mermaid/info';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
+import { ambientStateSection } from './data/dfg/doc-ambient';
 import { mermaidNodeBrackets } from '../util/mermaid/dfg';
 import { Mermaid } from '../util/mermaid/mermaid';
 import { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
@@ -1212,7 +1213,13 @@ as they see fit.
 
 Calls reading or changing global state (options, environment variables, the working directory, graphics devices, files, ...) are recorded in the graph with the pseudo variables (\`#option:digits\`, \`#wd\`, ...) they read and write (\`_ambientAccess\` if serialized as JSON).
 Use \`Dataflow.sideEffects.ambientAccess(graph, scope)\` to aggregate this for a file, a block, or any other set of ids (including what the functions called there access) and \`Dataflow.sideEffects.ambientAccessOfFunctions(graph)\` for every function. All of them, just like \`graph.ambientAccessOf(id)\` for a single call, answer with an \`AmbientAccess\` that maps the accessed state to the ids of the calls accessing it.
-Graphics calls are reported as \`draws\`. Set ${ctx.linkConfig('semantics.ambient.drawingWritesDevice')} to also let them write the pseudo variable \`#canvas\`, which models what is drawn on the device.
+Graphics calls are reported as \`draws\`.
+Beside the state code \`reads\`, \`writes\` (only \`assumed\` to write for a body flowR cannot see, or \`local\` to the current frame), the access lists what it \`kills\`: the state it ends, like \`dev.off()\` the active device, \`sink()\` the last diversion, or \`Sys.unsetenv("A")\` the variable.
+The graphics devices form a family of states, one set per open device (see ${ctx.link('GraphicsDevices')}): \`#graphics\` holds the graphics parameters, \`#device\` the calls that opened the device and drew on it (a plot opens one if none is open), and \`#plot\` the calls drawing its current plot.
+A plot like \`plot\` starts a new \`#plot\`, an addon like \`points\` reads and adds to it, and closing the device with \`dev.off\` reads all of \`#device\`, so it links to the opening and everything drawn in between, while the other open devices keep their states in \`#graphics:other\`, \`#device:other\`, and \`#plot:other\`.
+Set ${ctx.linkConfig('semantics.ambient.drawingWritesDevice')} to also let them write the pseudo variable \`#canvas\`, which models what is drawn on the device.
+
+${await ambientStateSection(treeSitter, ctx)}
 
 The \`load\` call above degrades to an unknown side effect only because the file could not be found.
 When the referenced \`.rda\`/\`.rdata\` file _is_ resolvable, flowR instead parses it natively (see ${ctx.link('RDAParser')}, supporting \`gzip\`- and \`bzip2\`-compressed files) and ${ctx.link('processLoadCall')} injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.
@@ -1221,11 +1228,10 @@ You can disable this and always treat \`load\` as an unknown side effect with th
 #### Linked Unknown Side Effects
 
 Not all side effects are created equal in the sense that they stem from a specific function call.
-Consider R's basic [\`graphics\`](https://www.rdocumentation.org/packages/graphics/) which
-implicitly draws on the current device and does not explicitly link a function like \`points\` to the last call opening a new graphic device. In such a scenario, we use a linked side effect to mark the relation:
+Consider \`sink\`, which diverts all later output to a file, without \`print\` explicitly naming it. In such a scenario, we use a linked side effect to mark the relation:
 
 ${await (async() => {
-			const [result, df] = await printDfGraphForCode(treeSitter, 'plot(data)\npoints(data2)', { exposeResult: true, ctx });
+			const [result, df] = await printDfGraphForCode(treeSitter, 'sink("out.txt")\nprint(data)', { exposeResult: true, ctx });
 			return `
 ${result}
 

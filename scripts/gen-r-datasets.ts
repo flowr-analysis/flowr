@@ -1,0 +1,51 @@
+/**
+ * Records the shape of every data set that a package installed with the `Rscript` ships as a data frame, as
+ * `package -> data set -> [rows, column names, column classes]`. This covers the lazy data of `datasets`
+ * (like `penguins` or `mtcars`) and that of any other package (like `dplyr::starwars`).
+ * Writes `src/data/r-datasets.generated.ts`, together with the versions of R and of every package read
+ * (a base package has the version of R).
+ */
+import path from 'path';
+import { execFileSync } from 'child_process';
+import { writePacked } from './pack-generated';
+
+/** a data set with more columns than this keeps only the first ones, a completion list longer than that helps no one */
+const MaxColumns = 200;
+
+const Reader = `
+items <- data(package = rownames(installed.packages()))$results
+for (i in seq_len(nrow(items))) {
+  pkg <- items[i, "Package"]
+  name <- sub(" .*$", "", items[i, "Item"])
+  e <- new.env()
+  ok <- tryCatch({ suppressMessages(suppressWarnings(utils::data(list = name, package = pkg, envir = e))); TRUE }, error = function(err) FALSE)
+  if (!ok || !exists(name, envir = e, inherits = FALSE)) next
+  d <- get(name, envir = e)
+  if (!is.data.frame(d) || ncol(d) == 0L) next
+  shown <- seq_len(min(ncol(d), ${MaxColumns}L))
+  classes <- vapply(d[shown], function(col) class(col)[1L], "")
+  version <- if (identical(packageDescription(pkg)$Priority, "base")) "" else as.character(packageVersion(pkg))
+  cat(pkg, version, name, nrow(d), paste(names(d)[shown], collapse = "\\x1f"), paste(classes, collapse = "\\x1f"), "\\n", sep = "\\t")
+}`;
+
+const output = execFileSync('Rscript', ['-e', Reader], { encoding: 'utf8', maxBuffer: 1 << 28 });
+const table: Record<string, Record<string, [number, string[], string[]]>> = {};
+const versions: Record<string, string> = { R: execFileSync('Rscript', ['-e', 'cat(as.character(getRversion()))'], { encoding: 'utf8' }) };
+for(const line of output.split('\n').filter(Boolean)) {
+	const [pkg, version, name, rows, columns, classes] = line.split('\t');
+	if(classes === undefined) {
+		continue;
+	}
+	if(version !== '') {
+		versions[pkg] = version;
+	}
+	(table[pkg] ??= {})[name] = [Number(rows), columns.split('\x1f'), classes.split('\x1f')];
+}
+
+const sorted = <T>(record: Record<string, T>): Record<string, T> => Object.fromEntries(Object.entries(record).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
+const target = path.join(__dirname, '..', 'src', 'data', 'r-datasets.generated.ts');
+writePacked(target, 'scripts/gen-r-datasets.ts', [], [
+	{ name: 'RDatasetsVersions', doc: 'The versions of R and of the packages {@link RDatasets} is read from.', type: 'Readonly<Record<string, string>>', value: sorted(versions) },
+	{ name: 'RDatasets', doc: 'The data sets every package ships as a data frame: `package -> name -> [rows, column names, column classes]`, see `src/util/r-datasets.ts`.', type: 'Readonly<Record<string, Readonly<Record<string, readonly [rows: number, columns: readonly string[], classes: readonly string[]]>>>>', value: Object.fromEntries(Object.entries(sorted(table)).map(([pkg, sets]) => [pkg, sorted(sets)])) }
+]);
+console.log(`wrote ${target}: ${Object.values(table).reduce((n, sets) => n + Object.keys(sets).length, 0)} data sets of ${Object.keys(table).length} packages`);

@@ -4,10 +4,11 @@ import { bold, italic, faint, color, Colors, FontStyles } from '../../../util/te
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { cranPageUrl } from './signature-query-executor';
 import { baseRPackages } from '../../../util/r-base-packages';
+import { claimWords, returnWords } from '../../../dataflow/fn/guards/guard-claims';
 import type { SignatureFunctionView, SignaturePackageView, SignatureQueryResult } from './signature-query-format';
 import { arraysGroupBy } from '../../../util/collections/arrays';
 import { ArgProp } from '../../../dataflow/environments/built-in-props';
-import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 
 /** print an in-repl usage guide for the signature query */
 export function printSignatureHelp(output: ReplOutput): void {
@@ -87,6 +88,26 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 		.map(([name, words]) => `${name}: ${words.join('+')}`);
 	if(roles.length > 0) {
 		result.push(`      ╰ ${italic('roles', f)}   ${roles.join(', ')}`);
+	}
+	const origin = fn.guards?.origin;
+	if(origin !== undefined && origin.source !== 'builtin' && origin.r !== fn.version) {
+		result.push(`      ╰ ${italic(`contracts of R ${origin.r}${origin.date === undefined ? '' : `, updated ${origin.date}`}`, f)}`);
+	}
+	for(const [formal, claim] of Object.entries(fn.guards?.formals ?? {})) {
+		result.push(`      ╰ ${italic('guard', f)}   ${formal}: ${claimWords(claim).join(', ')}`);
+	}
+	if(fn.guards?.requires) {
+		result.push(`      ╰ ${italic('requires', f)} ${fn.guards.requires}`);
+	}
+	for(const { holds, unless } of fn.guards?.relations ?? []) {
+		result.push(`      ╰ ${italic('relation', f)} ${holds}${unless === undefined ? '' : ` unless ${unless}`}`);
+	}
+	if(fn.guards?.returns !== undefined || fn.guards?.passes !== undefined) {
+		result.push(`      ╰ ${italic('returns', f)}  ${returnWords(fn.guards.returns, fn.guards.passes).join(', ')}`);
+	}
+	for(const { requires, kind, fails, via } of fn.guards?.because ?? []) {
+		const where = `${kind === 'explicit' ? 'checked by' : 'R fails in'} ${fails}${via === undefined ? '' : `, reached through ${via.map(v => Identifier.toPreludeString(Identifier.parse(v))).join(', ')}`}`;
+		result.push(`      ╰ ${italic('because', f)}  ${requires}: ${where}`);
 	}
 	if(fn.flowrOnly) {
 		// nothing below comes from the database, so say so instead of rendering its empty fields as facts

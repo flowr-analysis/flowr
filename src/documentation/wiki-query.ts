@@ -1,3 +1,4 @@
+import { RBaseGuardsVersion } from '../data/r-base-guards.generated';
 import type { RShell } from '../r-bridge/shell';
 import { CloneAlgorithm } from '../clones/clone-detector';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
@@ -352,6 +353,88 @@ This query also supports a slicing criterion based query mode that only returns 
 ${
 	await showQuery(shell, exampleCode, [{ type: 'inspect-fn-props', filter: ['1@function'] }], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
 }
+		`;
+	}
+});
+
+registerQueryDocumentation('inspect-fn-guards', {
+	type:             'active',
+	shortDescription: 'Infer what functions ask of the calls they return from',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'f <- function(x, type = c("a", "b")) {\n  type <- match.arg(type)\n  if(!is.numeric(x) || x < 0) stop("invalid x")\n  sum(x)\n}';
+		const predicateConfig = `new FlowrAnalyzerBuilder().amendConfig(c => {
+	c.semantics.environment.overwriteBuiltIns.definitions = [{
+		type: 'function', names: ['is_text'], processor: BuiltInProcName.DefaultReadAllArgs,
+		config: { guards: { is_text: { predicate: { yes: RValueType.Character, exact: true } } } }
+	}];
+})`;
+		return `
+This query works out the *contract* of every function of a program: what a call has to fulfill to return normally, read off the checks in the body.
+In the example below, \`f\` stops unless \`x\` is a non-negative number, and \`match.arg\` only lets \`type\` be \`"a"\` or \`"b"\`.
+The query states exactly that, per formal:
+
+${await showQuery(shell, exampleCode, [{ type: 'inspect-fn-guards' }], { showCode: true, ctx })}
+
+### Where the contracts are used
+
+- the \`call-contracts\` linting rule reports a call that cannot fulfill the contract of what it calls, like \`f(-1)\` or \`f("a")\`
+- the ${linkToQueryOfName('inspect-fn-props')} reports the formals a call has to supply (${ctx.linkE<typeof ArgProp>('ArgProp', 'Required')}) and those a condition reads (${ctx.linkE<typeof ArgProp>('ArgProp', 'Guarded')})
+- the ${linkToQueryOfName('signature')} and the [signature browser](https://flowr-analysis.github.io/flowr/wiki/sigdb/) show the contracts of the functions of R and of packages
+- the playground shows the contract of the function under the cursor
+
+### Reading the result
+
+Each function the program defines gets ${ctx.link('FunctionGuards')}:
+
+- ${ctx.link('FunctionGuards::clauses')}: one ${ctx.link('GuardClause')} per check, with the condition as R code and as a ${ctx.link('GuardTerm')} tree (\`succeeds(e)\` stands for \`e\` not raising an error), whether R checks it itself (\`implicit\`, like \`x + 1\` for a value that is no number) or the code does (\`explicit\`, like the \`stop\` above), and the message of the failure
+- ${ctx.link('FunctionGuards::formals')}: what the conditions together claim of each formal, as a ${ctx.link('FormalClaim')}:
+
+| field | a normal return makes sure that |
+|---|---|
+| \`types\` | \`typeof(x)\` is one of these |
+| \`unclassedTypes\` | the same, but only for an \`x\` without a class (a classed one may bring its own method) |
+| \`values\`, \`partial\` | \`x\` is one of these strings, or with \`partial\` abbreviates one (\`match.arg\`) |
+| \`classes\` | \`x\` inherits from one of these |
+| \`bounds\` | \`x\` (\`value\`), \`length(x)\`, \`nchar(x)\`, \`nrow(x)\`, ... lie in this range |
+| \`whole\`, \`notNA\`, \`callable\` | \`trunc(x) == x\`, \`!anyNA(x)\`, \`x\` is or names a function |
+| \`resolves\` | a name built from \`x\`, like \`paste0("f_", x)\`, exists |
+| \`cases\` | what holds in each case a branch on \`x\` tells apart, like \`if(is.logical(center)) ... else ...\` |
+
+- ${ctx.link('FunctionGuards::conditions')}: per formal the checks as they read in R, also those no claim has a word for, like \`stopifnot(x %% 2 == 0)\`
+- ${ctx.link('FunctionGuards::required')}: the formals a call has to supply
+- ${ctx.link('FunctionGuards::pure')}: the checks that fail before the function does anything but compute, so a call failing on them leaves nothing behind
+
+The query takes \`kind\` (keep only \`implicit\` or \`explicit\` conditions), \`onlyPure\`, \`formals\` (only these formals), and \`builtIns\` (also state the contracts of the functions of R and of the packages flowR knows).
+
+### What counts as a check
+
+- \`stop\`, \`rlang::abort\`, and every other function that always fails, reached under \`if\`, \`&&\`, \`||\`, and \`switch\`, taking an earlier \`return\` into account: \`if(a) return(1); if(!is.numeric(x)) stop()\` asks \`a || is.numeric(x)\`
+- \`stopifnot\`, \`assertthat::assert_that\`, \`match.arg\`, \`rlang::arg_match\`, and the \`assert_*\` functions of \`checkmate\`
+- what R fails on by itself, like \`strsplit\` for anything but a character vector
+- names that have to resolve, like \`do.call(paste0("f_", x), list())\`, and a \`UseMethod\` without a default method
+- the methods a dispatch may run: a generic asks what its \`default\` method (or that of an implicit class like \`matrix\`) asks, unless \`is.object(x)\`
+- the contracts of the functions a body surely calls, in terms of what it hands them, and predicates of the program like \`is_count <- function(v) is.numeric(v) && v >= 0\`
+
+### Teaching flowR about more functions
+
+A contract can only be as good as what flowR knows about the functions a body calls. There are three places to add that knowledge:
+
+1. **A predicate or check of your own code base, without changing flowR.** Describe it in the configuration of the analyzer (the same \`overwriteBuiltIns\` works in a configuration file). With this, \`f <- function(x) { stopifnot(is_text(x)); x }\` claims that \`x\` is a character vector:
+
+${codeBlock('ts', predicateConfig)}
+
+   Besides \`predicate\`, the guard facts can state \`asks\` (what the function fails on per formal), \`required\` (formals a call has to give), \`check\` (the function fails unless its argument passes, like \`checkmate::assert_numeric\`), \`asserts\` (it fails unless every argument is \`TRUE\`, like \`stopifnot\`), and \`returns\`. All of them are typed in \`src/dataflow/environments/guard-facts.ts\`.
+2. **A function of R or a package that flowR should know for everyone.** Add its guard facts to the built-in configuration: \`src/dataflow/environments/default-builtin-config/guards.ts\` for functions of base R and packages, \`guards-primitive-ops.ts\` for the operators and math primitives. For example \`'which': { asks: { x: fails(is('is.logical'), 'argument to \\'which\\' is not logical') } }\` makes every \`which(x)\` ask for a logical \`x\`.
+3. **The closures of the base packages.** Their contracts are read off R itself with \`npx ts-node --transpile-only scripts/gen-base-guards.ts\`, which writes \`src/data/r-base-guards.generated.ts\` (currently from R ${RBaseGuardsVersion}). Rerun it after changing what flowR knows, as the base contracts are built on top of that knowledge.
+
+### Limits
+
+Every condition the query reports is *necessary*: a call that breaks one fails in R. What flowR cannot state exactly (a loop body, a variable with several definitions, a function it does not know) weakens a condition or drops it, it never makes one stronger than what the code asks for.
+
+- A condition speaks of the value at the check, so a formal overwritten before it is read as what it was overwritten with.
+- A default value claims nothing: \`function(n = 5L)\` still takes \`n = 1.5\`. Only \`match.arg\` and \`rlang::arg_match\` read the default, as the values they allow.
+- What R fails on depends on the R version flowR assumes (\`solver.sigdb.assumedRVersion\`, else R ${RBaseGuardsVersion}): a condition of \`if\` longer than one only fails since R 4.2.0, an operand of \`&&\` longer than one since R 4.3.0.
+- A missing argument handed on to another function written in R is only required if that function needs it, as R hands it on as a promise: \`matpoints(x)\` passes its missing \`y\` to \`matplot\`, which checks \`missing(y)\`.
 		`;
 	}
 });
@@ -711,7 +794,8 @@ ${codeBlock('json', JSON.stringify({ inputSources: {
 const DependencyRoles: readonly (readonly [title: string, categories: readonly DefaultDependencyCategoryName[]])[] = [
 	['Inputs', ['library', 'remote', 'source', 'read']],
 	['Outputs', ['write', 'visualize']],
-	['What the script does with data', ['transform', 'statistics', 'test']]
+	['What the script does with data', ['transform', 'statistics', 'test']],
+	['What only works in an interactive session', ['interactive']]
 ];
 
 /** the categories and the values they report, generated from the categories the query knows */
@@ -938,6 +1022,34 @@ ${
 
 All locations are given as a ${ctx.link('SourceRange')} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.
 
+		`;
+	}
+});
+
+registerQueryDocumentation('data-columns', {
+	type:             'active',
+	shortDescription: 'Returns the columns of a data frame that can be written at a position, as an editor offers them to complete.',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'library(dplyr)\npenguins |> filter(year > 2008, bi)';
+		return `
+Editors complete names, and within code that works on a data frame the names worth offering are often its columns:
+after \`df$\`, but also in every argument a call evaluates within its data, as \`filter\`, \`mutate\`, \`subset\`, \`with\`, or \`aes\` do.
+flowR knows which arguments a call evaluates that way (they are _quoted_ in the dataflow graph), so this works for every such call,
+not just for a fixed list of them. The data frame is another argument of that call, the left side of a pipe into it, or, for a layer
+like \`geom_point(aes(...))\`, an argument of what it is added to. Its columns come from the ${linkToQueryOfName('absint')} of data frame shapes,
+which also knows the data sets R finds as lazy data, like \`penguins\` of \`datasets\` or \`starwars\` of \`dplyr\` (once loaded, or as \`dplyr::starwars\`).
+
+Consider the following code, with the cursor just after the \`bi\` (line 2, column 34):
+
+${codeBlock('r', exampleCode)}
+
+The query asks for the columns at that position:
+
+${
+	await showQuery(shell, exampleCode, [{ type: 'data-columns', positions: ['2:34'] }], { showCode: false, shorthand: sliceQueryShorthand(['2:34'] as SlicingCriteria, escapeNewline(exampleCode)), ctx })
+}
+
+The position has to fall within a node. An editor completing a name not typed yet, as in \`filter(penguins, )\`, inserts a placeholder name at the cursor first.
 		`;
 	}
 });

@@ -138,12 +138,13 @@ print(df3${access})
 				[exampleCode({ access: '[["name"]]' }), { type: 'column', accessed: 'name', access: '[[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 19) }],
 				[exampleCode({ access: '[5]' }), { type: 'column', accessed: 5, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 12) }],
 				[exampleCode({ access: '[[12]]' }), { type: 'column', accessed: 12, access: '[[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 15) }],
-				[exampleCode({ access: '[7, ]' }), { type: 'row', accessed: 7, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 14) }],
+				/* a join may repeat rows for keys that repeat, so only a row beyond all 5 x 6 pairs is surely missing */
+				[exampleCode({ access: '[31, ]' }), { type: 'row', accessed: 31, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 15) }],
 				[exampleCode({ access: '[5, 6]' }), { type: 'column', accessed: 6, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 15) }],
-				[exampleCode({ access: '[8, 4]' }), { type: 'row', accessed: 8, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 15) }],
+				[exampleCode({ access: '[31, 4]' }), { type: 'row', accessed: 31, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 16) }],
 				[exampleCode({ access: '[3:5]' }), { type: 'column', accessed: 5, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 14) }],
 				[exampleCode({ access: '[3:5, c(2, 8)]' }), { type: 'column', accessed: 8, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 23) }],
-				[exampleCode({ access: '[3:7, c(1, 3)]' }), { type: 'row', accessed: 7, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 23) }]
+				[exampleCode({ access: '[3:31, c(1, 3)]' }), { type: 'row', accessed: 31, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 24) }]
 			];
 
 			for(const [test, result] of testCases) {

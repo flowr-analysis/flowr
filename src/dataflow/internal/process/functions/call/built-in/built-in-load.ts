@@ -1,4 +1,6 @@
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { ControlFlow } from '../../../../control-flow';
+import { noteOwnMethod, bindsUnknownNames } from './built-in-expression-list';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
@@ -19,7 +21,6 @@ import { findSource } from './built-in-source';
 import { VertexType } from '../../../../../graph/vertex';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { dataflowLogger } from '../../../../../logger';
-import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
@@ -50,7 +51,7 @@ export function processLoadCall<OtherInfo>(
 
 	if(!fileArg) {
 		const fn = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' });
-		handleUnknownSideEffect(fn.information.graph, fn.information.environment, rootId);
+		bindsUnknownNames(fn.information.graph, fn.information.environment, rootId);
 		return fn.information;
 	}
 
@@ -58,7 +59,7 @@ export function processLoadCall<OtherInfo>(
 
 	if(data.ctx.config.ignoreLoadCalls) {
 		dataflowLogger.warn(`Skipping load call ${JSON.stringify(fileArg)} (disabled in config file)`);
-		handleUnknownSideEffect(fn.information.graph, fn.information.environment, rootId);
+		bindsUnknownNames(fn.information.graph, fn.information.environment, rootId);
 		return fn.information;
 	}
 
@@ -116,13 +117,13 @@ export function processLoadCall<OtherInfo>(
 		if(saved !== undefined) {
 			const loaded = withLoaded(saved.names.map(n => ({ name: n })), rootId, fn, [...(data.cds ?? []), { id: rootId, when: true }], data, envirResolution);
 			if(!saved.complete) {
-				handleUnknownSideEffect(loaded.graph, loaded.environment, rootId);
+				bindsUnknownNames(loaded.graph, loaded.environment, rootId);
 			}
 			return loaded;
 		}
 	}
 
-	handleUnknownSideEffect(fn.information.graph, fn.information.environment, rootId);
+	bindsUnknownNames(fn.information.graph, fn.information.environment, rootId);
 	return fn.information;
 }
 
@@ -195,12 +196,21 @@ function withLoaded<OtherInfo>(
 	const location = data.completeAst.idMap.get(rootId)?.location ?? SourceRange.invalid();
 	let environment = fn.information.environment;
 	const out = [...fn.information.out];
+	/* the restored names are bound once the call completes, one after the other, and the program goes on from the last */
+	let flow: DataflowInformation = fn.information;
 	for(const variable of variables) {
 		const [next, defined] = defineLoadedVariable(variable, rootId, fn, environment, location, loadCds, data);
 		environment = next;
+		noteOwnMethod(variable.name, environment, data.ctx);
 		out.push(defined);
+		for(const id of [`${defined.nodeId}:fdef`, defined.nodeId]) {
+			if(fn.information.graph.hasVertex(id)) {
+				ControlFlow.continuesWith(fn.information.graph, flow, id);
+				flow = { ...flow, cfgExit: id };
+			}
+		}
 	}
-	const result = { ...fn.information, environment, out };
+	const result = { ...fn.information, environment, out, cfgExit: flow.cfgExit };
 	return envir === undefined ? result : routeWrittenToEnvir(result, envir, rootId, data.environment, rootId);
 }
 

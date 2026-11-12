@@ -24,7 +24,7 @@ import { DfEdge, EdgeType } from './graph/edge';
 import { identifyLinkToLastCallRelationSync } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
-import { reResolveOpenReferences, linkMaterializedExportsToLoaders, linkPromisesToWritesOfCall, settleConditionalWritesOfCalls } from './internal/process/functions/call/built-in/transitive-side-effects';
+import { reResolveOpenReferences, linkMaterializedExportsToLoaders, linkPromisesToWritesOfCall, linkStatementsAfterCallsOfClosures, linkStateWritesOfForcedPromises, linkUsesOfScopedInstances, settleConditionalWritesOfCalls } from './internal/process/functions/call/built-in/transitive-side-effects';
 import { linkHandlersToSignalSites, linkLateWarningsAsErrors, orderRaisingBodies } from './internal/process/functions/call/built-in/built-in-try-catch';
 import { linkInstantiations, separateMethodRegistrations } from './internal/process/functions/call/built-in/built-in-s-four';
 import { getAllLinkedFunctionDefinitions, separateClosureInstances } from './internal/linker';
@@ -48,7 +48,8 @@ import { type DataflowBudgetTracker, GasFeatureKey, GasLevel, GasWikiRef, withDa
 import { DefaultTransitiveSideEffectRounds } from '../config';
 import { Dataflow } from './graph/df-helper';
 import { mayForce } from './internal/process/functions/call/built-in/built-in-ambient-state';
-import { AmbientStateName } from './environments/ambient-state-name';
+import { AmbientStateName, MessageSinks, OutputSinks } from './environments/ambient-state-name';
+import { AmbientAccess, AmbientAccessKind } from './graph/ambient-access';
 import { UnnamedFunctionCallPrefix } from './internal/process/functions/call/unnamed-call-handling';
 import { BuiltInProcName } from './environments/built-in-proc-name';
 import { holdsValueOf } from './internal/process/functions/call/built-in/built-in-envir-utils';
@@ -471,6 +472,10 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 	};
 	/* each added edge clears the graph's cached call names, but none of these edges changes what a call targets */
 	const prints = memoize((id: NodeId) => FunctionSemantics.call.props.hasAll(callFnProps(id, { graph, environment }), [SemanticCallTag.Prints]));
+	const diverts = (id: NodeId): boolean => {
+		const access = graph.ambientAccessOf(id);
+		return access !== undefined && AmbientAccess.names(access)[AmbientAccessKind.Write].some(state => state === OutputSinks.switched || state === MessageSinks.switched);
+	};
 	let cfg: ControlFlowGraph | undefined;
 	for(const reader of readers) {
 		let before: ReadonlySet<NodeId> | undefined;
@@ -481,8 +486,8 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 			before ??= reachableTo(cfg ??= new ControlFlowGraph(graph), [reader.id]);
 			if(before.has(writer.id)) {
 				graph.addEdge(reader.id, writer.id, EdgeType.Reads);
-				/* whatever prints into a diverting writer (`print` after `sink(file)`) writes to the resource as well */
-				for(const id of Dataflow.sourcesOf(graph, writer.id, EdgeType.Reads).filter(prints)) {
+				/* whatever prints into a diverting writer (`print` after `sink(file)`) writes to the resource as well, a writer that diverts nothing (`dir.create`) takes none of it */
+				for(const id of diverts(writer.id) ? Dataflow.sourcesOf(graph, writer.id, EdgeType.Reads).filter(prints) : []) {
 					graph.addEdge(reader.id, id, EdgeType.Reads);
 				}
 			}
@@ -557,13 +562,14 @@ function separateFileWritesPerCall(graph: DataflowGraph, environment: REnvironme
 		return { reads, writes };
 	});
 	const readPaths = memoize((id: NodeId) => fileAccess(id).reads ? pathsOf(id, false, graph, environment, ctx) : undefined);
-	/* writing to the console (`cat(x)`) names no file, and has no call to tell apart */
-	const namesFile = (id: NodeId) => {
+	/* writing to the console (`cat(x)`) names no file, but writes into the diversion of the output, whose end reads every call printing */
+	const writesFile = (id: NodeId) => {
 		const vertex = graph.getVertex(id) as DataflowGraphVertexFunctionCall;
-		return resourceArgs(appliedArguments(graph, vertex), callFnProps(id, { graph, environment }), true).length > 0;
+		return (fileAccess(id).writes && resourceArgs(appliedArguments(graph, vertex), callFnProps(id, { graph, environment }), true).length > 0)
+			|| graph.ambientAccessOf(id)?.writes.has(AmbientStateName.sinkOutput) === true;
 	};
 	const writers = [...graph.verticesOfType(VertexType.FunctionCall)].map(([id]) => id)
-		.filter(id => graph.edgesFrom(id).values().some(e => DfEdge.includesType(e, EdgeType.SideEffectOnCall)) && !graph.unknownSideEffects.has(id) && fileAccess(id).writes && namesFile(id));
+		.filter(id => graph.edgesFrom(id).values().some(e => DfEdge.includesType(e, EdgeType.SideEffectOnCall)) && !graph.unknownSideEffects.has(id) && writesFile(id));
 	const separated = new Set<NodeId>();
 	for(const writer of writers) {
 		const levels = fileWriteLevels(writer, graph, idMap, callContext => pathsOf(writer, true, graph, environment, ctx, callContext));
@@ -688,6 +694,8 @@ function extractDataFlowGraph<OtherInfo>(
 	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
 	const env = ctx.env.makeCleanEnv();
+	/* what an earlier program noted on the built-in environment all programs share does not hold for this one */
+	REnvironment.findBuiltIn(env.current).forgetProgramMarks();
 	env.current.n = ctx.meta.getNamespace();
 	const environment = attachProject(env, ctx);
 
@@ -699,6 +707,7 @@ function extractDataFlowGraph<OtherInfo>(
 		cds:            undefined,
 		referenceChain: [files[0].filePath],
 		statementOrder: new Map(),
+		unreachable:    new Set(),
 		ctx
 	};
 	let df = guardNesting('Dataflow analysis', files[0].filePath, () => processDataflowFor<OtherInfo>(files[0].root, dfData));
@@ -743,20 +752,20 @@ function extractDataFlowGraph<OtherInfo>(
 	const cleanEnvironment = ctx.env.makeCleanEnv();
 	separateClosureInstances(df.graph, name => queryFnProps(name, { environment: cleanEnvironment }));
 	linkPromisesToWritesOfCall(df.graph, ctx);
+	linkStatementsAfterCallsOfClosures(df.graph);
+	linkStateWritesOfForcedPromises(df.graph);
+	linkUsesOfScopedInstances(df.graph);
 	settleConditionalWritesOfCalls(df.graph, ctx);
 	FunctionSemantics.call.quoted.finalize(df.graph, df.environment, completeAst.idMap, () => new ControlFlowGraph(df.graph));
 	linkLateWarningsAsErrors(df.graph, df.environment, completeAst.idMap);
 	linkHandlersToSignalSites(df.graph, df.environment, dfData);
-	orderRaisingBodies(df.graph, completeAst.idMap, ctx);
+	orderRaisingBodies(df.graph, completeAst.idMap, ctx, df.environment);
 	FunctionSemantics.settleJumpsInPromises(df.graph, df.exitPoints, { ctx });
 	FunctionSemantics.settleDefinitionsInPromises(df.graph, { ctx });
-	/* these ask for the qualified names of many calls before they add an edge */
-	df.graph.sharingTargetWalks(() => {
-		linkEnvironmentArgumentsWrittenByCallee(df.graph, df.environment);
-		resolveLinkToSideEffects(df.graph, ctx);
-		linkResourceReadersToWriters(df.graph, df.environment, ctx);
-		linkReadsOfDivertedOutput(df.graph, df.environment);
-		separateFileWritesPerCall(df.graph, df.environment, ctx);
-	});
+	linkEnvironmentArgumentsWrittenByCallee(df.graph, df.environment);
+	resolveLinkToSideEffects(df.graph, ctx);
+	linkResourceReadersToWriters(df.graph, df.environment, ctx);
+	linkReadsOfDivertedOutput(df.graph, df.environment);
+	separateFileWritesPerCall(df.graph, df.environment, ctx);
 	return df;
 }

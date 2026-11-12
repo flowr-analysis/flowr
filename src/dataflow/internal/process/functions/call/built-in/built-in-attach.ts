@@ -6,14 +6,17 @@ import type { ParentInformation, RNodeWithParent } from '../../../../../../r-bri
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Resolve } from '../../../../../environments/resolve-helper';
+import { datasetShape } from '../../../../../../util/r-datasets';
 import { type BrandedIdentifier, Identifier, ReferenceType, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { DefaultAttachPosition, Environment, EnvType, REnvironment } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
 import { resolveAttachPosition, resolveSymbolToEnvir } from './built-in-envir-utils';
-import { AmbientStateAccessType } from './built-in-ambient-state';
+import { bindsUnknownNames } from './built-in-expression-list';
+import { Ambient } from '../../../../../environments/ambient-effect';
 import { keysOf } from './built-in-ambient-keys';
 import { UnknownKey } from '../../../../../environments/ambient-state-name';
 import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -39,8 +42,11 @@ export function processAttach<OtherInfo>(
 	/* a list written out names its bindings, `attach(list(a = 1))` binds `a` to `1` */
 	const listed = envirResolution === undefined && RFunctionCall.isNamed(whatNode, AttachableLiterals)
 		&& whatNode.arguments.every(a => a !== EmptyArgument && a.name !== undefined && a.value !== undefined) ? whatNode.arguments as readonly RArgument<OtherInfo & ParentInformation>[] : undefined;
-	if(!envirResolution && !listed) {
-		handleUnknownSideEffect(result.graph, result.environment, rootId);
+	/* a data set R ships (`attach(mtcars)`) binds its columns */
+	const dataset = envirResolution === undefined && listed === undefined && RSymbol.is(whatNode) && Resolve.byName(whatNode.content, data.environment)?.every(d => NodeId.isBuiltIn(d.nodeId)) !== false
+		? datasetShape(Identifier.getName(whatNode.content)) : undefined;
+	if(!envirResolution && !listed && !dataset) {
+		bindsUnknownNames(result.graph, result.environment, rootId);
 		return result;
 	}
 
@@ -49,6 +55,11 @@ export function processAttach<OtherInfo>(
 	for(const entry of listed ?? []) {
 		const at = (entry.value as RNodeWithParent).info.id;
 		injected.push({ nodeId: at, name: entry.name?.content as Identifier, type: ReferenceType.Variable, definedAt: rootId, cds: data.cds ? [...data.cds] : undefined });
+		result.graph.addEdge(at, rootId, EdgeType.Reads);
+	}
+	for(const column of dataset?.columns ?? []) {
+		const at = (whatNode as RSymbol<OtherInfo & ParentInformation>).info.id;
+		injected.push({ nodeId: at, name: column, type: ReferenceType.Variable, definedAt: rootId, cds: data.cds ? [...data.cds] : undefined });
 		result.graph.addEdge(at, rootId, EdgeType.Reads);
 	}
 	for(const [varName, varDefs] of envirResolution?.envDef.envState.current.memory ?? []) {
@@ -60,6 +71,14 @@ export function processAttach<OtherInfo>(
 				type: ReferenceType.Variable,
 			});
 			result.graph.addEdge(inDef.nodeId, rootId, EdgeType.Reads);
+		}
+	}
+	/* R reports the names that are already bound (`The following object is masked _by_ .GlobalEnv`), so the call reads what they are bound to */
+	for(const { name: bound } of injected) {
+		for(const masking of Resolve.byName(bound, data.environment) ?? []) {
+			if(!NodeId.isBuiltIn(masking.nodeId)) {
+				result.graph.addEdge(rootId, masking.nodeId, EdgeType.Reads);
+			}
 		}
 	}
 	const attachedLayer = new Environment(result.environment.current).defineAll(injected);
@@ -88,7 +107,7 @@ export function processDetach<OtherInfo>(
 	config: BuiltInFnInfo = {}
 ): DataflowInformation {
 	const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Detach }).information;
-	const keys = [config.ambient ?? []].flat().flatMap(a => a.type === AmbientStateAccessType.SetKeyed ? keysOf(a.keys, args, data) : []);
+	const keys = Ambient.list(config.ambient).flatMap(a => typeof a.member === 'object' ? keysOf(a.member, args, data) : []);
 	const first = RArgument.valueOf(args.find(a => a !== EmptyArgument));
 	const positions = first === undefined ? [DefaultAttachPosition]
 		: keys.includes(UnknownKey) ? [resolveAttachPosition(first.info.id, data)]

@@ -3,9 +3,8 @@ import { fn, pkg, base, readsFile } from './define-helpers';
 import { PkgName } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
-import { AmbientStateAccessType } from '../built-in-kinds';
 import { KeyedState } from '../ambient-state-name';
-import { CopiesFiles, Downloads, LoaderSearchPath, ImportSearchPath } from './shared-configs';
+import { CopiesFiles, Downloads, LoaderSearchPath, ImportSearchPath, SetsEntry } from './shared-configs';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 
 /** The built-in definitions of package management, project tooling, documents, and foreign languages. */
@@ -40,7 +39,7 @@ export const ToolingDefinitions = [
 	/* loaders taking several packages at once, each attached as by `library` */
 	/* a preference puts the preferred function on top of the search path */
 	fn(pkg(PkgName.Conflicted, 'conflict_prefer', 'conflicts_prefer'), BuiltInProcName.Prefer,
-		{ libFn: true, ambient: { type: AmbientStateAccessType.SetKeyed, state: KeyedState.SearchPath, keys: { from: 'constant', key: '.conflicts' } }, props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.AttachesPackage], sig: sig({ '...': ArgProp.NoDefault }) }),
+		{ libFn: true, ambient: SetsEntry(KeyedState.SearchPath, '.conflicts'), props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.AttachesPackage], sig: sig({ '...': ArgProp.NoDefault }) }),
 	fn(pkg(PkgName.Conflicted, 'conflict_prefer_all', 'conflict_prefer_matching'), BuiltInProcName.Default,
 		{ libFn: true, hasUnknownSideEffects: true, props: CallProp.Invisible | CallProp.Configures, sig: sig({ '...': Forced.Value }) }),
 	fn(pkg(PkgName.Needs, 'needs', 'prioritize'), BuiltInProcName.Library,

@@ -9,7 +9,7 @@ import { MutationShardsDir, type MutationShardDetails } from './mutation-details
 import { mutants, originalKey, type Mutants } from './mutants';
 import { rIsAtLeast } from '../functionality/_helper/r-version';
 import type { MutationPass, QueryObservation, ReplObservation } from '../functionality/_helper/r-mutations';
-import { MutationPasses, observeQueries, observeRepl, removalSlice, slice } from '../functionality/_helper/r-mutations';
+import { DeadCodeMarker, markDeadCode, MutationPasses, observeQueries, observeRepl, removalSlice, slice } from '../functionality/_helper/r-mutations';
 
 
 /** what a shard exercised, kept per shard as the shards of one worker share this module */
@@ -82,6 +82,8 @@ function counterexamples(shell: RShell, exercised: Exercised, group: string, cas
 		const slicedIs = `${what}\nand its slice is:\n${sliced}`;
 		assert.notMatch(sliced, /\bmut_[abc]\b/, `the slice keeps a binding nothing reads, ${slicedIs}`);
 		assert.strictEqual(output, target.expected, `the slice does not print what the input does, ${slicedIs}`);
+		/* what the dead code rule reports must never run, in the program and in every mutant of it */
+		assert.notInclude(await run(await markDeadCode(shell, target.code)), DeadCodeMarker, `R reaches code the dead code rule reports as unreachable, ${what}`);
 		/* removing what only the criterion needs leaves a program that still runs */
 		const left = await removalSlice(shell, target);
 		assert.notMatch(await run(left), /R error:/, `what the removal slice leaves fails, ${slicedIs}\nand what is left without it is:\n${left}`);

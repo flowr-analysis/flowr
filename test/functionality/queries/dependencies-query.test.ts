@@ -37,7 +37,7 @@ assumeLoadedPackages('car', 'ggplot2', 'ggthemes', 'jmcm', 'magrittr', 'maps', '
 
 const defaultCtx = new FlowrAnalyzerContext(FlowrConfig.default());
 
-const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], transform: [], test: [], statistics: [] };
+const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], transform: [], test: [], statistics: [], interactive: [] };
 
 function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Partial<DependenciesQueryResult> {
 	const out: Partial<DependenciesQueryResult> = {
@@ -1128,6 +1128,18 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			for(const f of defaultDependencyCategories(defaultCtx).statistics.functions) {
 				assert.isDefined(f.package, `${f.name} has no package`);
 			}
+		});
+	});
+
+	describe('Interactive use', () => {
+		testQuery('View left in a script', 'p <- mtcars\nView(p)', { interactive: [{ nodeId: '2@View', functionName: 'View' }] });
+		testQuery('the debugger', 'browser()', { interactive: [{ nodeId: '1@browser', functionName: 'browser' }] });
+		testQuery('a namespaced viewer', 'utils::View(mtcars)', { library: [{ nodeId: '1@View', functionName: '::', value: 'utils' }], interactive: [{ nodeId: '1@utils::View', functionName: Identifier.make('View', 'utils') }] });
+		test('the category is what the built-ins state', () => {
+			assert.deepStrictEqual(
+				defaultDependencyCategories(defaultCtx).interactive.functions.map(f => `${f.package as string}::${f.name}`).sort(),
+				BuiltInIndex.default().with(SemanticCallTag.Interactive).map(Identifier.toString).sort()
+			);
 		});
 	});
 

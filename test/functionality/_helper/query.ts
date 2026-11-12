@@ -1,3 +1,4 @@
+import type { FlowrConfig } from '../../../src/config';
 import { RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
 import type {
 	DEFAULT_DATAFLOW_PIPELINE,
@@ -125,9 +126,11 @@ export function assertQuery<
 export async function runQuery<Type extends SupportedQueryTypes>(
 	parser: KnownParser,
 	code: string,
-	query: QueryArgumentsWithType<Type>
+	query: QueryArgumentsWithType<Type>,
+	config?: FlowrConfig
 ): Promise<{ result: QueryResults<Type>[Type], idMap: AstIdMap, analyzer: FlowrAnalyzer }> {
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+	const builder = new FlowrAnalyzerBuilder().setParser(parser);
+	const analyzer = await (config ? builder.setConfig(config) : builder).build();
 	analyzer.addRequest(code);
 	const result = await analyzer.query<Type>([query]);
 	const idMap = (await analyzer.normalize()).idMap;

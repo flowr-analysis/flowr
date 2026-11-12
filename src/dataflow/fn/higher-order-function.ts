@@ -55,7 +55,7 @@ function readsBuiltInFunction(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlo
 }
 
 /** The definitions the given node can hand over, to tell an argument being the definition under inspection from one holding another. */
-function definitionsBehind(id: NodeId, graph: DataflowGraph): ReadonlySet<NodeId> {
+export function definitionsBehind(id: NodeId, graph: DataflowGraph): ReadonlySet<NodeId> {
 	const found = new Set<NodeId>();
 	const seen = new Set<NodeId>();
 	const workingQueue: NodeId[] = [id];

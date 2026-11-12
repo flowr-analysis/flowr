@@ -26,6 +26,7 @@ body:
         - Absolute Paths
         - Bogus Return
         - Call Arguments
+        - Call Contracts
         - Class String Comparison
         - Code Clones
         - Compiled Code
@@ -38,6 +39,7 @@ body:
         - File Path Validity
         - Foreign Function Calls
         - Global Environment Modification
+        - Interactive Functions
         - Namespace Access Validity
         - Namespace Tampering
         - Naming Convention

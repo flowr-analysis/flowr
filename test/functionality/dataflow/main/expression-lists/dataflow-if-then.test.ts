@@ -325,7 +325,6 @@ print(x)`,  emptyGraph().autoPrints([31]).autoPrints([27], true)
 				.defineVariable('15', 'x', { definedBy: ['16', '17'], cds: [{ id: '19', when: false }, { id: '27', when: true }] })
 				.constant('24')
 				.defineVariable('23', 'x', { definedBy: ['24', '25'], cds: [{ id: '27', when: false }] })
-				.markIdForUnknownSideEffects('31')
 		);
 	});
 	describe('Get and assign', () => {
@@ -395,7 +394,6 @@ a()`,  emptyGraph().autoPrints([17, 19], true)
 				.constant('1')
 				.defineVariable('0', 'b', { definedBy: ['1', '2'] })
 				.defineVariable('4', '"a"', { definedBy: ['9', '11'] })
-				.markIdForUnknownSideEffects('15')
 		);
 		assertDataflow(label('get in function', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'empty-arguments', 'newlines', 'implicit-return', 'call-normal', 'name-created-resolved']),
 			shell, `a <- 5

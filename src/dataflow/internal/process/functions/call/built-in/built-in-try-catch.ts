@@ -1,13 +1,14 @@
 import type { Writable } from 'ts-essentials';
-import { namesAnErrorHandler } from '../../../../../fn/condition-handlers';
+import { namesAnErrorHandler, SessionConditionClasses } from '../../../../../fn/condition-handlers';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
-import { ExitPointType, happensInEveryBranch, leaveThrough } from '../../../../../info';
+import { ExitPointType, happensInEveryBranch, leaveThrough, withCds } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { ControlFlow } from '../../../../control-flow';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -17,12 +18,12 @@ import { type DataflowGraph, FunctionArgument, type NamedFunctionArgument } from
 import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
-import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type IdentifierReference, type InGraphIdentifierDefinition, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { applyKills } from '../../../../../environments/apply-kill';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { errorsOfWarnings, maySignal, signalSites } from './built-in-ambient-state';
+import { errorsOfWarnings, mayLock, maySignal, signalSites, testsValue } from './built-in-ambient-state';
 import { builtInLookup } from '../../../../../environments/query-fn-props';
 import { ArgProp, CallProp, CallProps, type FnSig } from '../../../../../environments/built-in-props';
 import { RLoopConstructs, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -37,6 +38,24 @@ import { Dataflow } from '../../../../../graph/df-helper';
 import { REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { SourceRange } from '../../../../../../util/range';
+import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { OperatorUsedAs } from '../../../../../environments/default-builtin-config/base-operators';
+
+/** the calls that only jump, group, or bind, which signal nothing of their own (what they evaluate is a site of its own) */
+const Silent: readonly BuiltInProcName[] = [BuiltInProcName.Return, BuiltInProcName.Break, BuiltInProcName.ExpressionList, BuiltInProcName.Assignment];
+
+/** Whether the block may signal anything at all: it calls something that is not just a jump, or reads a name nothing binds. */
+function hasSignalSite(block: RNode<ParentInformation>, graph: DataflowGraph): boolean {
+	for(const id of RNode.collectAllIds(block)) {
+		const vertex = graph.getVertex(id);
+		if(DfgVertex.isFunctionCall(vertex) ? !Silent.some(s => DfgVertex.hasOrigin(vertex, s)) && Identifier.getName(vertex.name) !== 'next'
+			: DfgVertex.isUse(vertex) && Dataflow.targetsOf(graph, id, EdgeType.Reads).length === 0) {
+			return true;
+		}
+	}
+	return false;
+}
 
 /** Process a built-in try-catch or similar handler. */
 export function processTryCatch<OtherInfo>(
@@ -58,17 +77,24 @@ export function processTryCatch<OtherInfo>(
 
 	/* handlers are matched by the class of the condition, so a call naming none for an error lets it out: `tryCatch(stop("x"), warning = ...)` throws, and so does one with nothing but a `finally`. */
 	const aborts = config.aborts ?? true;
-	const catchesError = aborts && (error === undefined || namesAnErrorHandler(args));
-	/* a handler of another class runs once something in the block signals such a condition, an exiting one leaves the block there */
 	const blockInfo = res.processedArguments.find(a => a !== undefined && blockArg.has(a.entryPoint));
 	const blockAst = blockInfo && data.completeAst.idMap.get(blockInfo.entryPoint);
+	/* a handler runs only if something the block runs may signal what it handles, one for the session may run anywhere after */
+	const runs = (condition: BrandedIdentifier) => blockAst === undefined || maySignal(blockAst, condition, info.graph, data, info.environment);
+	/* an error may carry any class (`errorCondition(class = "my")`), so a handler of a class the block may signal catches it */
+	const catchesError = aborts && (error === undefined || namesAnErrorHandler(args) || otherHandlers.some(h => !SessionConditionClasses.has(Identifier.getName(h.name)) && runs(Identifier.getName(h.name))));
+	/* a handler of another class runs once something in the block signals such a condition, an exiting one leaves the block there */
 	const sitesOf = (condition: Identifier, link: boolean) => blockAst === undefined ? [] : signalSites(blockAst, Identifier.getName(condition), info.graph, data, link);
 	const signaled = new Set(aborts ? otherHandlers.flatMap(({ name: condition }) => sitesOf(condition, true)) : []);
+	/* a calling handler decides what a signal does as well (`invokeRestart("muffleWarning")`), so what signals stays with the construct */
+	for(const site of aborts ? [] : otherHandlers.flatMap(({ name: condition }) => sitesOf(condition, false))) {
+		info.graph.addEdge(site, rootId, EdgeType.Reads);
+	}
 	const raising: NodeId[] = [];
 	if(blockInfo !== undefined && blockAst !== undefined && (catchesError || signaled.size > 0)) {
 		const targetsOf = (n: Identifier) => [data.environment, info.environment]
 			.flatMap(env => Resolve.byNameAndType(n, env, ReferenceType.Function) ?? []);
-		const order = raisingOrder(info.graph, builtInLookup(data.ctx), { rootId, targetsOf });
+		const order = raisingOrder(info.graph, builtInLookup(data.ctx), { rootId, targetsOf, locked: mayLock(data.environment) });
 		const raised = catchesError ? errorsOfWarnings(blockAst, info.environment, info.graph, data) : [];
 		for(const site of [...raised.map(r => r.nodeId), ...signaled]) {
 			info.graph.addEdge(site, rootId, EdgeType.Reads);
@@ -77,9 +103,15 @@ export function processTryCatch<OtherInfo>(
 		(blockInfo.exitPoints as ExitPoint[]) = blockInfo.exitPoints.concat(raised);
 		raising.push(...order(blockAst, []));
 	}
-	/* a handler runs only if something the block runs may signal what it handles, one for the session may run anywhere after */
-	const runs = (condition: BrandedIdentifier) => blockAst === undefined || maySignal(blockAst, condition, info.graph, data, info.environment);
 	const errorRuns = error !== undefined && errorArg.size > 0 && runs(error);
+	/*
+	 * an exiting handler that may run leaves the block where the block signals, so a `return` (or `break`, or a raise the
+	 * construct lets out) later in the block only happens if nothing was signaled before: `tryCatch({ log(-1); return(1) }, warning = ...)`
+	 */
+	const preempted = aborts && (errorRuns || otherHandlers.some(h => runs(Identifier.getName(h.name)))) && blockAst !== undefined && hasSignalSite(blockAst, info.graph);
+	const unlessSignaled = (exits: readonly ExitPoint[]): readonly ExitPoint[] => preempted
+		? exits.map(e => e.type === ExitPointType.Default ? e : { ...e, cds: withCds(e.cds ?? data.cds, [{ id: rootId, when: false }]) })
+		: exits;
 	/* if the block raises an error in every case, the error handler is not constrained by it */
 	const blockErrorExitPoints: (ControlDependency | undefined)[] = [];
 	const errorExitPoints: ExitPoint[] = [];
@@ -93,11 +125,13 @@ export function processTryCatch<OtherInfo>(
 			const handlerExits = exitPointsOfHandler(arg.entryPoint, info.graph) ?? [];
 			errorExitPoints.push(...handlerExits.map(e => e.type === ExitPointType.Return ? { ...e, type: ExitPointType.Default } : e));
 		}
-		if(!blockArg.has(arg.entryPoint) || !catchesError) {
+		if(!blockArg.has(arg.entryPoint)) {
 			return arg.exitPoints;
+		} else if(!catchesError) {
+			return unlessSignaled(arg.exitPoints);
 		}
 		blockErrorExitPoints.push(...arg.exitPoints.filter(ep => ep.type === ExitPointType.Error).flatMap(a => a.cds));
-		return arg.exitPoints.filter(ep => ep.type !== ExitPointType.Error);
+		return unlessSignaled(arg.exitPoints.filter(ep => ep.type !== ExitPointType.Error));
 	});
 	if(errorExitPoints.length > 0) {
 		if(happensInEveryBranch(blockErrorExitPoints.some(isUndefined) ? undefined : blockErrorExitPoints as ControlDependency[])) {
@@ -180,13 +214,34 @@ export function processTryCatch<OtherInfo>(
 		/* whether the block raises decides what the construct yields, its value or that of a handler */
 		info.graph.addEdge(rootId, id, EdgeType.Reads);
 	}
-	const environment = mayAbort ? REnvironment.append(data.environment, info.environment) : info.environment;
+	let environment = mayAbort ? REnvironment.append(data.environment, info.environment) : info.environment;
+	if(mayAbort) {
+		environment = keepOverwrittenBeforeRaise(escaping, raising, environment, data.completeAst.idMap, rootId);
+	}
 	return {
 		...info,
 		out:         info.out.concat(mayAbort ? makeAllMaybe(escaping, info.graph, environment, true) : escaping),
 		environment: applyKills(environment, escapingKills),
 		kill:        escapingKills
 	};
+}
+
+/** A write of the block that a later one of it overwrites survives if a raising site in between leaves the block: `{ x <- 1; warning("m"); x <- 2 }`. */
+function keepOverwrittenBeforeRaise(writes: readonly IdentifierReference[], raising: readonly NodeId[], environment: REnvironmentInformation, idMap: AstIdMap, rootId: NodeId): REnvironmentInformation {
+	const lastRaise = raising.map(id => idMap.get(id)?.location).filter(isNotUndefined).sort(SourceRange.compare).at(-1);
+	if(lastRaise === undefined) {
+		return environment;
+	}
+	for(const write of writes) {
+		const at = idMap.get(write.nodeId)?.location;
+		const { name } = write;
+		if(name === undefined || !('definedAt' in write) || at === undefined || SourceRange.compare(at, lastRaise) >= 0
+			|| Resolve.byName(name, environment)?.some(d => d.nodeId === write.nodeId)) {
+			continue;
+		}
+		environment = REnvironment.define({ ...write as InGraphIdentifierDefinition, name, cds: [...write.cds ?? [], { id: rootId, when: true }] }, false, environment);
+	}
+	return environment;
 }
 
 /** Links what a block catching errors may raise because a warning turns into one, where the `warn` option that does so is only known after linking: `g(options, warn = 2)` sets it through the function `g` is handed. */
@@ -308,18 +363,44 @@ function matchHandlers(given: readonly FunctionArgument[], config: TryConfig, gr
 }
 
 /** Orders the raising calls in every body a block catching errors may run, once per definition and after linking bound all calls. */
-export function orderRaisingBodies(graph: DataflowGraph, idMap: AstIdMap, ctx: FlowrAnalyzerContext): void {
-	const ordered = new Set<NodeId>();
+export function orderRaisingBodies(graph: DataflowGraph, idMap: AstIdMap, ctx: FlowrAnalyzerContext, environment: REnvironmentInformation): void {
+	const ordered = new Map<NodeId, readonly NodeId[]>();
+	/* a warning raises where `warn` may be 2, which a body may set itself: `f <- function() { options(warn = 2); as.integer("a") }` */
+	const warn = AmbientStateName.option('warn');
+	/* through the earlier settings a later one of `warn` (an `on.exit` restoring it) still reads */
+	const warnsAsErrors = (site: NodeId) => {
+		const seen = new Set<NodeId>();
+		const todo = [site];
+		for(let current = todo.pop(); current !== undefined; current = todo.pop()) {
+			for(const t of Dataflow.targetsOf(graph, current, EdgeType.Reads)) {
+				const writes = graph.ambientAccessOf(t)?.writes;
+				if(writes?.has(AmbientStateName.warnsAsErrors)) {
+					return true;
+				} else if(writes?.has(warn) && !seen.has(t)) {
+					seen.add(t);
+					todo.push(t);
+				}
+			}
+		}
+		return false;
+	};
 	const reach = (node: RNode<ParentInformation>) => {
-		for(const id of RFunctionDefinition.is(node) ? [node.info.id] : Dataflow.calleeIdsOf(graph, node.info.id)) {
+		const isDefinition = RFunctionDefinition.is(node);
+		for(const id of isDefinition ? [node.info.id] : Dataflow.calleeIdsOf(graph, node.info.id)) {
 			const definition = idMap.get(id);
 			if(!ordered.has(id) && RFunctionDefinition.is(definition)) {
-				ordered.add(id);
-				order(definition.body, []);
+				ordered.set(id, []);
+				const raising = order(definition.body, []);
+				ordered.set(id, raising.filter(warnsAsErrors));
+				keepEscapingWritesBeforeRaise(id, raising, graph, idMap);
+			}
+			/* whether such a warning raises decides what the call yields, its value or that of a handler */
+			for(const site of isDefinition ? [] : ordered.get(id) ?? []) {
+				graph.addEdge(node.info.id, site, EdgeType.Reads);
 			}
 		}
 	};
-	const order = raisingOrder(graph, builtInLookup(ctx), { reach });
+	const order = raisingOrder(graph, builtInLookup(ctx), { reach, locked: mayLock(environment) });
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const call = DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) ? idMap.get(id) : undefined;
 		for(const arg of RFunctionCall.is(call) ? call.arguments : []) {
@@ -333,20 +414,67 @@ export function orderRaisingBodies(graph: DataflowGraph, idMap: AstIdMap, ctx: F
 	}
 }
 
+/** What the body of `fn` writes outside its frame stays visible past a later write of the same name if a raising site in between may leave the body: `x <<- 1; log(-1); x <<- 2`. */
+function keepEscapingWritesBeforeRaise(fn: NodeId, raising: readonly NodeId[], graph: DataflowGraph, idMap: AstIdMap): void {
+	const at = (id: NodeId) => idMap.get(id)?.location;
+	const raises = raising.map(at).filter(isNotUndefined);
+	const subflow = raising.length === 0 ? undefined : graph.getVertex(fn);
+	if(!DfgVertex.isFunctionDefinition(subflow)) {
+		return;
+	}
+	const superAssigns = (id: NodeId) => {
+		const node = idMap.get(id);
+		const parent = node && RNode.directParent(node, idMap);
+		return RBinaryOp.is(parent) && (parent.operator === '<<-' || parent.operator === '->>');
+	};
+	const escaping = [...subflow.subflow.graph].filter(id => DfgVertex.isVariableDefinition(graph.getVertex(id)) && RNode.findEnclosing(id, idMap, RFunctionDefinition.is) === fn
+		&& (superAssigns(id) || Dataflow.targetsOf(graph, id, EdgeType.SideEffectOnCall).length > 0));
+	for(const later of escaping) {
+		const end = at(later);
+		if(end === undefined) {
+			continue;
+		}
+		const name = NodeId.recoverBareName(later, idMap);
+		for(const earlier of escaping) {
+			const start = at(earlier);
+			if(start !== undefined && NodeId.recoverBareName(earlier, idMap) === name && SourceRange.compare(start, end) < 0
+				&& raises.some(r => SourceRange.compare(start, r) < 0 && SourceRange.compare(r, end) < 0)) {
+				graph.addEdge(later, earlier, EdgeType.Reads);
+			}
+		}
+	}
+}
+
 /** Makes every later call read the earlier ones that may raise, and those read the construct `rootId`; returns the raising ones. */
-function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, targetsOf, reach }: { rootId?: NodeId, targetsOf?: (name: Identifier) => readonly IdentifierDefinition[], reach?: (node: RNode<ParentInformation>) => void }) {
+function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, targetsOf, reach, locked }: { rootId?: NodeId, targetsOf?: (name: Identifier) => readonly IdentifierDefinition[], reach?: (node: RNode<ParentInformation>) => void, locked: boolean }) {
 	type Node = RNode<ParentInformation>;
 	const raises = (node: Node): boolean => {
 		const vertex = graph.getVertex(node.info.id);
 		const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : RFunctionCall.is(node) ? RFunctionCall.calledName(node) : RAccess.is(node) ? node.operator : node.lexeme;
-		if(name === undefined || CallProps.hasAny(lookup(name), CallProp.Throws) || (rootId !== undefined && Dataflow.hasEdge(graph, node.info.id, rootId, EdgeType.Reads))) {
+		if(name === undefined || CallProps.hasAny(lookup(name), CallProp.Throws) || testsValue(node) || (rootId !== undefined && Dataflow.hasEdge(graph, node.info.id, rootId, EdgeType.Reads))) {
 			return true;
 		} else if(DfgVertex.isFunctionCall(vertex)) {
-			return !vertex.onlyBuiltin;
+			/* a built-in may raise on its own for what it is handed (`log("a")`, a locked binding), binding a name raises only for what its value does, unless it may be locked */
+			return !vertex.onlyBuiltin || vertex.origin === 'unnamed' || !(vertex.origin.every(o => NeverRaises.has(o)) || (!locked && bindsName(node)));
 		}
 		const targets = targetsOf?.(name) ?? [];
 		return targets.length === 0 || targets.some(t => !NodeId.isBuiltIn(t.nodeId));
 	};
+	/* reading a name bound to a promise (`delayedAssign("p", stop("e")); p`) or a lazy parameter forces it, and so raises what the promise does */
+	const forcesRaising = (node: Node): boolean => {
+		if(!RSymbol.is(node) || !DfgVertex.isUse(graph.getVertex(node.info.id))) {
+			return false;
+		}
+		const read = Dataflow.targetsOf(graph, node.info.id, EdgeType.Reads);
+		/* a parameter holds the argument handed to it, or its default if there is none */
+		const defaults = read.filter(t => RParameter.is(graph.idMap?.get(graph.idMap?.get(t)?.info.parent ?? '')));
+		const promises = [...read, ...read.flatMap(t => Dataflow.sourcesOf(graph, t, EdgeType.DefinesOnCall)), ...defaults.flatMap(t => Dataflow.targetsOf(graph, t, EdgeType.DefinedBy))];
+		return promises.some(t => {
+			const promised = graph.idMap?.get(t);
+			return promised !== undefined && DfgVertex.isFunctionCall(graph.getVertex(t)) && raises(promised);
+		});
+	};
+	const isHook = (node: Node) => RFunctionCall.is(node) && DfgVertex.hasOrigin(graph.getVertex(node.info.id), BuiltInProcName.RegisterHook);
 	const order = (node: Node, before: readonly NodeId[]): NodeId[] => {
 		reach?.(node);
 		if(RFunctionDefinition.is(node)) {
@@ -354,7 +482,9 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 		} else if(RExpressionList.is(node)) {
 			const sites: NodeId[] = [];
 			let current = before;
-			for(const child of node.children) {
+			/* what `on.exit` registers runs when the function exits, after everything else in the list (`on.exit(stop("x")); cat("a")` prints before it raises) */
+			const hooks = node.children.filter(isHook);
+			for(const child of [...node.children.filter(c => !hooks.includes(c)), ...hooks]) {
 				const raised = order(child, current);
 				current = raised.length > 0 ? raised : current;
 				sites.push(...raised);
@@ -364,16 +494,30 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 		/* what a later iteration runs follows what an earlier one may raise, which the loop carries */
 		const loop = RLoopConstructs.is(node);
 		const sites = RNode.directChildren(node).flatMap(child => child === EmptyArgument ? [] : order(child, loop ? [...before, node.info.id] : before));
-		if(!CallTypes.has(node.type)) {
+		/* code after an unconditional exit is never analyzed, so it has no vertex and neither runs nor raises */
+		const forcing = forcesRaising(node);
+		if((!CallTypes.has(node.type) && !forcing) || !graph.hasVertex(node.info.id)) {
 			return sites;
 		}
-		const raising = raises(node);
+		const raising = forcing || raises(node);
 		for(const site of [...before, ...rootId !== undefined && raising ? [rootId] : [], ...loop ? sites : []]) {
 			graph.addEdge(node.info.id, site, EdgeType.Reads);
 		}
 		return raising ? [...sites, node.info.id] : sites;
 	};
 	return order;
+}
+
+/** the built-in constructs that raise nothing beyond what their parts do */
+const NeverRaises: ReadonlySet<BuiltInProcName> = new Set([BuiltInProcName.ExpressionList, BuiltInProcName.IfThenElse, BuiltInProcName.ForLoop, BuiltInProcName.WhileLoop, BuiltInProcName.RepeatLoop,
+	BuiltInProcName.Break, BuiltInProcName.Return, BuiltInProcName.Function, BuiltInProcName.FunctionDefinition, BuiltInProcName.Quote]);
+
+function bindsName(node: RNode<ParentInformation>): boolean {
+	if(!RBinaryOp.is(node) || RBinaryOp.getOperatorInfo(node)?.usedAs !== OperatorUsedAs.Assignment) {
+		return false;
+	}
+	const target = node.operator.startsWith('->') ? node.rhs : node.lhs;
+	return RSymbol.is(target) || RString.is(target);
 }
 
 const CallTypes: ReadonlySet<RType> = new Set([RType.FunctionCall, RType.BinaryOp, RType.UnaryOp, RType.Access, RType.Pipe, RType.IfThenElse, RType.ForLoop, RType.WhileLoop, RType.RepeatLoop, RType.Break, RType.Next]);

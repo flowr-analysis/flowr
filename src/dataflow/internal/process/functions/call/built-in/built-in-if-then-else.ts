@@ -1,7 +1,7 @@
 import { hooksUnder } from '../../../../../hooks';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
-import type { ControlDependency, DataflowInformation, KillReference } from '../../../../../info';
+import { type ControlDependency, type DataflowInformation, type KillReference, withCds } from '../../../../../info';
 import { onlyLiterals } from '../../../../../eval/resolve/resolve';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { convertFnArguments, patchFunctionCall } from '../common';
@@ -159,8 +159,9 @@ export function processIfThenElse<OtherInfo>(
 	// as an if always evaluates its condition, we add a 'reads'-edge
 	nextGraph.addEdge(rootId, cond.entryPoint, EdgeType.Reads);
 
-	const exitPoints = (then?.exitPoints ?? []).map(e => ({ ...e, cds: uncertain ? [...data.cds ?? [], { id: rootId, when: true }] : e.cds }))
-		.concat((otherwise?.exitPoints ?? []).map(e => ({ ...e, cds: uncertain ? [...data.cds ?? [], { id: rootId, when: false }] : e.cds })));
+	/* a branch's exit keeps the conditions it has within the branch, as the `return` of an `else if` without an `else` (#2810) */
+	const underBranch = (exits: DataflowInformation['exitPoints'] | undefined, when: boolean) => (exits ?? []).map(e => ({ ...e, cds: uncertain ? withCds(e.cds ?? data.cds, [{ id: rootId, when }]) : e.cds }));
+	const exitPoints = underBranch(then?.exitPoints, true).concat(underBranch(otherwise?.exitPoints, false));
 
 	const entryOrJoin = (branch: DataflowInformation | undefined) => branch ? ControlFlow.entryOf(branch) : rootId;
 	const reachesJoin = then === undefined || otherwise === undefined

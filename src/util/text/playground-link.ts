@@ -12,6 +12,8 @@ export enum PlaygroundBox {
 	Deps  = 'deps',
 	/** what the linter found */
 	Lints = 'lints',
+	/** what the functions of the script ask of their calls */
+	Contracts = 'contracts',
 	/** what the DESCRIPTION of the project says */
 	Project = 'project'
 }

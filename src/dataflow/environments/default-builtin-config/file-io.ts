@@ -4,8 +4,7 @@ import { PkgName } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { BuiltInEvalName } from '../built-in-eval-name';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
-import { AmbientStateAccessType } from '../built-in-kinds';
-import { AmbientStateName } from '../ambient-state-name';
+import { Ambient } from '../ambient-effect';
 import { SetsAnyEnvVar, CopiesFiles, Downloads } from './shared-configs';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 
@@ -13,11 +12,11 @@ import type { AnyBuiltInDefinition } from '../built-in-config';
 export const IoDefinitions = [
 	/* `here` joins its arguments below the project root, which stays implicit */
 	fn(pkg(PkgName.Here, 'here'), BuiltInProcName.DefaultReadAllArgs,
-		{ libFn: true, props: CallProp.Pure, ambient: [{ type: AmbientStateAccessType.ReadState, state: AmbientStateName.projectRoot }, { type: AmbientStateAccessType.ReadState, state: AmbientStateName.workingDirectory }], sig: sig({ '...': Forced.Value }) },
+		{ libFn: true, props: CallProp.Pure, ambient: [Ambient.projectRoot.reads, Ambient.wd.reads], sig: sig({ '...': Forced.Value }) },
 		{ evalHandler: BuiltInEvalName.StringFn }),
 	/* naming the script fixes the root, which must hold that file */
 	fn(pkg(PkgName.Here, 'i_am'), BuiltInProcName.DefaultReadAllArgs,
-		{ libFn: true, props: CallProp.Invisible | CallProp.Configures, ambient: { type: AmbientStateAccessType.SetState, state: AmbientStateName.projectRoot }, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ path: Forced.Resource, '...': Forced.Value }) }),
+		{ libFn: true, props: CallProp.Invisible | CallProp.Configures, ambient: Ambient.projectRoot.writes, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ path: Forced.Resource, '...': Forced.Value }) }),
 	fn(pkg(PkgName.Dotenv, 'load_dot_env'), BuiltInProcName.Default,
 		{ libFn: true, readAllArguments: true, hasUnknownSideEffects: true, props: CallProp.Invisible | CallProp.Configures, ambient: SetsAnyEnvVar, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ file: Forced.Resource, '...': Forced.Value }) }),
 	fn(pkg(PkgName.Readr, 'read_csv', 'read_csv2', 'read_lines', 'read_delim', 'read_fwf', 'read_tsv', 'read_table', 'read_log', 'read_lines_raw', 'read_lines_chunked', 'read_rds'),
@@ -84,8 +83,9 @@ export const IoDefinitions = [
 		{ libFn: true, tags: [SemanticCallTag.Network, SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ x: Forced.Resource, encoding: Forced.Value, '...': Forced.Value }) }),
 	fn(pkg(PkgName.Xml2, 'download_html', 'download_xml'), BuiltInProcName.Default,
 		{ props: CallProp.Invisible, libFn: true, tags: Downloads, sig: sig({ url: Forced.Resource, file: Forced.Resource | ArgProp.Written, '...': Forced.Value }) }),
-	fn([...pkg(PkgName.Fs, 'file_exists', 'dir_exists', 'file_info', 'file_size', 'dir_info'), ...base('file.exists', 'file.size', 'file.info', 'file.mtime', 'Sys.readlink')],
-		BuiltInProcName.DefaultReadAllArgs, { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ '...': Forced.Resource }) }),
+	fn([...pkg(PkgName.Fs, 'file_exists', 'dir_exists', 'file_info', 'file_size', 'dir_info'), ...base('file.exists', 'file.size', 'file.info', 'file.mtime', 'file.mode', 'Sys.readlink')],
+		/* the mode of a file is what the creation mask let through when it was written */
+		BuiltInProcName.DefaultReadAllArgs, { ambient: Ambient.umask.reads, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ '...': Forced.Resource }) }),
 	fn(pkg(PkgName.Config, 'get'), BuiltInProcName.DefaultReadAllArgs,
 		{ libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ value: Forced.Value, config: Forced.Value, file: Forced.Resource, use_parent: Forced.Flag }) }),
 	fn(pkg(PkgName.Fs, 'file_move'), BuiltInProcName.Default,

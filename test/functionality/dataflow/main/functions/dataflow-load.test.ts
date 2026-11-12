@@ -15,6 +15,8 @@ import { FlowrConfig } from '../../../../../src/config';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SexpType } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
+import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
+import { assertCfgSatisfiesProperties } from '../../../../../src/control-flow/cfg-properties';
 
 function loadedVarsGraph(varsAndTypes: ReadonlyMap<string, string>) {
 	let graph = emptyGraph();
@@ -209,6 +211,15 @@ describe('load random', withTreeSitter(parser => {
 			loadedVarsGraph(varsAndTypes),
 			{ expectIsSubgraph: true }
 		);
+
+		/* the restored names are bound after the call, so control flow reaches every one of them and goes on from the last */
+		it('the restored names are part of the control flow', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+			analyzer.addRequest(`load("${file}")\nprint(1)`);
+			const loaded = [...(await analyzer.dataflow()).graph.vertices(true)].filter(([id]) => String(id).includes(':loaded:'));
+			expect(loaded.length).toBeGreaterThan(0);
+			expect(assertCfgSatisfiesProperties(await analyzer.controlflow())).toBe(true);
+		});
 	});
 
 	describe('overwrite behavior', () => {

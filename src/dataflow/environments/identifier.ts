@@ -2,9 +2,9 @@ import type { AmbientStateName } from './ambient-state-name';
 import type { AttachedBuiltIn, BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
 import type { Accessor } from '../../util/accessor';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ControlDependency } from '../info';
+import type { ControlDependency, ExitPoint  } from '../info';
 import { escapeRegex, splitRQuotes } from '../../util/text/strings';
-import { baseRExportOwner } from '../../util/r-base-packages';
+import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 import type { REnvironmentInformation } from './environment';
 import type { Origin } from '../origin/dfg-get-origin';
 /* type-only, as the value import would cycle back through the graph helpers */
@@ -93,6 +93,11 @@ export const Identifier = {
 		}
 		return id.includes('::') ? JSON.stringify(id) : id;
 	}) as Accessor<Identifier, string>,
+	/** {@link Identifier.toString} as R reads it where the base packages R attaches on startup are on the search path: a name of theirs alone, any other qualified. */
+	toPreludeString(this: void, id: Identifier): string {
+		const namespace = Identifier.getNamespace(id);
+		return namespace === undefined || AttachedBasePackageSet.has(namespace) ? Identifier.getName(id) : Identifier.toString(id);
+	},
 	/** Check if two identifiers match. */
 	matches(this: void, id: Identifier, target: Identifier, s3: boolean = false): boolean {
 		const idName = Identifier.getName(id);
@@ -336,6 +341,12 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	readonly iterated?:        boolean
 	/** The ambient state reading this identifier may change, as forcing a promise (`delayedAssign`) whose code writes it does. */
 	readonly forces?:          readonly AmbientStateName[]
+	/** The variables forcing the promise this identifier binds (`delayedAssign("y", x <- TRUE)`) may write, which a read of it may define. */
+	readonly forcedWrites?:    readonly NamedInGraphIdentifierDefinition[]
+	/** How forcing the promise this identifier binds may leave the function, `delayedAssign("p", return(1))` returning from it, which a read of it may do. */
+	readonly forcedExits?:     readonly ExitPoint[]
+	/** The ambient state forcing the promise this identifier binds reads, which it reads where it is forced. */
+	readonly forcedReads?:     readonly AmbientStateName[]
 	/** Whether the ambient state is only assumed written, by a body flowR cannot see. */
 	readonly assumed?:         true
 	/** For a registered finalizer, the variable holding the object it is registered for. */

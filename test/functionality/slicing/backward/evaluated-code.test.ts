@@ -51,7 +51,7 @@ describe('Slicing code that is evaluated indirectly', withTreeSitter(parser => {
 	testSlice('an expression evaluated by a function called in a loop',
 		'e <- quote(w <<- w + 1)\nw <- 1\nf <- function() eval(e)\nfor(i in 1:3) f()\nprint(w)', '5@print', 'e <- quote(w <<- w + 1)\nw <- 1\nf <- function() eval(e)\nfor(i in 1:3) f()\nprint(w)');
 	testSlice('an expression evaluated by a function called via lapply',
-		'e <- quote(w <<- w + 1)\nw <- 1\nf <- function(i) eval(e)\ninvisible(lapply(1:3, f))\nprint(w)', '5@print', 'e <- quote(w <<- w + 1)\nw <- 1\nf <- function(i) eval(e)\nlapply(1:3, f)\nprint(w)');
+		'e <- quote(w <<- w + 1)\nw <- 1\nf <- function(i) eval(e)\ninvisible(lapply(1:3, f))\nprint(w)', '5@print', 'e <- quote(w <<- w + 1)\nw <- 1\nf <- function(i) eval(e)\ninvisible(lapply(1:3, f))\nprint(w)');
 	testSlice('an expression evaluated by a recursive function',
 		'e <- quote(w <<- w + 1)\nw <- 1\nf <- function(n) { eval(e); if(n > 1) f(n - 1) }\nf(3)\nprint(w)', '5@print', 'e <- quote(w <<- w + 1)\nw <- 1\nf <- function(n) {\n        eval(e)\n        if(n > 1) f(n - 1)\n    }\nf(3)\nprint(w)');
 	testSlice('an expression evaluated by a function another function calls',

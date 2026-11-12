@@ -13,6 +13,9 @@ import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/d
 import { extractCfg } from '../../../../../src/control-flow/control-flow-graph';
 import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
+import { EdgeType } from '../../../../../src/dataflow/graph/edge';
+import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
+import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
 
 assumeLoadedPackages('dplyr', 'magrittr', 'maps', 'plyr', 'inferference');
 
@@ -172,14 +175,14 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		assertSliced(label('A call that may raise in a body passed as an argument within try aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings', 'formals-named']), shell, 'x <- 1\nf <- function() { g(); x <<- 2 }\nh <- function(fn) fn()\ntry(h(f), silent = TRUE)\nprint(x)', ['5@print'], 'x <- 1\nf <- function() {\n        g()\n        x <<- 2\n    }\nh <- function(fn) fn()\ntry(h(f), silent = TRUE)\nprint(x)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
 		assertSliced(label('A call that may raise in an S3 method dispatched within try aborts the body', ['name-normal', 'call-normal', 'newlines', 'strings', 'oop-s3']), shell, 'x <- 1\nf <- function(o) UseMethod("f")\nf.default <- function(o) { g(); x <<- 2 }\ntry(f(1), silent = TRUE)\nprint(x)', ['5@print'], 'x <- 1\nf <- function(o) UseMethod("f")\nf.default <- function(o) {\n        g()\n        x <<- 2\n    }\ntry(f(1), silent = TRUE)\nprint(x)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
 		assertSliced(label('A body called outside of any try keeps no earlier call', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nh <- function() 3\nf <- function() { h(); x <<- 2 }\nf()\nprint(x)', ['5@print'], 'f <- function() x <<- 2\nf()\nprint(x)', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
-		assertSliced(label('With warn 2 set in a function never called a warning leaves the assignment', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nf <- function() options(warn = 2)\ntry({ log(-1); x <- 5 }, silent = TRUE)\nprint(x)', ['4@print'], 'f <- function() options(warn = 2)\nx <- 5\nprint(x)', { expectedOutput: '[1] 5', expectedSliceOutput: '[1] 5' });
+		assertSliced(label('With warn 2 set in a function never called a warning leaves the assignment', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nf <- function() options(warn = 2)\ntry({ log(-1); x <- 5 }, silent = TRUE)\nprint(x)', ['4@print'], 'x <- 1\nf <- function() options(warn = 2)\ntry({ log(-1); x <- 5 }, silent = TRUE)\nprint(x)', { expectedOutput: '[1] 5', expectedSliceOutput: '[1] 5' });
 		assertSliced(label('With warn 2 a warning aborts the assignment in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'options(warn = 2)\nx <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx\noptions(warn = 0)', ['4@x'], 'options(warn = 2)\nx <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx\noptions(warn = 0)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
 		assertSliced(label('With warn 2 a warning aborts the loop in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'options(warn = 2)\nn <- 0\ntry(for(i in 1:3) { n <- n + 1; log(-1) }, silent = TRUE)\nn\noptions(warn = 0)', ['4@n'], 'options(warn = 2)\nn <- 0\ntry(for(i in 1:3) { n <- n + 1; log(-1) }, silent = TRUE)\nn\noptions(warn = 0)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
 		assertSliced(label('With warn 2 a warning aborts the super-assignment of a called function', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'options(warn = 2)\nx <- 1\nf <- function() { log(-1); x <<- 2 }\ntry(f(), silent = TRUE)\nx\noptions(warn = 0)', ['5@x'], 'options(warn = 2)\nx <- 1\nf <- function() {\n        log(-1)\n        x <<- 2\n    }\ntry(f(), silent = TRUE)\nx\noptions(warn = 0)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
 		assertSliced(label('With warn 2 set in a function a warning aborts the try block', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\nf <- function() options(warn = 2)\nf()\ntry({ log(-1); x <- 5 }, silent = TRUE)\nx\noptions(warn = 0)', ['5@x'], 'x <- 1\nf <- function() options(warn = 2)\nf()\ntry({ log(-1); x <- 5 }, silent = TRUE)\nx\noptions(warn = 0)', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
-		assertSliced(label('Without warn 2 a warning leaves the assignment in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx', ['3@x'], 'x <- as.numeric("a")\nx', { expectedOutput: '[1] NA', expectedSliceOutput: '[1] NA' });
-		assertSliced(label('With warn reset before the try a warning leaves the assignment', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'options(warn = 2)\noptions(warn = 0)\nx <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx', ['5@x'], 'options(warn = 2)\noptions(warn = 0)\nx <- as.numeric("a")\nx', { expectedOutput: '[1] NA', expectedSliceOutput: '[1] NA' });
-		assertSliced(label('Without warn 2 a warning leaves the loop in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'n <- 0\ntry(for(i in 1:3) { n <- n + 1; log(-1) }, silent = TRUE)\nn', ['3@n'], 'n <- 0\nfor(i in 1:3) n <- n + 1\nn', { expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' });
+		assertSliced(label('Without warn 2 a warning leaves the assignment in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'x <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx', ['3@x'], 'x <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx', { expectedOutput: '[1] NA', expectedSliceOutput: '[1] NA' });
+		assertSliced(label('With warn reset before the try a warning leaves the assignment', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'options(warn = 2)\noptions(warn = 0)\nx <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx', ['5@x'], 'options(warn = 2)\noptions(warn = 0)\nx <- 1\ntry(x <- as.numeric("a"), silent = TRUE)\nx', { expectedOutput: '[1] NA', expectedSliceOutput: '[1] NA' });
+		assertSliced(label('Without warn 2 a warning leaves the loop in try', ['name-normal', 'call-normal', 'newlines', 'strings']), shell, 'n <- 0\ntry(for(i in 1:3) { n <- n + 1; log(-1) }, silent = TRUE)\nn', ['3@n'], 'n <- 0\ntry(for(i in 1:3) { n <- n + 1; log(-1) }, silent = TRUE)\nn', { expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' });
 	});
 	describe('Files', () => {
 		const caps = ['name-normal', 'call-normal', 'newlines', 'strings'] as const;
@@ -195,7 +198,8 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		assertSliced(label('A numbered device file stands for others', [...caps]), shell, 'png("p%03d.png")\nplot(1)\ndev.off()\nr <- readBin("p001.png", "raw")\nprint(r)', ['5@r'], 'png("p%03d.png")\nplot(1)\ndev.off()\nr <- readBin("p001.png", "raw")\nr');
 		assertSliced(label('Closing a device writes only its file', [...caps]), shell, 'pdf("a.pdf")\nplot(1)\ndev.off()\nr <- read.csv("b.csv")\nprint(r)', ['5@r'], 'r <- read.csv("b.csv")\nr');
 		assertSliced(label('A read of the device file keeps the plot', [...caps]), shell, 'pdf("a.pdf")\nplot(1)\ndev.off()\nr <- readBin("a.pdf", "raw")\nprint(r)', ['5@r'], 'pdf("a.pdf")\nplot(1)\ndev.off()\nr <- readBin("a.pdf", "raw")\nr');
-		assertSliced(label('Closing a device within a function may write any file', [...caps, 'normal-definition']), shell, 'f <- function() dev.off()\npng("a.png")\nplot(1)\nf()\nr <- readBin("b.png", "raw")\nprint(r)', ['6@r'], 'f <- function() dev.off()\nf()\nr <- readBin("b.png", "raw")\nr');
+		/* the file a close we cannot place writes may be the one of the device, which holds what is drawn on it */
+		assertSliced(label('Closing a device within a function may write any file', [...caps, 'normal-definition']), shell, 'f <- function() dev.off()\npng("a.png")\nplot(1)\nf()\nr <- readBin("b.png", "raw")\nprint(r)', ['6@r'], 'f <- function() dev.off()\npng("a.png")\nplot(1)\nf()\nr <- readBin("b.png", "raw")\nr');
 		const ggsave = 'library(ggplot2)\nggplot(mtcars, aes(mpg, wt)) + geom_point()\nggsave("a.png")\nr <- read.csv("b.csv")\ns <- readBin("a.png", "raw")';
 		assertSliced(label('ggsave writes only its file', [...caps, 'library-loading']), shell, ggsave, ['4@r'], 'r <- read.csv("b.csv")');
 		assertSliced(label('ggsave saves the last plot', [...caps, 'library-loading']), shell, ggsave, ['5@s'], 'library(ggplot2)\nggplot(mtcars, aes(mpg, wt)) + geom_point()\nggsave("a.png")\ns <- readBin("a.png", "raw")');
@@ -745,6 +749,7 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 			optionCase('An overwritten option is dropped', 'options(digits=2)\noptions(digits=4)\nprint(1)', '3@print', 'options(digits=4)\nprint(1)');
 			// @signature built-in-options
 			optionCase('getOption reads the option it names', 'options(foo=2)\noptions(bar=3)\nx <- getOption("foo")', '3@x', 'options(foo=2)\nx <- getOption("foo")');
+			optionCase('an option removed with NULL gives the default', 'options(foo=2)\noptions(foo=NULL)\nx <- getOption("foo", 1)', '3@x', 'options(foo=NULL)\nx <- getOption("foo", 1)');
 			optionCase('getOption with a default', 'options(foo=2)\noptions(bar=3)\nx <- getOption("bar", 1)', '3@x', 'options(bar=3)\nx <- getOption("bar", 1)');
 			optionCase('getOption resolves the name', 'options(foo=2)\noptions(bar=3)\nk <- "bar"\nx <- getOption(k)', '4@x', 'options(bar=3)\nk <- "bar"\nx <- getOption(k)');
 			optionCase('getOption with an unknown name reads all options', 'f <- function(k) getOption(k)\noptions(foo=2)\noptions(bar=3)\nx <- f(u)', '4@x', 'f <- function(k) getOption(k)\noptions(foo=2)\noptions(bar=3)\nx <- f(u)');
@@ -765,7 +770,7 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 			optionCase('Setting an option between definition and call', 'options(foo=1)\ng <- function() getOption("foo")\noptions(foo=2)\nx <- g()', '4@x', 'g <- function() getOption("foo")\noptions(foo=2)\nx <- g()');
 			optionCase('getOption in an anonymous function', 'options(foo=1)\nx <- sapply(1:2, function(i) getOption("foo"))', '2@x', 'options(foo=1)\nx <- sapply(1:2, function(i) getOption("foo"))');
 			optionCase('Setting options in an anonymous function', 'invisible(sapply(1:2, function(i) options(foo=i)))\nx <- getOption("foo")', '2@x', 'invisible(sapply(1:2, function(i) options(foo=i)))\nx <- getOption("foo")');
-			optionCase('Setting options in tryCatch', 'tryCatch(options(foo=1), error=function(e) 0)\nx <- getOption("foo")', '2@x', 'options(foo=1)\nx <- getOption("foo")');
+			optionCase('Setting options in tryCatch', 'tryCatch(options(foo=1), error=function(e) 0)\nx <- getOption("foo")', '2@x', 'tryCatch(options(foo=1), error=function(e) 0)\nx <- getOption("foo")');
 			optionCase('Namespaced access', 'base::options(foo=1)\nx <- base::getOption("foo")', '2@x', 'base::options(foo=1)\nx <- base::getOption("foo")');
 			optionCase('Calling options through do.call', 'do.call(options, list(foo=1))\nx <- getOption("foo")', '2@x', 'do.call(options, list(foo=1))\nx <- getOption("foo")');
 			optionCase('Applying print', 'options(digits=3)\nx <- sapply(1:2, print)', '2@x', 'options(digits=3)\nx <- sapply(1:2, print)');
@@ -899,7 +904,7 @@ bar <- foo(l=x, c=y)`, ['8@bar'], 'foo <- function(l, c) {\n        tmp <- list(
 			assertSliced(label(name, superCaps), shell, code, [criterion], expected, { expectedOutput: out, expectedSliceOutput: out });
 		}
 		/* `<<-` searches the enclosing frames first, so this writes f's `x`, not the global one */
-		superCase('the enclosing function frame wins over the global one', 'f <- function() { x <- 2; h <- function() x <<- 9; h(); x }\nv <- f()\nv', '3@v', 'f <- function() {\n        h <- function() x <<- 9\n        h()\n        x\n    }\nv <- f()\nv', '[1] 9');
+		superCase('the enclosing function frame wins over the global one', 'f <- function() { x <- 2; h <- function() x <<- 9; h(); x }\nv <- f()\nv', '3@v', 'f <- function() {\n        x <- 2\n        h <- function() x <<- 9\n        h()\n        x\n    }\nv <- f()\nv', '[1] 9');
 		/* the write lands on f's `x`, so the global one is never touched and the call is irrelevant */
 		superCase('a write caught by an enclosing frame leaves the global one alone', 'x <- 1\nf <- function() { x <- 2; h <- function() x <<- 9; h() }\nf()\nv <- x\nv', '5@v', 'x <- 1\nv <- x\nv', '[1] 1');
 		/* control: a closure counter writes the frame it captured, so every call depends on the one before */
@@ -1377,6 +1382,16 @@ describe('Calls checked against R', withTreeSitter(parser => {
 			['setRefClass contains a class registered by name', 'setRefClass("A", fields = list(a = "numeric"))\nB <- setRefClass("B", contains = "A")\nprint(B$className)', '3@print', false],
 			['setRefClass new of a subclass', 'A <- setRefClass("A", fields = list(a = "numeric"))\nB <- setRefClass("B", contains = "A")\nb <- B$new(a = 3)\nprint(b$a)', '4@print', false],
 			['uncalled ggplot body and a later library', 'f <- 1\ng <- function() ggplot()\nprint(f)\nlibrary(ggplot2)', '3@print', true],
+			['the data set of an attached package', 'suppressMessages(library(dplyr))\nx <- 1\nprint(nrow(starwars))', '3@print', true],
+			['the data set of the package attached last', 'suppressMessages({ library(dplyr); library(ggplot2) })\nprint(nrow(mpg))', '2@print', true],
+			['the data set a function reads, attached before the call', 'f <- function() nrow(starwars)\nsuppressMessages(library(dplyr))\nprint(f())', '3@print', true],
+			['a data set found again once the binding hiding it is removed', 'mtcars$mpg[1] <- 0\nr1 <- mtcars$mpg[1]\nrm(mtcars)\nprint(c(r1, mtcars$mpg[1]))', '4@print', true],
+			['a base data set shadowed and then removed', 'iris <- "mine"\na <- iris\nrm(iris)\nprint(c(a, class(iris)))', '4@print', true],
+			['an assignment into the caller under a condition of the callee', 'f <- function(flag) if(flag) assign("pp", "set", envir = parent.frame())\npp <- "orig"\nf(FALSE)\na <- pp\nf(TRUE)\nprint(c(a, pp))', '6@print', true],
+			['a write into the frame of a closure counting with <<-', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\ncnt <- mk()\ncnt()\nenvironment(cnt)$n <- 10\nprint(cnt())', '5@print', true],
+			['a write into the frame of a closure a helper is handed', 'mk <- function() { n <- 0; function() { n <<- n + 1; n } }\nreset <- function(f, v) { environment(f)$n <- v; invisible() }\ncnt <- mk()\nreset(cnt, 20)\nprint(cnt())', '5@print', true],
+			['a field of a closure frame read back by get', 'mk <- function() { n <- 0; function() n }\ncnt <- mk()\ne <- environment(cnt)\ne$n <- 10\nprint(get("n", envir = e))', '5@print', true],
+			['a column of an attached data set', 'x <- 1\nattach(mtcars)\nprint(mean(mpg))', '3@print', false],
 			['uncalled theme body and a later library', 'f <- 1\ng <- function() theme_classic()\ncat(f, "\\n")\nlibrary(ggplot2)', '3@cat', true],
 		] as const) {
 			assertSliceMatchesR(parser, name, code, { criterion, whole: true, sigdb });
@@ -1451,8 +1466,15 @@ describe('Primer', { concurrent: false }, withShell(shell => {
 	describe('env: assign into the caller', () => {
 		const code = 'f <- function() {\n    var_name <- "x"\n    assign(var_name, 42, envir = parent.frame())\n}\nf()\nprint(x)';
 		assertSliced(sec('primer:env assign parent.frame'), shell, code, ['6@print'], 'f <- function() {\n        var_name <- "x"\n        assign(var_name, 42, envir = parent.frame())\n    }\nf()\nprint(x)', { expectedOutput: '[1] 42', expectedSliceOutput: '[1] 42' });
-		assertDataflow(sec('primer:env use of x reads the assign'), shell, code, emptyGraph().reads('6@x', '3@var_name'),
-			{ resolveIdsAsCriterion: true, expectIsSubgraph: true });
+		/* the name `var_name` evaluates to is defined, `var_name` itself is only read (#2811) */
+		test(decorateLabelContext(sec('primer:env use of x reads the assign'), ['dataflow']), async() => {
+			const result = await createDataflowPipeline(new TreeSitterExecutor(), { context: contextFromInput(code) }).allRemainingSteps();
+			const graph = result.dataflow.graph;
+			const varName = SlicingCriterion.parse('3@var_name', result.normalize.idMap);
+			const reads = Dataflow.targetsOf(graph, SlicingCriterion.parse('6@x', result.normalize.idMap), EdgeType.Reads);
+			assert.deepStrictEqual(reads, [`${varName}:assigned`]);
+			assert.isTrue(DfgVertex.isUse(graph.getVertex(varName)));
+		});
 	});
 	describe('nse', () => {
 		assertSliced(sec('primer:nse subset and with'), shell, 'df <- data.frame(x = c(-1, 2))\nsubset(df, x > 0)\nwith(df, mean(x))', ['3@with'], 'df <- data.frame(x = c(-1, 2))\nwith(df, mean(x))');

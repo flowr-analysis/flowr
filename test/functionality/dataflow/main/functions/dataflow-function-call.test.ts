@@ -275,7 +275,7 @@ a()()`, emptyGraph().autoPrints([13], true)
 	});
 
 	describe('Argument which is expression', () => {
-		assertDataflow(label('Calling with 1 + x', ['unnamed-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers', ...BuiltInOperators.byName['+'].capabilities]), ts, 'foo(1 + x)', emptyGraph().recordAmbientAccess(5, { reads: ['#options', '#rng', '#env', '#graphics', '#palette'] })
+		assertDataflow(label('Calling with 1 + x', ['unnamed-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers', ...BuiltInOperators.byName['+'].capabilities]), ts, 'foo(1 + x)', emptyGraph().recordAmbientAccess(5, { reads: ['#options', '#rng', '#env', '#graphics', '#palette', '#sink'], writes: ['#sink:output'] })
 			.use('2', 'x', { cds: [{ id: '5', when: true, byPromise: true }] })
 			.call('3', '+', [argumentInCall('1'), argumentInCall('2')], { returns: [], reads: [NodeId.toBuiltIn('+')], cds: [{ id: '5', when: true, byPromise: true }] })
 			.calls('3', NodeId.toBuiltIn('+'))
@@ -287,7 +287,7 @@ a()()`, emptyGraph().autoPrints([13], true)
 	});
 
 	describe('Argument which is anonymous function call', () => {
-		assertDataflow(label('Calling with a constant function', ['call-anonymous', 'unnamed-arguments', 'implicit-return', 'numbers']), ts, 'f(function() { 3 })', emptyGraph().recordAmbientAccess(7, { reads: ['#options', '#rng', '#env', '#graphics', '#palette'], assumed: ['#rng'] })
+		assertDataflow(label('Calling with a constant function', ['call-anonymous', 'unnamed-arguments', 'implicit-return', 'numbers']), ts, 'f(function() { 3 })', emptyGraph().recordAmbientAccess(7, { reads: ['#options', '#rng', '#env', '#graphics', '#palette', '#sink'], writes: ['#sink:output'], assumed: ['#rng'] })
 			.call('4', '{', [argumentInCall('3')], {
 				returns:     ['3'],
 				reads:       [NodeId.toBuiltIn('{')],
@@ -408,7 +408,7 @@ a(,3)`, emptyGraph().autoPrints([15], true)
 		);
 	});
 	describe('Reuse parameters in call', () => {
-		assertDataflow(label('Not giving first argument', ['named-arguments', 'unnamed-arguments', 'numbers', 'name-normal']), ts, 'a(x=3, x)', emptyGraph().recordAmbientAccess(6, { reads: ['#options', '#rng', '#env', '#graphics', '#palette'] })
+		assertDataflow(label('Not giving first argument', ['named-arguments', 'unnamed-arguments', 'numbers', 'name-normal']), ts, 'a(x=3, x)', emptyGraph().recordAmbientAccess(6, { reads: ['#options', '#rng', '#env', '#graphics', '#palette', '#sink'], writes: ['#sink:output'] })
 			.use('3', 'x', { cds: [{ id: '6', when: true, byPromise: true }] })
 			.reads('3', '2')
 			.use('4', 'x', { cds: [{ id: '6', when: true, byPromise: true }] })
@@ -419,7 +419,7 @@ a(,3)`, emptyGraph().autoPrints([15], true)
 		);
 	});
 	describe('Define in parameters', () => {
-		assertDataflow(label('Support assignments in function calls', ['function-calls', 'side-effects-in-argument', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons']), ts, 'foo(x <- 3); x', emptyGraph().autoPrints([6]).recordAmbientAccess(5, { reads: ['#options', '#rng', '#env', '#graphics', '#palette'] })
+		assertDataflow(label('Support assignments in function calls', ['function-calls', 'side-effects-in-argument', 'name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'semicolons']), ts, 'foo(x <- 3); x', emptyGraph().autoPrints([6]).recordAmbientAccess(5, { reads: ['#options', '#rng', '#env', '#graphics', '#palette', '#sink'], writes: ['#sink:output'] })
 			.use('6', 'x')
 			.reads('6', '1')
 			.call('3', '<-', [argumentInCall('1'), argumentInCall('2')], { returns: ['1'], reads: [NodeId.toBuiltIn('<-'), 2], onlyBuiltIn: true, cds: [{ id: '5', when: true, byPromise: true }] })
@@ -580,13 +580,12 @@ testFuncCorrect(1:5, sum)
 			.call('d', 'h', [])
 			.reads('d', 'u');
 		const alone = ['c', 'd'].map(c => Dataflow.callTargetsOf(c, graph));
-		expect(graph.sharingTargetWalks(() => ['c', 'd'].map(c => Dataflow.callTargetsOf(c, graph)))).toEqual(alone);
+		expect(graph.withoutSharedTargetWalks(() => ['c', 'd'].map(c => Dataflow.callTargetsOf(c, graph)))).toEqual(alone);
 		expect(alone[0]).toContain('f');
-		graph.sharingTargetWalks(() => {
-			expect(Dataflow.callTargetsOf('c', graph)).toContain('f');
-			graph.defineFunction('f2', ['r2'], { out: [], in: [], unknownReferences: [], entryPoint: 'r2', graph: new Set(['r2']), environment: defaultEnv() })
-				.definedBy('g', 'f2');
-			expect(Dataflow.callTargetsOf('c', graph)).toContain('f2');
-		});
+		/* the shared walks start anew once the graph changes */
+		expect(Dataflow.callTargetsOf('c', graph)).toContain('f');
+		graph.defineFunction('f2', ['r2'], { out: [], in: [], unknownReferences: [], entryPoint: 'r2', graph: new Set(['r2']), environment: defaultEnv() })
+			.definedBy('g', 'f2');
+		expect(Dataflow.callTargetsOf('c', graph)).toContain('f2');
 	});
 }));

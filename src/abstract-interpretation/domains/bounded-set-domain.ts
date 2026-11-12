@@ -14,7 +14,7 @@ type BoundedSetTop = typeof Top;
 /** The type of the Bottom element of the bounded set domain as empty set */
 type BoundedSetBottom = typeof SetBottom;
 /** The type of the abstract values of the bounded set domain that are Top, Bottom, or actual values */
-type BoundedSetLift<T> = BoundedSetValue<T> | BoundedSetTop | BoundedSetBottom;
+export type BoundedSetLift<T> = BoundedSetValue<T> | BoundedSetTop | BoundedSetBottom;
 
 /**
  * The bounded set abstract domain as sets of possible values bounded by a `limit` indicating the maximum number of inferred values.

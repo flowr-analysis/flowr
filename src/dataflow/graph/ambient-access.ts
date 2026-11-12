@@ -14,7 +14,9 @@ export enum AmbientAccessKind {
 	/** the state is only assumed changed by a body flowR cannot see, like `#rng` for `function(f) f()` */
 	Assumed = 'assumed',
 	/** the code changes the state in the current frame only */
-	Local = 'local'
+	Local = 'local',
+	/** the code ends the state, like `dev.off()` the active device or `sink()` the last diversion */
+	Kill = 'kills'
 }
 
 const Kinds = Object.values(AmbientAccessKind);
@@ -28,6 +30,7 @@ export interface AmbientAccess {
 	readonly [AmbientAccessKind.Write]:   Relation<AmbientStateName, NodeId>
 	readonly [AmbientAccessKind.Assumed]: Relation<AmbientStateName, NodeId>
 	readonly [AmbientAccessKind.Local]:   Relation<AmbientStateName, NodeId>
+	readonly [AmbientAccessKind.Kill]:    Relation<AmbientStateName, NodeId>
 	/** the global variables the functions the code calls may bind, by `x <<- 1` reaching the global frame or `assign("x", 1, envir = .GlobalEnv)`, with the ids of these definitions; the graph does not know them for a single call */
 	readonly variables:                   Relation<BrandedIdentifier, NodeId>
 	/** the calls tagged {@link SemanticCallTag.Graphics} (`plot`, `lines`, `par`, ...), which write the canvas only if `semantics.ambient.drawingWritesDevice` is set; the graph does not know them for a single call */
@@ -42,6 +45,7 @@ const Empty: AmbientAccess = {
 	[AmbientAccessKind.Write]:   Relation.empty(),
 	[AmbientAccessKind.Assumed]: Relation.empty(),
 	[AmbientAccessKind.Local]:   Relation.empty(),
+	[AmbientAccessKind.Kill]:    Relation.empty(),
 	variables:                   Relation.empty(),
 	draws:                       new Set()
 };
@@ -59,6 +63,7 @@ function concatAll(accesses: readonly AmbientAccess[]): AmbientAccess {
 		[AmbientAccessKind.Write]:   writes,
 		[AmbientAccessKind.Assumed]: Relation.withoutKeysOf(union(AmbientAccessKind.Assumed), writes),
 		[AmbientAccessKind.Local]:   union(AmbientAccessKind.Local),
+		[AmbientAccessKind.Kill]:    union(AmbientAccessKind.Kill),
 		variables:                   Relation.unionAll(given.map(a => a.variables)),
 		draws:                       new Set(given.flatMap(a => [...a.draws]))
 	};
@@ -83,7 +88,8 @@ export const AmbientAccess = {
 			[AmbientAccessKind.Read]:    ofKind(AmbientAccessKind.Read),
 			[AmbientAccessKind.Write]:   ofKind(AmbientAccessKind.Write),
 			[AmbientAccessKind.Assumed]: ofKind(AmbientAccessKind.Assumed),
-			[AmbientAccessKind.Local]:   ofKind(AmbientAccessKind.Local)
+			[AmbientAccessKind.Local]:   ofKind(AmbientAccessKind.Local),
+			[AmbientAccessKind.Kill]:    ofKind(AmbientAccessKind.Kill)
 		};
 	},
 	/** The state of each kind `access` accesses, without who accesses it. Mind that the order of names is not stable, so use {@link AmbientAccess.equals} to compare them. */
@@ -92,7 +98,8 @@ export const AmbientAccess = {
 			[AmbientAccessKind.Read]:    [...access[AmbientAccessKind.Read].keys()],
 			[AmbientAccessKind.Write]:   [...access[AmbientAccessKind.Write].keys()],
 			[AmbientAccessKind.Assumed]: [...access[AmbientAccessKind.Assumed].keys()],
-			[AmbientAccessKind.Local]:   [...access[AmbientAccessKind.Local].keys()]
+			[AmbientAccessKind.Local]:   [...access[AmbientAccessKind.Local].keys()],
+			[AmbientAccessKind.Kill]:    [...access[AmbientAccessKind.Kill].keys()]
 		};
 	},
 	/** Whether both access the same state in the same way, no matter by which calls. */

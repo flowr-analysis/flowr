@@ -1,5 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation } from '../../../../../info';
+import { ExitPointType } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -59,7 +60,9 @@ export function processSpecialBinOp<OtherInfo>(
 			ControlFlow.continuesWith(graph, rhs, rootId);
 		}
 		ControlFlow.branchesTo(graph, lhs, rootId, { id: rootId, when: !evalsRhs.when });
-		return { ...information, cfgEntry: ControlFlow.entryOf(lhs), cfgExit: rootId };
+		/* a jump within the right-hand side (`x || return(1)`) happens under the very dependency the side runs under, which it carries */
+		const rhsJumps = rhs?.exitPoints.filter(e => e.type !== ExitPointType.Default) ?? [];
+		return { ...information, exitPoints: information.exitPoints.concat(rhsJumps), cfgEntry: ControlFlow.entryOf(lhs), cfgExit: rootId };
 	}
 
 	return information;

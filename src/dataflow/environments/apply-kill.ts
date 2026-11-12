@@ -7,7 +7,7 @@ import type { ControlDependency, KillReference } from '../info';
 import { happensInEveryBranch, negateControlDependency, withCds } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
 import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference, InGraphIdentifierDefinition } from './identifier';
-import { anyRemovalMarker, noteRemovalMarker, removalMarkerOf } from './removal-marker';
+import { anyRemovalMarker, noteRemovalMarker, removalMarkerOf, removedNameOf } from './removal-marker';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, ReferenceType } from './identifier';
 import { withAppliedCds } from './reference-to-maybe';
@@ -103,13 +103,14 @@ function weakenAll(env: Environment, cds: readonly ControlDependency[], except?:
 	env.cache?.clear();
 }
 
-/** removes every user definition from the current frame (e.g., `rm(list = ls())`), except the re-defined names */
-function removeAllInFrame(env: Environment, except?: ReadonlySet<BrandedIdentifier>): void {
+/** removes every user definition from the current frame (e.g., `rm(list = ls())`), except the re-defined names, and records the call `killedBy` as the one that removed each */
+function removeAllInFrame(env: Environment, except?: ReadonlySet<BrandedIdentifier>, killedBy?: NodeId): void {
 	if(env.builtInEnv) {
 		return;
 	}
+	const removed: BrandedIdentifier[] = [];
 	for(const [key, defs] of env.memory) {
-		if(except?.has(key) || isAmbientState(key) || defs.every(isBuiltInDef)) {
+		if(except?.has(key) || isAmbientState(key) || defs.every(isBuiltInDef) || removedNameOf(key) !== key) {
 			continue;
 		}
 		const kept = defs.filter(isBuiltInDef);
@@ -117,6 +118,12 @@ function removeAllInFrame(env: Environment, except?: ReadonlySet<BrandedIdentifi
 			env.writableMemory.delete(key);
 		} else {
 			env.writableMemory.set(key, kept);
+		}
+		removed.push(key);
+	}
+	if(killedBy !== undefined) {
+		for(const key of removed) {
+			markRemoval(env, key, [killedBy], undefined);
 		}
 	}
 	env.cache?.clear();
@@ -236,7 +243,7 @@ function applyKillsToFrame(current: Environment, kills: readonly KillReference[]
 	for(const kill of kills) {
 		if(kill.kind === 'all') {
 			if(happensInEveryBranch(kill.cds)) {
-				removeAllInFrame(current, kill.except);
+				removeAllInFrame(current, kill.except, kill.killedBy);
 			} else {
 				weakenAll(current, (kill.cds ?? []).map(negateControlDependency), kill.except);
 			}

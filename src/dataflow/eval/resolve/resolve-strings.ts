@@ -77,9 +77,9 @@ function format(fmt: string, parts: readonly string[]): string | undefined {
  * parameter with a default. The rest take a fixed number of arguments under the names R documents.
  */
 export const StringFns = {
-	/* the joining calls, which differ only in their separator and what the argument overriding it is called */
+	/* the joining calls, `paste0` has no separator, so a `sep` is one more part */
 	paste:       { pkg: PkgName.Base, params: ['...', 'sep'], defaults: { sep: ' ' }, ignored: ['collapse'], fold: (parts: string[], sep: string) => parts.join(sep) },
-	paste0:      { pkg: PkgName.Base, params: ['...', 'sep'], defaults: { sep: '' }, ignored: ['collapse'], fold: (parts: string[], sep: string) => parts.join(sep) },
+	paste0:      { pkg: PkgName.Base, params: ['...'], ignored: ['collapse'], fold: (parts: string[]) => parts.join('') },
 	'file.path': { pkg: PkgName.Base, params: ['...', 'fsep'], defaults: { fsep: '/' }, fold: (parts: string[], fsep: string) => parts.join(fsep) },
 	sprintf:     { pkg: PkgName.Base, params: ['fmt', '...'], fold: (fmt: string, parts: string[] = []) => format(fmt, parts) },
 	/* the project root stays implicit, so the fold yields the path below it */

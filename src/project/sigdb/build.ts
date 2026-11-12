@@ -11,6 +11,7 @@ import {
 	type SigClass, type SigClassInfo, type SigDep, type SigDependencyInfo, type SigFn, type SigFunctionInfo, type SigParamInfo, type SigVersionInfo } from './schema';
 import { RVersion } from '../../util/r-version';
 import { blobTuple } from './decode';
+import type { StatedGuards } from '../../dataflow/fn/guards/built-in-guards';
 import { contentHash, dictionaryHash, shardHash } from './hash';
 import { encodeIndex, type ByteRange, type SigDbIndex, type SigShardIndexWire } from './index-format';
 import {
@@ -32,14 +33,15 @@ function noteZstdSupport(): void {
 /** resolve the effective features (everything defaults to on) */
 function resolveFeatures(f: SigDbFeatures | undefined): Required<SigDbFeatures> {
 	if(f === undefined) {
-		return { signatures: true, callGraphs: true, locations: true, dependencies: true, classes: true };
+		return { signatures: true, callGraphs: true, locations: true, dependencies: true, classes: true, contracts: true };
 	}
 	return {
 		signatures:   f.signatures   ?? true,
 		callGraphs:   f.callGraphs   ?? true,
 		locations:    f.locations    ?? true,
 		dependencies: f.dependencies ?? true,
-		classes:      f.classes      ?? true
+		classes:      f.classes      ?? true,
+		contracts:    f.contracts    ?? true
 	};
 }
 
@@ -133,6 +135,8 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 	const fns = new Pool<SigFn>();
 	const deps = new Pool<SigDep[]>();
 	const classes = new Pool<SigClass>();
+	const contracts = new Pool<StatedGuards>();
+	const contractOf: Record<number, number> = {};
 
 	const sig = (params: readonly SigParamInfo[]): number => {
 		if(!feats.signatures || params.length === 0) {
@@ -163,7 +167,14 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 			feats.locations && f.file ? strings.str(f.file) : -1, feats.locations ? f.line ?? -1 : -1];
 		const topic = f.topic && f.topic !== f.name ? strings.str(f.topic) : -1;
 		const rec: SigFn = f.reexportOf ? [...base, topic, strings.str(f.reexportOf)] : topic >= 0 ? [...base, topic] : base;
-		return fns.intern(rec.join(','), rec);
+		if(!feats.contracts || f.guards === undefined) {
+			return fns.intern(rec.join(','), rec);
+		}
+		const text = JSON.stringify(f.guards);
+		const contract = contracts.intern(text, f.guards);
+		const idx = fns.intern(`${rec.join(',')}|${contract}`, rec);
+		contractOf[idx] = contract;
+		return idx;
 	};
 	const depList = (list: readonly SigDependencyInfo[]): number => {
 		// sorted by (type, name) for a canonical, poolable form
@@ -226,7 +237,7 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 			sources[version] = strings.str(info.source);
 		}
 	}
-	const blob: PkgBlob = { sigs: sigs.items, cgs: cgs.items, fns: fns.items, versions, deps: deps.items, depsByVersion, dates, noncran: noncran.length ? noncran : undefined, sources: Object.keys(sources).length ? sources : undefined, classes: classes.items.length ? classes.items : undefined, classesByVersion: Object.keys(classesByVersion).length ? classesByVersion : undefined };
+	const blob: PkgBlob = { sigs: sigs.items, cgs: cgs.items, fns: fns.items, versions, deps: deps.items, depsByVersion, dates, noncran: noncran.length ? noncran : undefined, sources: Object.keys(sources).length ? sources : undefined, classes: classes.items.length ? classes.items : undefined, classesByVersion: Object.keys(classesByVersion).length ? classesByVersion : undefined, contracts: contracts.items.length ? contracts.items : undefined, contractOf: contracts.items.length ? contractOf : undefined };
 	return { blob, versionCount, functionCount };
 }
 

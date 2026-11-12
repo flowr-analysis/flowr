@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-08, 15:21:58 UTC (v2.17.4, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-11-11, 21:06:24 UTC (v2.17.5, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L152"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids).">DataflowGraph</span></code></a>).
 If you are interested in which features we support and which features are still to be worked on, please refer to our [flowR capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
@@ -16,7 +16,7 @@ In summary, we discuss the following topics in this wiki page:
 - [Working with the Dataflow Graph](#dfg-working)
 	- [Matching Arguments to Parameters](#dfg-matching-arguments)
 
-Please be aware that the accompanied [dataflow information](#dataflow-information) (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L259"><code><span title="Helper object for DataflowInformation .">DataflowInformation</span></code></a>) returned by _flowR_ 
+Please be aware that the accompanied [dataflow information](#dataflow-information) (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L261"><code><span title="Helper object for DataflowInformation .">DataflowInformation</span></code></a>) returned by _flowR_ 
 contains things besides the graph, like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
 Additionally, you may be interested in the [Unknown Side Effects](#unknown-side-effects), marking calls which _flowR_ is unable to handle correctly.
 
@@ -27,7 +27,7 @@ Additionally, you may be interested in the [Unknown Side Effects](#unknown-side-
 > There is also a simplified version available with <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the simplified dataflow graph (aliases: :ds*, :dfs*)">`:dataflowsimple*`</span> that does not show everything but is easier to read.
 > For small graphs, you can also use <span title="Description (Repl Command): Returns an ASCII representation of the dataflow graph (aliases: :df!)">`:dataflowascii`</span> to print the graph as ASCII art.
 > 
-> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](https://github.com/flowr-analysis/flowr/wiki/Interface)), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L748"><code><span title="Constructs a dataflow graph instance from the given JSON data, e.g. as sent by the flowR server for further analysis.">DataflowGraph::<i>fromJson</i></span></code></a> to recover the graph object.
+> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](https://github.com/flowr-analysis/flowr/wiki/Interface)), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L740"><code><span title="Constructs a dataflow graph instance from the given JSON data, e.g. as sent by the flowR server for further analysis.">DataflowGraph::<i>fromJson</i></span></code></a> to recover the graph object.
 >
 > Also, check out the [flowr-analysis/sample-analyzer-df-diff](https://github.com/flowr-analysis/sample-analyzer-df-diff) repository for a complete example project creating and comparing dataflow graphs.
 
@@ -733,7 +733,6 @@ flowchart LR
     6[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *2.1-8* (**id: 6**)
     arg: (4)`"]]
-    style 6 stroke:red,stroke-width:5px; 
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
@@ -760,7 +759,7 @@ print`"]
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
 The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
-We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
+We encountered no unknown side effects during the analysis.
 
 ```r
 x <- 1
@@ -807,7 +806,6 @@ if`"]
     12[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *3.1-8* (**id: 12**)
     arg: (10)`"]]
-    style 12 stroke:red,stroke-width:5px; 
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
@@ -857,7 +855,7 @@ print`"]
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
 The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
-We encountered unknown side effects (with ids: 12 (linked)) during the analysis.
+We encountered no unknown side effects during the analysis.
 
 ```r
 x <- 1
@@ -905,7 +903,6 @@ for`"]
     13[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *3.1-8* (**id: 13**)
     arg: (11)`"]]
-    style 13 stroke:red,stroke-width:5px; 
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
@@ -959,7 +956,7 @@ print`"]
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
 The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
-We encountered unknown side effects (with ids: 13 (linked)) during the analysis.
+We encountered no unknown side effects during the analysis.
 
 ```r
 x <- 1
@@ -1029,7 +1026,6 @@ if`"]
     18[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *4.1-8* (**id: 18**)
     arg: (16)`"]]
-    style 18 stroke:red,stroke-width:5px; 
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
@@ -1095,7 +1091,7 @@ print`"]
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
 The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
-We encountered unknown side effects (with ids: 18 (linked)) during the analysis.
+We encountered no unknown side effects during the analysis.
 
 ```r
 f <- function() x <<- 2
@@ -1256,9 +1252,9 @@ The related function argument references are defined like this:
      
       <details><summary>View more (IdentifierReference)</summary>
 
-     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L301)**   
+     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L306)**   
        An identifier reference points to a variable like `a` in `b <- a`.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L301">src/dataflow/environments/identifier.ts#L301</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L306">src/dataflow/environments/identifier.ts#L306</a></summary>
        
        ```ts
        /** An identifier reference points to a variable like `a` in `b <- a`. */
@@ -1297,7 +1293,7 @@ The related function argument references are defined like this:
     </details>
 
 There is another element of potential interest to you, the `origin` property which records how flowR created the respective function call.
-These origins may hold the name of any processor that is part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enumeration to signal that the respective processor (cf. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L397"><code>BuiltInProcessorMapper</code></a>) was responsible for creating the vertex.
+These origins may hold the name of any processor that is part of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enumeration to signal that the respective processor (cf. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L376"><code>BuiltInProcessorMapper</code></a>) was responsible for creating the vertex.
 The entry `function` signals that flowR used a processor for a user-defined function defined within the source code, `unnamed` signals that the function as an anonymous function definition.
 However, in general, flowR may use any fitting handler as an origin (see the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-proc-name.ts#L4"><code><span title="This contains all names of built-in function handlers and origins">BuiltInProcName</span></code></a> enum for a *complete* list). For example, within a access definition, flowR will correspondingly redefine the meaning of `:=` to that of the `table:assign`. 
 
@@ -1386,9 +1382,9 @@ This is hard to read in this form, as the `type` of these references is a bit-ma
 In other words, we classify the references as Argument, Argument, Argument, and the (special) empty argument type (`<>`).
 For more information on the types of references, please consult the implementation.
 
- * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L264)**   
+ * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L269)**   
    Each reference has exactly one reference type, stored as the respective number.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L264">src/dataflow/environments/identifier.ts#L264</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L269">src/dataflow/environments/identifier.ts#L269</a></summary>
    
    ```ts
    /** Each reference has exactly one reference type, stored as the respective number. */
@@ -1897,8 +1893,9 @@ For more information on the types of references, please consult the implementati
 >     %% Environment of 11 [level: 0]:
 >     %% Built-in
 >     %% 1----------------------------------------
->     %%   x:  {**x** (id: 0, type: Variable, def. @2)}
->     %%   <-: {**<-** (id: 4, type: Unknown, cds: {8+}, def. @6)}
+>     %%   x:            {**x** (id: 0, type: Variable, def. @2)}
+>     %%   <-:           {**<-** (id: 4, type: Unknown, cds: {8+}, def. @6)}
+>     %%   #sink:output: {**#sink:output** (id: 8, type: Variable, cds: {}, def. @8)}
 >     11[["`*#91;RBinaryOp#93;* **#60;#45;**
 >       *3.1-6* (**id: 11**)
 >     arg: (9, 10)`"]]
@@ -1971,10 +1968,11 @@ For more information on the types of references, please consult the implementati
 > |------|-------------|
 > | `x` | {**x** (id: 0, type: Variable, def. @2)} |
 > | `<-` | {**<-** (id: 4, type: Unknown, cds: {8+}, def. @6)} |
+> | `#sink:output` | {**#sink:output** (id: 8, type: Variable, cds: {}, def. @8)} |
 > 
 > <details><summary style="color:gray"> Parent Environment</summary>
 > 
-> _Built-in Environment (810 entries)_
+> _Built-in Environment (907 entries)_
 > 
 > </details>
 > 
@@ -2672,10 +2670,11 @@ In this case, the definition of `x` is constrained by the conditional, which is 
 | Name | Definitions |
 |------|-------------|
 | `x` | {**x** (id: 4, type: Variable, cds: {12+}, def. @6), **x** (id: 8, type: Variable, cds: {12-}, def. @10)} |
+| `#sink:output` | {**#sink:output** (id: 12, type: Variable, cds: {}, def. @12), **#sink:output** (id: 13, type: Variable, cds: {}, def. @13)} |
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (810 entries)_
+_Built-in Environment (907 entries)_
 
 </details>
 
@@ -2794,7 +2793,7 @@ The subflow is defined like this:
    
     <details><summary>View more (Omit, DataflowInformation, 'graph' | 'exitPoints')</summary>
 
-   * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L220)**   
+   * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L222)**   
      The dataflow information is one of the fundamental structures we have in the dataflow analysis.
      It is continuously updated during the dataflow analysis
      and holds its current state for the respective subtree processed.
@@ -2803,7 +2802,7 @@ The subflow is defined like this:
      You may initialize a new dataflow information with
      <code>DataflowInformation.initialize</code>
      .
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L220">src/dataflow/info.ts#L220</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L222">src/dataflow/info.ts#L222</a></summary>
      
      ```ts
      /**
@@ -2856,9 +2855,9 @@ The subflow is defined like this:
      
       <details><summary>View more (DataflowCfgInformation)</summary>
 
-     * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L183)**   
+     * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L185)**   
        The control flow information for the current DataflowInformation.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L183">src/dataflow/info.ts#L183</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L185">src/dataflow/info.ts#L185</a></summary>
        
        ```ts
        /** The control flow information for the current DataflowInformation. */
@@ -3289,7 +3288,6 @@ flowchart LR
     6[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *2.1-8* (**id: 6**)
     arg: (4)`"]]
-    style 6 stroke:red,stroke-width:5px; 
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
@@ -3317,7 +3315,7 @@ print`"]
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
 The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
-We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
+We encountered no unknown side effects during the analysis.
 
 ```r
 x <- 2
@@ -3367,7 +3365,6 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 >     9[["`*#91;RFunctionCall#93;* base#58;#58;**print**
 >       *3.1-8* (**id: 9**)
 >     arg: (7)`"]]
->     style 9 stroke:red,stroke-width:5px; 
 >     built-in:print["`Built-In:
 > print`"]
 >     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
@@ -3409,7 +3406,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
 > The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9->7, 7->3, 4->0}.
-> We encountered unknown side effects (with ids: 9 (linked)) during the analysis.
+> We encountered no unknown side effects during the analysis.
 > 
 > 
 > ```r
@@ -3932,7 +3929,7 @@ foo()
 
 Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called. To find all called definitions, 
 		please use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/origin/dfg-get-origin.ts#L93"><code><span title="Obtain the (dataflow) origin of a given node in the dfg.">getOriginInDfg</span></code></a> function, as explained in [working with the dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#dfg-working).
-		If you are interested in the call graph, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L380"><code>FlowrAnalyzer::<b>callGraph</b></code></a> and consult the [call graph wiki](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) for more information.
+		If you are interested in the call graph, refer to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L382"><code>FlowrAnalyzer::<b>callGraph</b></code></a> and consult the [call graph wiki](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) for more information.
 		
 <a id='returns'></a>
 <a id='returns-edge'> </a>
@@ -4720,7 +4717,7 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > </details>
 > 
 > Three helpers decide what such a mark means once the graph is complete:
-> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L43"><code><span title="A language object reads nothing where it is written and everything where it reaches eval, with the bindings in effect there.">Quoted</span></code></a> settles what a capture reaches when it is handed to `eval` (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L84"><code><span title="The finishing pass over a complete graph: it settles what a call really evaluates, which the call itself could not know.">Quoted::<b>finalize</b></span></code></a>),
+> <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L44"><code><span title="A language object reads nothing where it is written and everything where it reaches eval, with the bindings in effect there.">Quoted</span></code></a> settles what a capture reaches when it is handed to `eval` (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/quoted.ts#L92"><code><span title="The finishing pass over a complete graph: it settles what a call really evaluates, which the call itself could not know.">Quoted::<b>finalize</b></span></code></a>),
 > <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/nse.ts#L91"><code><span title="The parts of a call R does not evaluate the standard way.">Nse</span></code></a> models the escapes a quoting function offers (rlang's `!!` and `bquote`'s `.(x)`), and
 > <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/deferred.ts#L75"><code><span title="An expression R evaluates at a time we cannot pin down: the body a delayedAssign binds, forced at some later read of the name, or a promise a closure carries past the call that created it.">Deferred</span></code></a> links an expression R evaluates at a moment we cannot pin down, as `delayedAssign` binds one.
 > 				
@@ -5165,7 +5162,7 @@ const result = await analyzer.dataflow();
 analyzer.close();
 ```
 
-<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L899">src/documentation/wiki-dataflow-graph.ts#L899</a></i>
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L900">src/documentation/wiki-dataflow-graph.ts#L900</a></i>
 
 The call returns the dataflow _information_, with the graph in `result.graph`, which looks like this:
 
@@ -5221,14 +5218,14 @@ However, the dataflow information contains more, quite a lot of information in f
 _As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
 
 ```text
-{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}],"environment":{"current":{"id":884,"parent":"<BuiltInEnvironment>","memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}]]],"globalEnv":true},"level":0},"graph":{"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"vdef","id":0,"source":[1]}],[2,{"tag":"fcall","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:assign"]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"fcall","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[2,[[1,{"types":65}],[0,{"types":72}],["built-in:<-",{"types":5}],[3,{"types":4096}]]],[1,[[0,{"types":4096}]]],[0,[[2,{"types":4098}],[1,{"types":2}]]],[5,[[3,{"types":65}],[4,{"types":65}],["built-in:+",{"types":5}]]],[3,[[0,{"types":1}],[4,{"types":4096}]]],[4,[[5,{"types":4096}]]]],"_unknownSideEffects":[],"_ambientAccess":[[5,{"reads":["#options"],"writes":[],"assumed":[],"local":[]}]]},"entryPoint":2,"cfgEntry":1,"exitPoints":[{"type":0,"nodeId":5}],"hooks":[],".meta":{}}
+{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}],"environment":{"level":0,"current":{"id":3411,"parent":"<BuiltInEnvironment>","memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2,"value":[1]}]],["#sink:output",[{"nodeId":5,"name":"#sink:output","type":4,"definedAt":5,"cds":[]}]]],"globalEnv":true}},"graph":{"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"vdef","id":0,"source":[1]}],[2,{"tag":"fcall","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}],"origin":["builtin:assign"]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"fcall","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[2,[[1,{"types":65}],[0,{"types":72}],["built-in:<-",{"types":5}],[3,{"types":4096}]]],[1,[[0,{"types":4096}]]],[0,[[2,{"types":4098}],[1,{"types":2}]]],[5,[[3,{"types":65}],[4,{"types":65}],["built-in:+",{"types":5}]]],[3,[[0,{"types":1}],[4,{"types":4096}]]],[4,[[5,{"types":4096}]]]],"_unknownSideEffects":[],"_ambientAccess":[[5,{"reads":["#options","#sink"],"writes":["#sink:output"],"assumed":[],"local":[],"kills":[]}]]},"entryPoint":2,"cfgEntry":1,"exitPoints":[{"type":0,"nodeId":5}],"hooks":[],".meta":{}}
 ```
 
 </details>
 
 You may be interested in its implementation:
 
- * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L220)**   
+ * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L222)**   
    The dataflow information is one of the fundamental structures we have in the dataflow analysis.
    It is continuously updated during the dataflow analysis
    and holds its current state for the respective subtree processed.
@@ -5237,7 +5234,7 @@ You may be interested in its implementation:
    You may initialize a new dataflow information with
    <code>DataflowInformation.initialize</code>
    .
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L220">src/dataflow/info.ts#L220</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L222">src/dataflow/info.ts#L222</a></summary>
    
    ```ts
    /**
@@ -5290,9 +5287,9 @@ You may be interested in its implementation:
    
     <details><summary>View more (DataflowCfgInformation)</summary>
 
-   * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L183)**   
+   * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L185)**   
      The control flow information for the current DataflowInformation.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L183">src/dataflow/info.ts#L183</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L185">src/dataflow/info.ts#L185</a></summary>
      
      ```ts
      /** The control flow information for the current DataflowInformation. */
@@ -5344,10 +5341,11 @@ A summarized version of the produced environment looks like this:
 | Name | Definitions |
 |------|-------------|
 | `x` | {**x** (id: 0, type: Variable, def. @2)} |
+| `#sink:output` | {**#sink:output** (id: 5, type: Variable, cds: {}, def. @5)} |
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
-_Built-in Environment (810 entries)_
+_Built-in Environment (907 entries)_
 
 </details>
 
@@ -5382,7 +5380,7 @@ function askWhatLibraryDoes(analyzer: FlowrAnalyzer) {
 }
 ```
 
-<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L889">src/documentation/wiki-dataflow-graph.ts#L889</a></i>
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts#L890">src/documentation/wiki-dataflow-graph.ts#L890</a></i>
 
 It answers from the signature database at the versions the analysis assumes, and also from what flowR states about a package and from the `NAMESPACE` files it read.
 A package R attaches on startup (`methods`, `stats`, ...) is on the search path already, so a `Depends` on it adds no entry.
@@ -5393,8 +5391,8 @@ A signature database that records no re-exports falls back to what R reports for
 Last but not least, the information contains the single **entry point** (2) and a set of **exit points** ([5]). 
 Besides marking potential exits, the exit points also provide information about why the exit occurs and which control dependencies affect the exit.
 
-Finally, the **kill** property (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L174"><code><span title="A reference removed from scope within the current subtree (e.g., via rm). Like out references, kills bubble up so the enclosing scope can apply the removal at the right location.">KillReference</span></code></a>) tracks references that are removed from scope within the current subtree (e.g., via `rm(x)`).
-It is `undefined` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/apply-kill.ts#L215"><code><span title="Applies the given kills to a copy of env.">applyKills</span></code></a>) at the right location.
+Finally, the **kill** property (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L176"><code><span title="A reference removed from scope within the current subtree (e.g., via rm). Like out references, kills bubble up so the enclosing scope can apply the removal at the right location.">KillReference</span></code></a>) tracks references that are removed from scope within the current subtree (e.g., via `rm(x)`).
+It is `undefined` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/apply-kill.ts#L222"><code><span title="Applies the given kills to a copy of env.">applyKills</span></code></a>) at the right location.
 A definition that such a removal undid is dropped from the outgoing references, so `x <- 1; rm(x)` has an empty **out** set (a conditional removal keeps the now maybe-defined `x`).
 
 ### Unknown Side Effects
@@ -5421,6 +5419,7 @@ load`"]
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *2.7-11* (**id: 7**)
     arg: (5, 6)`"]]
+    style 7 stroke:red,stroke-width:5px; 
     built-in:_43_["`Built-In:
 #43;`"]
     style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
@@ -5458,7 +5457,7 @@ print`"]
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
 The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered unknown side effects (with ids: 3, 9 (linked)) during the analysis.
+We encountered unknown side effects (with ids: 3, 7, 9) during the analysis.
 
 ```r
 load("file")
@@ -5474,53 +5473,240 @@ as they see fit.
 
 Calls reading or changing global state (options, environment variables, the working directory, graphics devices, files, ...) are recorded in the graph with the pseudo variables (`#option:digits`, `#wd`, ...) they read and write (`_ambientAccess` if serialized as JSON).
 Use `Dataflow.sideEffects.ambientAccess(graph, scope)` to aggregate this for a file, a block, or any other set of ids (including what the functions called there access) and `Dataflow.sideEffects.ambientAccessOfFunctions(graph)` for every function. All of them, just like `graph.ambientAccessOf(id)` for a single call, answer with an `AmbientAccess` that maps the accessed state to the ids of the calls accessing it.
-Graphics calls are reported as `draws`. Set <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (boolean): Whether calls drawing on a graphics device (e.g., `plot`) count as writing to it, which the ambient state queries then report.">semantics.ambient.drawingWritesDevice</a> to also let them write the pseudo variable `#canvas`, which models what is drawn on the device.
+Graphics calls are reported as `draws`.
+Beside the state code `reads`, `writes` (only `assumed` to write for a body flowR cannot see, or `local` to the current frame), the access lists what it `kills`: the state it ends, like `dev.off()` the active device, `sink()` the last diversion, or `Sys.unsetenv("A")` the variable.
+The graphics devices form a family of states, one set per open device (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-state-name.ts#L146"><code><span title="The graphics devices, each with its graphics parameters, the calls opening and using it, its current plot, and its explicit opening.">GraphicsDevices</span></code></a>): `#graphics` holds the graphics parameters, `#device` the calls that opened the device and drew on it (a plot opens one if none is open), and `#plot` the calls drawing its current plot.
+A plot like `plot` starts a new `#plot`, an addon like `points` reads and adds to it, and closing the device with `dev.off` reads all of `#device`, so it links to the opening and everything drawn in between, while the other open devices keep their states in `#graphics:other`, `#device:other`, and `#plot:other`.
+Set <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (boolean): Whether calls drawing on a graphics device (e.g., `plot`) count as writing to it, which the ambient state queries then report.">semantics.ambient.drawingWritesDevice</a> to also let them write the pseudo variable `#canvas`, which models what is drawn on the device.
+
+#### Declaring Ambient State
+
+Every built-in states what it does to the global state in the default built-in configuration (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/default-builtin-config/index.ts#L96"><code><span title="Contains the built-in definitions recognized by flowR">DefaultBuiltinConfig</span></code></a>) as a list of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-effect.ts#L85"><code><span title="What a built-in does to the global state, one entry per part and verb: 'points adds to the plot' or 'dev.off closes the active device'. Everything a part is linked to follows from that, as the plot belongs to the active device, which a drawing opens on the fly.">AmbientEffect</span></code></a>s.
+An effect names a part of the state (its family), what the call does to it (its verb), and optionally the entries it is about (its member) and the arguments it depends on (`when` and `unless`).
+The shorthands in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-effect.ts#L116"><code><span title="The AmbientEffect s by part and verb, see AmbientEffect .">Ambient</span></code></a> keep each declaration to one line, so `points` adds to the plot and reads the graphics parameters and the palette, and `sink` opens a diversion unless it has no file and closes one otherwise:
+
+```ts
+/* shared-configs.ts */
+const BasePlot = [Ambient.par.reads, Ambient.palette.reads] as const;
+export const AddsToPlot = [Ambient.plot.adds, ...BasePlot] as const;
+export const MayAddToPlot = [{ ...Ambient.plot.adds, when: { flag: 'add' } }, { ...Ambient.plot.resets, unless: { flag: 'add' } }, ...BasePlot] as const;
+/* graphics-devices.ts */
+fn(pkg(PkgName.GrDevices, 'dev.off'), BuiltInProcName.Default, { ambient: Ambient.device.closes, ... })
+/* base-functions.ts */
+fn(base('getOption'), BuiltInProcName.Default, { ambient: { ...Ambient.option.reads, member: { from: 'parameter', signature: ['x', 'default'], names: ['x'] } }, ... })
+```
+
+The families and verbs, with the words the signature browser shows for them (both come from <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-effect.ts#L211"><code><span title="The words for every part of the global state, the one source the wiki, the signature browser, and these docs share.">AmbientFamilyInfo</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-effect.ts#L237"><code><span title="The words for every access verb, see AmbientFamilyInfo .">AmbientVerbInfo</span></code></a>):
+
+| Family | Label | What it is |
+|---|---|---|
+| `device` | graphics device | The graphics devices R draws on, one of which is active: opening one makes it the active one, closing it returns to another, and closing a device writes its file. |
+| `plot` | plot | What is drawn on the active device: a new plot replaces it, an addon like points draws on top of it, and drawing opens a device if none is open. |
+| `par` | graphics parameters | The parameters par sets for the active device, each by its name, which every later base graphics plot on that device picks up. |
+| `palette` | palette | The color palette all devices share, which a numeric color indexes into. |
+| `last-plot` | last ggplot | The ggplot last built or added to, which last_plot() returns and ggsave saves by default. |
+| `sink` | output sink | Where the console output goes: sink(file) diverts it on top of a stack, sink() ends the last diversion, which finishes what it wrote. |
+| `message-sink` | message sink | Where messages and warnings go: sink(con, type = "message") diverts them, sink(type = "message") returns them to the console. |
+| `option` | options | The options options() sets by name, like digits or scipen, which printing and many functions read. |
+| `env` | environment variables | The environment variables of the R process by name, like TZ or LANG, which R and every child process read. |
+| `locale` | locale | The locale categories like LC_COLLATE, which sorting, formatting, and messages follow. |
+| `search-path` | search path | The packages and environments attached, in which R looks up a name the code does not define. |
+| `rng` | random numbers | The state of the random number generator, which set.seed sets and every draw advances. |
+| `rng-kind` | random number kind | Which random number generator R uses, which RNGkind sets and set.seed keeps unless it is given one. |
+| `wd` | working directory | The directory relative paths start from, which setwd changes. |
+| `directories` | directories | The directories on disk, which dir.create, unlink, and file.rename change and every path to a file leads through. |
+| `files` | files | The files on disk, which a call reads or writes by the paths its arguments name. |
+| `project-root` | project root | The root here::here() builds its paths from, which here::i_am names. |
+| `lib-paths` | library paths | Where packages are installed and loaded from, which .libPaths(new) changes. |
+| `umask` | file creation mask | The permissions every new file lacks, which Sys.umask sets. |
+| `finalizers` | finalizers | The functions reg.finalizer registers to run once their object is released, which gc() may run. |
+| `text-connection` | text connection | The variable a text connection opened for writing binds, which every write to the connection changes. |
+| `error-message` | last error message | The message of the last error, which an error sets and geterrmessage() returns, so code going on after try or tryCatch caught one may read it. |
+
+| Verb | Label | What it means |
+|---|---|---|
+| `reads` | reads | The call depends on the state, so it links to the calls that set it before. |
+| `writes` | writes | The call replaces the state, so later reads link to it instead of what came before. |
+| `adds` | adds to | The call changes the state on top of what it was, so it reads it and later reads see both. |
+| `resets` | starts a new | The call starts the state anew, so later reads no longer see what came before. |
+| `kills` | removes | The call removes entries, so later reads of them see nothing set. |
+| `opens` | opens | The call opens an instance that becomes the active one, the others keep their state until they are active again. |
+| `closes` | closes | The call ends an instance, which links it to the call that opened it and to everything done with it in between. |
+| `switches` | switches | The call makes another open instance the active one. |
+| `builds` | builds an object drawing | The call builds an object that only draws once it is printed, like a ggplot. |
+
+A member says which entries of a keyed family the call is about: a constant list (`print` reads `digits`, `scipen`, and others), the names of the arguments (`Sys.setenv(A = "1")`), the unnamed arguments, or the argument of a parameter (`Sys.getenv("HOME")`).
+For an instance family, the member `every` stands for every open instance, as `dev.cur()` reports.
+A condition is `no-arguments`, `query` (only unnamed strings, as in `par("mar")`), a logical flag (`add = TRUE`), an argument for a formal with given values (`type = "message"`), or arguments beyond the leading formals (a kind for `set.seed`).
+What the arguments do not decide, as a flag held in a variable, makes the effect a maybe one.
+Tags imply more effects (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-effect.ts#L183"><code><span title="The configuration with the AmbientEffect s its tags imply added to the ones it states.">withImpliedAmbient</span></code></a>): a call tagged as reading or writing a file accesses the files its resource arguments name, an appending write (an `append` formal set to `TRUE`) reads them first, and a printing call adds to the output sink.
+
+To declare a new function, add its effects to its `ambient` field. To add a family, give it an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-effect.ts#L8"><code><span title="The parts of the global state other than the keyed ones a built-in may access, see AmbientEffect .">AmbientPart</span></code></a>, a row in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-effect.ts#L211"><code><span title="The words for every part of the global state, the one source the wiki, the signature browser, and these docs share.">AmbientFamilyInfo</span></code></a>, and the pseudo variable it lives in, in the table of families of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-ambient-state.ts#L506">src/dataflow/internal/process/functions/call/built-in/built-in-ambient-state.ts</a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-effect.ts#L302"><code><span title="The AmbientEffect s of a built-in, including those its tags imply, grouped by the part they access (a part of the active device under the device) and by verb, with the entries each access names: graphics device: opens device, reads plot, adds to plot.">ambientSummaryOf</span></code></a> turns the declaration back into words, which is how these declarations read:
+
+- `png`: graphics device: opens device / files: writes files (named by filename)
+- `plot`: graphics device: starts a new plot; reads graphics parameters / palette: reads palette
+- `points`: graphics device: adds to plot; reads graphics parameters / palette: reads palette
+- `curve`: graphics device: adds to plot if add is TRUE; starts a new plot unless add is TRUE; reads graphics parameters / palette: reads palette
+- `dev.off`: graphics device: closes device
+- `par`: graphics device: reads graphics parameters; reads graphics parameters (the unnamed arguments) if it only queries; writes graphics parameters (the names of the arguments) unless it only queries; reads plot if it only queries
+- `palette`: palette: reads palette; writes palette unless it has no arguments
+- `sink`: files: reads files (named by file); reads files (named by file) if append is TRUE; writes files (named by file) / output sink: opens sink if type is "output" or missing, unless file is missing; closes sink if file is missing, unless type is "message" / message sink: opens message sink if type is "message", unless file is missing; closes message sink if file is missing, unless type is "output" or missing
+- `print`: options: reads options (digits, width, max.print, digits.secs, useFancyQuotes, scipen, OutDec) / output sink: prints to the active sink
+- `paste`: options: reads options (scipen, OutDec)
+- `options`: options: writes options (the names of the arguments) unless it only queries; reads options (the unnamed arguments) if it only queries
+- `getOption`: options: reads options (named by x)
+- `Sys.setenv`: environment variables: writes environment variables (the names of the arguments)
+- `set.seed`: random numbers: reads generator kind; seeds random number generator; draws from random number generator if it has arguments besides seed; writes generator kind if it has arguments besides seed
+- `runif`: random numbers: draws from random number generator
+- `setwd`: working directory: reads working directory; writes working directory / directories: reads directories / files: reads files (named by dir)
+
+#### Tracking Ambient State
+
+Each part lives in global pseudo variables whose names start with `#` (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-state-name.ts#L38"><code><span title="Graphics parameters, options and other global state, tracked as global pseudo variables (#...) so readers link to the calls that set them.">AmbientStateName</span></code></a>), so a read links to the calls that may have set it like any variable read does.
+Writes to accumulating parts (the plot, the output of a sink, the files, all options at once) are maybe definitions, so merging branches and loops keeps every one of them, while a reset (a new plot) or a write of a single entry (`options(digits = 3)` writes `#option:digits`) replaces what came before.
+The graphics devices, the output sinks, and the message sink are instance families (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-state-name.ts#L146"><code><span title="The graphics devices, each with its graphics parameters, the calls opening and using it, its current plot, and its explicit opening.">GraphicsDevices</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-state-name.ts#L160"><code><span title="The diversions of the console output, a stack: sink(file) pushes one, sink() pops it and returns to the one below.">OutputSinks</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/ambient-state-name.ts#L173"><code><span title="The diversion of messages, warnings, and errors (sink(con, type = 'message')), which, other than that of the output, is no stack: sink(type = 'message') returns to the console.">MessageSinks</span></code></a>): every open instance has its own copy of the states, opening one moves the current copy to `:other`, and closing it brings another one back.
+A close reads everything the closed instance holds, its opener and every drawing or printing in between, and it records the states it ends as `kills`.
+The opener in turn reads the close, so a slice keeping the call that names the file also keeps the call that finishes it:
+
+```mermaid
+flowchart LR
+    1{{"`*#91;RString#93;* **#34;a.png#34;**
+      *1.5-11* (**id: 1**)`"}}
+    3[["`*#91;RFunctionCall#93;* grDevices#58;#58;**png**
+      *1.1-12* (**id: 3**)
+    arg: (1)`"]]
+    built-in:png["`Built-In:
+png`"]
+    style built-in:png stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    5{{"`*#91;RNumber#93;* **1**
+      *2.6* (**id: 5**)`"}}
+    7[["`*#91;RFunctionCall#93;* base#58;#58;**plot**
+      *2.1-7* (**id: 7**)
+    arg: (5)`"]]
+    built-in:plot["`Built-In:
+plot`"]
+    style built-in:plot stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    9{{"`*#91;RNumber#93;* **2**
+      *3.8* (**id: 9**)`"}}
+    11[["`*#91;RFunctionCall#93;* graphics#58;#58;**points**
+      *3.1-9* (**id: 11**)
+    arg: (9)`"]]
+    built-in:points["`Built-In:
+points`"]
+    style built-in:points stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    %% Environment of 13 [level: 0]:
+    %% Built-in
+    %% 1----------------------------------------
+    %%   #graphics:      {**#graphics** (id: 3, type: Variable, def. @3)}
+    %%   #device:        {**#device** (id: 3, type: Variable, def. @3), **#device** (id: 7, type: Variable, cds: {}, def. @7), **#device** (id: 11, type: Variable, cds: {}, def. @11)}
+    %%   #plot:          {**#plot** (id: 7, type: Variable, def. @7), **#plot** (id: 11, type: Variable, cds: {}, def. @11)}
+    %%   #device:opener: {**#device:opener** (id: 3, type: Variable, def. @3)}
+    %%   #file:a:        {**#file:a** (id: 3, type: Variable, cds: {}, def. @3)}
+    %%   #files:         {**#files** (id: 3, type: Variable, cds: {}, def. @3)}
+    13[["`*#91;RFunctionCall#93;* grDevices#58;#58;**dev.off**
+      *4.1-9* (**id: 13**)`"]]
+    built-in:dev.off["`Built-In:
+dev.off`"]
+    style built-in:dev.off stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 3
+    linkStyle 0 stroke:gray,color:gray;
+    3 -->|"reads, arg"| 1
+    3 -.->|"reads, calls"| built-in:png
+    linkStyle 2 stroke:gray;
+    3 -->|"reads"| 13
+    3 -.->|"flow"| 5
+    linkStyle 4 stroke:gray,color:gray;
+    5 -.->|"flow"| 7
+    linkStyle 5 stroke:gray,color:gray;
+    7 -->|"arg"| 5
+    7 -.->|"reads, calls"| built-in:plot
+    linkStyle 7 stroke:gray;
+    7 -->|"reads"| 3
+    7 -.->|"flow"| 9
+    linkStyle 9 stroke:gray,color:gray;
+    9 -.->|"flow"| 11
+    linkStyle 10 stroke:gray,color:gray;
+    11 -->|"arg"| 9
+    11 -.->|"reads, calls"| built-in:points
+    linkStyle 12 stroke:gray;
+    11 -->|"reads"| 7
+    11 -->|"reads"| 3
+    11 -.->|"flow"| 13
+    linkStyle 15 stroke:gray,color:gray;
+    13 -.->|"reads, calls"| built-in:dev.off
+    linkStyle 16 stroke:gray;
+    13 -->|"reads"| 3
+    13 -->|"reads"| 7
+    13 -->|"reads"| 11
+```
+
+<details>
+
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
+
+The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
+We encountered no unknown side effects during the analysis.
+
+```r
+png("a.png")
+plot(1)
+points(2)
+dev.off()
+```
+
+</details>
+
+A call through a parameter, `do.call`, or an apply function runs with arguments flowR cannot see. Then every condition may hold, a reset only adds, nothing is known to be removed, and a close may close any instance.
+A call to a function flowR knows nothing about reads all options, the environment variables, the random number generator (which it may advance), and with a graphics tag the graphics state.
+A built-in generic that dispatches to a method of the program (`print(x)` running `print.foo`) changes the state as the calls within that method do, which slicing follows.
+`getOption("k")` hands back the value the option was surely set to before, so value resolution sees `3` after `options(k = 3)`.
+
+The rules come from comparing slices with the original programs in R, among them: printing a value of a class with a method of the program prints what the method prints, messages and warnings go to a sink of their own, `sink(type = "output")` closes like `sink()`, an appending write keeps what was written before, and `invisible(...)` stays around a kept call so a slice prints no more than the program.
 
 The `load` call above degrades to an unknown side effect only because the file could not be found.
-When the referenced `.rda`/`.rdata` file _is_ resolvable, flowR instead parses it natively (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/files/flowr-rda-file.ts#L316"><code><span title="Parser for RDA files.">RDAParser</span></code></a>, supporting `gzip`- and `bzip2`-compressed files) and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-load.ts#L43"><code><span title="Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file. Example: load(test.rda) with two variables 'x' and 'y'. processLoadCall adds 'x' and 'y' to the dataflow graph and adds control dependencies between the variables and the loaded file.">processLoadCall</span></code></a> injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.
+When the referenced `.rda`/`.rdata` file _is_ resolvable, flowR instead parses it natively (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/files/flowr-rda-file.ts#L316"><code><span title="Parser for RDA files.">RDAParser</span></code></a>, supporting `gzip`- and `bzip2`-compressed files) and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-load.ts#L44"><code><span title="Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file. Example: load(test.rda) with two variables 'x' and 'y'. processLoadCall adds 'x' and 'y' to the dataflow graph and adds control dependencies between the variables and the loaded file.">processLoadCall</span></code></a> injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.
 You can disable this and always treat `load` as an unknown side effect with the <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (boolean): Whether load calls should be ignored, causing {@link processLoadCall}&#39;s behavior to be skipped.">ignoreLoadCalls</a> configuration option.
 
 #### Linked Unknown Side Effects
 
 Not all side effects are created equal in the sense that they stem from a specific function call.
-Consider R's basic [`graphics`](https://www.rdocumentation.org/packages/graphics/) which
-implicitly draws on the current device and does not explicitly link a function like `points` to the last call opening a new graphic device. In such a scenario, we use a linked side effect to mark the relation:
+Consider `sink`, which diverts all later output to a file, without `print` explicitly naming it. In such a scenario, we use a linked side effect to mark the relation:
 
 ```mermaid
 flowchart LR
-    1(["`*#91;RSymbol#93;* **data**
-      *1.6-9* (**id: 1**)`"])
+    1{{"`*#91;RString#93;* **#34;out.txt#34;**
+      *1.6-14* (**id: 1**)`"}}
+    3[["`*#91;RFunctionCall#93;* base#58;#58;**sink**
+      *1.1-15* (**id: 3**)
+    arg: (1)`"]]
+    built-in:sink["`Built-In:
+sink`"]
+    style built-in:sink stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    5(["`*#91;RSymbol#93;* **data**
+      *2.7-10* (**id: 5**)`"])
     built-in:data["`Built-In:
 data`"]
     style built-in:data stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    3[["`*#91;RFunctionCall#93;* base#58;#58;**plot**
-      *1.1-10* (**id: 3**)
-    arg: (1)`"]]
-    style 3 stroke:red,stroke-width:5px; 
-    built-in:plot["`Built-In:
-plot`"]
-    style built-in:plot stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    5(["`*#91;RSymbol#93;* **data2**
-      *2.8-12* (**id: 5**)`"])
-    7[["`*#91;RFunctionCall#93;* graphics#58;#58;**points**
-      *2.1-13* (**id: 7**)
+    7[["`*#91;RFunctionCall#93;* base#58;#58;**print**
+      *2.1-11* (**id: 7**)
     arg: (5)`"]]
-    built-in:points["`Built-In:
-points`"]
-    style built-in:points stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    1 -.->|"reads"| built-in:data
-    linkStyle 0 stroke:gray;
+    built-in:print["`Built-In:
+print`"]
+    style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     1 -.->|"flow"| 3
-    linkStyle 1 stroke:gray,color:gray;
-    3 -->|"reads, arg"| 1
-    3 -.->|"reads, calls"| built-in:plot
-    linkStyle 3 stroke:gray;
+    linkStyle 0 stroke:gray,color:gray;
+    3 -->|"arg"| 1
+    3 -.->|"reads, calls"| built-in:sink
+    linkStyle 2 stroke:gray;
     3 -.->|"flow"| 5
-    linkStyle 4 stroke:gray,color:gray;
+    linkStyle 3 stroke:gray,color:gray;
+    5 -.->|"reads"| built-in:data
+    linkStyle 4 stroke:gray;
     5 -.->|"flow"| 7
     linkStyle 5 stroke:gray,color:gray;
-    7 -->|"reads, arg"| 5
-    7 -.->|"reads, calls"| built-in:points
+    7 -->|"reads, returns, arg"| 5
+    7 -.->|"reads, calls"| built-in:print
     linkStyle 7 stroke:gray;
     7 -->|"reads"| 3
 ```
@@ -5530,16 +5716,16 @@ points`"]
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
 The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). 
-We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
+We encountered no unknown side effects during the analysis.
 
 ```r
-plot(data)
-points(data2)
+sink("out.txt")
+print(data)
 ```
 
 </details>
 
-Such side effects are not marked explicitly (with a big edge) but they are part of the unknown side effects: [3 (linked)].
+Such side effects are not marked explicitly (with a big edge) but they are part of the unknown side effects: [].
 Additionally, we express this by a [`reads`](#reads) edge.
 	
 <h2 id="perspectives">Perspectives on the Dataflow Graph</h2>
@@ -5553,7 +5739,7 @@ call graph will no longer contain information on variables, for example.
 <h3 id="perspectives-cg">Call Graphs</h3>
 
 These are simplified views on the dataflow graph, following the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/call-graph.ts#L249"><code><span title="Helper object for call-graphs, you can compute new call graphs based on CallGraph.compute .">CallGraph</span></code></a> type.
-It can be obtained, e.g., by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L380"><code>FlowrAnalyzer::<b>callGraph</b></code></a>.
+It can be obtained, e.g., by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L382"><code>FlowrAnalyzer::<b>callGraph</b></code></a>.
 These graphs only contain function definitions and function calls as vertices, and [`calls`](#calls) edges.
 Consider the following example:
 
@@ -5710,7 +5896,7 @@ alias()
 
 <h2 id="dfg-working">Working with the Dataflow Graph</h2>
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L259"><code><span title="Helper object for DataflowInformation .">DataflowInformation</span></code></a> is the core result of _flowR_ and summarizes a lot of information.
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L261"><code><span title="Helper object for DataflowInformation .">DataflowInformation</span></code></a> is the core result of _flowR_ and summarizes a lot of information.
 Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions.
 Generally, we recommend you check out the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/df-helper.ts#L32"><code><span title="This is the root helper object to work with the DataflowGraph .">Dataflow</span></code></a> helper object!
 
@@ -5740,7 +5926,7 @@ If you are interested in which features we support and which features are still 
 FlowR supports a [configurable](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr) level of value tracking&mdash;all with the goal of knowing the static value domain of a variable.
 These capabilities are exposed by the [resolve value Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Resolve-Value) and backed by two important functions:
 
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L213"><code><span title="Evaluates the value of a node in the set domain.">resolveIdToValue</span></code></a> provides an environment-sensitive (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L703"><code><span title="A ( scoped ) mapping of names to their definitions ( BuiltIns ).">REnvironmentInformation</span></code></a>)
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L213"><code><span title="Evaluates the value of a node in the set domain.">resolveIdToValue</span></code></a> provides an environment-sensitive (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L741"><code><span title="A ( scoped ) mapping of names to their definitions ( BuiltIns ).">REnvironmentInformation</span></code></a>)
 value resolution depending on if the environment is provided.
 The idea of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L213"><code><span title="Evaluates the value of a node in the set domain.">resolveIdToValue</span></code></a> is to provide a compromise between precision and performance, to
 be used _during_ and _after_ the core analysis. After the dataflow analysis completes, there are much more expensive queries possible (such as the resolution of the data frame shape, see the [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)).
@@ -5779,7 +5965,6 @@ flowchart LR
     3[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *1.1-8* (**id: 3**)
     arg: (1)`"]]
-    style 3 stroke:red,stroke-width:5px; 
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
@@ -5796,7 +5981,7 @@ print`"]
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
 The analysis ran (parse and normalize with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
-We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
+We encountered no unknown side effects during the analysis.
 
 ```r
 print(x)

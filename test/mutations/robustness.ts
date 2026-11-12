@@ -19,7 +19,7 @@ async function analyzesFully(parser: KnownParser, { code, criterion }: MutationT
 	await analyzer.callGraph();
 	const results = await analyzer.query([
 		{ type: 'dependencies' }, { type: 'linter' }, { type: 'static-slice', criteria: [criterion] }, { type: 'resolve-value', criteria: [criterion] },
-		{ type: 'inspect-fn-props' }, { type: 'inspect-exception' }, { type: 'inspect-higher-order' }, { type: 'inspect-recursion' }
+		{ type: 'inspect-fn-props' }, { type: 'inspect-fn-guards' }, { type: 'inspect-exception' }, { type: 'inspect-higher-order' }, { type: 'inspect-recursion' }
 	]);
 	for(const [type, result] of Object.entries(results)) {
 		assert.isUndefined((result as { error?: string }).error, `the ${type} query fails on:\n${code}`);

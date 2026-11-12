@@ -5,16 +5,18 @@
 import type { DataflowGraph } from '../graph/graph';
 import { FunctionSemantics } from './function-semantics';
 import { EdgeType } from '../graph/edge';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
+import type { DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
 import { DfgVertex } from '../graph/vertex';
-import type { BuiltInFnInfo, StatedProps } from '../environments/built-in-props';
-import { ArgProp, CallProp, DispatchCallees, FnSig as Sig, PropagatedProps } from '../environments/built-in-props';
+import type { StatedProps } from '../environments/built-in-props';
+import { ArgProp, CallProp, DispatchCallees, PropagatedProps } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
-import { Identifier, type BrandedIdentifier } from '../environments/identifier';
+import { Identifier } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { happensInEveryBranch } from '../info';
 import { strictnessOfEach } from './strict-function';
 import { argumentRolesOfFunctions, type ArgumentRolesOptions, type FunctionArgumentRoles, type LookupState } from './argument-roles';
+import { bindsOutside } from './frame-reflection';
+import { guardRoles } from './guards/function-guards';
 import type { FunctionStrictness } from './strict-function';
 import { Ternary } from '../../util/logic';
 import { Dataflow } from '../graph/df-helper';
@@ -40,13 +42,11 @@ export interface FunctionPropsOptions extends ArgumentRolesOptions {
  */
 export function inferFunctions(this: void, definitions: readonly NodeId[], graph: DataflowGraph, options: FunctionPropsOptions = {}): InferredFunctions {
 	const { ctx, only } = options;
-	return graph.sharingTargetWalks(() => {
-		const strict = strictnessOfEach(definitions, graph, { ctx });
-		return {
-			props: only === 'arguments' ? {} : callProps(definitions, { graph, info: builtInLookup(ctx) }, strict),
-			roles: only === 'function' ? {} : rolesOfDefinitions(definitions, graph, strict, options)
-		};
-	});
+	const strict = strictnessOfEach(definitions, graph, { ctx });
+	return {
+		props: only === 'arguments' ? {} : callProps(definitions, { graph, info: builtInLookup(ctx) }, strict),
+		roles: only === 'function' ? {} : rolesOfDefinitions(definitions, graph, strict, options)
+	};
 }
 
 /** The {@link CallProp} mask of each definition, `Strict` included and what its callees carry mixed in. */
@@ -76,6 +76,13 @@ function sameProps(a: StatedProps, b: StatedProps): boolean {
 /** The {@link ArgProp} mask of each formal, `Forced`/`Lazy` included. */
 function rolesOfDefinitions(definitions: readonly NodeId[], graph: DataflowGraph, strict: Record<NodeId, FunctionStrictness>, options: ArgumentRolesOptions): Record<NodeId, FunctionArgumentRoles> {
 	const all: Record<NodeId, FunctionArgumentRoles> = { ...argumentRolesOfFunctions(definitions, graph, options) };
+	for(const [id, bits] of Object.entries(guardRoles(definitions, graph, options))) {
+		const roles: FunctionArgumentRoles = { ...all[id] };
+		for(const [formal, bit] of Object.entries(bits)) {
+			roles[formal] = (roles[formal] ?? 0) | bit;
+		}
+		all[id] = roles;
+	}
 	for(const [id, { parameters }] of Object.entries(strict)) {
 		const roles: FunctionArgumentRoles = { ...all[id] };
 		for(const [formal, forced] of Object.entries(parameters)) {
@@ -122,23 +129,6 @@ function propsOf(id: NodeId, state: LookupState): OwnProps {
 		stated = join(stated, { props: CallProp.Invisible });
 	}
 	return { stated, callees };
-}
-
-/** the assignments binding in the frame they run in, which is a scope of the function's own */
-const FrameLocalBinders: ReadonlySet<BrandedIdentifier> = new Set(['<-', '=', '->', ':=', 'assign']);
-
-/** Whether the name is a replacement function binding in its own frame (`names(x) <- v`); the `<<-` twin does not. */
-function isFrameLocalReplacement(name: BrandedIdentifier): boolean {
-	return name.endsWith('<-') && !name.endsWith('<<-');
-}
-
-/** Whether the call binds a name beyond its own frame ({@link CallProp.Scope}): `y <<- 1`, `library(x)`, `assign` to an env do; `y <- 1` does not. */
-function bindsOutside(vertex: DataflowGraphVertexFunctionCall, info: BuiltInFnInfo | undefined): boolean {
-	const name = Identifier.getName(vertex.name);
-	if(!FrameLocalBinders.has(name) && !isFrameLocalReplacement(name)) {
-		return true;
-	}
-	return info?.sig !== undefined && Sig.posWith(Sig.layout(info.sig), vertex.args.length, ArgProp.Written).length > 0;
 }
 
 /** Whether every unconditional exit ends in a call returning invisibly; a bare value result (`function() 1`) never does. */

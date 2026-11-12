@@ -256,6 +256,7 @@ function decodedToView(pkg: BrandedNamespace, fn: DecodedFunction, version: stri
 		properties: fn.props,
 		parameters: fn.signature.map(p => compactRecord({ name: p.name, props: p.props, default: p.default })),
 		callees:    fn.callees,
+		...(fn.guards === undefined ? {} : { guards: fn.guards }),
 		...locationFields(pkg, fn, version, opts)
 	};
 }
@@ -999,7 +1000,8 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 		// a primitive like `base::+` has no entry in the package's sources, but flowR models it itself
 		const own = builtIn(q.package, q.function);
 		if(own) {
-			return { ...meta(), function: own };
+			const guards = FunctionSemantics.builtInGuards(own.name, own.package);
+			return { ...meta(), function: guards === undefined ? own : { ...own, guards } };
 		}
 		const exports = resolvedSrc.lookup(q.package, version) ?? resolvedSrc.lookup(q.package);
 		const universe = new Set<BrandedIdentifier>([

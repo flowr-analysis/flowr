@@ -21,13 +21,19 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 		assert.deepStrictEqual({ ...found }, { ...expected });
 	}
 
+	/** What the guards add is the topic of the tests of the guards, the cases here are about what the calls in a body state. */
+	const FromGuards = ArgProp.Required | ArgProp.Guarded;
+
 	/** The roles the query gives the formals of `f` for the given body, keyed by the name each is written as. */
 	function testRoles(name: string, code: string, expected: Record<string, ArgProps>) {
 		queryCase(parser, 'inspect-fn-props', name, code, ({ result, idMap }) => {
 			const found: Record<string, ArgProps> = {};
 			for(const roles of Object.values(result.roles)) {
 				for(const [formal, props] of Object.entries(roles)) {
-					found[NodeId.recoverName(Number(formal), idMap) ?? formal] = props;
+					const own = props & ~FromGuards;
+					if(own !== 0) {
+						found[NodeId.recoverName(Number(formal), idMap) ?? formal] = own;
+					}
 				}
 			}
 			assertProps(found, expected, FunctionSemantics.call.argument.words);

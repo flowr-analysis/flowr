@@ -422,7 +422,7 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 			'2@foo': [{ id: '2@x', types: [InputType.Unknown, InputType.DerivedConstant], trace: InputTraceType.Alias }]
 		});
 		testQuery('tryCatch may yield its block', "x <- tryCatch(readLines('f'), error = function(e) 'a')\nfoo(x)", q('2@foo'), {
-			'2@foo': [{ id: '2@x', types: [InputType.Constant, InputType.File], trace: InputTraceType.Alias }]
+			'2@foo': [{ id: '2@x', types: [InputType.Constant, InputType.File], trace: InputTraceType.Alias, cds: [InputType.Unknown] }]
 		});
 		testQuery('a parameter of a function handed on as a value is not bound by its direct callers', "h <- function(a) { x <- a; foo(x) }\nh('c')\ntryCatch(stop(readline()), error = h)", q('1@foo'), {
 			'1@foo': [{ id: '$9', types: [InputType.Constant, InputType.Scope, InputType.Parameter], trace: InputTraceType.Alias }]
@@ -478,7 +478,7 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 			'2@foo': [{ id: '2@f', types: [InputType.Unknown], trace: InputTraceType.Unknown }]
 		});
 		testQuery('whether a handler answers depends on the whole block', 'x <- tryCatch({ readLines("a"); 1 }, error = function(e) 2)\nfoo(x)', q('2@foo'), {
-			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.File, InputType.Constant] }]
+			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.File, InputType.Unknown, InputType.Constant] }]
 		});
 		testQuery('a namespaced call of a package outside base R is no base function', "x <- mypkg::fetch_value('n')\nfoo(x)", q('2@foo'), {
 			'2@foo': [{ id: '2@x', types: [InputType.Unknown], trace: InputTraceType.Alias }]

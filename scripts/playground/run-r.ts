@@ -6,6 +6,7 @@
 import { WebRBase, WebRVersion } from './webr-version';
 import { arraySum } from '../../src/util/collections/arrays';
 import { button, el } from '../page-lib/dom';
+import { dataViewer, type Viewed } from './data-viewer';
 import { compressToEncodedURIComponent } from 'lz-string';
 
 
@@ -153,6 +154,58 @@ const startOver = (s: Session) => `local({
 })
 rm(list = ls(all.names = TRUE))`;
 
+/** marks a line of output as a `View()` of the playground's, followed by the file that holds the table */
+const ViewMark = '\u0001flowr-view\u0001';
+/** how many rows a `View()` hands over, a table of a million rows would only freeze the page */
+const MaxViewRows = 1000;
+/**
+ * `View()` as the playground offers it, as webR has no data viewer. It sits on the search path before utils, so
+ * scripts calling `View(x)` show a table instead of failing. The table travels as a file of fields separated by
+ * the ASCII unit separator and rows by line breaks: title, row count, column names, column classes, then the rows.
+ */
+const DefineView = `local({
+	e <- new.env()
+	e$View <- function(x, title) {
+		if(missing(title)) title <- paste(deparse(substitute(x), width.cutoff = 60L)[1L], collapse = " ")
+		d <- if(is.function(x)) data.frame(code = deparse(x), stringsAsFactors = FALSE)
+			else if(is.data.frame(x)) x
+			else if(is.environment(x)) data.frame(name = sort(ls(x, all.names = TRUE)), stringsAsFactors = FALSE)
+			else tryCatch(as.data.frame(x, stringsAsFactors = FALSE), error = function(err) data.frame(value = utils::capture.output(utils::str(x)), stringsAsFactors = FALSE))
+		if(is.atomic(x) && NCOL(d) == 1L && is.null(dim(x))) names(d) <- title
+		clean <- function(v) gsub("[\\x1f\\r\\n]", " ", v)
+		cell <- function(col) if(is.list(col)) vapply(col, function(v) paste(format(v), collapse = ", "), "") else format(col, trim = TRUE, justify = "none")
+		shown <- utils::head(d, ${MaxViewRows}L)
+		cols <- lapply(shown, function(col) clean(cell(col)))
+		names <- clean(names(d))
+		classes <- vapply(d, function(col) class(col)[1L], "")
+		if(.row_names_info(d) > 0L) {
+			cols <- c(list(clean(rownames(shown))), cols)
+			names <- c("", names)
+			classes <- c("", classes)
+		}
+		rows <- if(length(cols) == 0L) character() else do.call(paste, c(unname(cols), sep = "\\x1f"))
+		f <- tempfile(fileext = ".view")
+		writeLines(c(clean(title), nrow(d), paste(names, collapse = "\\x1f"), paste(classes, collapse = "\\x1f"), rows), f, useBytes = TRUE)
+		cat("\\x01flowr-view\\x01", f, "\\n", sep = "")
+		invisible(x)
+	}
+	attach(e, name = "playground:view", pos = 2L, warn.conflicts = FALSE)
+})`;
+
+/** reads the table a `View()` wrote, or nothing if the line is no `View()` of the playground's */
+async function viewed(s: Session, line: string): Promise<Viewed | undefined> {
+	if(!line.startsWith(ViewMark)) {
+		return undefined;
+	}
+	const data = await s.r.FS.readFile(line.slice(ViewMark.length).trim()).catch(() => undefined);
+	if(data === undefined) {
+		return undefined;
+	}
+	const [title = '', rows = '0', names = '', classes = '', ...cells] = new TextDecoder().decode(data).replace(/\n$/, '').split('\n');
+	const split = (fields: string) => fields.split('\u001f');
+	return { title, rows: Number(rows), names: split(names), classes: split(classes), cells: cells.map(split) };
+}
+
 function start(): Promise<Session> {
 	session ??= (async() => {
 		await guard();
@@ -162,7 +215,8 @@ function start(): Promise<Session> {
 		return {
 			r,
 			installed: new Set(await r.evalRRaw('.packages(all.available = TRUE)', 'string[]')),
-			attached:  await r.evalRRaw(`{ saveRDS(options(), ${StartOptions}); search() }`, 'string[]')
+			/* `View` is part of how R starts here, so a fresh run keeps it */
+			attached:  await r.evalRRaw(`{ ${DefineView}; saveRDS(options(), ${StartOptions}); search() }`, 'string[]')
 		};
 	})();
 	/* a failed download should not stick, the next click tries again */
@@ -444,7 +498,13 @@ async function evaluate(code: string, wanted: () => Promise<readonly string[]>, 
 			return { said: false, took };
 		}
 		for(const entry of result.output) {
-			sink.line(await textOf(entry), classOf(entry.type));
+			const text = await textOf(entry);
+			const table = entry.type === 'stdout' ? await viewed(s, text) : undefined;
+			if(table !== undefined) {
+				sink.append(dataViewer(table));
+			} else {
+				sink.line(text, classOf(entry.type));
+			}
 		}
 		for(const image of result.images) {
 			sink.plot(canvasOf(image, plot));
@@ -495,7 +555,10 @@ export async function evalInR(code: string, packagesOf: PackageFinder, line: (te
 				into.append(canvas);
 				into.scrollTop = into.scrollHeight;
 			},
-			append: node => into.append(node),
+			append: node => {
+				into.append(node);
+				into.scrollTop = into.scrollHeight;
+			},
 			status: text => {
 				if(text.startsWith('downloading') || text.startsWith('installing')) {
 					line(text, 'note');

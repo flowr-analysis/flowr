@@ -25,7 +25,7 @@ import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-a
 import { FunctionArgument } from '../../../../../graph/graph';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { DfgVertex } from '../../../../../graph/vertex';
+import { DfgVertex, type DataflowGraphVertexInfo } from '../../../../../graph/vertex';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { Resolve } from '../../../../../environments/resolve-helper';
@@ -97,6 +97,9 @@ export function processReplacementFunction<OtherInfo>(
 	if(DfgVertex.isFunctionCall(createdVert)) {
 		createdVert.origin = [BuiltInProcName.Replacement];
 	}
+	/* the call the assignment made, or for a nested target (`names(x$a) <- v`) the replacement it continued with, takes the value last */
+	const assigned = DfgVertex.isFunctionCall(createdVert) ? createdVert : res.graph.getVertex(res.entryPoint);
+	const valueArg = DfgVertex.isFunctionCall(assigned) ? assigned.args.at(-1) : undefined;
 	const targetVert = res.graph.getVertex(RArgument.valueOf(args[0])?.info.id as NodeId);
 	if(DfgVertex.isVariableDefinition(targetVert)) {
 		(targetVert as Writable<typeof targetVert>).par = true;
@@ -125,9 +128,12 @@ export function processReplacementFunction<OtherInfo>(
 		rootId,
 		name,
 		argumentProcessResult:
-			args.map(a => {
+			args.map((a, i) => {
 				if(RArgument.isEmpty(a)) {
 					return undefined;
+				} else if(i === args.length - 1 && a.name === undefined && valueArg !== undefined && valueArg !== EmptyArgument) {
+					/* the value is where the assignment found it, the vertex of an inner replacement is not its `<-` */
+					return { entryPoint: valueArg.nodeId };
 				}
 				const entry = a.name === undefined ? RArgument.unnamedValueOf(a) : a;
 				return entry === undefined ? undefined : { entryPoint: entry.info.id };
@@ -135,6 +141,7 @@ export function processReplacementFunction<OtherInfo>(
 		origin: BuiltInProcName.Replacement,
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
+	nameReplacedValue(res.graph.getVertex(rootId));
 
 	const firstArg = RArgument.unnamedValueOf(args[0]);
 
@@ -181,4 +188,14 @@ export function processReplacementFunction<OtherInfo>(
 	// link the built-in replacement op
 	res.graph.addEdge(rootId, NodeId.toBuiltIn(Identifier.getName(name.content)), EdgeType.Calls | EdgeType.Reads);
 	return res;
+}
+/** R hands the value of `f(x) <- v` on by name, as in a call of `f<-` with `value = v`, so the call names its last argument `value`, which is how it binds to the formals of a replacement function. */
+function nameReplacedValue(vertex: DataflowGraphVertexInfo | undefined): void {
+	if(!DfgVertex.isFunctionCall(vertex)) {
+		return;
+	}
+	const last = vertex.args.at(-1);
+	if(last !== undefined && FunctionArgument.isNotEmpty(last) && !FunctionArgument.isNamed(last)) {
+		(vertex.args)[vertex.args.length - 1] = { ...last, name: 'value', valueId: last.nodeId };
+	}
 }

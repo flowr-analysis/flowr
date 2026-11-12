@@ -141,7 +141,10 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 		return isSelected(config, exprList) ? plain('{}') : [];
 	} else if(subExpressions.length === 1) {
 		if(!isSelected(config, exprList)) {
-			return subExpressions[0];
+			/* a dropped call keeps its arguments as several expressions, which a body only holds within a block */
+			const kept = exprList.children[expressions.findIndex(e => e.length > 0)];
+			const several = exprList.info.parent !== undefined && RFunctionCall.is(kept) && !isSelected(config, kept) && subExpressions[0].length > 1;
+			return several ? [...plain('{'), ...indentBy(subExpressions[0], 1), ...plain('}')] : subExpressions[0];
 		}
 		const [fst] = subExpressions;
 		const g = exprList.grouping;
@@ -263,7 +266,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		if(isSelected(config, ifThenElse)) {
 			return reconstructBodyWithHeader(
 				{ line: `if(${reconstructableSource(ifThenElse.condition)}) { } else`, indent: 0 },
-				then, '{}'
+				otherwise, '{}'
 			);
 		} else {
 			return otherwise;
@@ -348,6 +351,19 @@ function isHandedToACall(definition: RFunctionDefinition<ParentInformation>): bo
 	return definition.info.role === RoleInParent.FunctionCallArgument || definition.info.role === RoleInParent.ArgumentValue;
 }
 
+/** a definition handed to a call the slice drops is gone with it, even if the call sits in kept code: `tryCatch(return(1), error = function(e) 2)` */
+function handedToUnselectedCall(definition: RFunctionDefinition<ParentInformation>, config: ReconstructionConfiguration): boolean {
+	if(!isHandedToACall(definition)) {
+		return false;
+	}
+	for(const parent of RNode.iterateParents(definition, config.fullAst.idMap)) {
+		if(RFunctionCall.is(parent)) {
+			return !isSelected(config, parent);
+		}
+	}
+	return false;
+}
+
 function reconstructFunctionDefinition(
 	definition: RFunctionDefinition<ParentInformation>,
 	functionParameters: readonly Code[],
@@ -360,7 +376,7 @@ function reconstructFunctionDefinition(
 		const selected = isSelected(config, definition);
 		if(empty && selected) { // give function stub
 			return plain(`${definition.lexeme}(${reconstructParameters(definition.parameters).join(', ')}) { }`);
-		} else if(!selected && !hasSelectedAncestor(definition, config)) {
+		} else if(!selected && (!hasSelectedAncestor(definition, config) || (empty && handedToUnselectedCall(definition, config)))) {
 			return isHandedToACall(definition) ? [] : body;
 		}
 	}

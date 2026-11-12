@@ -323,13 +323,11 @@ export class DataflowGraph<
 		if(cache.complete) {
 			return wanted;
 		}
-		this.sharingTargetWalks(() => {
-			for(const id of this.types.get(VertexType.FunctionCall) ?? []) {
-				if(!wanted.has(id)) {
-					this.resolveInto(cache, id, this.vertexInformation.get(id), resolve);
-				}
+		for(const id of this.types.get(VertexType.FunctionCall) ?? []) {
+			if(!wanted.has(id)) {
+				this.resolveInto(cache, id, this.vertexInformation.get(id), resolve);
 			}
-		});
+		}
 		cache.complete = true;
 		return wanted;
 	}
@@ -348,36 +346,30 @@ export class DataflowGraph<
 	/** set by a `consume` merge, see {@link DataflowGraph#mergeWith|mergeWith()}; the graph must not change after that */
 	private consumed = false;
 
-	/** how many {@link DataflowGraph#sharingTargetWalks} are running, the shared walks are dropped once none is */
-	private walkSharers = 0;
+	/** how many {@link DataflowGraph#withoutSharedTargetWalks} are running */
+	private walkLoners = 0;
+	/**
+	 * The walks for call targets ({@link Dataflow.callTargetsOf}) done so far, which every later one builds on until the graph
+	 * changes (see {@link DataflowGraph#dropQualifications}): resolving the calls one by one would walk the same reads again for each.
+	 */
 	private targetWalks?: LinkedFunctionResolver;
 
-	/** Runs `fn`, sharing the walks for call targets ({@link Dataflow.callTargetsOf}) between all the calls it asks about, as long as the graph does not change. */
-	public sharingTargetWalks<T>(fn: () => T): T {
-		this.walkSharers++;
-		let result: T;
+	/**
+	 * Runs `fn` with each walk for call targets on its own: code that changes the graph after nearly every call it asks about
+	 * (as linking calls does) would only start the shared walks anew each time, which costs more than walking alone.
+	 */
+	public withoutSharedTargetWalks<T>(fn: () => T): T {
+		this.walkLoners++;
 		try {
-			result = fn();
-		} catch(e) {
-			this.stopSharingTargetWalks();
-			throw e;
-		}
-		if(result instanceof Promise) {
-			return result.finally(() => this.stopSharingTargetWalks()) as T;
-		}
-		this.stopSharingTargetWalks();
-		return result;
-	}
-
-	private stopSharingTargetWalks(): void {
-		if(--this.walkSharers === 0) {
-			this.targetWalks = undefined;
+			return fn();
+		} finally {
+			this.walkLoners--;
 		}
 	}
 
-	/** The walks shared while {@link DataflowGraph#sharingTargetWalks} runs, made by `create` on demand, else `undefined`. */
+	/** The walks shared until the graph changes, made by `create` on demand, `undefined` within {@link DataflowGraph#withoutSharedTargetWalks}. */
 	public sharedTargetWalks(create: (graph: this) => LinkedFunctionResolver): LinkedFunctionResolver | undefined {
-		return this.walkSharers === 0 ? undefined : this.targetWalks ??= create(this);
+		return this.walkLoners > 0 ? undefined : this.targetWalks ??= create(this);
 	}
 
 	/** Drops the cached qualifications, as the graph may no longer imply them. Every mutator runs through here, so the guard covers them all. */

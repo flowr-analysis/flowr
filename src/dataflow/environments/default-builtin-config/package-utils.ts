@@ -1,3 +1,4 @@
+import { AmbientSingleState } from '../built-in-kinds';
 import { sig, Forced } from './shared-signatures';
 import { fn, pkg, utils, Primitive, Overrides } from './define-helpers';
 import { Identifier, PkgName } from '../identifier';
@@ -5,6 +6,7 @@ import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
 import { CopiesFiles, Downloads } from './shared-configs';
 import type { AnyBuiltInDefinition } from '../built-in-config';
+import { Ambient } from '../ambient-effect';
 
 /** The built-in definitions of the utils package. */
 export const UtilsDefinitions = [
@@ -15,12 +17,13 @@ export const UtilsDefinitions = [
 	fn(utils('read.fwf'), BuiltInProcName.DefaultReadAllArgs, { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ file: Forced.Resource, '...': Forced.Value }) }),
 	fn(utils('download.packages'), BuiltInProcName.Default,
 		{ libFn: true, tags: [SemanticCallTag.Network, SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ pkgs: Forced.Value, destdir: Forced.Resource, '...': Forced.Value }) }),
-	fn(utils('capture.output'), BuiltInProcName.DefaultReadAllArgs,
-		{ tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ '...': Forced.Value, file: Forced.Resource | ArgProp.Optional, append: Forced.Flag, type: Forced.Flag, split: Forced.Flag }) }),
+	/* it diverts the output of its code into the value it returns, or the file it names, with `split` into the output around it as well */
+	fn(utils('capture.output'), BuiltInProcName.Default,
+		{ scope: { state: AmbientSingleState.Sink, params: ['...', 'file', 'append', 'type', 'split'], code: '...' }, ambient: { ...Ambient.sink.adds, when: { flag: 'split' } }, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ '...': Forced.Value, file: Forced.Resource | ArgProp.Optional, append: Forced.Flag, type: Forced.Flag, split: Forced.Flag }) }),
 	fn(utils('file_test'), BuiltInProcName.DefaultReadAllArgs,
 		{ tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ op: Forced.Flag, x: Forced.Resource, y: Forced.Resource }) }),
 	fn(utils('write.table', 'write.csv', 'write.csv2'), BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ x: Forced.Value, file: Forced.Resource | ArgProp.Optional }) }),
+		{ props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ x: Forced.Value, file: Forced.Resource | ArgProp.Optional, append: Forced.Flag }) }),
 	fn(utils('read.table', 'read.delim', 'read.csv2', 'read.delim2'), BuiltInProcName.DefaultReadAllArgs,
 		{ tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ file: Forced.Resource }) }),
 	fn(utils('download.file'), BuiltInProcName.DefaultReadAllArgs,

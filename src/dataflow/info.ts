@@ -145,9 +145,11 @@ export function leaveThrough(exit: ExitPoint, rootId: NodeId): ExitPoint {
  * Adds all non-default exit points to the existing list and updates the `invertExitCds` accordingly.
  */
 export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: readonly ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
+	/* an exit that follows a conditional one (`if(c) return(1); stop()`) only happens if the earlier one did not */
+	const notEarlier = invertExitCds.slice();
 	for(const ep of add) {
 		if(ep.type !== ExitPointType.Default) {
-			existing.push(ep);
+			existing.push(notEarlier.length > 0 ? { ...ep, cds: withCds(ep.cds ?? activeCds, notEarlier) } : ep);
 			const ownCds = ControlDependency.minus(ep.cds ?? [], activeCds ?? []);
 			appendCds(invertExitCds, ownCds.map(negateControlDependency));
 		}
@@ -175,7 +177,7 @@ export type KillReference =
 	/** a statically known name (carries {@link IdentifierReference#cds|cds} for conditional removals) */
 	| { readonly kind: 'named', readonly reference: IdentifierReference, /** the call performing the removal */ readonly killedBy?: NodeId }
 	/** the whole current scope is cleared, e.g., `rm(list = ls())` */
-	| { readonly kind: 'all', readonly cds?: readonly ControlDependency[], readonly except?: ReadonlySet<BrandedIdentifier> }
+	| { readonly kind: 'all', readonly cds?: readonly ControlDependency[], readonly except?: ReadonlySet<BrandedIdentifier>, /** the call performing the removal */ readonly killedBy?: NodeId }
 	/** a not statically resolvable set of names, e.g., `rm(list = someVector)` */
 	| { readonly kind: 'unknown', readonly cds?: readonly ControlDependency[], readonly except?: ReadonlySet<BrandedIdentifier> };
 

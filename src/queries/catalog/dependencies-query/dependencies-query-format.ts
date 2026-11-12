@@ -26,7 +26,8 @@ import { computeReadFunctions } from './function-info/read-functions';
 import { writeFunctionsOf } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
 import { transformFunctions } from './function-info/transform-functions';
-import { statisticsFunctions } from './function-info/statistics-functions';
+import { functionsTagged } from './function-info/tagged-functions';
+import { SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
 import type { AsyncOrSync, MarkOptional } from 'ts-essentials';
@@ -68,7 +69,7 @@ export interface DependencyCategorySettings {
 }
 
 /** the built-in categories; what each searches for is derived per configuration, see {@link defaultDependencyCategories} */
-export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'transform', 'test', 'statistics'] as const;
+export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'transform', 'test', 'statistics', 'interactive'] as const;
 export type DefaultDependencyCategoryName = typeof DefaultDependencyCategoryNames[number];
 
 /** a definition or call reached again while working it out makes nothing new */
@@ -247,7 +248,11 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 	},
 	'statistics': {
 		queryDisplayName: 'Statistics',
-		functions:        statisticsFunctions(env.builtInIndex)
+		functions:        functionsTagged(env.builtInIndex, SemanticCallTag.Statistics)
+	},
+	'interactive': {
+		queryDisplayName: 'Interactive Use',
+		functions:        functionsTagged(env.builtInIndex, SemanticCallTag.Interactive)
 	}
 });
 export type DependencyCategoryName = DefaultDependencyCategoryName | string;

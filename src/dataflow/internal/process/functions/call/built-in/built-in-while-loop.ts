@@ -94,7 +94,8 @@ export function processWhileLoop<OtherInfo>(
 	if(ControlFlow.alwaysExits(condition, data.cds)) {
 		dataflowLogger.warn(`While-Loop ${rootId} forces exit in condition, skipping rest`);
 		graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
-		return condition;
+		/* the condition's graph went into `graph` already, which a second merge refuses */
+		return { ...condition, graph };
 	}
 
 	const whenTrue: ControlDependency = { id: nameId, when: true };
@@ -104,7 +105,7 @@ export function processWhileLoop<OtherInfo>(
 	const remainingInputs = linkInputs(bodyRead, information.environment, condition.in.concat(condition.unknownReferences), graph, true);
 	applyCdToReferences(body.out, cdTrue);
 
-	const nonLocalReads = findNonLocalReads(graph, new Set(condition.in.map(i => i.nodeId)));
+	const nonLocalReads = findNonLocalReads(graph);
 	linkCircularRedefinitionsWithinALoop(graph, produceNameSharedIdMap(nonLocalReads), body.out, body.environment);
 	linkAmbientStateWithinLoop(graph, bodyRead.concat(condition.in, condition.unknownReferences), body);
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), graph);
@@ -130,7 +131,8 @@ export function processWhileLoop<OtherInfo>(
 		entryPoint:        nameId,
 		cfgEntry:          conditionEntry,
 		cfgExit:           rootId,
-		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
+		/* unless the body certainly runs, it only jumps away when it runs */
+		exitPoints:        filterOutLoopExitPoints(conditionIsAlwaysTrue ? body.exitPoints : body.exitPoints.map(e => ({ ...e, cds: [...e.cds ?? data.cds ?? [], whenTrue] }))),
 		graph,
 		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,
 		hooks:             condition.hooks.concat(conditionIsAlwaysTrue ? body.hooks : hooksUnder(body.hooks, cdTrue)),

@@ -1,19 +1,16 @@
 import { pkg, base } from './define-helpers';
 import { sig, Forced } from './shared-signatures';
 import type { BuiltInDefinitions } from '../built-in-config';
-import type { DataflowGraph } from '../../graph/graph';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { BuiltInOperators, OperatorCategory } from './base-operators';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexInfo, DfgVertex } from '../../graph/vertex';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { CascadeAction } from '../../../queries/catalog/call-context-query/cascade-action';
 import { Identifier, PkgName, type BrandedIdentifier, type BrandedNamespace } from '../identifier';
 import { ArgProp, CallProp, type FnSig, SemanticCallTag, type SemanticCallTags } from '../built-in-props';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../../util/r-base-packages';
 import { RBasePrimitives } from '../../../data/r-base-primitives.generated';
 import { RBasePackageStore } from '../../../data/r-base-packages.generated';
-import { AmbientStateAccessType, PrintingOptions } from '../built-in-kinds';
-import { AmbientStateName, KeyedState, UnknownKey } from '../ambient-state-name';
+import { NumberFormatOptions, PrintingOptions } from '../built-in-kinds';
+import { KeyedState, UnknownKey } from '../ambient-state-name';
+import { RGroupGenerics } from '../group-generics';
+import { Ambient, type AmbientFamilySummary, AmbientVerb } from '../ambient-effect';
 
 /** Which stack environment an env-returning/-transforming builtin denotes (see {@link StackEnvBuiltins}). */
 export enum StackEnvKind {
@@ -35,6 +32,8 @@ export const StackEnvBuiltins = {
 	environment:         StackEnvKind.Current,
 	'parent.env':        StackEnvKind.Parent,
 	'parent.frame':      StackEnvKind.CallerFrame,
+	/* `sys.frame(-1)` counts back from the current frame */
+	'sys.frame':         StackEnvKind.CallerFrame,
 	'as.environment':    StackEnvKind.Named,
 	/* `.env$x` reaches past the data mask */
 	'.env':              StackEnvKind.Current,
@@ -46,12 +45,15 @@ export const StackEnvBuiltins = {
 /** The package exporting each plotting function flowR models, so {@link namespacePlotFunctions} can namespace it instead of leaving it bare (bare stays always-on, which is the conservative default for an unknown owner). */
 export const PlotFunctionPackages: Readonly<Record<string, readonly BrandedIdentifier[]>> = {
 	DHARMa:     ['plotSimulatedResiduals'],
+	emmeans:    ['emmip'],
 	ape:        ['tiplabels'],
 	car:        ['densityPlot', 'qqPlot'],
-	cowplot:    ['ggdraw', 'theme_map'],
+	corrplot:   ['corrplot'],
+	cowplot:    ['ggdraw', 'plot_grid', 'theme_map'],
 	fBasics:    ['boxPlot', 'densityPlot', 'histPlot'],
 	factoextra: ['fviz_cluster', 'fviz_dend', 'fviz_mca', 'fviz_mca_biplot', 'fviz_mca_ind', 'fviz_mca_var', 'fviz_pca', 'fviz_pca_biplot', 'fviz_pca_ind', 'fviz_pca_var',
 		'fviz_screeplot'],
+	fields:     ['image.plot'],
 	forecast:   ['ggseasonplot'],
 	ggExtra:    ['ggMarginal', 'removeGrid', 'removeGridX', 'removeGridY', 'rotateTextX'],
 	ggalt:      ['geom_dumbbell', 'geom_encircle'],
@@ -92,8 +94,8 @@ export const PlotFunctionPackages: Readonly<Record<string, readonly BrandedIdent
 		'theme_light', 'theme_linedraw', 'theme_minimal', 'theme_replace', 'theme_sub_axis', 'theme_sub_axis_bottom', 'theme_sub_axis_left', 'theme_sub_axis_right',
 		'theme_sub_axis_top', 'theme_sub_axis_x', 'theme_sub_axis_y', 'theme_sub_legend', 'theme_sub_panel', 'theme_sub_plot', 'theme_sub_strip', 'theme_test', 'theme_update',
 		'theme_void', 'xlab', 'xlim', 'ylab', 'ylim'],
-	ggpubr: ['ggballoonplot', 'ggbarplot', 'ggdensity', 'ggdonutchart', 'ggdotchart', 'ggdotplot', 'ggecdf', 'ggerrorplot', 'gghistogram', 'ggline', 'ggmaplot', 'ggpaired', 'ggpie',
-		'ggqqplot', 'ggscatterhist', 'ggstripchart', 'ggviolin', 'gradient_color'],
+	ggpubr: ['ggarrange', 'ggballoonplot', 'ggbarplot', 'ggboxplot', 'ggdensity', 'ggdonutchart', 'ggdotchart', 'ggdotplot', 'ggecdf', 'ggerrorplot', 'gghistogram', 'ggline', 'ggmaplot', 'ggpaired', 'ggpie',
+		'ggqqplot', 'ggscatter', 'ggscatterhist', 'ggstripchart', 'ggviolin', 'gradient_color'],
 	ggthemes: ['scale_color_calc', 'scale_color_canva', 'scale_color_colorblind', 'scale_color_continuous_tableau', 'scale_color_economist', 'scale_color_excel',
 		'scale_color_excel_new', 'scale_color_few', 'scale_color_fivethirtyeight', 'scale_color_gdocs', 'scale_color_gradient2_tableau', 'scale_color_gradient_tableau',
 		'scale_color_hc', 'scale_color_pander', 'scale_color_ptol', 'scale_color_solarized', 'scale_color_stata', 'scale_color_tableau', 'scale_color_wsj', 'scale_colour_calc',
@@ -113,7 +115,7 @@ export const PlotFunctionPackages: Readonly<Record<string, readonly BrandedIdent
 	ggstatsplot: ['ggbarstats', 'ggbetweenstats', 'ggcoefstats', 'ggcorrmat', 'ggdotplotstats', 'gghistostats', 'ggpiestats', 'ggscatterstats', 'ggwithinstats', 'grouped_ggbarstats',
 		'grouped_ggbetweenstats', 'grouped_ggcorrmat', 'grouped_ggdotplotstats', 'grouped_gghistostats', 'grouped_ggpiestats', 'grouped_ggscatterstats',
 		'grouped_ggwithinstats'],
-	sjPlot:          ['plot_frq', 'plot_grpfrq', 'plot_likert', 'plot_models', 'plot_residuals', 'plot_scatter', 'plot_stackfrq', 'plot_xtab'],
+	sjPlot:          ['plot_frq', 'plot_grpfrq', 'plot_likert', 'plot_model', 'plot_models', 'plot_residuals', 'plot_scatter', 'plot_stackfrq', 'plot_xtab'],
 	EnhancedVolcano: ['EnhancedVolcano'],
 	qgraph:          ['centralityPlot', 'clusteringPlot', 'qgraph'],
 	semPlot:         ['semPaths'],
@@ -121,11 +123,12 @@ export const PlotFunctionPackages: Readonly<Record<string, readonly BrandedIdent
 	mirt:            ['itemplot'],
 	gplots:          ['bandplot', 'barplot2', 'boxplot2', 'bubbleplot', 'heatmap.2', 'lmplot2', 'overplot', 'plotCI', 'plotmeans', 'residplot', 'sinkplot', 'textplot'],
 	gridExtra:       ['grid.arrange'],
-	lattice:         ['bwplot', 'dotplot', 'histogram', 'splom', 'stripplot', 'trellis.device', 'xyplot'],
+	lattice:         ['bwplot', 'dotplot', 'histogram', 'levelplot', 'splom', 'stripplot', 'trellis.device', 'xyplot'],
 	leaflet:         ['leaflet'],
 	magick:          ['image_draw', 'image_graph'],
 	maps:            ['map'],
 	openintro:       ['boxPlot', 'densityPlot', 'histPlot'],
+	patchwork:       ['wrap_plots'],
 	pheatmap:        ['pheatmap'],
 	jmcm:            ['bootcurve', 'meanplot', 'regressogram'],
 	seqinr:          ['dotPlot'],
@@ -177,7 +180,7 @@ export const GgPlotCreate = ['ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', '
 	'plot_grpfrq', 'plot_likert', 'plot_models', 'plot_residuals', 'plot_scatter', 'plot_stackfrq', 'plot_xtab', 'EnhancedVolcano', 'centralityPlot',
 	'clusteringPlot'] as const;
 export const TinyPlotCrate = ['tinyplot', 'plt'] as const;
-export const GraphicsPlotCreate = ['plot', 'plot.new', 'xspline', 'map', 'curve', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'smoothScatter',
+export const GraphicsPlotCreate = ['plot', 'plot.new', 'filled.contour', 'cdplot', 'xspline', 'map', 'curve', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'smoothScatter',
 	'contour', 'persp', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'dotplot', 'histPlot', 'densityPlot', 'qqplot', 'qqPlot', 'boxPlot', 'bxp',
 	'assocplot', 'mosaicplot', 'stripchart', 'fourfoldplot', 'plot.xy', 'plot.formula', 'plot.default', 'plot.design', 'stars', 'cotabplot',
 	'pheatmap', 'spineplot', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'coplot', 'histogram', 'splom', 'leaflet', 'tm_shape',
@@ -190,8 +193,6 @@ export const PlotCreate = GraphicsPlotCreate.concat(TinyPlotCrate, GgPlotCreate)
 export const VisiblePlotCreate: ReadonlySet<string> = new Set(['xyplot', 'stripplot', 'bwplot', 'dotplot', 'histogram', 'splom', 'leaflet', 'plot_ly', 'tm_shape', 'itemplot']);
 /** the plot creators that return the plot to draw when printed, where base graphics draw at once and return something else */
 export const PlotObjectCreate: ReadonlySet<string> = new Set([...GgPlotCreate.filter(f => f !== 'grid.arrange'), 'last_plot', ...VisiblePlotCreate, 'pheatmap']);
-export const GraphicDeviceOpen = ['pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz', 'image_graph',
-	'image_draw', 'dev.new', 'trellis.device', 'raster_pdf', 'agg_png', 'agg_jpeg', 'agg_tiff', 'agg_ppm', 'agg_webp', 'agg_capture'] as const;
 export const TinyPlotAddons = ['tinyplot_add', 'plt_add'];
 /** the addons that change the theme of later plots and hand back the old one invisibly */
 export const InvisibleGgPlotAddons: readonly string[] = ['theme_update', 'theme_replace'];
@@ -250,10 +251,9 @@ export const GgPlotImplicitAddons = ['geom_count', 'geom_bin_2d', 'geom_spoke', 
 	'scale_fill_gdocs', 'scale_color_hc', 'scale_color_gdocs', 'scale_color_canva', 'scale_color_gradient_tableau', 'scale_fill_solarized',
 	'scale_fill_continuous_tableau', 'scale_colour_wsj', 'gradient_color', 'ggsurvplot_add_all'] as const;
 export const PlotFunctionsWithAddParam: Set<BrandedIdentifier> = new Set(['map', 'matplot', 'barplot', 'boxplot', 'curve', 'image', 'plotCI', 'bandplot', 'barplot2', 'bubbleplot']);
-export const GraphicsPlotAddons: BrandedIdentifier[] = ['points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
+export const GraphicsPlotAddons: BrandedIdentifier[] = ['plot.window', 'points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
 	'qqline', 'qqnorm', 'rasterImage', 'tiplabels', 'rug', 'grid', 'box', 'clip', 'matpoints', 'matlines'];
 export const GgPlotAddons = ['ggdraw', 'last_plot'];
-export const PlotAddons = GraphicsPlotAddons.concat(GgPlotImplicitAddons, ...PlotFunctionsWithAddParam);
 
 /** The packages exporting magrittr's `%>%`: the tidyverse and friends re-export the very same function. */
 export const MagrittrPipePackages = [PkgName.Magrittr, PkgName.Dplyr, PkgName.Purrr, PkgName.Stringr, PkgName.Tibble,
@@ -264,11 +264,11 @@ export const TidyEvalPackages = [PkgName.Rlang, PkgName.Dplyr, PkgName.GgPlot2] 
 /** the database a connection opens is a file: its tables are read and changed through the connection */
 export const DbConnectSig: FnSig = sig({ drv: Forced.Value, dbname: Forced.Resource, '...': Forced.Value });
 export const DbConnSig: FnSig = sig({ conn: Forced.Resource });
-export const DbReads = { type: AmbientStateAccessType.ReadFiles, sig: DbConnSig } as const;
-export const DbReadsWrites = (sig: FnSig) => [{ type: AmbientStateAccessType.ReadFiles, sig }, { type: AmbientStateAccessType.WriteFiles, sig }] as const;
+export const DbReads = { ...Ambient.files.reads, sig: DbConnSig } as const;
+export const DbReadsWrites = (sig: FnSig) => [{ ...Ambient.files.reads, sig }, { ...Ambient.files.writes, sig }] as const;
 export const DbPackages = [PkgName.Dbi, PkgName.Rsqlite, 'RPostgres', 'RMariaDB', 'odbc', 'pool'] as const;
 /** reads the files some arguments name and writes the ones its {@link ArgProp.Written} arguments name, like `file.copy` or `unzip` */
-export const SetsAnyEnvVar = [AmbientStateName.keyed(KeyedState.Env, UnknownKey), AmbientStateName.allOf(KeyedState.Env)].map(state => ({ type: AmbientStateAccessType.SetState, state }) as const);
+export const SetsAnyEnvVar = { ...Ambient.env.writes, member: { from: 'constant', keys: [UnknownKey] } } as const;
 export const CopiesFiles = [SemanticCallTag.File, SemanticCallTag.Reads, SemanticCallTag.Writes];
 /** reads what its URL (or remote object) arguments name from the network and writes the file its {@link ArgProp.Written} arguments name, like `download.file` */
 export const Downloads = [SemanticCallTag.Network, SemanticCallTag.File, SemanticCallTag.Reads, SemanticCallTag.Writes];
@@ -298,13 +298,17 @@ export const WithSig: FnSig  = sig({ data: ArgProp.NoDefault | ArgProp.Written, 
 /** what flowR states about one of the functions it defines, in the words a page shows */
 export interface StatedSignature {
 	/** the package the definition is for, `base` when it names none */
-	readonly pkg:     BrandedNamespace;
-	/** The formals flowR models, `x, ...`, or `undefined` where it declares none (not R's own declaration). */
-	readonly params?: string;
-	/** what it does, from {@link CallProps.labels} */
-	readonly props:   readonly string[];
+	readonly pkg:         BrandedNamespace;
+	/** The formals flowR models, `x, ...`, or `undefined` where it declares none; R's own where {@link StatedSignature#unverified} is not set. */
+	readonly params?:     string;
+	/** set where R's formals were unknown when the table of them was generated (the package was not installed or exports no such function), so the stated ones stay */
+	readonly unverified?: true;
+	/** what it does, from {@link CallProps.labels}, `ambient state` for every function declaring an {@link AmbientEffect} */
+	readonly props:       readonly string[];
 	/** each formal with what it is used for, from {@link ArgProps.words}; the roles read like the types R has none of */
-	readonly args?:   readonly (readonly [name: string, roles: readonly string[]])[];
+	readonly args?:       readonly (readonly [name: string, roles: readonly string[]])[];
+	/** what it does to the global state, by part and access, see {@link ambientSummaryOf} */
+	readonly ambient?:    readonly AmbientFamilySummary[];
 }
 
 /** The manual page documenting a base R primitive, for the ones not documented under their own name (a primitive is written in C, so no signature/source/help-topic extractor sees it; `sin` is documented under `Trig`). */
@@ -371,26 +375,10 @@ export function toRegex(n: readonly Identifier[]): RegExp {
 	})$`);
 }
 
-export const DeviceClose = ['dev.off', 'graphics.off'];
-
-/** `dev.off()` closes the active device, `dev.off(which)` maybe another one */
-export function closesActiveDevice(target: DataflowGraphVertexInfo): boolean {
-	if(!DfgVertex.isFunctionCall(target)) {
-		return false;
-	}
-	const name = Identifier.getName(target.name);
-	return name === 'graphics.off' || (name === 'dev.off' && target.args.length === 0);
-}
-
-/** what ggplot's `last_plot()` is: the last ggplot created or added to */
+/** what ggplot's `last_plot()` is: the last ggplot created or added to, which is no state of the device */
 export const LinkToLastGgPlot = {
 	type:     'link-to-last-call',
 	callName: toRegex((GgPlotCreate as readonly string[]).concat(GgPlotImplicitAddons, GgPlotAddons))
-} as const;
-/** what closing or exporting a device links back to: the plot calls that filled it */
-export const LinkToLastPlot = {
-	type:     'link-to-last-call',
-	callName: toRegex((GraphicDeviceOpen as readonly string[]).concat(PlotCreate, PlotAddons, GgPlotAddons, TinyPlotAddons))
 } as const;
 
 /** The internal generics: they dispatch in C rather than through `UseMethod`, so the list has to be written down. */
@@ -399,7 +387,7 @@ export const InternalGenerics: ReadonlySet<BrandedIdentifier> = new Set(['$', '[
 	'round', 'signif', 'trunc', 'cumsum', 'cumprod', 'cummax', 'cummin', 'as.character', 'as.integer', 'as.double',
 	'as.logical', 'as.complex', 'as.numeric', 'as.raw', 'is.na', 'is.nan', 'is.finite', 'is.infinite', 'is.matrix',
 	'is.numeric', 'cbind', 'rbind', 'anyNA', 'as.environment', 'as.call', 'is.array', 'log2', 'log10', 'rep', 'seq.int',
-	'xtfrm']);
+	'xtfrm', 'unlist', 'as.vector', 'lengths', 'nchar', 'rep_len', ...Object.values(RGroupGenerics).flat()]);
 
 /** Every name R dispatches on: the generated closure generics plus the {@link InternalGenerics} (no R body, so {@link fnInfoFromSignature} never sees them). */
 export const RGenerics: ReadonlySet<BrandedIdentifier> = new Set([...RBasePackageStore.generics, ...InternalGenerics]);
@@ -433,78 +421,57 @@ export function markPrimitives(definitions: BuiltInDefinitions): BuiltInDefiniti
 	return labelNames(definitions, CallProp.Primitive, n => RBasePrimitives.has(Identifier.getName(n)) && (Identifier.getNamespace(n) ?? PkgName.Base) === PkgName.Base);
 }
 
-/**
- * Whether the `add` argument of the call (named, or the positional one at `index`) is the literal `TRUE`.
- * It reads the nodes itself, as the AST helpers would make loading the configuration expensive.
- * @lintIgnore
- */
-function addsToPlot(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, index = -1): boolean {
-	const args = call.args.filter(a => typeof a === 'object');
-	const arg = args.find(a => a.name === 'add') ?? args.filter(a => a.name === undefined)[index];
-	const ref = arg === undefined ? undefined : arg.name === undefined ? arg.nodeId : arg.valueId;
-	let node = ref === undefined ? undefined : graph.idMap?.get(ref);
-	if(node?.type === RType.Argument) {
-		node = node.value;
-	}
-	return node?.type === RType.Logical && node.content === true;
-}
-
-/** Whether the call names a plot function with an `add` parameter ({@link PlotFunctionsWithAddParam}), and if so whether its `add` argument says that it appends to the existing plot, and `undefined` for any other function. */
-export function appendsToPlot(source: NodeId, graph: DataflowGraph): boolean | undefined {
-	const vertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
-	return PlotFunctionsWithAddParam.has(Identifier.getName(vertex.name)) ? addsToPlot(graph, vertex) : undefined;
-}
+/** what every base graphics plot reads */
+const BasePlot = [Ambient.par.reads, Ambient.palette.reads] as const;
+/** a base graphics plot, see {@link AmbientStateName.plot} */
+export const NewPlot = [Ambient.plot.resets, ...BasePlot] as const;
+export const AddsToPlot = [Ambient.plot.adds, ...BasePlot] as const;
+/** `curve(f, add = TRUE)` adds to the plot, `curve(f)` starts a new one */
+export const MayAddToPlot = [{ ...Ambient.plot.adds, when: { flag: 'add' } }, { ...Ambient.plot.resets, unless: { flag: 'add' } }, ...BasePlot] as const;
+/** a plot object (`ggplot`, `xyplot`), which draws once printed */
+export const BuildsPlot = Ambient.plot.builds;
+/** what building or adding to a ggplot does: the plot (the `+` the call is part of) becomes what `last_plot()` returns */
+const BuildsGgPlot = [BuildsPlot, Ambient.lastPlot.writes] as const;
+/** what queries the coordinates of the plot (`strwidth`): it reads the plot and opens a device if none is open */
+export const ReadsPlot = [Ambient.plot.reads, ...BasePlot] as const;
 
 /** what adding to a plot does */
 export const PlotAddonConfig = {
 	treatAsFnCall: {
 		'facet_grid': ['labeller']
 	},
-	hasUnknownSideEffects: {
-		type:      'link-to-last-call',
-		callName:  toRegex(PlotCreate.concat(PlotAddons)),
-		ignoreIf:  (source: NodeId, graph: DataflowGraph) => appendsToPlot(source, graph) === false,
-		cascadeIf: (targetVertex: DataflowGraphVertexInfo, _: NodeId, graph: DataflowGraph) => {
-			const target = targetVertex as DataflowGraphVertexFunctionCall;
-			/* `add = TRUE` appends to an existing plot, so the chain carries on through it */
-			return Identifier.getName(target.name) && addsToPlot(graph, target, 11) ? CascadeAction.Continue : CascadeAction.Stop;
-		}
-	},
-	tags: [SemanticCallTag.Graphics] as SemanticCallTags, sig: sig({ '...': ArgProp.Forced }) } as const;
+	ambient: BuildsGgPlot,
+	tags:    [SemanticCallTag.Graphics] as SemanticCallTags,
+	sig:     sig({ '...': ArgProp.Forced })
+} as const;
 
 /** the devices withr opens for a scope, as `with_<device>` and `local_<device>` */
 export const WithrDevices = ['bmp', 'cairo_pdf', 'cairo_ps', 'jpeg', 'pdf', 'png', 'svg', 'tiff', 'xfig', 'postscript'] as const;
 
-export const ReadGraphicsState = { type: AmbientStateAccessType.ReadGraphics } as const;
-export const ReadPrintingOptions = { type: AmbientStateAccessType.ReadOptions, keys: PrintingOptions } as const;
-/* a method for the printed value may read any option, see {@link AmbientStateAccess} */
-export const PrintDispatched = { type: AmbientStateAccessType.ReadOptions, keys: PrintingOptions, dispatchOn: 0 } as const;
-export const OpenDevice = { type: AmbientStateAccessType.OpenDevice } as const;
-/** the devices that are open, which `dev.cur()` and `dev.list()` report */
-export const ReadDevices = [AmbientStateName.device, AmbientStateName.otherDevicesOpenedBy].map(state => ({ type: AmbientStateAccessType.ReadState, state }) as const);
+export const ReadPrintingOptions = { ...Ambient.option.reads, member: { from: 'constant', keys: PrintingOptions } } as const;
+/* a method for the printed value may read any option, see {@link AmbientEffect#dispatchOn} */
+export const PrintDispatched = { ...ReadPrintingOptions, dispatchOn: 0 } as const;
+/** what turning a number into text reads */
+export const ReadsNumberFormat = { ...Ambient.option.reads, member: { from: 'constant', keys: NumberFormatOptions } } as const;
 /** sets the entries of an environment variable, a locale or a search path state that the call names with the parameter `name` of the given signature */
 export const SetsEntryNamedBy = (state: KeyedState, signature: readonly string[], name: string, rest: { readonly fallback?: string, readonly quoted?: boolean | string } = {}) =>
-	({ type: AmbientStateAccessType.SetKeyed, state, keys: { from: 'parameter', signature, names: [name], ...rest } }) as const;
-export const SetsEntry = (state: KeyedState, key: string) => ({ type: AmbientStateAccessType.SetKeyed, state, keys: { from: 'constant', key } }) as const;
+	({ family: state, access: AmbientVerb.Writes, member: { from: 'parameter', signature, names: [name], ...rest } }) as const;
+export const SetsEntry = (state: KeyedState, key: string) => ({ family: state, access: AmbientVerb.Writes, member: { from: 'constant', keys: [key] } }) as const;
 /** `library(pkg)` and `library("pkg")` name the package, `library(pkg, character.only = TRUE)` looks the variable up */
 export const LibrarySearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['package', 'help', 'pos', 'lib.loc', 'character.only'], 'package', { quoted: 'character.only' });
-export const LoaderSearchPath = (quoted: boolean) => ({ type: AmbientStateAccessType.SetKeyed, state: KeyedState.SearchPath, keys: { from: 'unnamed', quoted } }) as const;
+export const LoaderSearchPath = (quoted: boolean) => ({ ...Ambient.searchPath.writes, member: { from: 'unnamed', quoted } }) as const;
 /* which entry a detach removes depends on every earlier attach, so it reads the search path as well */
 export const DetachSearchPath = [
-	SetsEntryNamedBy(KeyedState.SearchPath, ['name', 'pos', 'unload', 'character.only', 'force'], 'name', { quoted: 'character.only' }),
-	{ type: AmbientStateAccessType.ReadState, state: AmbientStateName.allOf(KeyedState.SearchPath) }
+	{ ...SetsEntryNamedBy(KeyedState.SearchPath, ['name', 'pos', 'unload', 'character.only', 'force'], 'name', { quoted: 'character.only' }), access: AmbientVerb.Kills },
+	Ambient.searchPath.reads
 ] as const;
 export const ImportSearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['.from', '...', '.into', '.library', '.directory', '.all', '.except', '.chdir', '.character_only', '.S3'], '.into', { fallback: 'imports' });
 /** `attach(df)` is named `df`, `attach(df, name = "data")` is named `data` */
-export const AttachSearchPath = { type: AmbientStateAccessType.SetKeyed, state: KeyedState.SearchPath, keys: { from: 'parameter', signature: ['what', 'pos', 'name', 'warn.conflicts'], names: ['name', 'what'], quoted: true } } as const;
+export const AttachSearchPath = { ...Ambient.searchPath.writes, member: { from: 'parameter', signature: ['what', 'pos', 'name', 'warn.conflicts'], names: ['name', 'what'], quoted: true } } as const;
 
 /** what creating a plot does; restated by the deprecated plot creators, which do the same but should not be used */
 export const PlotCreateConfig = {
-	hasUnknownSideEffects: {
-		type:      'link-to-last-call',
-		ignoreIf:  (source: NodeId, graph: DataflowGraph) => appendsToPlot(source, graph) === true,
-		callName:  toRegex((GraphicDeviceOpen as readonly string[]).concat(DeviceClose)),
-		/* a device closed in between is not the one the plot goes to (the graphics state knows which one it is) */
-		cascadeIf: (target: DataflowGraphVertexInfo) => closesActiveDevice(target) ? CascadeAction.Block : CascadeAction.Stop
-	},
-	tags: [SemanticCallTag.Graphics] as SemanticCallTags, sig: sig({ '...': ArgProp.Forced }) } as const;
+	ambient: BuildsGgPlot,
+	tags:    [SemanticCallTag.Graphics] as SemanticCallTags,
+	sig:     sig({ '...': ArgProp.Forced })
+} as const;

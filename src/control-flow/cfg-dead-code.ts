@@ -28,7 +28,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	private readonly cachedStatements: CachedValues<boolean> = new Map();
 	private readonly cachedSwitch:     Map<NodeId, { id: NodeId | undefined } | 'unknown'> = new Map();
 	private readonly caught:           Map<NodeId, boolean> = new Map();
-	private forcing:                   ((holder: NodeId, inner: NodeId) => Ternary) | undefined;
+	private raises:                    ((holder: NodeId, inner: NodeId) => boolean) | undefined;
 
 	private getValue(id: NodeId): Ternary {
 		const has = this.cachedConditions.get(id);
@@ -40,7 +40,8 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private isUnconditionalJump(id: NodeId): boolean {
-		if(this.isCaught(id)) {
+		/* a `stop()` in a promise of `delayedAssign("x", stop())` does not run where it is written */
+		if(this.isCaught(id) || this.config.dfg.isQuoted(id)) {
 			return false;
 		}
 		const has = this.cachedStatements.get(id);
@@ -150,19 +151,20 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		}
 	}
 
-	/** whether the call is in an argument that may never be evaluated: `stop("x")` in `f(1, stop("x"))` only runs if `f` uses it */
+	/** whether the call is in an argument that may never be evaluated or is caught where it is forced: `stop("x")` in `f(1, stop("x"))` only runs if `f` uses it */
 	private mayStayUnforced(id: NodeId): boolean {
 		const promised = this.config.dfg.getVertex(id)?.cds?.filter(cd => cd.byPromise === true) ?? [];
 		if(promised.length === 0) {
 			return false;
 		}
-		this.forcing ??= FunctionSemantics.promiseForcing(this.config.dfg, { ctx: this.config.ctx });
-		return promised.some(cd => this.forcing?.(cd.id, id) !== Ternary.Always);
+		this.raises ??= FunctionSemantics.promiseRaises(this.config.dfg, { ctx: this.config.ctx });
+		return promised.some(cd => this.raises?.(cd.id, id) !== true);
 	}
 
 	/**
 	 * Whether an error raised here is caught before it can cut the flow, which is what `try` and `tryCatch`
-	 * do to a `stop()` nested in them. The enclosing calls come from the AST: in the control flow graph a
+	 * do to a `stop()` nested in them, or not raised here at all, as in `quote(stop())`, whose code an `eval` may
+	 * run elsewhere (which links it in place). The enclosing calls come from the AST: in the control flow graph a
 	 * construct is where its parts join again, so there is no edge that would delimit it on its own.
 	 */
 	private isCaught(id: NodeId): boolean {
@@ -171,7 +173,10 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			return cached;
 		}
 		const result = RNode.iterateParents(this.getNormalizedAst(id), this.config.normalizedAst.idMap)
-			.some(node => DfgVertex.hasOrigin(this.getDataflowGraph(node.info.id), BuiltInProcName.Try));
+			.some(node => {
+				const vertex = this.getDataflowGraph(node.info.id);
+				return DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) || DfgVertex.hasOrigin(vertex, BuiltInProcName.Quote);
+			});
 		this.caught.set(id, result);
 		return result;
 	}

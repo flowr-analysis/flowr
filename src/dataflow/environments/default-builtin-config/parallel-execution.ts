@@ -43,8 +43,10 @@ export const ParallelDefinitions = [
 		{ indexOfFunction: 0, nameOfFunctionArgument: 'func', unquoteFunction: true, props: CallProp.Concurrent, tags: [SemanticCallTag.Process, SemanticCallTag.Opens], sig: sig({ func: ArgProp.Callee, args: ArgProp.Value, '...': ArgProp.Value }) }),
 	fn(pkg(PkgName.RcppParallel, 'setThreadOptions'), BuiltInProcName.Default,
 		{ props: CallProp.Invisible | CallProp.Configures | CallProp.Concurrent, sig: sig({ numThreads: ArgProp.Value, stackSize: ArgProp.Value }) }),
-	fn(pkg(PkgName.Processx, 'run', 'process'), BuiltInProcName.Default,
+	fn(pkg(PkgName.Processx, 'run'), BuiltInProcName.Default,
 		{ libFn: true, tags: [SemanticCallTag.Process], sig: sig({ command: Forced.Value | ArgProp.Injectable, args: Forced.Value }) }),
+	/* an R6 class generator, `process$new(command, args)` starts the process, so it has no formals of its own */
+	fn(pkg(PkgName.Processx, 'process'), BuiltInProcName.Default, { libFn: true, tags: [SemanticCallTag.Process] }),
 	fn(pkg(PkgName.Sys, 'exec_wait', 'exec_internal', 'exec_background'), BuiltInProcName.Default,
 		{ libFn: true, tags: [SemanticCallTag.Process], sig: sig({ cmd: Forced.Value | ArgProp.Injectable, args: Forced.Value | ArgProp.Injectable }) }),
 ] as const satisfies AnyBuiltInDefinition[];

@@ -65,28 +65,35 @@ function withStatedBuiltIns(definitions: readonly IdentifierDefinition[], enviro
 	return replaced ?? definitions;
 }
 
+/** The definitions `name` resolves to as a function in `environment`, each package export replaced by what flowR states about it. */
+export function statedFunctions(name: Identifier, environment: REnvironmentInformation): readonly IdentifierDefinition[] | undefined {
+	const resolved = Resolve.byNameAndType(name, environment, ReferenceType.Function);
+	return resolved === undefined ? undefined : withStatedBuiltIns(resolved, environment);
+}
+
 function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined): BuiltInFnInfo | undefined {
 	let sig: FnSig | undefined;
 	let stated: StatedProps = {};
 	let frame: ArgProps | undefined;
+	let muffles: readonly string[] | undefined;
 	for(const d of definitions ?? []) {
 		if(d.type !== ReferenceType.BuiltInFunction) {
 			continue;
 		}
 		const info: BuiltInFnInfo | undefined = d.config;
 		sig ??= info?.sig;
+		muffles ??= info?.muffles;
 		stated = FunctionSemantics.call.props.join(stated, info);
 		frame = info?.frame === undefined ? frame : (frame ?? 0) | info.frame;
 	}
-	return sig === undefined && frame === undefined && !FunctionSemantics.call.props.hasAny(stated) ? undefined : { sig, ...stated, frame };
+	return sig === undefined && frame === undefined && !FunctionSemantics.call.props.hasAny(stated) ? undefined : { sig, ...stated, frame, ...muffles === undefined ? {} : { muffles } };
 }
 
 /** What flowR knows about the function `name`: what the built-in definitions state, filled up with what the signature database knows (see {@link fnInfoFromSignature}). */
 export function queryFnProps(name: Identifier, { environment, builtIns, signatures, version }: FnPropsSource): BuiltInFnInfo | undefined {
 	let info: BuiltInFnInfo | undefined;
 	if(environment !== undefined) {
-		const resolved = Resolve.byNameAndType(name, environment, ReferenceType.Function);
-		const stated = resolved === undefined ? undefined : withStatedBuiltIns(resolved, environment);
+		const stated = statedFunctions(name, environment);
 		if(stated?.some(d => d.type !== ReferenceType.BuiltInFunction)) {
 			return undefined;
 		}

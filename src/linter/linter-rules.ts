@@ -43,7 +43,9 @@ import { PACKAGE_DATA } from './rules/cmd-check/package-data';
 import { PACKAGE_RUNTIME } from './rules/cmd-check/package-runtime';
 import { SECRET_EXFILTRATION } from './rules/secret-exfiltration';
 import { PROCESS_STATE_IN_SESSION } from './rules/process-state-in-session';
+import { INTERACTIVE_FUNCTIONS } from './rules/interactive-functions';
 import { CODE_CLONES } from './rules/code-clones';
+import { CALL_CONTRACTS } from './rules/call-contracts';
 
 /**
  * The registry of currently supported linting rules.
@@ -94,7 +96,9 @@ export const LintingRules = {
 	'package-runtime':                 PACKAGE_RUNTIME,
 	'secret-exfiltration':             SECRET_EXFILTRATION,
 	'process-state-in-session':        PROCESS_STATE_IN_SESSION,
-	'code-clones':                     CODE_CLONES
+	'code-clones':                     CODE_CLONES,
+	'call-contracts':                  CALL_CONTRACTS,
+	'interactive-functions':           INTERACTIVE_FUNCTIONS
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules;

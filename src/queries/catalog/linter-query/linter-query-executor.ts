@@ -50,10 +50,8 @@ export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: 
 			results.results[ruleName] = { error: new Error(`skipped due to resource pressure (gas: critical), see ${GasWikiRef}`) };
 			continue;
 		}
-		/* the first rule may be the one to compute the graph, the others share the walks for call targets in it */
 		const run = (): Promise<unknown> => executeLintingRule<typeof ruleName>(ruleName, analyzer, (entry as ConfiguredLintingRule)?.config);
-		const graph = analyzer.peekDataflow()?.graph;
-		results.results[ruleName] = await (graph === undefined ? run() : graph.sharingTargetWalks(run));
+		results.results[ruleName] = await run();
 	}
 
 	/* rendered here, not when printing, so an api client gets it too */

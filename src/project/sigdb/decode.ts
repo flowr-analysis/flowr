@@ -13,6 +13,8 @@ import {
 import type { ArgProps } from '../../dataflow/environments/built-in-props';
 import { resolveVersion } from './sigdb-version';
 import { compactRecord } from '../../util/objects';
+import type { StatedGuards } from '../../dataflow/fn/guards/built-in-guards';
+import type { withGuards } from './guarded-source';
 import { RPrimitives } from '../../data/r-primitives.generated';
 
 /** the CRAN status of a version, used to build (or skip) its source-tarball link */
@@ -50,6 +52,9 @@ function hasEntries(record: Readonly<Record<string, unknown>> | undefined): bool
  */
 export const blobTuple = (b: Readonly<PkgBlob>): PkgBlobTuple => {
 	const head = [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion] as const;
+	if(b.contracts?.length) {
+		return [...head, b.dates, b.sources ?? {}, b.classes ?? [], b.classesByVersion ?? {}, b.contracts, b.contractOf ?? {}];
+	}
 	if(b.classes?.length) {
 		return [...head, b.dates, b.sources ?? {}, b.classes, b.classesByVersion ?? {}];
 	}
@@ -60,7 +65,7 @@ export const blobTuple = (b: Readonly<PkgBlob>): PkgBlobTuple => {
 };
 /** the inverse of {@link blobTuple}: rebuild a {@link PkgBlob} from its on-disk tuple */
 export function tupleToBlob(t: PkgBlobTuple): PkgBlob {
-	return { sigs: t[0], cgs: t[1], fns: t[2], versions: t[3], noncran: t[4]?.length ? t[4] : undefined, deps: t[5] ?? [], depsByVersion: t[6] ?? {}, dates: t[7] ?? {}, sources: t[8], classes: t[9], classesByVersion: t[10] };
+	return { sigs: t[0], cgs: t[1], fns: t[2], versions: t[3], noncran: t[4]?.length ? t[4] : undefined, deps: t[5] ?? [], depsByVersion: t[6] ?? {}, dates: t[7] ?? {}, sources: t[8], classes: t[9]?.length ? t[9] : undefined, classesByVersion: t[10], contracts: t[11]?.length ? t[11] : undefined, contractOf: t[12] };
 }
 
 /** one decoded parameter of a function signature */
@@ -84,6 +89,8 @@ export interface DecodedFunction {
 	readonly topic?:      string;
 	/** the package this name is re-exported from, see {@link SigFunctionInfo.reexportOf} */
 	readonly reexportOf?: string;
+	/** what a call has to fulfill to return normally: as the database stores it (see {@link SigFunctionInfo.guards}), or as far as another source knows, see {@link withGuards} */
+	readonly guards?:     StatedGuards;
 }
 
 /**
@@ -107,6 +114,12 @@ export function transitiveCallees(functions: readonly DecodedFunction[], name: B
 	return [...reached].sort();
 }
 
+/** the contract the blob stores for one of its function records, if any */
+function contractOf(this: void, blob: Readonly<PkgBlob>, fnIdx: number): StatedGuards | undefined {
+	const idx = blob.contractOf?.[fnIdx];
+	return idx === undefined ? undefined : blob.contracts?.[idx];
+}
+
 /** decode one of a blob's function records against the global string dictionary */
 export function decodeFunction(strings: SigDict, blob: Readonly<PkgBlob>, fnIdx: number): DecodedFunction {
 	const [nameIdx, sigIdx, cgIdx, bits, fileIdx, line, topicIdx, reexportIdx] = blob.fns[fnIdx];
@@ -124,6 +137,7 @@ export function decodeFunction(strings: SigDict, blob: Readonly<PkgBlob>, fnIdx:
 		name,
 		topic:      topicIdx !== undefined && topicIdx >= 0 ? strings.at(topicIdx) : undefined,
 		reexportOf: reexportIdx !== undefined ? strings.at(reexportIdx) : undefined,
+		guards:     contractOf(blob, fnIdx),
 		file:       fileIdx >= 0 ? strings.at(fileIdx) : undefined,
 		line,
 		exported:   isExportedEntry(bits, name),

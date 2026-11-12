@@ -370,6 +370,8 @@ class RShellSession {
 	private readonly options:       DeepReadonly<RShellSessionOptions>;
 	private collectionTimeout:      NodeJS.Timeout | undefined;
 	private requestQueue:           Promise<unknown> = Promise.resolve();
+	/** the last 20 lines R wrote to stderr */
+	private readonly stderrTail:    string[] = [];
 
 	public constructor(options: DeepReadonly<RShellSessionOptions>, log: Logger<ILogObj>) {
 		SecureMode.guard('starting R', options.pathToRExecutable);
@@ -396,7 +398,8 @@ class RShellSession {
 		});
 		this.options = options;
 		// initialize the session
-		this.writeLine(initCommand(options.eol, options.pipeBind));
+		/* since R 4.4 an error in a command no longer ends the session, older versions ignore the option */
+		this.writeLine('options(catch.script.errors=TRUE);' + initCommand(options.eol, options.pipeBind));
 
 		if(log.settings.minLevel <= LogLevel.Trace) {
 			this.bareSession.stdout.on('data', (data: Buffer) => {
@@ -409,6 +412,8 @@ class RShellSession {
 
 		this.bareSession.stderr.on('data', (data: string) => {
 			log.warn(`< ${data}`);
+			this.stderrTail.push(...String(data).split(/\r?\n/).filter(l => l.length > 0));
+			this.stderrTail.splice(0, this.stderrTail.length - 20);
 		});
 	}
 
@@ -460,7 +465,7 @@ class RShellSession {
 
 		return new Promise<string[]>((resolve, reject) => {
 			if(this.bareSession.exitCode !== null || this.bareSession.signalCode !== null) {
-				reject(new Error(`the R session has exited (${this.bareSession.exitCode ?? this.bareSession.signalCode}), it cannot answer anymore`));
+				reject(new Error(`the R session has exited (${this.bareSession.exitCode ?? this.bareSession.signalCode}), it cannot answer anymore${this.stderrTail.length > 0 ? `, stderr:\n${this.stderrTail.join('\n')}` : ''}`));
 				drained = true;
 				onDrained();
 				return;

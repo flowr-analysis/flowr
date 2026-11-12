@@ -484,13 +484,8 @@ function raisingOrder(graph: DataflowGraph, lookup: BuiltInLookup, { rootId, tar
 			let current = before;
 			/* what `on.exit` registers runs when the function exits, after everything else in the list (`on.exit(stop("x")); cat("a")` prints before it raises) */
 			const hooks = node.children.filter(isHook);
-			for(const child of node.children) {
-				const raised = hooks.includes(child) ? [] : order(child, current);
-				current = raised.length > 0 ? raised : current;
-				sites.push(...raised);
-			}
-			for(const hook of hooks) {
-				const raised = order(hook, current);
+			for(const child of [...node.children.filter(c => !hooks.includes(c)), ...hooks]) {
+				const raised = order(child, current);
 				current = raised.length > 0 ? raised : current;
 				sites.push(...raised);
 			}

@@ -1,3 +1,4 @@
+import { compactRecord, nonEmpty } from '../../../util/objects';
 import type { BrandedIdentifier, BrandedNamespace } from '../../environments/identifier';
 import { Identifier, PkgName } from '../../environments/identifier';
 import { baseRExportOwner } from '../../../util/r-base-packages';
@@ -135,17 +136,15 @@ export function reasonsOf(this: void, clauses: readonly GuardClause[], idMap: As
 		const reads = readingOf(requires, defaultGuardFacts(), called === undefined ? undefined : s3GroupGenericOf(called));
 		const formals = [...GuardTerm.formalsOf(requires)];
 		const loc = locationOf(node, idMap, qualified);
-		return {
+		return compactRecord({
 			requires: rendered,
 			kind,
 			fails:    written(node),
-			...(brief === undefined ? {} : { brief }),
-			...(reads === undefined ? {} : { reads }),
-			...(formals.length === 0 ? {} : { formals }),
-			...(via === undefined || via.length === 0 ? {} : { via: via.map(id => qualified(RNode.ownLexeme(idMap.get(id)) ?? '')) }),
-			...(message === undefined ? {} : { message }),
-			...(loc === undefined ? {} : { loc })
-		};
+			brief, reads,
+			formals:  nonEmpty(formals),
+			via:      nonEmpty(via)?.map(id => qualified(RNode.ownLexeme(idMap.get(id)) ?? '')),
+			message, loc
+		});
 	});
 }
 
@@ -243,17 +242,17 @@ function requirementsOf(this: void, name: BrandedIdentifier): StatedGuards | und
 	const relations = relationsOf(terms, defaultGuardFacts());
 	const conditional = conditionalClaimsOf(terms, formals.filter(f => f !== '...'), defaultGuardFacts());
 	const calls = callsOfTerms(terms);
-	return {
-		requires: terms.length === 0 ? '' : GuardTerm.render(GuardTerm.all(...terms)),
-		...(required.length > 0 ? { required } : {}),
-		...(Object.keys(claims).length > 0 ? { formals: claims } : {}),
-		...(relations.length > 0 ? { relations } : {}),
-		...(conditional.length > 0 ? { conditional } : {}),
-		...(returns === undefined ? {} : { returns }),
-		...(passed === undefined ? {} : { passes: passed }),
-		...(calls.length > 0 ? { calls } : {}),
-		origin:   { source: 'builtin', r: RBaseGuardsVersion }
-	};
+	return compactRecord({
+		requires:    terms.length === 0 ? '' : GuardTerm.render(GuardTerm.all(...terms)),
+		required:    nonEmpty(required),
+		formals:     Object.keys(claims).length > 0 ? claims : undefined,
+		relations:   nonEmpty(relations),
+		conditional: nonEmpty(conditional),
+		returns,
+		passes:      passed,
+		calls:       nonEmpty(calls),
+		origin:      { source: 'builtin' as const, r: RBaseGuardsVersion }
+	});
 }
 
 /** Everything with stated guards, as `[package, name]`. */

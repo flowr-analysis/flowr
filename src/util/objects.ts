@@ -127,6 +127,11 @@ type DefinedRecord<T> = {
 	[K in keyof T as T[K] extends undefined ? never : K]: Defined<T[K]>;
 };
 
+/** The array, `undefined` for an empty one, to leave it out of a {@link compactRecord}. */
+export function nonEmpty<A extends readonly unknown[]>(array: A | undefined): A | undefined {
+	return array === undefined || array.length === 0 ? undefined : array;
+}
+
 export function compactRecord<T extends Record<string, unknown>>(record: T): DefinedRecord<T>;
 export function compactRecord(record: undefined): undefined;
 export function compactRecord<T extends Record<string, unknown>>(record: T | undefined): DefinedRecord<T> | undefined;

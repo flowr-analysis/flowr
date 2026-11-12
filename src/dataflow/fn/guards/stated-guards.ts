@@ -1,3 +1,4 @@
+import { compactRecord, nonEmpty } from '../../../util/objects';
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { summarizeClauses, type FunctionGuards } from './function-guards';
 import { callsOfTerms, reasonsOf, type StatedGuards } from './built-in-guards';
@@ -18,15 +19,15 @@ export function statedGuardsOf(this: void, guards: FunctionGuards, idMap: AstIdM
 		return undefined;
 	}
 	const calls = callsOfTerms(clauses.map(c => c.requires));
-	return {
-		requires: summarizeClauses(clauses).requires,
-		...(calls.length > 0 ? { calls } : {}),
-		...(guards.required.length > 0 ? { required: guards.required } : {}),
-		...(hasFormals ? { formals: guards.formals } : {}),
-		...(guards.relations.length > 0 ? { relations: guards.relations } : {}),
-		...(guards.conditional.length > 0 ? { conditional: guards.conditional } : {}),
-		...(guards.returns === undefined ? {} : { returns: guards.returns }),
-		...(guards.passes === undefined ? {} : { passes: guards.passes }),
-		...(clauses.length > 0 ? { because: reasonsOf(clauses, idMap, ownerOf) } : {})
-	};
+	return compactRecord({
+		requires:    summarizeClauses(clauses).requires,
+		calls:       nonEmpty(calls),
+		required:    nonEmpty(guards.required),
+		formals:     hasFormals ? guards.formals : undefined,
+		relations:   nonEmpty(guards.relations),
+		conditional: nonEmpty(guards.conditional),
+		returns:     guards.returns,
+		passes:      guards.passes,
+		because:     clauses.length > 0 ? reasonsOf(clauses, idMap, ownerOf) : undefined
+	});
 }

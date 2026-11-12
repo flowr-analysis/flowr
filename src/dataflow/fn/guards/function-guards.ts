@@ -5,7 +5,7 @@
 import type { DataflowGraph } from '../../graph/graph';
 import { FunctionArgument } from '../../graph/graph';
 import { Dataflow } from '../../graph/df-helper';
-import { OriginType } from '../../origin/dfg-get-origin';
+import { OriginType, type Origin } from '../../origin/dfg-get-origin';
 import type { CallRuledOut, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse  } from '../../graph/vertex';
 import { DfgVertex } from '../../graph/vertex';
 import { DfEdge, EdgeType } from '../../graph/edge';
@@ -220,18 +220,22 @@ function callVertexOf(this: void, id: NodeId, state: GuardState): DataflowGraphV
 	return DfgVertex.isFunctionCall(vertex) ? vertex : undefined;
 }
 
-function isParameter(this: void, id: NodeId, state: GuardState): boolean {
-	const node = nodeOf(id, state);
-	return node !== undefined && RParameter.is(RNode.directParent(node, state.graph.idMap as AstIdMap));
+/** Whether the id is that of a parameter of a function definition. */
+export function isParameter(this: void, id: NodeId, idMap: AstIdMap): boolean {
+	const node = idMap.get(id);
+	return node !== undefined && RParameter.is(RNode.directParent(node, idMap));
+}
+
+/** Whether a read among the origins may hold what a parameter holds, which depends on the call, so the calls flowR sees say nothing about the others. */
+export function readsViaParameter(this: void, origins: readonly Origin[], graph: DataflowGraph): boolean {
+	return origins.some(o => o.type === OriginType.ReadVariableOrigin && (Dataflow.valueSources(o.id, graph)?.some(v => isParameter(v, graph.idMap as AstIdMap)) ?? true));
 }
 
 /** The definition a call runs for sure, if there is exactly one and nothing else it could be. */
 function soleCallee(this: void, id: NodeId, state: GuardState): NodeId | undefined {
 	const origins = Dataflow.origin(state.graph, id) ?? [];
 	const callees = origins.filter(o => o.type === OriginType.FunctionCallOrigin);
-	/* what a parameter holds depends on the call, the calls flowR happens to see say nothing about the others, also when it went through a local first */
-	const viaParameter = origins.some(o => o.type === OriginType.ReadVariableOrigin && (Dataflow.valueSources(o.id, state.graph)?.some(v => isParameter(v, state)) ?? true));
-	return callees.length === 1 && !viaParameter && !origins.some(o => o.type === OriginType.BuiltInFunctionOrigin) ? callees[0].id : undefined;
+	return callees.length === 1 && !readsViaParameter(origins, state.graph) && !origins.some(o => o.type === OriginType.BuiltInFunctionOrigin) ? callees[0].id : undefined;
 }
 
 /** The package providing the function flowR knows about, none for what R ships with. */

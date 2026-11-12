@@ -20,12 +20,11 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import { GuardTerm, type GuardBinding, type GuardConstant } from '../../dataflow/fn/guards/guard-term';
 import { parseGuardTerm } from '../../dataflow/fn/guards/guard-term-syntax';
 import { builtInClauses, type StatedGuards } from '../../dataflow/fn/guards/built-in-guards';
-import { atCall, callBinding } from '../../dataflow/fn/guards/function-guards';
+import { atCall, callBinding, isParameter, readsViaParameter } from '../../dataflow/fn/guards/function-guards';
 import { guardFactsOf } from '../../dataflow/fn/guards/guard-knowledge';
 import { readingOf } from '../../dataflow/fn/guards/guard-claims';
 import type { GuardFactsLookup } from '../../dataflow/environments/guard-facts';
 import { RConstant, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -121,14 +120,7 @@ function contractOf(this: void, id: NodeId, data: Analysis, ofDefinition: (defin
 		return builtInContract(origins[0].fn.name, data);
 	}
 	const definitions = calledDefinitions(graph, id, idMap);
-	/* what a parameter holds depends on the call, which the calls flowR sees say nothing about */
-	const viaParameter = origins.some(o => o.type === OriginType.ReadVariableOrigin && (Dataflow.valueSources(o.id, graph)?.some(v => isParameter(v, data)) ?? true));
-	return definitions.length !== 1 || viaParameter || origins.some(o => o.type === OriginType.BuiltInFunctionOrigin) ? undefined : ofDefinition(definitions[0]);
-}
-
-function isParameter(this: void, id: NodeId, { idMap }: Analysis): boolean {
-	const node = idMap.get(id);
-	return node !== undefined && RParameter.is(RNode.directParent(node, idMap));
+	return definitions.length !== 1 || readsViaParameter(origins, graph) || origins.some(o => o.type === OriginType.BuiltInFunctionOrigin) ? undefined : ofDefinition(definitions[0]);
 }
 
 /** Whether what the expression holds may depend on a parameter of a function, which value resolution answers with what the calls flowR sees hand over, and not for every call. */
@@ -143,7 +135,7 @@ function readsParameter(this: void, node: RNodeWithParent, data: Analysis, seen:
 		seen.add(at.info.id);
 		if(RSymbol.is(at)) {
 			const sources = Dataflow.valueSources(at.info.id, data.graph);
-			if(sources === undefined || sources.some(s => isParameter(s, data))) {
+			if(sources === undefined || sources.some(s => isParameter(s, data.idMap))) {
 				return true;
 			}
 			todo.push(...sources.flatMap(s => s === at.info.id ? [] : [data.idMap.get(s)].filter(n => n !== undefined)));

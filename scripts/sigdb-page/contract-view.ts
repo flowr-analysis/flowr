@@ -1,7 +1,7 @@
 import { blank, el } from '../page-lib/dom';
 import type { Guards } from './database';
 import { spokenOf } from './contract-formals';
-import { grouped, splitTopLevel } from '../../src/dataflow/fn/guards/condition-grouping';
+import { grouped, linkedGroups, splitTopLevel } from '../../src/dataflow/fn/guards/condition-grouping';
 
 /*
  * How a contract reads, shared by the signature browser and the playground: the formals in their hues, the operators set
@@ -173,19 +173,28 @@ export function contract(name: string, guards: Guards, formals: readonly string[
 	box.append(...place.head?.(box) ?? []);
 	const parts = new Map(stated.map(([formal, said]) => [formal, said]));
 	const rows = el('div', 'ctable');
-	for(const formal of spokenOf(guards, formals).filter(f => required.includes(f) || parts.has(f))) {
+	const own = spokenOf(guards, formals).filter(f => required.includes(f) || (parts.get(f) ?? []).length > 0).map(formal => {
 		const said = el('code', 'cond');
 		said.append(...anded([...required.includes(formal) ? ['!missing(' + formal + ')'] : [], ...parts.get(formal) ?? []]));
-		/* a claim that holds unless something about other formals lets the call through speaks of those as well */
+		/* a row is about its one formal, the others a claim depends on show in their hue within it */
 		const others = related(said.textContent ?? '', formals).filter(f => f !== formal);
-		rows.append(formalMark(contractRow('claim', [chip(formal), ...others.flatMap(f => [' ', chip(f)])], [said]), formal));
-	}
-	for(const [holds, unless] of relations) {
+		return { formals: [formal, ...others], row: formalMark(contractRow('claim', [titled(chip(formal), others.length > 0 ? 'depends on ' + others.join(', ') + ' as well' : undefined)], [said]), formal) };
+	});
+	const joint = relations.map(([holds, unless]) => {
 		const said = el('code', 'cond');
 		/* one condition, so the `unless` and what it groups read alike in every row */
 		said.append(...marked(unless === '' ? holds : `${holds} unless ${unless}`));
-		rows.append(contractRow('claim relation', related(holds, formals).flatMap((f, at) => [...at > 0 ? [' '] : [], chip(f)]), [said]));
+		const between = related(holds, formals);
+		return { formals: between, row: contractRow('claim relation', between.flatMap((f, at) => [...at > 0 ? [el('span', 'and word', ' and ')] : [], chip(f)]), [said]) };
+	});
+	/* the formals that depend on each other read together, each formal before the relations between them, a line apart from the next group */
+	const groups = linkedGroups(formals, [...own, ...joint].map(r => r.formals));
+	for(const group of groups) {
+		const inGroup = [...own.filter(r => group.includes(r.formals[0])), ...joint.filter(r => group.includes(r.formals[0]))];
+		inGroup[0]?.row.classList.toggle('gstart', rows.childElementCount > 0);
+		rows.append(...inGroup.map(r => r.row));
 	}
+	rows.append(...joint.filter(r => r.formals.length === 0).map(r => r.row));
 	if(returns.length > 0) {
 		const said = el('code', 'cond');
 		const result = marker(place.search, formals, true, calls);

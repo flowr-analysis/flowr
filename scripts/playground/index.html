@@ -420,6 +420,8 @@ code, pre { font-family: var(--mono); }
 /* the rows share their columns, so the conditions line up under each other */
 .contract .ctable { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .05rem .6rem; }
 .contract .crow { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: start; padding: .05rem .35rem; border-radius: .35rem; font-size: .78rem; }
+/* formals that depend on each other are a group, a line apart from the next */
+.contract .crow.gstart { margin-top: .2rem; border-top: 1px solid var(--border); border-top-left-radius: 0; border-top-right-radius: 0; padding-top: .25rem; }
 .contract .crow:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .contract .crow.condition { grid-template-columns: minmax(0, 1fr); gap: 0; }
 .contract code { font-family: var(--mono); }

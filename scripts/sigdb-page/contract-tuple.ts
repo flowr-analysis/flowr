@@ -1,6 +1,6 @@
 import type { StatedGuards } from '../../src/dataflow/fn/guards/built-in-guards';
 import { caseConditions, claimConditions, returnConditions } from '../../src/dataflow/fn/guards/guard-claims';
-import { allOf, grouped } from '../../src/dataflow/fn/guards/condition-grouping';
+import { allOf, grouped, mergedRelations } from '../../src/dataflow/fn/guards/condition-grouping';
 import { Identifier } from '../../src/dataflow/environments/identifier';
 import { contractTokens } from './contract-search';
 import type { Guards } from './database';
@@ -8,7 +8,7 @@ import type { Guards } from './database';
 /** What a page shows of the given guards, as {@link Guards}, `undefined` if they say nothing. */
 export function guardsTuple(stated: StatedGuards | undefined): Guards | undefined {
 	const claims = [
-		...Object.entries(stated?.formals ?? {}).map(([formal, claim]): [string, string[]] => [formal, [...claimConditions(formal, claim), ...caseConditions(formal, claim)]]),
+		...Object.entries(stated?.formals ?? {}).map(([formal, claim]): [string, string[]] => [formal, [...claimConditions(formal, claim), ...caseConditions(formal, claim, (stated?.relations ?? []).map(r => r.holds))]]),
 		/* a claim that holds unless something else lets the call through reads as the claim `unless` that, unless the cases of the formal say it shorter */
 		...(stated?.conditional ?? []).filter(({ formal }) => stated?.formals?.[formal]?.cases === undefined).map(({ formal, claim, unless }): [string, string[]] => [formal, [grouped(`${allOf(claimConditions(formal, claim))} unless ${unless}`)]])
 	];
@@ -29,7 +29,7 @@ export function guardsTuple(stated: StatedGuards | undefined): Guards | undefine
 		relations: (stated.relations ?? []).map(r => r.formals),
 		returns:   stated.returns
 	});
-	return [stated.requires, claims, because, stated.origin === undefined || stated.origin.source === 'builtin' ? '' : stated.origin.r + (stated.origin.date === undefined ? '' : '@' + stated.origin.date), (stated.relations ?? []).map(({ holds, unless, unlessClaim }): [string, string] => [holds, unlessClaim === undefined ? unless ?? '' : allOf(claimConditions(unlessClaim.formal, unlessClaim.claim))]), [...stated.required ?? []], result, named,
+	return [stated.requires, claims, because, stated.origin === undefined || stated.origin.source === 'builtin' ? '' : stated.origin.r + (stated.origin.date === undefined ? '' : '@' + stated.origin.date), mergedRelations((stated.relations ?? []).map(({ holds, unless, unlessClaim }) => ({ holds, unless: unlessClaim === undefined ? unless : allOf(claimConditions(unlessClaim.formal, unlessClaim.claim)) }))).map(({ holds, unless }): [string, string] => [holds, unless ?? '']), [...stated.required ?? []], result, named,
 		stated.dispatches === undefined ? [] : [stated.dispatches, stated.methods ?? []], stated.methodOf === undefined ? [] : [stated.methodOf.generic, stated.methodOf.class],
 		calls.map(id => [Identifier.toPreludeString(id), Identifier.toString(id)]), tokens];
 }

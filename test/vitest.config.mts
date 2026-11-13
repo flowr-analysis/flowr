@@ -21,6 +21,8 @@ export default defineConfig({
 			]
 		},
 		testTimeout: 60 * 1000,
+		/* a `beforeAll` like that of `assertSliced` runs the analysis the tests then check, so it gets as long as a test */
+		hookTimeout: 60 * 1000,
 		sequence:    {
 			/* each test file that does not support parallel execution will be executed in sequence by stating this explicitly */
 			concurrent: true,

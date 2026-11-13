@@ -699,11 +699,13 @@ function assignsComputedName(this: void, name: BrandedIdentifier, vertex: Datafl
 	return !FunctionArgument.isNotEmpty(first) || !RString.is(nodeOf(FunctionArgument.isNamed(first) && first.valueId !== undefined ? first.valueId : first.nodeId, state));
 }
 
-function stepsOf(this: void, term: GuardTerm | undefined, facts: GuardFactsLookup): readonly [PathStep, PathStep] {
+/** What it means for the condition `term` of `fn` (`if`, `&&`, or `||`) to hold, and what not to. */
+function stepsOf(this: void, term: GuardTerm | undefined, facts: GuardFactsLookup, fn: BrandedIdentifier): readonly [PathStep, PathStep] {
 	if(term === undefined) {
 		return [UnknownStep, UnknownStep];
 	}
-	const [holds, fails] = [GuardTerm.truth(term, true, facts), GuardTerm.truth(term, false, facts)];
+	const leading = GuardTerm.firstOnly(facts, fn, fn === 'if' ? 'cond' : 'x');
+	const [holds, fails] = [GuardTerm.truth(term, true, facts, false, leading), GuardTerm.truth(term, false, facts, false, leading)];
 	return [{ holds, fails }, { holds: fails, fails: holds }];
 }
 
@@ -1222,20 +1224,20 @@ function within(this: void, node: RNodeWithParent, around: RNodeWithParent | und
 function stepOf(this: void, { cause, when, target }: BranchStep, node: RNodeWithParent, run: Run): PathStep | undefined {
 	const { state, scope } = run;
 	const construct = nodeOf(cause, state);
-	const pick = (term: GuardTerm | undefined) => stepsOf(term, state.facts)[when ? 0 : 1];
+	const pick = (term: GuardTerm | undefined, fn: BrandedIdentifier) => stepsOf(term, state.facts, fn)[when ? 0 : 1];
 	if(RIfThenElse.is(construct)) {
 		/* code after an `if` whose other branch always fails asks nothing more of it: the failure asks for the condition itself */
 		const other = when ? construct.otherwise : construct.then;
 		if(other !== undefined && !within(node, construct, state) && alwaysFails(other, state)) {
 			return undefined;
 		}
-		return pick(termOf(construct.condition, scope, state));
+		return pick(termOf(construct.condition, scope, state), 'if');
 	} else if(RForLoop.is(construct) || RWhileLoop.is(construct) || RRepeatLoop.is(construct)) {
 		/* what comes after a loop is reached either way, what runs within it is known nothing of, and a `return` in it is an exit of its own, see {@link pathsAt} */
 		return undefined;
 	} else if(RBinaryOp.is(construct) && (construct.operator === '&&' || construct.operator === '||')) {
 		/* the left operand decides whether the right one runs, and nothing after */
-		return within(node, construct.rhs, state) ? pick(termOf(construct.lhs, scope, state)) : undefined;
+		return within(node, construct.rhs, state) ? pick(termOf(construct.lhs, scope, state), construct.operator) : undefined;
 	} else if(RFunctionCall.is(construct) && knownNameOf(cause, callVertexOf(cause, state) as DataflowGraphVertexFunctionCall, state) === 'switch') {
 		/* what comes after it was reached through whichever alternative did not leave, of which nothing is known */
 		return within(node, construct, state) ? switchStep(construct, when ? target : undefined, run) : UnknownStep;
@@ -1605,7 +1607,7 @@ function tailReturns(this: void, run: Run): void {
 		if(node === undefined) {
 			continue;
 		} else if(tail === Tail.Elseless && RIfThenElse.is(node)) {
-			eachPath(node.condition, run, path => returnsValue(NullValue, [...path, stepsOf(termOf(node.condition, run.scope, state), state.facts)[1]], run));
+			eachPath(node.condition, run, path => returnsValue(NullValue, [...path, stepsOf(termOf(node.condition, run.scope, state), state.facts, 'if')[1]], run));
 		} else if(tail === Tail.Value && !endsRun(node, state)) {
 			eachPath(node, run, path => returnsValue(termOf(node, run.scope, state), path, run));
 		}

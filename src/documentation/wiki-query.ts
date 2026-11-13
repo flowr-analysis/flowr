@@ -361,7 +361,7 @@ registerQueryDocumentation('inspect-fn-guards', {
 	type:             'active',
 	shortDescription: 'Infer what functions ask of the calls they return from',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'f <- function(x, type = c("a", "b")) {\n  type <- match.arg(type)\n  if(!is.numeric(x) || x < 0) stop("invalid x")\n  sum(x)\n}';
+		const exampleCode = 'f <- function(x, n, type = c("a", "b")) {\n  type <- match.arg(type)\n  if(!is.numeric(x) || x < 0) stop("invalid x")\n  if(length(x) < n) stop("x is too short")\n  sum(x)\n}';
 		const predicateConfig = `new FlowrAnalyzerBuilder().amendConfig(c => {
 	c.semantics.environment.overwriteBuiltIns.definitions = [{
 		type: 'function', names: ['is_text'], processor: BuiltInProcName.DefaultReadAllArgs,
@@ -370,8 +370,8 @@ registerQueryDocumentation('inspect-fn-guards', {
 })`;
 		return `
 This query works out the *contract* of every function of a program: what a call has to fulfill to return normally, read off the checks in the body.
-In the example below, \`f\` stops unless \`x\` is a non-negative number, and \`match.arg\` only lets \`type\` be \`"a"\` or \`"b"\`.
-The query states exactly that, per formal:
+In the example below, \`f\` stops unless \`x\` is a non-negative number at least \`n\` long, and \`match.arg\` only lets \`type\` be \`"a"\` or \`"b"\`.
+The query states exactly that: per formal what a call has to give and what holds of it, and what relates several formals, like \`length(x) >= n\`:
 
 ${await showQuery(shell, exampleCode, [{ type: 'inspect-fn-guards' }], { showCode: true, ctx })}
 
@@ -400,6 +400,9 @@ Each function the program defines gets ${ctx.link('FunctionGuards')}:
 | \`resolves\` | a name built from \`x\`, like \`paste0("f_", x)\`, exists |
 | \`cases\` | what holds in each case a branch on \`x\` tells apart, like \`if(is.logical(center)) ... else ...\` |
 
+- ${ctx.link('FunctionGuards::relations')}: what relates several formals, like \`length(x) >= n\`, each with the formals it speaks of and what lets a call through anyway (\`unless\`)
+- ${ctx.link('FunctionGuards::conditional')}: what holds of a formal unless something about the others lets the call through, like \`m\` having to be a number unless \`x\` is no count
+- ${ctx.link('FunctionGuards::returns')}: what holds of the value a call returns normally
 - ${ctx.link('FunctionGuards::conditions')}: per formal the checks as they read in R, also those no claim has a word for, like \`stopifnot(x %% 2 == 0)\`
 - ${ctx.link('FunctionGuards::required')}: the formals a call has to supply
 - ${ctx.link('FunctionGuards::pure')}: the checks that fail before the function does anything but compute, so a call failing on them leaves nothing behind

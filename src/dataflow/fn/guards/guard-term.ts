@@ -149,16 +149,26 @@ function isScalar(this: void, term: GuardCall, facts: GuardFactsLookup): boolean
 	return stated?.singleResult === true || stated?.predicate !== undefined;
 }
 
+/** Whether R goes by the first element of a longer `operand` of `fn`, as before R 4.2 for `if` and before R 4.3 for `&&`, instead of failing on it. */
+function firstOnly(this: void, facts: GuardFactsLookup, fn: BrandedIdentifier, operand: BrandedIdentifier): boolean {
+	return !(facts(fn)?.asks?.[operand] ?? []).some(({ requires }) => 'length' in requires && requires.length === '<=' && requires.to === 1);
+}
+
 /**
  * What it means for `term` to have been found `holds` (or not): what `if` and `&&` saw is one logical that is not `NA`
  * while `stopifnot` (`vector`) saw only `TRUE`s, as it also accepts a whole vector of them.
+ * With `leading`, R saw only the first element of what may be longer, so only that is said of it, see {@link firstOnly}.
  * The result is in negation normal form and spells the vector case out with `all`, so it reads the way it is meant.
  */
-function truth(this: void, term: GuardTerm, holds: boolean, facts: GuardFactsLookup, vector = false): GuardTerm {
+function truth(this: void, term: GuardTerm, holds: boolean, facts: GuardFactsLookup, vector = false, leading = false): GuardTerm {
 	const leaf = (of: GuardTerm, as: boolean, whole: boolean): GuardTerm => {
 		const negated = as ? of : known('!', of);
-		return whole && !(isCall(of) && isScalar(of, facts)) ? known('all', negated) : negated;
+		if(isCall(of) && isScalar(of, facts)) {
+			return negated;
+		}
+		return whole ? known('all', negated) : leading ? known('[', negated, numberConstant(1, false)) : negated;
 	};
+	const operand = (fn: BrandedIdentifier, of: GuardTerm) => truth(of, holds, facts, false, firstOnly(facts, fn, 'x'));
 	if(term.kind === 'constant' && typeof term.value === 'boolean') {
 		return term.value === holds ? True : False;
 	} else if(term.kind === 'formal' || term.kind === 'free') {
@@ -175,19 +185,19 @@ function truth(this: void, term: GuardTerm, holds: boolean, facts: GuardFactsLoo
 	const [first, second] = operands;
 	switch(term.fn) {
 		case '!':
-			return truth(first, !holds, facts, vector);
+			return truth(first, !holds, facts, vector, leading);
 		case 'isTRUE':
 		case 'isFALSE':
 			/* on a formal it says more than the truth of the formal: a single logical */
 			return holds && isCall(first) && isScalar(first, facts) ? truth(first, term.fn === 'isTRUE', facts) : leaf(term, holds, false);
 		case '&&':
-			return (holds ? all : any)(truth(first, holds, facts), truth(second, holds, facts));
+			return (holds ? all : any)(operand('&&', first), operand('&&', second));
 		case '||':
-			return (holds ? any : all)(truth(first, holds, facts), truth(second, holds, facts));
+			return (holds ? any : all)(operand('||', first), operand('||', second));
 		case '&':
-			return vector && !holds ? leaf(term, holds, vector) : (holds ? all : any)(truth(first, holds, facts, vector), truth(second, holds, facts, vector));
+			return vector && !holds ? leaf(term, holds, vector) : (holds ? all : any)(truth(first, holds, facts, vector, leading), truth(second, holds, facts, vector, leading));
 		case '|':
-			return vector && holds ? leaf(term, holds, vector) : (holds ? any : all)(truth(first, holds, facts, vector), truth(second, holds, facts, vector));
+			return vector && holds ? leaf(term, holds, vector) : (holds ? any : all)(truth(first, holds, facts, vector, leading), truth(second, holds, facts, vector, leading));
 		case 'all':
 			return operands.length === 1 && holds ? truth(first, true, facts, true) : leaf(term, holds, false);
 		case 'any':
@@ -544,6 +554,7 @@ export const GuardTerm = {
 	all,
 	any,
 	truth,
+	firstOnly,
 	render,
 	formalsOf,
 	/** Every function the term calls, see {@link callsOf}. */

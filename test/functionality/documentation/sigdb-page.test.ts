@@ -5,6 +5,7 @@ import { assert, describe, test } from 'vitest';
 import { contractFormals, spokenOf } from '../../../scripts/sigdb-page/contract-formals';
 import { answersAll, contractTokens, takeContractSpecs } from '../../../scripts/sigdb-page/contract-search';
 import { guardsForPage } from '../../../scripts/sigdb-index';
+import { linkedGroups, mergedRelations } from '../../../src/dataflow/fn/guards/condition-grouping';
 
 const Root = path.join(__dirname, '..', '..', '..');
 
@@ -53,6 +54,25 @@ describe('Signature database page', () => {
 		const trunc = guardsForPage()['base::trunc'];
 		assert.includeDeepMembers([...trunc?.[10] ?? []], [['is.numeric', 'base::is.numeric'], ['is.logical', 'base::is.logical'], ['is.object', 'base::is.object'], ['oldClass', 'base::oldClass']]);
 		assert.includeMembers([...trunc?.[11] ?? []], ['origin:stated', 'requires:base::is.numeric', 'requires:is.numeric', 'contract:x']);
+	});
+
+	test('a contract shows a comparison once, also when stated with its sides swapped or with other ways through', () => {
+		assert.deepStrictEqual(mergedRelations([
+			{ holds: 'length(a) == length(b)', unless: 'c || is.null(dim(a)) || is.null(dim(b))' },
+			{ holds: 'length(b) == length(a)', unless: '(c || is.null(dim(b)) || is.null(dim(a)))' },
+			{ holds: 'x > n', unless: 'c || p' },
+			{ holds: 'n < x', unless: 'c || q && r' },
+			{ holds: 'y >= 1', unless: 'k' },
+			{ holds: 'y >= 1' }
+		]), [
+			{ holds: 'length(a) == length(b)', unless: 'c || is.null(dim(a)) || is.null(dim(b))' },
+			{ holds: 'x > n', unless: 'c || (p && q && r)' },
+			{ holds: 'y >= 1', unless: undefined }
+		]);
+	});
+
+	test('the formals a contract relates read together, in the order of the signature', () => {
+		assert.deepStrictEqual(linkedGroups(['x', 'm', 'FUN', 'a', 'b'], [['b', 'x'], ['m', 'a'], ['a', 'x']]), [['x', 'm', 'a', 'b'], ['FUN']]);
 	});
 
 	test('scripts/sigdb-page/main.ts bundles into a classic script that still reads every id', async() => {

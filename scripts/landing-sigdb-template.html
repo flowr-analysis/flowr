@@ -266,6 +266,8 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 /* the formals a row is about wrap within a narrow column, and on a narrow screen they go above what holds */
 #hits .contract .crow > span:first-child { display: flex; flex-wrap: wrap; gap: .2rem; max-width: 14rem; }
 @media (max-width: 700px) { #hits .contract .crow { grid-template-columns: minmax(0, 1fr); gap: .2rem; } #hits .contract .crow > span:first-child { max-width: none; } }
+/* formals that depend on each other are a group, a line apart from the next */
+#hits .contract .crow.gstart { margin-top: .25rem; border-top: 1px solid var(--border); border-top-left-radius: 0; border-top-right-radius: 0; padding-top: .3rem; }
 #hits .contract .crow:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 /* a failure reads in one line under its condition rather than as a narrow column beside it */
 #hits .contract .crow.condition { grid-template-columns: minmax(0, 1fr); gap: .05rem; }

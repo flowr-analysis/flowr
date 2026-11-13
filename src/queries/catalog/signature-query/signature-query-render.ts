@@ -5,6 +5,7 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { cranPageUrl } from './signature-query-executor';
 import { baseRPackages } from '../../../util/r-base-packages';
 import { claimWords, returnWords } from '../../../dataflow/fn/guards/guard-claims';
+import { mergedRelations } from '../../../dataflow/fn/guards/condition-grouping';
 import type { SignatureFunctionView, SignaturePackageView, SignatureQueryResult } from './signature-query-format';
 import { arraysGroupBy } from '../../../util/collections/arrays';
 import { ArgProp } from '../../../dataflow/environments/built-in-props';
@@ -99,7 +100,7 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	if(fn.guards?.requires) {
 		result.push(`      ╰ ${italic('requires', f)} ${fn.guards.requires}`);
 	}
-	for(const { holds, unless } of fn.guards?.relations ?? []) {
+	for(const { holds, unless } of mergedRelations(fn.guards?.relations ?? [])) {
 		result.push(`      ╰ ${italic('relation', f)} ${holds}${unless === undefined ? '' : ` unless ${unless}`}`);
 	}
 	if(fn.guards?.returns !== undefined || fn.guards?.passes !== undefined) {

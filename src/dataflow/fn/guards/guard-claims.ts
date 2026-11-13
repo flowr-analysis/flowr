@@ -43,7 +43,7 @@ export interface FormalClaim {
 export interface FormalCase {
 	/** the condition of the case, in R syntax */
 	readonly when:       string
-	/** what holds of the formal in the case, the condition included */
+	/** what holds of the formal in the case beyond what its condition says, see {@link claimBeyond} */
 	readonly claim:      FormalClaim
 	/** what relates the formal to others in the case, see {@link ClaimedRelation} */
 	readonly relations?: readonly ClaimedRelation[]
@@ -397,6 +397,27 @@ function toClaim(this: void, abstract: Abstract): FormalClaim {
 	};
 }
 
+/** What `claim` says beyond `known`, each part `known` already makes sure of left out, so a case does not repeat its condition or what always holds. */
+export function claimBeyond(this: void, claim: FormalClaim, known: FormalClaim): FormalClaim {
+	const within = (a: readonly unknown[] | undefined, b: readonly unknown[] | undefined) => a !== undefined && b !== undefined && a.every(x => b.includes(x));
+	const narrower = ([lower, upper]: ClaimedRange, [low, high]: ClaimedRange) => (low === null || (lower !== null && lower >= low)) && (high === null || (upper !== null && upper <= high));
+	const bounds = Object.entries(claim.bounds ?? {}).filter(([measure, range]) => known.bounds?.[measure] === undefined || !narrower(known.bounds[measure], range));
+	const resolves = (claim.resolves ?? []).filter(r => !known.resolves?.some(k => k.expression === r.expression));
+	const { types, unclassedTypes, values, partial, classes, notNA, callable, whole, cases } = claim;
+	return {
+		...types === undefined || within(known.types, types) ? {} : { types },
+		...unclassedTypes === undefined || within(known.unclassedTypes ?? known.types, unclassedTypes) ? {} : { unclassedTypes },
+		...values === undefined || (within(known.values, values) && (partial === true || known.partial !== true)) ? {} : { values, ...partial ? { partial } : {} },
+		...classes === undefined || within(known.classes, classes) ? {} : { classes },
+		...bounds.length === 0 ? {} : { bounds: Object.fromEntries(bounds) },
+		...notNA && !known.notNA ? { notNA } : {},
+		...callable && !known.callable ? { callable } : {},
+		...whole && !known.whole ? { whole } : {},
+		...resolves.length === 0 ? {} : { resolves },
+		...cases === undefined ? {} : { cases }
+	};
+}
+
 /** The functions that drop the fraction of a number, so `trunc(x) == x` holds only for a whole `x`. */
 const Rounding: ReadonlySet<BrandedIdentifier> = new Set(['trunc', 'round', 'floor', 'ceiling', 'as.integer']);
 
@@ -511,7 +532,8 @@ export function casesOf(this: void, clauses: readonly CaseClause[], formals: rea
 			}
 			cases[formal] = split.map(([term, { all }]) => {
 				const relations = relationsOf(all, facts).filter(r => r.formals.includes(formal));
-				return { when: GuardTerm.render(term), claim: toClaim(all.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, formal, facts)), Unconstrained)), ...(relations.length > 0 ? { relations } : {}) };
+				const claimOf = (conditions: readonly GuardTerm[]) => toClaim(conditions.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, formal, facts)), Unconstrained));
+				return { when: GuardTerm.render(term), claim: claimBeyond(claimOf(all), claimOf(GuardTerm.conjuncts(term))), ...(relations.length > 0 ? { relations } : {}) };
 			});
 			break;
 		}
@@ -752,7 +774,8 @@ export function claimConditions(this: void, formal: string, { types, unclassedTy
 }
 
 /** Reads a claim in a few words each, as a page or a terminal shows it. */
-export function claimWords(this: void, { types, unclassedTypes, values, partial, classes, bounds, notNA, callable, whole, resolves, cases }: FormalClaim): string[] {
+export function claimWords(this: void, claim: FormalClaim): string[] {
+	const { types, unclassedTypes, values, partial, classes, bounds, notNA, callable, whole, resolves } = claim;
 	const range = (what: string, [lower, upper]: ClaimedRange) => lower !== null && lower === upper ? `${what} = ${lower}`
 		: [lower === null ? '' : `${what} >= ${lower}`, upper === null ? '' : `${what} <= ${upper}`].filter(w => w !== '').join(', ');
 	const onlyNull = types?.length === 1 && types[0] === 'NULL';
@@ -766,13 +789,19 @@ export function claimWords(this: void, { types, unclassedTypes, values, partial,
 		callable ? 'callable' : '',
 		whole ? 'whole number' : '',
 		...(resolves ?? []).map(r => `${r.expression} exists`),
-		...(cases ?? []).map(c => `if ${c.when}: ${[...claimWords(c.claim), ...(c.relations ?? []).map(r => r.holds)].join(', ')}`)
+		...shownCases(claim).map(([when, said, relations]) => `if ${when}: ${[...claimWords(said), ...relations].join(', ')}`)
 	].filter(w => w !== '');
 }
 
-/** Each case of a claim as its condition and what holds in it, see {@link claimConditions}. */
-export function caseConditions(this: void, formal: string, { cases }: FormalClaim): string[] {
-	return (cases ?? []).map(c => `if (${c.when}): ${allOf([...claimConditions(formal, c.claim), ...(c.relations ?? []).map(r => r.holds)])}`);
+/** The cases of a claim with what each adds to the claim itself, a relation already stated elsewhere left out, and no case that adds nothing. */
+function shownCases(this: void, { cases, ...always }: FormalClaim, stated: readonly string[] = []): [when: string, claim: FormalClaim, relations: string[]][] {
+	return (cases ?? []).map((c): [string, FormalClaim, string[]] => [c.when, claimBeyond(c.claim, always), (c.relations ?? []).map(r => r.holds).filter(h => !stated.includes(h))])
+		.filter(([, claim, relations]) => Object.keys(claim).length > 0 || relations.length > 0);
+}
+
+/** Each case of a claim as its condition and what holds in it, see {@link claimConditions}; `stated` are the relations said of the formals on their own. */
+export function caseConditions(this: void, formal: string, claim: FormalClaim, stated: readonly string[] = []): string[] {
+	return shownCases(claim, stated).map(([when, said, relations]) => `if (${when}): ${allOf([...claimConditions(formal, said), ...relations])}`);
 }
 
 /** What a call returns in a few words, see {@link claimWords}: what holds of it, and the formal it hands back. */

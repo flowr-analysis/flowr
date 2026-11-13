@@ -10,6 +10,8 @@ import type { FunctionGuards, GuardClause } from '../../../dataflow/fn/guards/fu
 import type { StatedGuards } from '../../../dataflow/fn/guards/built-in-guards';
 import { claimWords, returnWords, relationsOf } from '../../../dataflow/fn/guards/guard-claims';
 import { metaSince } from '../../query-meta';
+import { linkedGroups, mergedRelations } from '../../../dataflow/fn/guards/condition-grouping';
+import { escapeRegex } from '../../../util/text/strings';
 import { QueryFunctionFilter } from '../../query-function-filter';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import { GuardTerm } from '../../../dataflow/fn/guards/guard-term';
@@ -85,19 +87,26 @@ export interface InspectFnGuardsQueryResult extends BaseQueryResult {
 	readonly builtIns?: Record<string, StatedGuards>
 }
 
-/** Adds what has to be supplied, and what is claimed about each formal. */
-function pushClaims(result: string[], { required = [], formals = {}, relations = [], conditional = [], returns, passes }: StatedGuards): void {
-	if(required.length > 0) {
-		result.push(`    a call has to supply: ${required.join(', ')}`);
-	}
-	for(const [formal, claim] of Object.entries(formals)) {
-		result.push(`    ${formal}: ${claimWords(claim).join(', ')}`);
-	}
-	for(const { formal, claim, unless } of conditional) {
-		result.push(`    ${formal}: ${claimWords(claim).join(', ')}, unless ${unless}`);
-	}
-	for(const { holds, unless } of relations) {
-		result.push(`    relation: ${holds}${unless === undefined ? '' : ` unless ${unless}`}`);
+/** Adds per formal whether a call has to supply it, what is claimed of it, and the checks reading it, the formals depending on each other together with what relates them, then what a call returns. */
+function pushClaims(result: string[], { required = [], formals = {}, relations: stated = [], conditional = [], returns, passes }: StatedGuards, conditions: Readonly<Record<string, readonly string[]>> = {}): void {
+	const relations = mergedRelations(stated);
+	const named = [...new Set<string>([...required, ...Object.keys(formals), ...conditional.map(c => c.formal), ...Object.keys(conditions), ...relations.flatMap(r => r.formals)])];
+	const mentioned = (text: string) => named.filter(f => new RegExp(`\\b${escapeRegex(f)}\\b`).test(text));
+	const groups = linkedGroups(named, [...relations.map(r => r.formals.map(String)), ...conditional.map(c => [String(c.formal), ...mentioned(c.unless)])]);
+	for(const group of groups) {
+		for(const formal of group) {
+			const claims = formals[formal as BrandedIdentifier];
+			const said = [...claims === undefined ? [] : [claimWords(claims).join(', ')], ...conditional.filter(c => c.formal === formal).map(c => `(${claimWords(c.claim).join(', ')}) unless ${c.unless}`)];
+			if(said.length > 0 || required.includes(formal) || conditions[formal]?.length) {
+				result.push(`    ${formal}${required.includes(formal) ? ' (required)' : ''}${said.length > 0 ? `: ${said.join('; ')}` : ''}`);
+			}
+			if(conditions[formal]?.length) {
+				result.push(`      checked by: ${conditions[formal].join(', ')}`);
+			}
+		}
+		for(const { holds, formals: between, unless } of relations.filter(r => group.includes(String(r.formals[0])))) {
+			result.push(`    between ${between.join(' and ')}: ${holds}${unless === undefined ? '' : ` unless ${unless}`}`);
+		}
 	}
 	if(returns !== undefined || passes !== undefined) {
 		result.push(`    returns: ${returnWords(returns, passes).join(', ')}`);
@@ -117,10 +126,7 @@ export const InspectFnGuardsQueryDefinition = {
 			if(guards.pure !== '' && guards.pure !== guards.requires) {
 				result.push(`    failing cleanly on: ${guards.pure}`);
 			}
-			pushClaims(result, guards);
-			for(const [formal, conditions] of Object.entries(guards.conditions)) {
-				result.push(`    ${formal} is checked by: ${conditions.join(', ')}`);
-			}
+			pushClaims(result, guards, guards.conditions);
 		}
 		for(const [name, guards] of Object.entries(out.builtIns ?? {})) {
 			result.push(`  - ${bold(name, formatter)} requires ${guards.requires === '' ? 'nothing' : guards.requires}`);

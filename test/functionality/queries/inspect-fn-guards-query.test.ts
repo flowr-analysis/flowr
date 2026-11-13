@@ -631,16 +631,23 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		const quantified = 'f <- function(x) all(x)';
 		assert.strictEqual((await guardsOfF(parser, quantified, inVersion('4.6.0')))?.requires, '!is.function(x) && !is.call(x) || is.object(x)');
 		assert.strictEqual((await guardsOfF(parser, quantified, inVersion('4.6.1')))?.requires, '(!is.function(x) && !is.call(x) || is.object(x)) && (!is.symbol(x) || is.object(x))');
+		/* before R 4.2 `if`, and before R 4.3 `&&` and `||`, went by the first element of a longer condition */
+		const first = 'f <- function(x) { if(x > 1) stop("n"); 1 }';
+		assert.strictEqual((await guardsOfF(parser, first, inVersion('4.1.3')))?.requires, '(!is.function(x) && !is.environment(x) || is.object(x)) && (x <= 1)[1]');
+		assert.strictEqual((await guardsOfF(parser, first, inVersion('4.2.0')))?.requires, '(!is.function(x) && !is.environment(x) || is.object(x)) && x <= 1');
+		const either = 'f <- function(x) { if(x > 1 || x < -1) stop("n"); 1 }';
+		assert.strictEqual((await guardsOfF(parser, either, inVersion('4.2.3')))?.requires, '(!is.function(x) && !is.environment(x) || is.object(x)) && (x <= 1)[1] && (x >= -1)[1]');
+		assert.strictEqual((await guardsOfF(parser, either, inVersion('4.3.0')))?.requires, '(!is.function(x) && !is.environment(x) || is.object(x)) && x <= 1 && x >= -1');
 	});
 
 	test('a branch on a formal tells its cases apart', async() => {
 		const guards = await guardsOfF(parser, 'f <- function(x, center = TRUE) { if(is.logical(center)) { if(center) 1 } else { if(length(center) != ncol(x)) stop("len"); 2 } }');
 		const [logical, other] = guards?.formals.center?.cases ?? [];
 		assert.strictEqual(logical?.when, 'is.logical(center)');
-		assert.deepStrictEqual(logical?.claim, { types: ['logical'], bounds: { length: [1, 1] }, notNA: true });
+		assert.deepStrictEqual(logical?.claim, { bounds: { length: [1, 1] }, notNA: true });
 		assert.strictEqual(other?.when, '!is.logical(center)');
 		assert.deepStrictEqual(other?.relations?.map(r => r.holds), ['length(center) == ncol(x)']);
-		assert.include(claimWords(guards?.formals.center ?? {}).join(', '), 'if is.logical(center): logical, length = 1, not NA');
+		assert.include(claimWords(guards?.formals.center ?? {}).join(', '), 'if is.logical(center): length = 1, not NA');
 	});
 
 	test('a generic takes what its default method asks of a value without a class', async() => {

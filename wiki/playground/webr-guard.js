@@ -1,0 +1,121 @@
+'use strict';
+/*
+ * Service worker of the playground: every request for webR's files is answered only if the file has the SHA-256
+ * pinned when the playground was built (see webr-pin.ts), so a changed or unknown file never reaches the page.
+ * It also tells the page how far along the downloads of webR and of the R packages are.
+ * The build fills in the two placeholders.
+ */
+const Base = 'https://webr.r-wasm.org/v0.6.0/';
+const Expected = JSON.parse('{"vfs/usr/lib/R/library/translations/DESCRIPTION":{"sha256":"un2jrGBGb19GbE9wb1C8r7uST5SwiI0zO7QQRRtBr9I=","size":238},"vfs/var/cache/fontconfig/3830d5c3ddfd5cd38a049b759396e72e-le32d8.cache-9":{"sha256":"SM012MPXpEVvBbvzwQusg94ILTVLLsAsioDjJaw/CDk=","size":16008},"vfs/etc/fonts/fonts.conf":{"sha256":"qT77+e7IPXKkY/HVL1QEOor6aufMBWCd7acyMlJee8A=","size":1089},"vfs/usr/lib/R/library/grDevices/afm.data.gz":{"sha256":"uw2IyEkro5dHAVLW2Q2C4FUJLa1z4ehk/msuvwsr1So=","size":953823},"vfs/usr/lib/R/library/base/demo.data.gz":{"sha256":"XcH8hMsdYeTVMRuOAUWAFNqxxDTCttk97KPqqbUHUuI=","size":4460},"vfs/usr/lib/R/library/graphics/demo.data.gz":{"sha256":"PmDwIQy0jQxAqMVkNq+YDipx8AFupmt9lfGTL/6iR2I=","size":13086},"vfs/usr/lib/R/library/grDevices/demo.data.gz":{"sha256":"iUM3lmk7CB5l6K4yFPS4gjxWSi/ovw+QCVat9V+xbyw=","size":2513},"vfs/usr/lib/R/library/stats/demo.data.gz":{"sha256":"dhrc1LScqFkFfhqWd0MIpf07bzXgDS2sbRdzHukfUFA=","size":4061},"vfs/usr/lib/R/doc.data.gz":{"sha256":"A60bUazVFmWlrY5LGj/6VwQ0yg8qUdQyspTktVAOqQ8=","size":4000106},"vfs/usr/lib/R/library/grid/doc.data.gz":{"sha256":"xAuF5wrUkXDnrKMEG9UYoffOXFUQ9fRrSYB6TEcV2Gk=","size":584214},"vfs/usr/lib/R/library/stats/doc.data.gz":{"sha256":"0k4doaTafPUx+dljpfv7QvqzknDvGCKDwj2I1mamB88=","size":50057},"vfs/usr/lib/R/library/utils/doc.data.gz":{"sha256":"QBjnIlN/qDxw1fAx1Ko5HtaNwAtjqYiK71ZYmceJyvk=","size":216941},"vfs/usr/lib/R/library/grDevices/enc.data.gz":{"sha256":"c/zSExClTgM/FR9siHABxV00j/JuLk0yoL4K1Iw6T9c=","size":4263},"vfs/usr/lib/R/library/grDevices/fonts.data.gz":{"sha256":"TcpX0aSouKtTD6Z7AZGT5rNFfUBmUGpnKEF59Yu1CnI=","size":273155},"vfs/usr/share/gdal.data.gz":{"sha256":"ityvEvFdq7lkyzNj3voCvcnnMKF7EEYJRpRIhbz2ma8=","size":348461},"vfs/usr/lib/R/library/base/help.data.gz":{"sha256":"fF3sI1f542+k00io/vhHeZTNVgiQCSR+WQjZGKb7Ggk=","size":2633853},"vfs/usr/lib/R/library/compiler/help.data.gz":{"sha256":"yOhQtbXhoEqvKe9C1Q+AVHP1bJiKvPYP/LN1GV97zdw=","size":10128},"vfs/usr/lib/R/library/datasets/help.data.gz":{"sha256":"3ljGMDsBtf6D/Kc6XSBedEj/oWpWzwoQhtd2/cYLtN0=","size":277806},"vfs/usr/lib/R/library/graphics/help.data.gz":{"sha256":"hSJYLis6NXfCTxdLzMx9db67kSgTEVfXs3EtKCVbr3E=","size":562908},"vfs/usr/lib/R/library/grDevices/help.data.gz":{"sha256":"zVux2ePaYU7P001JO1NwyY4+PpPdYl+sH3U8bGpn06A=","size":447385},"vfs/usr/lib/R/library/grid/help.data.gz":{"sha256":"PYqHh3wGn0em/8WQBDl14m0msRKt3XvKvcq1dvepx04=","size":341560},"vfs/usr/lib/R/library/methods/help.data.gz":{"sha256":"1yfca3Qi3t8YyvFTFEx4tuKWbXpaQsTJ9vbPFqigaD4=","size":559755},"vfs/usr/lib/R/library/splines/help.data.gz":{"sha256":"AZMBy6ksQsuFRI83oIHgnxNoSi1ivCgSK20oMqhmbaU=","size":44264},"vfs/usr/lib/R/library/stats/help.data.gz":{"sha256":"j6SNHjgD3VCOJL3pWTE6JPqR6+c/d5JyxqyjHtYTSjM=","size":1843548},"vfs/usr/lib/R/library/stats4/help.data.gz":{"sha256":"ihi1HL/jmR8/M76DG8ensmdvYsSgEr/3NFCv3hgrFZ8=","size":37560},"vfs/usr/lib/R/library/tools/help.data.gz":{"sha256":"StDmB1B8IqkYYIV4ZRkqe1YCcBaPO+jHXZOUxWiTZNg=","size":324132},"vfs/usr/lib/R/library/utils/help.data.gz":{"sha256":"vgbIodadSwuCsJr8JK3hT+Cv1oBTwZ+Hrx9tF9mELL8=","size":894372},"vfs/usr/lib/R/library/webr/help.data.gz":{"sha256":"E/gUtMpLitSuB/Q6XgntkCdCM9h1ijxewObaw7pWeZw=","size":57381},"vfs/usr/lib/R/library/base/html.data.gz":{"sha256":"H06ComM78cwTTT28YiIANJLeL+IH3ezM1uOrXU9G8ww=","size":20906},"vfs/usr/lib/R/library/compiler/html.data.gz":{"sha256":"bRV6xsdqLysVqYn/28jBpGW5GBGmVKpvsVc9eDEJ4ww=","size":1227},"vfs/usr/lib/R/library/datasets/html.data.gz":{"sha256":"bx62gRzTQy6XZOdbDUGOPtJFWDWlj3JboY0LK44e2U0=","size":4458},"vfs/usr/lib/R/library/graphics/html.data.gz":{"sha256":"mdHGoyJLcEI31CcFdUmhqbhjAzu/LowIb8biAFU2Ibs=","size":2982},"vfs/usr/lib/R/library/grDevices/html.data.gz":{"sha256":"3hIFgEd059fbB5ZkZ6LQ6mZzRVBYOtRUmTXUNWz/2bs=","size":4188},"vfs/usr/lib/R/library/grid/html.data.gz":{"sha256":"irI2ppfKYk3XSx/OHqsIUujW/KtORB7An+V+VoSbd9E=","size":4928},"vfs/usr/lib/R/library/methods/html.data.gz":{"sha256":"Esu7TrnYeNEwoHE+GtJKSlodvltiM0eoOMTZ1/M0sL0=","size":5267},"vfs/usr/lib/R/library/splines/html.data.gz":{"sha256":"HzWBUFASmCbwa7nHE3fvmHRWSOAocC7TJtVt7iKIwt8=","size":1550},"vfs/usr/lib/R/library/stats/html.data.gz":{"sha256":"ThTvAGcAHiLLJRZ8f1HPZlzonxb+bYDBxBIQdb/1Ugo=","size":11358},"vfs/usr/lib/R/library/stats4/html.data.gz":{"sha256":"6repOajVfFeS6YoTuUIi0ptD8vvE4LTUSeb62W9AHaU=","size":1522},"vfs/usr/lib/R/library/tools/html.data.gz":{"sha256":"EyQtfhirdBJgmSVCjGUeB2FRRqeBN+G8fxF9Gt1i5H8=","size":4307},"vfs/usr/lib/R/library/utils/html.data.gz":{"sha256":"M/b+V9rZIxmvGQ8+oG7nkQToUMhgQ8xFwRx1E96cwGY=","size":7240},"vfs/usr/lib/R/library/webr/html.data.gz":{"sha256":"4WtVeoQX7Cv7EcOgOriyhjhGQheHeta90m9FJjoUy3k=","size":1696},"vfs/usr/lib/R/library/grDevices/libs.data.gz":{"sha256":"VYoJ8UyDCEhRC2J5wRQYAtOS/i0Kr2bsoXT6oD3Hux0=","size":1643930},"vfs/usr/lib/R/library/tools/misc.data.gz":{"sha256":"cELwSEQCb7woH0eJq/isW/B1HRznC7YCqNuNYPKsaM8=","size":3724},"vfs/usr/lib/R/library/utils/misc.data.gz":{"sha256":"M93G0ae1lMfQgk3BKqFc/OhZtmudcTTCKO40m0gCe1Y=","size":161},"vfs/usr/lib/R/library/parallel.data.gz":{"sha256":"JSVnV0QLtt13ssvdVmi4Wu1dK4665Y0DlAjx2LT+W5U=","size":349042},"vfs/usr/share/proj.data.gz":{"sha256":"FOOJOZHECDJNQ2Bau+bEyuGGB/4nZV54ZUvsRWV5nhM=","size":1705325},"vfs/usr/lib/R/share.data.gz":{"sha256":"eSWOUEOVvgau+j2e1IK82cJu+yd5GiQ/hR6tGDrCjUE=","size":380353},"vfs/usr/lib/R/library/tcltk.data.gz":{"sha256":"/WLUz0RTTKeEy8CrJuZescb4giaXCfztWhrEWfhVACY=","size":132160},"vfs/usr/lib/R/library/translations.data.gz":{"sha256":"yMrFBxuGkcsclgOJs3C1AHxbjfdS2YpYYLzlBcI0ucI=","size":3061528},"vfs/usr/share/udunits.data.gz":{"sha256":"/B3gyctcgn/vIu0Uj/wo6rcKmdPMmqmZDjeq845cF1c=","size":16775},"R.js":{"sha256":"FirbUpER1zmzfvG5+Inrevvk+zKI+KWBZs1tCwT9c3Y=","size":785875},"webr-worker.js":{"sha256":"xkKC9eFbUe9HPiZUggMxP4aCCMiYiyx738IsVzDeQYs=","size":134029},"webr.mjs":{"sha256":"TATTJA3mzT5/WeCBdWFo+qhWb4qLlyUUAHcJOYFcNEo=","size":66672},"vfs/usr/lib/R/library/grDevices/afm.js.metadata":{"sha256":"PogGHf7MFMbNE4a+hdT+9Z/h+WQxLbQZA+Rx7XTnzwI=","size":6816},"vfs/usr/lib/R/library/base/demo.js.metadata":{"sha256":"v8WX6I+bl7juyf02In7w0Hn98cMui+qEw7Hnf7emsFw=","size":263},"vfs/usr/lib/R/library/graphics/demo.js.metadata":{"sha256":"ESj+93n0BFLQ3Ssns5dBdftKNBw0GNlT2LM1QFdRF/0=","size":359},"vfs/usr/lib/R/library/grDevices/demo.js.metadata":{"sha256":"KlGSTq7hjL5Bv+jxGucPCDdI2X71y7t3vTw6Ez6q1HE=","size":149},"vfs/usr/lib/R/library/stats/demo.js.metadata":{"sha256":"flN0UKaFWgL1SRzyL0ir7VJrsdTS/RXT40clqzZn218=","size":241},"vfs/usr/lib/R/doc.js.metadata":{"sha256":"+nU3tRzKtk4XQHkz6SYhHXBvfofsx9sBjkTmY8B9k6I=","size":8701},"vfs/usr/lib/R/library/grid/doc.js.metadata":{"sha256":"FJJKyTie2XOxbQ8+XLMOSbZinbPy9MjgqzaQi+wbrAs=","size":896},"vfs/usr/lib/R/library/stats/doc.js.metadata":{"sha256":"ZxtRTJYOX5ECOoADppCRiuhKyXpMO8Ej85HlG1gsDGY=","size":102},"vfs/usr/lib/R/library/utils/doc.js.metadata":{"sha256":"GJ/ZizzaXUoRx9pngGSd3szppf1bnUcqB19JkJppVsM=","size":103},"vfs/usr/lib/R/library/grDevices/enc.js.metadata":{"sha256":"/W+0ebSZ2hn+RCMYrBR73aJVegh/8ZrNpaIg++ZoZhc=","size":960},"vfs/usr/lib/R/library/grDevices/fonts.js.metadata":{"sha256":"pZ8egfpaIfa2+5G2pRrZlEz/MoPViRyUJ6NwJXO21lw=","size":352},"vfs/usr/share/gdal.js.metadata":{"sha256":"3kA97TgBOrV5Mahi0UvNwzsJmXxw3hWH7GcZ+UNgqyU=","size":10206},"vfs/usr/lib/R/library/base/help.js.metadata":{"sha256":"pMwwdfwb0r3Ugm7gTvphbVac1+B4hrjJhTGiNAb8CiU=","size":318},"vfs/usr/lib/R/library/compiler/help.js.metadata":{"sha256":"Gv0IbEFm8YTsDbCUM1LExYhaM+G4+3DlNyQdpxIohTQ=","size":304},"vfs/usr/lib/R/library/datasets/help.js.metadata":{"sha256":"pcufZYONrRrXLmYmddKNr7dbh2nALZU3+sdWmilbfBY=","size":316},"vfs/usr/lib/R/library/graphics/help.js.metadata":{"sha256":"84mDStgbTbm7To6JwlS7jIhto2tcRYzWYaGk1XEICfE=","size":720},"vfs/usr/lib/R/library/grDevices/help.js.metadata":{"sha256":"xjnLfHLKwTSX3CnwFH8xGlIGydwkmIWw4tEdqkTgAQY=","size":318},"vfs/usr/lib/R/library/grid/help.js.metadata":{"sha256":"ZqVvJ++kXxHD/iC2MhV2FSehgBRTEVm8fRrxWdm/Coc=","size":308},"vfs/usr/lib/R/library/methods/help.js.metadata":{"sha256":"+IA71anO/73yhXy6J9ll84CpeAH5e1HTAKw57iOcUFY=","size":318},"vfs/usr/lib/R/library/splines/help.js.metadata":{"sha256":"bG6CgwU0fLm8fBy6QqLUpgUJ+V9DdZGbjXFDtgK06GI=","size":302},"vfs/usr/lib/R/library/stats/help.js.metadata":{"sha256":"hGGRCMerAjNDweXpXVl5/M9CbkMIDH/ZBnL0SrNlPqA=","size":316},"vfs/usr/lib/R/library/stats4/help.js.metadata":{"sha256":"oD9hFtP2cD+I+SCYZHCZRjYuUcvzKMFNPJx+PTmkDU4=","size":304},"vfs/usr/lib/R/library/tools/help.js.metadata":{"sha256":"dh8+LNjswZRBCgOdp/p1ZaaLF8iycTBuknwPi00O7yc=","size":306},"vfs/usr/lib/R/library/utils/help.js.metadata":{"sha256":"e72qjdJBNfpz7AXvESDpT1C8ol/O8xJEo7o9Ud0MRHg=","size":310},"vfs/usr/lib/R/library/webr/help.js.metadata":{"sha256":"u+wUfbsTkI02CUBQfhWOdQfNpS8WnzZYIdzcNBRRN5Q=","size":357},"vfs/usr/lib/R/library/base/html.js.metadata":{"sha256":"SCa917oVVo16tSJskrHXQrzT9M6FMwD1W/IFpfjiLQI=","size":155},"vfs/usr/lib/R/library/compiler/html.js.metadata":{"sha256":"mNGJl8OTiB0oUXLcskFNqSgZJSCvarohVmfwqTsNpU0=","size":147},"vfs/usr/lib/R/library/datasets/html.js.metadata":{"sha256":"ycXluv7hwDvgTShn9Ekj4Pp0eRu8Ucy7jT/1V5u14hE=","size":151},"vfs/usr/lib/R/library/graphics/html.js.metadata":{"sha256":"u4LdICToAKvz05DD8h9E4Ynr499Weg3pdOlSBvft730=","size":151},"vfs/usr/lib/R/library/grDevices/html.js.metadata":{"sha256":"Ois2utFQnfGRLhlDIuEzx/Nirnyt6MF46fv+iNoKDIM=","size":151},"vfs/usr/lib/R/library/grid/html.js.metadata":{"sha256":"PShIeiLqBJ08YympzrsNMQ49QgZkelF8tAqyG8VmLh0=","size":151},"vfs/usr/lib/R/library/methods/html.js.metadata":{"sha256":"pj6WA4xmBCIm9IjTrI9Uy+p0vaIv6/WTll4r7eVSxzo=","size":151},"vfs/usr/lib/R/library/splines/html.js.metadata":{"sha256":"VZIakQvbPXyy0tsk3/nlfdvk1WcPxUw84McNphEtbO8=","size":147},"vfs/usr/lib/R/library/stats/html.js.metadata":{"sha256":"nqYNgFSD9Ov7GXlX2hx8NgoAyS1LM/zH/aQvnuYmzX0=","size":151},"vfs/usr/lib/R/library/stats4/html.js.metadata":{"sha256":"w0zPnw3hrRnWrqFbP1bm9lyJZ72Mmp45RheI2qXB0V4=","size":147},"vfs/usr/lib/R/library/tools/html.js.metadata":{"sha256":"2TRx3zP4yDWC88IX/arZwJR5lryHwZ4iYYKOAby2aMM=","size":151},"vfs/usr/lib/R/library/utils/html.js.metadata":{"sha256":"kjezjQu5zQTG8wX5tpt9BrLcr5ggUOPT43Tmzf4HBqE=","size":151},"vfs/usr/lib/R/library/webr/html.js.metadata":{"sha256":"gg/ERCjS9xmIFyU0G6E2UENumJxTGR4tbaHyST9+oTE=","size":147},"vfs/usr/lib/R/library/grDevices/libs.js.metadata":{"sha256":"9LLaTdL5MBHqoln43dwjxj3RRP7MgyL6t4hTQZUuK3s=","size":103},"vfs/usr/lib/R/library/tools/misc.js.metadata":{"sha256":"XGvTYgHS9iAFLzukNyJEluqYkZqKBdzua0SqmVR+taY=","size":142},"vfs/usr/lib/R/library/utils/misc.js.metadata":{"sha256":"fiSKbAzidncv4i64PUkSg5O+nmdOMiqwzleQXoPmcJs=","size":142},"vfs/usr/lib/R/library/parallel.js.metadata":{"sha256":"gveaByFZ1I9MnSuYTudmDHwVMn0UU02eibMnEmiwp2g=","size":1238},"vfs/usr/share/proj.js.metadata":{"sha256":"rcTDOoyWO1BZQCohMsWYEQFsycSChra9Q+aLNHpfTAw=","size":857},"vfs/usr/lib/R/share.js.metadata":{"sha256":"PMqrO3h66ON3u1b60Zdkdy5vHd+Q1H8Q+671iSHH6eI=","size":46073},"vfs/usr/lib/R/library/tcltk.js.metadata":{"sha256":"eF3AA6QyMwlKaEX1gE+gl/toDMrgwKrW/QeE6VgvCrk=","size":2019},"vfs/usr/lib/R/library/translations.js.metadata":{"sha256":"9isfo3983/mqDJtwRjZiVEEbffa7NdIBfLtTH9buPUo=","size":35184},"vfs/usr/share/udunits.js.metadata":{"sha256":"n4rDSfHWjCPk0qR5DjKKs+zDjNhO+ZNZIXC30Z7xtqY=","size":424},"vfs/etc/ssl/cert.pem":{"sha256":"hqHzNmr6x8b4rp88d5rCIRKTKMQ/CrK4gX6y82KlAlw=","size":189462},"libRblas.so":{"sha256":"2DFJbMHR4nSFGUOaDqUJupZrVtsQ0TEy21IzGicKrHQ=","size":198205},"libRlapack.so":{"sha256":"34yjM3VPDdlXFd9Df25tYz5P+/8BdryxHBX+Pl3U44c=","size":1769888},"vfs/var/cache/fontconfig/CACHEDIR.TAG":{"sha256":"BedjP7Mb8fb42JAgwWufJFh/33Y46VHJdFsZL1/DtoI=","size":200},"vfs/usr/share/fonts/NotoSans-Bold.ttf":{"sha256":"h8sthEcqfWbaZZ7ke2zblVIybowSgkUjHxkbasclKdk=","size":432376},"vfs/usr/share/fonts/NotoSans-BoldItalic.ttf":{"sha256":"PTZ3Q/Nx8oZx0nZOkRpT18IOybaqh5HQWecJA4n8UqU=","size":441936},"vfs/usr/share/fonts/NotoSans-Italic.ttf":{"sha256":"Z4KI+GiAfU1kpvO1FGaHHRF9kVeAOBzp0O1LO8vQbTc=","size":446880},"vfs/usr/share/fonts/NotoSans-Regular.ttf":{"sha256":"85YanN4BbUGkh5rs2hR006Nta/VPoORkPeApzCJIsOg=","size":431364},"vfs/usr/share/fonts/NotoSansMono-Bold.ttf":{"sha256":"EQB3Ky95wQJAKhAR314iJlF9D0CsVTol+xL9utjBG4U=","size":387484},"vfs/usr/share/fonts/NotoSansMono-Regular.ttf":{"sha256":"h/jOBSKmyZt0PuX8dbQHPP3VdWORGWcoKLe5lEtltPQ=","size":388660},"vfs/usr/share/fonts/NotoSerif-Bold.ttf":{"sha256":"JK1THmsF3a2MPYlXLSyT64amt05lLOfuPD4XHeaOhMM=","size":481892},"vfs/usr/share/fonts/NotoSerif-BoldItalic.ttf":{"sha256":"G8T4ZQLqo2hxj2GSvuAi6ppwPVrxwYt9KRISZXtjB0o=","size":513280},"vfs/usr/share/fonts/NotoSerif-Italic.ttf":{"sha256":"xLPJcXQezbQPWkQ7znVOj+ke/nYbbqEMkr58NZfNrcQ=","size":513428},"vfs/usr/share/fonts/NotoSerif-Regular.ttf":{"sha256":"oVz7vBU51wcRURHWctWQo9cNT3S0wKMVlW2iCuGaFOE=","size":482540},"R.wasm":{"sha256":"XfRZ+yItMy41jPCOQBnA4RQ5hXntjGIkK/zO7agSIro=","size":18062845}}');
+/* where webR installs R packages from, passed through untouched but counted */
+const Packages = 'https://repo.r-wasm.org/';
+
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', event => event.waitUntil(Promise.all([self.clients.claim(), forgetOutdated()])));
+
+self.addEventListener('fetch', event => {
+	const url = event.request.url;
+	if(url.startsWith(Base)) {
+		event.respondWith(verified(url.slice(Base.length).split(/[?#]/)[0]));
+	} else if(url.startsWith(Packages)) {
+		event.respondWith(counted(event.request));
+	}
+});
+
+function tell(message) {
+	void self.clients.matchAll().then(pages => pages.forEach(page => page.postMessage(message)));
+}
+
+/* webR waits forever for a file its worker could not load, so the page is told why and gives up instead */
+function refuse(file, why) {
+	tell({ webrRefused: `webR's ${file} ${why}` });
+	return new Response(`webR's ${file} ${why}, so it is not used`, { status: 403, headers: { 'Content-Type': 'text/plain' } });
+}
+
+function base64(buffer) {
+	let text = '';
+	for(const byte of new Uint8Array(buffer)) {
+		text += String.fromCharCode(byte);
+	}
+	return btoa(text);
+}
+
+async function read(url, response, total) {
+	const reader = response.body.getReader();
+	const chunks = [];
+	let loaded = 0;
+	for(let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+		chunks.push(chunk.value);
+		loaded += chunk.value.byteLength;
+		tell({ webrProgress: { url, loaded, total } });
+	}
+	tell({ webrProgress: { url, loaded, total, done: true } });
+	return new Blob(chunks);
+}
+
+async function counted(request) {
+	const response = await fetch(request);
+	if(!response.ok || response.body === null) {
+		return response;
+	}
+	/* a compressed transfer says how many bytes travel, not how many arrive, so its length only counts when unencoded */
+	const length = Number(response.headers.get('Content-Length'));
+	const total = length > 0 && !response.headers.has('Content-Encoding') ? length : undefined;
+	return new Response(await read(request.url, response, total), { status: response.status, statusText: response.statusText, headers: response.headers });
+}
+
+/* what matched its pinned digest is kept by that digest, so a reload or another example does not download and hash it again */
+const Store = 'flowr-webr-verified';
+
+async function remembered(key) {
+	try {
+		return await (await caches.open(Store)).match(key);
+	} catch{
+		return undefined;
+	}
+}
+
+async function remember(key, response) {
+	try {
+		await (await caches.open(Store)).put(key, response);
+	} catch{
+		/* a full or unavailable storage only costs the next download */
+	}
+}
+
+/* files of an earlier pinned release are of no use any more */
+async function forgetOutdated() {
+	try {
+		const current = new Set(Object.values(Expected).map(f => encodeURIComponent(f.sha256)));
+		const cache = await caches.open(Store);
+		for(const request of await cache.keys()) {
+			if(!current.has(new URL(request.url).searchParams.get('sha256') ?? '')) {
+				await cache.delete(request);
+			}
+		}
+	} catch{
+		/* what stays only takes up room */
+	}
+}
+
+async function verified(file) {
+	const want = Expected[file];
+	if(want === undefined) {
+		return refuse(file, 'is not part of the pinned release');
+	}
+	const key = `${Base}${file}?sha256=${encodeURIComponent(want.sha256)}`;
+	const kept = await remembered(key);
+	if(kept !== undefined) {
+		tell({ webrVerified: file });
+		return kept;
+	}
+	const response = await fetch(Base + file);
+	const body = response.ok ? await (await read(Base + file, response, want.size)).arrayBuffer() : new ArrayBuffer(0);
+	if(!response.ok || base64(await crypto.subtle.digest('SHA-256', body)) !== want.sha256) {
+		return refuse(file, 'does not match the pinned release');
+	}
+	tell({ webrVerified: file });
+	const headers = { 'Content-Type': response.headers.get('Content-Type') ?? 'application/octet-stream' };
+	await remember(key, new Response(body, { headers }));
+	return new Response(body, { headers });
+}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>flowR &middot; playground</title></head>
+<body><p id="state">loading the playground of an earlier release...</p><script>
+function patch(reference, delta) {
+    let at = 0, last = 0, written = 0;
+    const read = () => {
+        let n = 0;
+        for (let scale = 1;; scale *= 128) {
+            const byte = delta[at++];
+            n += (byte % 128) * scale;
+            if (byte < 128) {
+                return n;
+            }
+        }
+    };
+    const out = new Uint8Array(read());
+    while (at < delta.length) {
+        const run = read();
+        out.set(delta.subarray(at, at + run), written);
+        at += run;
+        written += run;
+        if (at >= delta.length) {
+            break;
+        }
+        const length = read(), jump = read();
+        last += jump % 2 === 1 ? -(jump + 1) / 2 : jump / 2;
+        out.set(reference.subarray(last, last + length), written);
+        written += length;
+        last += length;
+    }
+    return out;
+}
+const bytes = async(url, init) => {
+	const got = await fetch(url, init);
+	if(!got.ok) throw new Error(url + ' answered ' + got.status);
+	const data = new Uint8Array(await got.arrayBuffer());
+	return data[0] === 0x1f && data[1] === 0x8b ? new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()) : data;
+};
+const hex = async data => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', data)), b => b.toString(16).padStart(2, '0')).join('');
+const rebuild = async(file, want) => {
+	const out = patch(await bytes('../../' + file, { cache: 'no-cache' }), await bytes(file + '.delta.gz'));
+	if(await hex(out) !== want) throw new Error(file + ' is not the one of this release');
+	return out;
+};
+fetch('delta.json').then(r => r.json()).then(async want => {
+	const [page, bundle] = await Promise.all([rebuild('index.html', want['index.html']), rebuild('bundle.js', want['bundle.js'])]);
+	document.open();
+	document.write(new TextDecoder().decode(page).replace('src="bundle.js"', 'src="' + URL.createObjectURL(new Blob([bundle], { type: 'text/javascript' })) + '"'));
+	document.close();
+}).catch(e => document.getElementById('state').textContent = 'this playground could not be loaded: ' + e.message);
+</script></body></html>

@@ -253,6 +253,13 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		check('setwd reads and writes the working directory', 'setwd("a")', 'file', { reads: ['#dirs', '#files', '#wd'], writes: ['#wd'] });
 	});
 
+	describe('installed packages', () => {
+		check('an install writes the package it names', 'install.packages("dplyr")', 'file', { reads: ['#dirs', '#lib-paths', '#option:*', '#option:repos', '#wd'], writes: ['#file:*', '#files', '#installed-packages', '#installed-packages:dplyr'] });
+		check('a remote reference names no package', 'remotes::install_github("r-lib/xyz")', 'file', { reads: ['#dirs', '#lib-paths', '#option:*', '#option:repos', '#wd'], writes: ['#file:*', '#files', '#installed-packages', '#installed-packages:*'] });
+		check('a load reads the package it attaches', 'library(dplyr)', 'file', { reads: ['#installed-packages:*', '#installed-packages:dplyr', '#lib-paths'], writes: ['#search-path', '#search-path:dplyr'] });
+		check('listing the installed packages reads every one', 'x <- installed.packages()', 'file', { reads: ['#installed-packages', '#lib-paths'] });
+	});
+
 	describe('drawing', () => {
 		/* a plot draws on the active device, which it opens if there is none, and starts a new plot on it */
 		check('plot draws on the device', 'plot(1)', 'file', { reads: ['#graphics', '#palette'], writes: ['#device', '#plot'], draws: 1 });

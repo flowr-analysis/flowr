@@ -37,7 +37,7 @@ import { RNull } from '../../../../../../r-bridge/lang-4.x/convert-values';
 import { RIfThenElse } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { uniqueArray, uniqueArrayMerge } from '../../../../../../util/collections/arrays';
 import { AmbientAccess } from '../../../../../graph/ambient-access';
-import { type AmbientFamily, AmbientStateName, GraphicsDevices, MessageSinks, OutputSinks, KeyedAccumulators, KeyedState, UnknownKey } from '../../../../../environments/ambient-state-name';
+import { type AmbientFamily, AmbientStateName, GraphicsDevices, MessageSinks, OutputSinks, KeyedAccumulators, KeyedState, PlainPackageName, UnknownKey } from '../../../../../environments/ambient-state-name';
 import { flagValue, keysOf, keyedWrites, stringValuesOf } from './built-in-ambient-keys';
 import { Ternary, TernaryLogic } from '../../../../../../util/logic';
 import { OperatorUsedAs } from '../../../../../environments/default-builtin-config/base-operators';
@@ -397,6 +397,7 @@ const Families: Readonly<Record<AmbientFamilyName, FamilyState>> = {
 	[KeyedState.Env]:               { state: AmbientStateName.allOf(KeyedState.Env), keyed: KeyedState.Env },
 	[KeyedState.Locale]:            { state: AmbientStateName.allOf(KeyedState.Locale), keyed: KeyedState.Locale },
 	[KeyedState.SearchPath]:        { state: AmbientStateName.allOf(KeyedState.SearchPath), keyed: KeyedState.SearchPath },
+	[KeyedState.InstalledPackages]: { state: AmbientStateName.allOf(KeyedState.InstalledPackages), keyed: KeyedState.InstalledPackages },
 	[AmbientPart.Rng]:              { state: AmbientStateName.rng },
 	[AmbientPart.RngKind]:          { state: AmbientStateName.rngKind },
 	[AmbientPart.WorkingDirectory]: { state: AmbientStateName.workingDirectory },
@@ -523,7 +524,9 @@ function applyEffect<OtherInfo>(res: DataflowInformation, args: readonly Potenti
 	if(instances !== undefined) {
 		return instanceAccess(res, rootId, data, effect, instances, args.length > 0);
 	}
-	const keys = effect.member === undefined || effect.member === 'every' ? undefined : keysOf(effect.member, args, data);
+	const named = effect.member === undefined || effect.member === 'every' ? undefined : keysOf(effect.member, args, data);
+	/* a path, url, or remote (`user/repo`) does not tell which package it installs */
+	const keys = effect.family === KeyedState.InstalledPackages ? named?.map(k => PlainPackageName.test(k) ? k : UnknownKey) : named;
 	switch(effect.family) {
 		case KeyedState.Option:
 			return effect.access === AmbientVerb.Reads ? readOptions(res, args, rootId, data, effect, keys) : setOptions(res, args, rootId, data);

@@ -8,7 +8,7 @@ import { NseArguments } from '../../internal/process/functions/call/nse-kind';
 import { ArgProp, CallProp, type FnSig, SemanticCallTag } from '../built-in-props';
 import { KeyedState } from '../ambient-state-name';
 import { SigXY, SigX, SigXDots, SigShape, SigXTable, SigDots, SigUnique, SigDotsDeparsed, sig, Forced } from './shared-signatures';
-import { StackEnvKind, StackEnvBuiltins, SetsAnyEnvVar, CopiesFiles, WithSig, ReadPrintingOptions, PrintDispatched, ReadsNumberFormat, SetsEntryNamedBy, SetsEntry, LibrarySearchPath, DetachSearchPath, AttachSearchPath } from './shared-configs';
+import { StackEnvKind, StackEnvBuiltins, SetsAnyEnvVar, CopiesFiles, WithSig, ReadPrintingOptions, PrintDispatched, ReadsNumberFormat, SetsEntryNamedBy, SetsEntry, LibrarySearchPath, DetachSearchPath, AttachSearchPath, ReadsInstalled } from './shared-configs';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 import type { DefaultBuiltInProcessorConfiguration } from '../built-in';
 
@@ -346,13 +346,13 @@ export const BaseDefinitions = [
 	fn(base('attachNamespace'), BuiltInProcName.Library,
 		{ ambient: SetsEntryNamedBy(KeyedState.SearchPath, ['ns', 'pos', 'depends', 'exclude', 'include.only'], 'ns'), characterOnly: true, props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage], sig: sig({ ns: ArgProp.NoDefault, pos: 0, depends: 0, exclude: ArgProp.NoDefault, 'include.only': ArgProp.NoDefault }) }),
 	fn(base('requireNamespace'), BuiltInProcName.Library,
-		{ namespaceOnly: true, characterOnly: true, props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.ChecksPackage], sig: sig({ package: ArgProp.NoDefault, '...': 0 }) }),
+		{ namespaceOnly: true, characterOnly: true, ambient: ReadsInstalled('package'), props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.ChecksPackage], sig: sig({ package: ArgProp.NoDefault, '...': 0 }) }),
 	/* other than `requireNamespace`, it hands back the namespace visibly */
 	fn(base('loadNamespace'), BuiltInProcName.Library,
-		{ namespaceOnly: true, characterOnly: true, props: CallProp.Scope, tags: [SemanticCallTag.LoadsPackage], sig: sig({ package: ArgProp.NoDefault, '...': 0 }) }),
+		{ namespaceOnly: true, characterOnly: true, ambient: ReadsInstalled('package'), props: CallProp.Scope, tags: [SemanticCallTag.LoadsPackage], sig: sig({ package: ArgProp.NoDefault, '...': 0 }) }),
 	/* they only look whether a package is installed, nothing is loaded */
-	fn([...base('find.package'), ...utils('installed.packages', 'packageVersion', 'packageDescription')], BuiltInProcName.Default,
-		{ props: CallProp.Ambient, tags: [SemanticCallTag.ChecksPackage], sig: sig({ '...': ArgProp.Forced }) }),
+	...([['package', base('find.package')], ['pkg', utils('packageVersion', 'packageDescription')], [undefined, utils('installed.packages')]] as const).map(([param, ids]) => fn(ids, BuiltInProcName.Default,
+		{ ambient: [ReadsInstalled(param), Ambient.libPaths.reads], props: CallProp.Ambient, tags: [SemanticCallTag.ChecksPackage], sig: sig({ '...': ArgProp.Forced }) })),
 	fn(base('assign'), BuiltInProcName.Assignment,
 		{ targetVariable: true, mayHaveMoreArgs: true, environmentArg: 'envir', props: CallProp.Scope | CallProp.Invisible, sig: sig({ x: ArgProp.Value, value: ArgProp.Value, pos: ArgProp.Flag, envir: ArgProp.Written, inherits: ArgProp.Flag }) },
 		Primitive),

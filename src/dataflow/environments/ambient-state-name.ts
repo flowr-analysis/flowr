@@ -11,22 +11,28 @@ export enum KeyedState {
 	/** the graphics parameters `par(mfrow = c(1, 2))` sets, on top of the whole graphics state */
 	Par = 'par',
 	/** the entries of the search path (`library(dplyr)` adds `dplyr`, `detach(package:dplyr)` removes it) */
-	SearchPath = 'search-path'
+	SearchPath = 'search-path',
+	/** the packages installed in the library (`install.packages("dplyr")` installs `dplyr`, `remove.packages("dplyr")` removes it) */
+	InstalledPackages = 'installed-packages'
 }
 
 /** The pseudo variable all writes to a {@link KeyedState} add to. */
 const AllOfKeyedState: Readonly<Record<KeyedState, AmbientStateName>> = {
-	[KeyedState.Option]:     '#options',
-	[KeyedState.Env]:        '#env',
-	[KeyedState.Locale]:     '#locale',
-	[KeyedState.Par]:        '#graphics',
-	[KeyedState.SearchPath]: '#search-path'
+	[KeyedState.Option]:            '#options',
+	[KeyedState.Env]:               '#env',
+	[KeyedState.Locale]:            '#locale',
+	[KeyedState.Par]:               '#graphics',
+	[KeyedState.SearchPath]:        '#search-path',
+	[KeyedState.InstalledPackages]: '#installed-packages'
 };
 
 /** What R puts before the name of an entry that is no part of its key: `search()` lists `package:dplyr` for the entry `dplyr`. */
 const EntryPrefix: Readonly<Partial<Record<KeyedState, string>>> = {
 	[KeyedState.SearchPath]: 'package:'
 };
+
+/** What a package name looks like, other than a path, url, or remote reference (`user/repo`) naming a package only implicitly. */
+export const PlainPackageName = /^[A-Za-z][A-Za-z0-9.]*$/;
 
 /** The key standing for any entry of a {@link KeyedState} we cannot name. */
 export const UnknownKey = '*';

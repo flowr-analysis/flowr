@@ -83,9 +83,8 @@ export const GraphicsDefinitions = [
 	/* the palette, other than the parameters above, is shared by all devices */
 	fn(pkg(PkgName.GrDevices, 'palette'), BuiltInProcName.Default,
 		{ props: CallProp.Configures | CallProp.Invisible, ambient: [Ambient.palette.reads, { ...Ambient.palette.writes, unless: 'no-arguments' }], tags: [SemanticCallTag.Graphics], sig: sig({ value: ArgProp.Forced }) }),
-	fn([...pkg(PkgName.GgPlot2, 'theme_set'), ...pkg(PkgName.Testthat, 'context'), ...base('library.dynam'), ...pkg(PkgName.Remotes, 'install_local'), ...pkg(PkgName.Devtools,
-		'install_local')], BuiltInProcName.Default,
-	{ hasUnknownSideEffects: true, libFn: true, props: CallProp.Invisible, sig: sig({ chname: ArgProp.NoDefault, package: ArgProp.NoDefault, 'lib.loc': ArgProp.NoDefault, verbose: 0, 'file.ext': 0, '...': 0 }) }),
+	fn([...pkg(PkgName.GgPlot2, 'theme_set'), ...pkg(PkgName.Testthat, 'context'), ...base('library.dynam')], BuiltInProcName.Default,
+		{ hasUnknownSideEffects: true, libFn: true, props: CallProp.Invisible, sig: sig({ chname: ArgProp.NoDefault, package: ArgProp.NoDefault, 'lib.loc': ArgProp.NoDefault, verbose: 0, 'file.ext': 0, '...': 0 }) }),
 	fn(pkg(PkgName.TinyPlot, 'tinytheme'), BuiltInProcName.Default,
 		{ props: CallProp.Invisible, hasUnknownSideEffects: true, libFn: true, sig: sig({ chname: ArgProp.NoDefault, package: ArgProp.NoDefault, 'lib.loc': ArgProp.NoDefault, verbose: 0, 'file.ext': 0, '...': 0 }) }),
 	fn(Identifier.fromAllIn([PkgName.HtmlWidgets, 'DT'], ['JS']), BuiltInProcName.Default,

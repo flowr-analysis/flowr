@@ -18,6 +18,7 @@ import type { DecodedFunction } from '../../project/sigdb/decode';
 import type { SignatureDb } from '../../project/sigdb/signature-db';
 import { signatureDbOf } from '../../project/sigdb/signature-db';
 import { Resolve } from './resolve-helper';
+import { Ambient, type AmbientEffects, type AmbientFamilyName, type AmbientVerb } from './ambient-effect';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { DataflowInformation } from '../info';
 import { DfgVertex } from '../graph/vertex';
@@ -307,6 +308,8 @@ export interface BuiltInEntry extends StatedProps {
 	readonly sig?:     FnSig
 	/** whether the value solver can fold a call of this built-in to a constant */
 	readonly foldable: boolean
+	/** what the built-in states it does to the global state */
+	readonly ambient?: AmbientEffects
 }
 
 /** One parameter of a built-in, as {@link BuiltInIndex#params} reports it. */
@@ -328,7 +331,7 @@ function entryOfDefinition(definition: BuiltInDefinition): readonly IndexedEntry
 	}
 	const info: BuiltInFnInfo | undefined = definition.config;
 	const foldable = definition.type === 'function' && definition.evalHandler !== undefined;
-	return builtInNames(definition).map(name => ({ name, props: info?.props, tags: info?.tags, sig: info?.sig, foldable, overrides: definition.overrides }));
+	return builtInNames(definition).map(name => ({ name, props: info?.props, tags: info?.tags, sig: info?.sig, ambient: info?.ambient, foldable, overrides: definition.overrides }));
 }
 
 function entriesOfMemory(builtIns: BuiltIns): readonly IndexedEntry[] {
@@ -344,7 +347,7 @@ function entriesOfMemory(builtIns: BuiltIns): readonly IndexedEntry[] {
 				const info: BuiltInFnInfo | undefined = d.config;
 				const namespace = (d.name === undefined ? undefined : Identifier.getNamespace(d.name)) ?? pkg;
 				const name = namespace === undefined ? d.name ?? registered : Identifier.make(registered, namespace);
-				out.push({ name, props: info?.props, tags: info?.tags, sig: info?.sig, foldable: d.evalHandler !== undefined });
+				out.push({ name, props: info?.props, tags: info?.tags, sig: info?.sig, ambient: info?.ambient, foldable: d.evalHandler !== undefined });
 			}
 		}
 	}
@@ -360,13 +363,14 @@ function mergedEntry(known: BuiltInEntry, next: IndexedEntry): BuiltInEntry {
 		props:    next.props ?? known.props,
 		tags:     next.tags ?? known.tags,
 		sig:      next.sig ?? known.sig,
+		ambient:  next.ambient ?? known.ambient,
 		foldable: next.foldable || known.foldable
 	};
 }
 
 /** The entry alone, without what only the index build needs to know about it. */
-function plainEntry({ name, props, tags, sig, foldable }: IndexedEntry): BuiltInEntry {
-	return { name, props, tags, sig, foldable };
+function plainEntry({ name, props, tags, sig, ambient, foldable }: IndexedEntry): BuiltInEntry {
+	return { name, props, tags, sig, ambient, foldable };
 }
 
 /** How early R's default search path reaches a name, deciding which package an unqualified ask answers with. */
@@ -466,6 +470,11 @@ export class BuiltInIndex {
 	/** Every built-in flowR states computes a result and nothing else ({@link CallProp.Pure}). */
 	public get pure(): readonly Identifier[] {
 		return this.with(CallProp.Pure);
+	}
+
+	/** Every built-in stating one of the `verbs` on the part `family` of the global state, like the calls changing the installed packages. */
+	public touching(family: AmbientFamilyName, verbs: readonly AmbientVerb[]): readonly Identifier[] {
+		return this.cached(`touching:${family}:${verbs.join(',')}`, e => Ambient.list(e.ambient).some(a => a.family === family && verbs.includes(a.access)));
 	}
 
 	/** Every built-in the value solver can fold to a constant (the ones with a `evalHandler`). */

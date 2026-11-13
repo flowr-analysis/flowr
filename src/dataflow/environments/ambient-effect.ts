@@ -125,6 +125,7 @@ export const Ambient = {
 	env:            effectsOf(KeyedState.Env),
 	locale:         effectsOf(KeyedState.Locale),
 	searchPath:     effectsOf(KeyedState.SearchPath),
+	installed:      effectsOf(KeyedState.InstalledPackages),
 	rng:            effectsOf(AmbientPart.Rng),
 	rngKind:        effectsOf(AmbientPart.RngKind),
 	wd:             effectsOf(AmbientPart.WorkingDirectory),
@@ -170,13 +171,16 @@ function withFileAccess(config: BuiltInFnInfo): BuiltInFnInfo {
 function withImplicitAccess(config: BuiltInFnInfo): BuiltInFnInfo {
 	const { tags, ambient } = config;
 	/* what always goes to the message sink, like `message`, does not print to the output sink */
-	const printsToMessages = Ambient.list(ambient).some(e => e.family === Ambient.messageSink.adds.family && e.when === undefined && e.unless === undefined);
+	const stated = Ambient.list(ambient);
+	const printsToMessages = stated.some(e => e.family === Ambient.messageSink.adds.family && e.when === undefined && e.unless === undefined);
+	/* a package attached must be installed, so the load reads the entries it attaches */
+	const installed = stated.some(e => e.family === KeyedState.InstalledPackages) ? [] : [{ ...Ambient.installed.reads, member: stated.find(e => e.family === KeyedState.SearchPath && e.access === AmbientVerb.Writes)?.member }];
 	const implied = [
 		...tags?.includes(SemanticCallTag.Process) ? [Ambient.env.reads] : [],
-		...tags?.includes(SemanticCallTag.LoadsPackage) ? [Ambient.libPaths.reads] : [],
+		...tags?.includes(SemanticCallTag.LoadsPackage) ? [Ambient.libPaths.reads, ...installed] : [],
 		...tags?.includes(SemanticCallTag.Prints) && !printsToMessages ? [Ambient.sink.adds] : []
 	];
-	return implied.length === 0 ? config : { ...config, ambient: [...Ambient.list(ambient), ...implied] };
+	return implied.length === 0 ? config : { ...config, ambient: [...stated, ...implied] };
 }
 
 /** The configuration with the {@link AmbientEffect}s its tags imply added to the ones it states. */
@@ -220,6 +224,7 @@ export const AmbientFamilyInfo: Readonly<Record<AmbientFamilyName, AmbientFamily
 	[KeyedState.Env]:               { label: 'environment variables', noun: 'environment variables', description: 'The environment variables of the R process by name, like TZ or LANG, which R and every child process read.' },
 	[KeyedState.Locale]:            { label: 'locale', noun: 'locale', description: 'The locale categories like LC_COLLATE, which sorting, formatting, and messages follow.' },
 	[KeyedState.SearchPath]:        { label: 'search path', noun: 'search path', description: 'The packages and environments attached, in which R looks up a name the code does not define.' },
+	[KeyedState.InstalledPackages]: { label: 'installed packages', noun: 'installed packages', description: 'The packages installed in the library by name, which install.packages adds, remove.packages removes, and every package load reads.' },
 	[AmbientPart.Rng]:              { label: 'random numbers', noun: 'random number generator', verbs: { [AmbientVerb.Adds]: 'draws from', [AmbientVerb.Writes]: 'seeds' }, description: 'The state of the random number generator, which set.seed sets and every draw advances.' },
 	[AmbientPart.RngKind]:          { label: 'random number kind', noun: 'generator kind', of: AmbientPart.Rng, description: 'Which random number generator R uses, which RNGkind sets and set.seed keeps unless it is given one.' },
 	[AmbientPart.WorkingDirectory]: { label: 'working directory', noun: 'working directory', description: 'The directory relative paths start from, which setwd changes.' },

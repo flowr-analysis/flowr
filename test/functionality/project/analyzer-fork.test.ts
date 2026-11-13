@@ -40,7 +40,7 @@ describe('Analyzer', withTreeSitter(parser => {
 		b.addRequest({ request: 'file', content: 'virtual-analyzer-fork/branch.R' });
 		const resultB = await graph(b);
 		assert.notDeepEqual(resultA, resultB);
-		assert.deepStrictEqual(resultA, await graph(a))
+		assert.deepStrictEqual(resultA, await graph(a));
 
 		a.updateConfig({ project: { implicitSources: ['setup.R', 'branch.R', 'main.R'] } });
 		a.addFile(new FlowrInlineTextFile('virtual-analyzer-fork/branch.R', 'branch <- answer + 5'));

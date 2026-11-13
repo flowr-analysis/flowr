@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-10, 21:10:40 UTC (v2.17.5), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
 <h2 id="Inspect Argument Roles Query">Inspect Argument Roles Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine what functions and their formals do\
@@ -98,6 +98,6 @@ f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, 
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Inspect Argument Roles Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/inspect-fn-props-query/inspect-fn-props-query-executor.ts#L52"><code><span title="Execute function-property inspection queries on the given analyzer.">executeFnPropsQuery</span></code></a>.
+The Inspect Argument Roles Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/inspect-fn-props-query/inspect-fn-props-query-format.ts#L61"><code><span title="Execute function-property inspection queries on the given analyzer.">executeFnPropsQuery</span></code></a>.
 
 </details>

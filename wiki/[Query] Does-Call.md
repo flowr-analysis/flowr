@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
 <h2 id="Does-Call Query">Does-Call Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Checks whether a function calls another function matching given constraints.\
@@ -53,6 +53,6 @@ f("1 + 1")
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Does-Call Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/does-call-query/does-call-query-executor.ts#L15"><code><span title="Execute does call queries on the given analyzer.">executeDoesCallQuery</span></code></a>.
+The Does-Call Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/does-call-query/does-call-query-format.ts#L23"><code><span title="Execute does call queries on the given analyzer.">executeDoesCallQuery</span></code></a>.
 
 </details>

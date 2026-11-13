@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
 <h2 id="Control-Flow Query">Control-Flow Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Provides the control-flow of the program.\
@@ -180,6 +180,6 @@ We used the following simplifications: `unique-cf-sets`, `analyze-dead-code`, `r
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Control-Flow Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/control-flow-query/control-flow-query-executor.ts#L9"><code><span title="Executes the control flow query with the given simplification passes.">executeControlFlowQuery</span></code></a>.
+The Control-Flow Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/control-flow-query/control-flow-query-format.ts#L15"><code><span title="Executes the control flow query with the given simplification passes.">executeControlFlowQuery</span></code></a>.
 
 </details>

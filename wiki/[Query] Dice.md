@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
 <h2 id="Dice Query">Dice Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Reduces the code to the parts that carry information from a given start point to a given end point.\
@@ -86,6 +86,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Dice Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dice-query/dice-query-executor.ts#L13"><code><span title="Execute dice queries. Each dice computes the intersection of a forward slice from from and a backward slice from to, yielding only those program points that lie on a path from the start criteria to the end criteria.">executeDiceQuery</span></code></a>.
+The Dice Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dice-query/dice-query-format.ts#L20"><code><span title="Execute dice queries. Each dice computes the intersection of a forward slice from from and a backward slice from to, yielding only those program points that lie on a path from the start criteria to the end criteria.">executeDiceQuery</span></code></a>.
 
 </details>

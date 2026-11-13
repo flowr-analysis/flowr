@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 11:35:56 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
 <h2 id="Guess Dependency Versions Query">Guess Dependency Versions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Guesses the version range each dependency must have, from declared constraints and actual code usage.\
@@ -37,7 +37,7 @@ that produced the bound:
 
 _Results (prettified and summarized):_
 
-Query: **guess-dep-versions** (311 ms)\
+Query: **guess-dep-versions** (917 ms)\
 &nbsp;&nbsp;&nbsp;╰ R _4.5.3_ _(config)_\
 &nbsp;&nbsp;&nbsp;_evidence_: d declared  t transitive  s signature  D date  b base-r  # available  i indirect\
 &nbsp;&nbsp;&nbsp;▶ **sample** _(newest)_: base@4.5.3, tidyselect@1.2.1 (works with all newest versions)\
@@ -99,6 +99,6 @@ says how much the guess added).
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Guess Dependency Versions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/guess-dep-versions-query/guess-dep-versions-query-executor.ts#L210"><code><span title="Executes a guess-dep-versions query.">executeGuessDepVersionsQuery</span></code></a>.
+The Guess Dependency Versions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/guess-dep-versions-query/guess-dep-versions-query-format.ts#L189"><code><span title="Executes a guess-dep-versions query.">executeGuessDepVersionsQuery</span></code></a>.
 
 </details>

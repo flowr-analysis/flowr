@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
 <h2 id="Happens-Before Query">Happens-Before Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Check whether one normalized AST node happens before another in the CFG.\
@@ -49,6 +49,6 @@ y <- 2
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Happens-Before Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/happens-before-query/happens-before-query-executor.ts#L14"><code><span title="Execute happens-before queries on the given analyzer. This checks, whether for two given slicing criteria a and b, a happens before b in the control flow graph.">executeHappensBefore</span></code></a>.
+The Happens-Before Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/happens-before-query/happens-before-query-format.ts#L16"><code><span title="Execute happens-before queries on the given analyzer. This checks, whether for two given slicing criteria a and b, a happens before b in the control flow graph.">executeHappensBefore</span></code></a>.
 
 </details>

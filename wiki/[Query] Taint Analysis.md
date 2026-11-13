@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
 <h2 id="Taint Analysis Query">Taint Analysis Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the taint values inferred for every expression.\
@@ -13,7 +13,7 @@ For example, you can use the following query to get the results of the normaliza
 
 _Results (prettified and summarized):_
 
-Query: **taint** (36 ms)\
+Query: **taint** (21 ms)\
 &nbsp;&nbsp;&nbsp;╰ **normalization-constant**:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ mean calculated on normalized data yields a known result [6.30-36] \
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Known summary statistic calculated on normalized data [6.25] \
@@ -53,6 +53,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Taint Analysis Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/taint-query/taint-query-executor.ts#L11"><code><span title="Executes the given taint queries using the provided analyzer.">executeTaintQuery</span></code></a>.
+The Taint Analysis Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/taint-query/taint-query-format.ts#L21"><code><span title="Executes the given taint queries using the provided analyzer.">executeTaintQuery</span></code></a>.
 
 </details>

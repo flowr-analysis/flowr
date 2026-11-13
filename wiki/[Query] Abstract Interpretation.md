@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
 <h2 id="Abstract Interpretation Query">Abstract Interpretation Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the abstract values inferred for every expression or at specific locations.\
@@ -13,7 +13,7 @@ This query infers all shapes of dataframes within the code using abstract interp
 
 _Results (prettified and summarized):_
 
-Query: **absint** (3 ms)\
+Query: **absint** (4 ms)\
 &nbsp;&nbsp;&nbsp;╰ $7: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])\
 &nbsp;&nbsp;&nbsp;╰ $14: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ $0: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])
@@ -49,7 +49,7 @@ The query optionally also accepts slice criteria to narrow the results to specif
 
 _Results (prettified and summarized):_
 
-Query: **absint** (4 ms)\
+Query: **absint** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ 1@df: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ 1@data.frame: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])
 
@@ -78,6 +78,6 @@ df <- data.frame(id = 1:3) |>
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Abstract Interpretation Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/absint-query/absint-query-executor.ts#L11"><code><span title="Executes the given abstract interpretation queries using the provided analyzer.">executeAbsintQuery</span></code></a>.
+The Abstract Interpretation Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/absint-query/absint-query-format.ts#L27"><code><span title="Executes the given abstract interpretation queries using the provided analyzer.">executeAbsintQuery</span></code></a>.
 
 </details>

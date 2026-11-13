@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-10, 21:10:40 UTC (v2.17.5), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
 <h2 id="Dataflow Cluster Query">Dataflow Cluster Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Calculates and returns all the clusters present in the dataflow graph.\
@@ -98,6 +98,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Dataflow Cluster Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/cluster-query/cluster-query-executor.ts#L10"><code><span title="Executes the given dataflow cluster queries using the provided analyzer.">executeDataflowClusterQuery</span></code></a>.
+The Dataflow Cluster Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/cluster-query/cluster-query-format.ts#L16"><code><span title="Executes the given dataflow cluster queries using the provided analyzer.">executeDataflowClusterQuery</span></code></a>.
 
 </details>

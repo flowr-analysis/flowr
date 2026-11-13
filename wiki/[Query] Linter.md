@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-11, 08:13:04 UTC (v2.17.5), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
 <h2 id="Linter Query">Linter Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Lints a given R script for common issues.\
@@ -17,7 +17,7 @@ For a script reading `read.csv("i_do_not_exist.csv")`, the following query retur
 
 _Results (prettified and summarized):_
 
-Query: **linter** (32 ms)\
+Query: **linter** (30 ms)\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `i_do_not_exist.csv` at 1.1-30\
@@ -68,6 +68,6 @@ We welcome any feedback and suggestions for new rules on this (consider opening 
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Linter Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/linter-query/linter-query-executor.ts#L20"><code><span title="Executes the given linter queries using the provided analyzer. A query without an explicit rule list runs only the rules that are active by default.">executeLinterQuery</span></code></a>.
+The Linter Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/linter-query/linter-query-format.ts#L27"><code><span title="Executes the given linter queries using the provided analyzer. A query without an explicit rule list runs only the rules that are active by default.">executeLinterQuery</span></code></a>.
 
 </details>

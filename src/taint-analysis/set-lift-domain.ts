@@ -19,9 +19,9 @@ export class SetLiftDomain<
 		value: Elements[number] | SetLiftValue<Elements[number]> = new Set()
 	) {
 		const lifted: SetLiftValue<Elements[number]> =
-			typeof value === 'symbol'
-				? new Set([value])
-				: value;
+			value instanceof Set
+				? value
+				: new Set([value]);
 
 		super(lifted);
 	}

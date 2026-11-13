@@ -47,6 +47,18 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 		this.oldParseResults = new Map();
 	}
 
+	public fork(source: FlowrAnalyzerIncrementalAnalysisContext): void {
+		for(const [path, content] of source.changedFilesWithOldContent) {
+			this.changedFilesWithOldContent.set(path, content);
+		}
+		for(const [path, tree] of source.oldParseResults) {
+			this.oldParseResults.set(path, tree);
+		}
+		for(const [path, mtime] of source.lastKnownMtime) {
+			this.lastKnownMtime.set(path, mtime);
+		}
+	}
+
 	handleFileInvalidate(filePath: FilePath, oldContent: string | undefined): void {
 		if(this.changedFilesWithOldContent.has(filePath)) {
 			// If a file is changed multiple times since the last analysis, we only want to store the original old content as the old analysis results were computed with that.

@@ -269,23 +269,12 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 			this.setDetectedRVersion(source._detectedR);
 		}
 
-		const decoupleFiles = options?.decoupleFiles ?? false;
-		for(const file of source.files.getAllFiles()) {
-			if(decoupleFiles && file instanceof FlowrInlineTextFile) {
-				this.files.addFile(new FlowrInlineTextFile(file.path(), file.content().toString()), file.roles);
-			} else {
-				this.addFile(file);
-			}
-		}
-
-		for(const consideredFile of source.files.consideredFilesList()) {
-			this.files.addConsideredFile(consideredFile);
-		}
-
-		this.addRequests(source.files.loadingOrder.getUnorderedRequests());
 		for(const plugin of source.activatedPlugins) {
 			this.activatedPlugins.add(plugin);
 		}
+
+		this.files.fork(source.files, options);
+		this.inc.fork(source.inc);
 	}
 
 	/**

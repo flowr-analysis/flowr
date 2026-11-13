@@ -14,7 +14,7 @@ import {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
-import { type FilePath, FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole } from './flowr-file';
+import { type FilePath, FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole, FlowrInlineTextFile } from './flowr-file';
 import type { FlowrDescriptionFile } from '../plugins/file-plugins/files/flowr-description-file';
 import { log } from '../../util/log';
 import fs from 'fs';
@@ -32,7 +32,7 @@ import type { SysdataObject } from '../plugins/file-plugins/files/flowr-sysdata-
 import { FlowrSysdataFile } from '../plugins/file-plugins/files/flowr-sysdata-file';
 import type { ProjectKind } from './project-kind';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from './classify-project-kind';
-import { FlowrAnalyzer } from '../flowr-analyzer';
+import type { ForkOptions } from '../flowr-analyzer';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
 import { resetOnFullInvalidation } from '../cache/flowr-cache';
@@ -260,6 +260,28 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		this.rootResolved = false;
 		this.caseIndex = undefined;
 		this.readdirCache.clear();
+	}
+
+	public fork(source: FlowrAnalyzerFilesContext, options?: ForkOptions): void {
+		const decoupleFiles = options?.decoupleFiles ?? false;
+
+		for(const file of source.getAllFiles()) {
+			if(decoupleFiles && file instanceof FlowrInlineTextFile) {
+				this.addFile(file.copy(), file.roles);
+			} else {
+				this.addFile(file);
+			}
+		}
+
+		for(const consideredFile of source.consideredFilesList()) {
+			this.addConsideredFile(consideredFile);
+		}
+
+		this.loadingOrder.fork(source.loadingOrder);
+		this.requestedRoots = [...source.requestedRoots];
+		this.implicitSourceDirs = new Set(source.implicitSourceDirs);
+		this.rootCache = source.rootCache;
+		this.rootResolved = source.rootResolved;
 	}
 
 	/** The directory the analysis was asked about: a `project`'s folder, or the one holding the requested file(s). */

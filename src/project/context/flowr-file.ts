@@ -224,9 +224,13 @@ export class FlowrTextFile extends FlowrFile<string> {
 export class FlowrInlineTextFile extends FlowrFile<string> {
 	private contentStr: string;
 
-	constructor(path: PathLike, content: string) {
-		super(path);
+	constructor(path: PathLike, content: string, roles?: readonly FileRole[]) {
+		super(path, roles);
 		this.contentStr = content;
+	}
+
+	public copy(): FlowrInlineTextFile {
+		return new FlowrInlineTextFile(this.path(), this.contentStr, this.roles);
 	}
 
 	protected loadContent(): string {

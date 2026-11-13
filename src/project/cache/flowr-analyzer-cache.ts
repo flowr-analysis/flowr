@@ -198,17 +198,12 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 
 	/** Reuse cached results from the source cache according to the given fork options. */
 	public fork(source: FlowrAnalyzerCache<KnownParser>, options?: ForkOptions): void {
-		const normalization = source.peekNormalize();
-		if(normalization !== undefined) {
-			this.get().normalize = normalization;
-		}
+		const target = this.get();
+		target.normalize = source.peekNormalize();
+		target.parse = source.peekParse();
 
-		const forkDataflow = options?.forkDataflow ?? false;
-		if(forkDataflow) {
-			const df = source.peekDataflow();
-			if(df !== undefined) {
-				this.get().dataflow = df;
-			}
+		if(options?.forkDataflow ?? false) {
+			target.dataflow = source.peekDataflow();
 		}
 	}
 

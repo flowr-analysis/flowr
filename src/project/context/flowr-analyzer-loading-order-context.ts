@@ -72,6 +72,24 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 		this.rerunRequired = this.plugins.length > 0;
 	}
 
+	public fork(source: FlowrAnalyzerLoadingOrderContext): void {
+		this.unordered.push(...source.unordered);
+		this.seen.clear();
+		for(const request of source.seen) {
+			this.seen.add(request);
+		}
+
+		for(const guess of source.guesses) {
+			this.guesses.push([...guess]);
+		}
+
+		if(source.knownOrder) {
+			this.knownOrder = [...source.knownOrder];
+		}
+
+		this.rerunRequired = source.rerunRequired;
+	}
+
 	/**
 	 * Registers `request` as unordered unless the same one is already there, reporting whether it was new.
 	 * Project discovery and the implicit-source scan reach the same file from both ends, so a file otherwise

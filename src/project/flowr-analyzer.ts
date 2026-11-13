@@ -237,10 +237,14 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public async fork(options?: ForkOptions): Promise<FlowrAnalyzer> {
+		const forkedPlugins = this.ctx.plugins.values().toArray().flat().map(plugin => {
+			return typeof plugin.fork === 'function' ? plugin.fork() : plugin;
+		});
+
 		const fork = await  new FlowrAnalyzerBuilder()
 			.setEngine(this.parser.name)
 			.setConfig(FlowrConfig.clone(this.flowrConfig))
-			.registerPlugins(...this.ctx.plugins.values().toArray().flat())
+			.registerPlugins(...forkedPlugins)
 			.build();
 
 		fork.ctx.fork(this.ctx, options);

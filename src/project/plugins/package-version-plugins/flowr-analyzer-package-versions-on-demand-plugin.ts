@@ -10,7 +10,9 @@ import { packageFromExports } from './flowr-analyzer-package-versions-sigdb-plug
 import { OnDemandRecoverer, onDemandLog, type OnDemandOptions } from '../../sigdb/on-demand/recoverer';
 import { builtInOnDemandSources, parseGitHubRemote, type FetchBytes, type OnDemandSource, type PackageRequest } from '../../sigdb/on-demand/remote-sources';
 import { sanitizeRecovered, type RecoveredPackage } from '../../sigdb/on-demand/package-sources';
-import type { BuiltInIndex } from '../../../dataflow/environments/query-fn-props';
+import { BuiltInIndex } from '../../../dataflow/environments/query-fn-props';
+import { KeyedState } from '../../../dataflow/environments/ambient-state-name';
+import { Ambient, AmbientVerb } from '../../../dataflow/environments/ambient-effect';
 import { ArgProp, CallProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import { httpsFetcher } from '../../sigdb/on-demand/fetch';
 import { sigDbCacheDir } from '../../sigdb/decompress';
@@ -24,10 +26,6 @@ import { isBaseRPackage } from '../../../util/r-base-packages';
 import { SecureMode } from '../../../util/secure-mode';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 
-/** the calls naming the packages to load in their arguments */
-const Loaders: ReadonlySet<BrandedIdentifier> = new Set(['library', 'require', 'requireNamespace', 'loadNamespace', 'attachNamespace', 'use', 'p_load', 'pkg_attach', 'pkg_attach2']);
-/** the calls installing packages from where their arguments name, like `remotes::install_github("masurp/ggmirt")` */
-const Installers: ReadonlySet<BrandedIdentifier> = new Set(['install_github', 'install_gitlab', 'pkg_install', 'pak', 'p_load_gh', 'p_install_gh', 'install']);
 
 /** a name or string literal as the text it stands for */
 function literalText(node: RNode<ParentInformation> | undefined): string | undefined {
@@ -40,7 +38,11 @@ function literalText(node: RNode<ParentInformation> | undefined): string | undef
 }
 
 /** What the code says about the packages it uses: their names, and the repositories it installs some of them from. */
-export function packagesNamedIn(ast: NormalizedAst): { names: Set<BrandedNamespace>, github: Map<BrandedNamespace, string> } {
+export function packagesNamedIn(ast: NormalizedAst, index = BuiltInIndex.default()): { names: Set<BrandedNamespace>, github: Map<BrandedNamespace, string> } {
+	/* the calls naming the packages to load, and those installing them from where their arguments name, like `remotes::install_github("masurp/ggmirt")` */
+	const loaders = new Set(index.with(SemanticCallTag.LoadsPackage).map(Identifier.getName));
+	const fetching = new Set(index.with(SemanticCallTag.Network));
+	const installers = new Set(index.touching(KeyedState.InstalledPackages, [AmbientVerb.Writes, AmbientVerb.Adds]).filter(n => fetching.has(n)).map(Identifier.getName));
 	const names = new Set<BrandedNamespace>();
 	const github = new Map<BrandedNamespace, string>();
 	for(const node of ast.idMap.values()) {
@@ -52,10 +54,12 @@ export function packagesNamedIn(ast: NormalizedAst): { names: Set<BrandedNamespa
 		} else if(RFunctionCall.isNamed(node)) {
 			const fn = Identifier.getName(node.functionName.content);
 			const values = node.arguments.map(a => a === null || a === undefined ? undefined : literalText((a as { value?: RNode<ParentInformation> }).value));
-			if(Loaders.has(fn)) {
+			if(loaders.has(fn)) {
 				/* every one `pacman::p_load(a, b)` names, only the first `library(a, character.only = TRUE)` does */
-				(fn === 'p_load' || fn.startsWith('pkg_attach') ? values : values.slice(0, 1)).forEach(v => v !== undefined && names.add(v));
-			} else if(Installers.has(fn)) {
+				const every = Ambient.list(index.get(node.functionName.content)?.ambient).some(e => typeof e.member === 'object' && e.member.from === 'unnamed');
+				(every ? values : values.slice(0, 1)).forEach(v => v !== undefined && names.add(parseGitHubRemote(v)?.repo ?? v));
+			}
+			if(installers.has(fn)) {
 				for(const value of values) {
 					const remote = value === undefined ? undefined : parseGitHubRemote(value);
 					if(remote !== undefined) {
@@ -215,7 +219,7 @@ export class FlowrAnalyzerPackageVersionsOnDemandPlugin extends FlowrAnalyzerPac
 		if(!opts.enabled || (SecureMode.isEnabled() && !opts.offline)) {
 			return;
 		}
-		const { names, github } = packagesNamedIn(ast);
+		const { names, github } = packagesNamedIn(ast, ctx.env.builtInIndex);
 		const remotes = new Map<BrandedNamespace, string>([...descriptionRemotes(ctx), ...github, ...Object.entries(opts.repositories ?? {})]);
 		const known = ctx.deps.signatures();
 		const requests: PackageRequest[] = [...names]

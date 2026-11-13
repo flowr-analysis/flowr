@@ -334,6 +334,11 @@ describe('On-demand package sources', withTreeSitter(parser => {
 			assert.sameMembers([...names], ['a', 'b', 'c', 'pacman', 'd', 'e', 'f', 'h', 'remotes', 'pak', 'j']);
 			assert.deepStrictEqual([...github], [['ggmirt', 'masurp/ggmirt'], ['r', 'o/r@v1']]);
 		});
+		test(name('loaders and installers follow the built-ins'), async() => {
+			const { names, github } = await named('groundhog::groundhog.library(a, "2024-01-01")\npacman::p_load_gh("o/b")\nrenv::install("o/c")\nremove.packages("o/d")\nlibrarian::shelf("o/e")');
+			assert.sameMembers([...names], ['groundhog', 'a', 'pacman', 'b', 'renv', 'librarian', 'e']);
+			assert.deepStrictEqual([...github], [['b', 'o/b'], ['c', 'o/c'], ['e', 'o/e']]);
+		});
 	});
 
 	describe('in an analysis', () => {

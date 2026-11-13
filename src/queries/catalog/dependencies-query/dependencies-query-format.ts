@@ -21,7 +21,7 @@ import { executeDependenciesQuery } from './dependencies-query-executor';
 import type { FunctionInfo } from './function-info/function-info';
 import { LibraryFunctions } from './function-info/library-functions';
 import { SourceFunctions } from './function-info/source-functions';
-import { RemoteFunctions, remoteTarget } from './function-info/remote-functions';
+import { computeRemoteFunctions, installsRemotely, remoteTarget } from './function-info/remote-functions';
 import { computeReadFunctions } from './function-info/read-functions';
 import { writeFunctionsOf } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
@@ -190,16 +190,12 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 	},
 	'remote': {
 		queryDisplayName:   'Remote Installs',
-		functions:          RemoteFunctions,
+		functions:          env.deriveFromDefinitions(computeRemoteFunctions),
 		defaultValue:       Unknown,
-		/* the value is the reference as written, which names the package only implicitly */
+		/* the value is the reference as written, which names the package only implicitly; a plain name comes from a configured repository */
 		additionalAnalysis: (_data, _ignoreDefault, _functions, _queryResults, result) => {
-			for(const [at, info] of result.entries()) {
-				const target = remoteTarget(info.value);
-				if(target !== undefined) {
-					result[at] = { ...info, ...target };
-				}
-			}
+			const remote = result.filter(info => installsRemotely(info.value)).map(info => ({ ...info, ...remoteTarget(info.value) }));
+			result.splice(0, result.length, ...remote);
 		}
 	},
 	'source': {

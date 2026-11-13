@@ -475,6 +475,12 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('the bare name once the library is loaded', 'library(remotes)\ninstall_github("user/repo")', { library: [{ nodeId: '1@library', functionName: 'library', value: 'remotes' }], remote: [{ nodeId: '2@install_github', functionName: 'install_github', value: 'user/repo', packageName: 'repo' }] });
 		/* a CRAN install is no remote one, whatever it installs comes from a configured repository */
 		testQuery('install.packages is no remote install', 'install.packages("dplyr")', {});
+		testQuery('pak installing from CRAN is no remote install', 'pak::pkg_install("dplyr")', { library: [{ nodeId: '1@pkg_install', functionName: '::', value: 'pak' }] });
+		testQuery('a local archive is a remote install', 'install.packages("pkg_1.0.tar.gz", repos = NULL)', { remote: [{ nodeId: '1@install.packages', functionName: 'install.packages', value: 'pkg_1.0.tar.gz', packageName: 'pkg' }] });
+		testQuery('a loader installing from GitHub', 'pacman::p_load_gh("user/repo")', {
+			library: [{ nodeId: '1:1', functionName: Identifier.make('p_load_gh', 'pacman'), value: 'user/repo' }, { nodeId: '1@p_load_gh', functionName: '::', value: 'pacman' }],
+			remote:  [{ nodeId: '1:1', functionName: Identifier.make('p_load_gh', 'pacman'), value: 'user/repo', packageName: 'repo' }]
+		});
 	});
 
 	describe('Sourced files', () => {

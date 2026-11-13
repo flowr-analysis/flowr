@@ -51,13 +51,14 @@ export class SetLiftDomain<
 	}
 
 	protected joinValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): this {
-		const union = this.reduce(this.value).union(this.reduce(other.value));
-		return this.create(union) as this;
+		const union = this.value.union(other.value);
+		const reducedUnion = this.reduce(union);
+		return this.create(this.collapseSet(reducedUnion)) as this;
 	}
 
 	protected meetValue(this: SetLiftDomain<Top, Bottom, Elements>, other: SetLiftDomain<Top, Bottom, Elements>): this {
-		const intersection = this.reduce(this.value).intersection(this.reduce(other.value));
-		return this.create(intersection) as this;
+		const reducedIntersection = this.reduce(this.value).intersection(this.reduce(other.value));
+		return this.create(this.collapseSet(reducedIntersection)) as this;
 	}
 
 	protected jsonify(): unknown {
@@ -92,16 +93,6 @@ export class SetLiftDomain<
 			&& !this.isFullSet(this.value);
 	}
 
-	private isFullSet(value: ReadonlySet<Elements[number]>): boolean {
-		const elements = this.base.domain;
-		return value.size === elements.size
-			&& [...elements].every(element => value.has(element));
-	}
-
-	private isSingletonEqual(element: Elements[number]): boolean {
-		return this.value.size === 1 && this.value.has(element);
-	}
-
 	narrow(other: this): this {
 		return this.meet(other); //same behaviour as FiniteDomain
 	}
@@ -110,9 +101,20 @@ export class SetLiftDomain<
 		return this.join(other); //same behaviour as FiniteDomain
 	}
 
-	public reduce(value: ReadonlySet<Elements[number]>): ReadonlySet<Elements[number]> {
+	private isFullSet(elements: ReadonlySet<Elements[number]>): boolean {
+		const domain = this.base.domain;
+		return elements.size === domain.size
+			&& [...domain].every(element => elements.has(element));
+	}
+
+	private isSingletonEqual(element: Elements[number]): boolean {
+		return this.value.size === 1 && this.value.has(element);
+	}
+
+
+	public reduce(elements: ReadonlySet<Elements[number]>): ReadonlySet<Elements[number]> {
 		return new Set(
-			[...value].flatMap(element =>
+			[...elements].flatMap(element =>
 				this.isLowestRow(element)
 					? [element]
 					: [...this.reduce(this.base.predecessors(element))]
@@ -123,5 +125,38 @@ export class SetLiftDomain<
 	private isLowestRow(element: Elements[number]): boolean {
 		return this.base.baseBottom.value !== element
 			&& (this.base.successors(this.base.baseBottom.value)?.has(element) ?? false);
+	}
+
+	private collapseSet(
+		elements: ReadonlySet<Elements[number]>
+	): ReadonlySet<Elements[number]> {
+		let current = new Set(elements);
+
+		while(true) {
+			const values = [...current];
+			const toDelete = new Set<Elements[number]>();
+			const toAdd = new Set<Elements[number]>();
+
+			for(let i = 0; i < values.length; i++) {
+				for(let j = i + 1; j < values.length; j++) {
+					const left = values[i];
+					const right = values[j];
+
+					const joined = this.base.create(left).join(right);
+
+					if(joined.value !== this.base.baseTop.value) {
+						toDelete.add(left);
+						toDelete.add(right);
+						toAdd.add(joined.value);
+					}
+				}
+			}
+			if(toDelete.size === 0) {
+				return current;
+			}
+			let next = new Set(current);
+			next = next.difference(toDelete).union(toAdd);
+			current = next;
+		}
 	}
 }

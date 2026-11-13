@@ -106,9 +106,9 @@ describe('SetLift Domain', () => {
 		assertAbstractDomain(create, new Set([A, B]), new Set([F]), {
 			equal:  false,
 			leq:    false,
-			join:   new Set([A, B, F]), // or [E, F]
+			join:   new Set([E, F]),
 			meet:   new Set([Bottom]),
-			widen:  new Set([A, B, F]),
+			widen:  new Set([E, F]),
 			narrow: new Set([Bottom])
 		});
 

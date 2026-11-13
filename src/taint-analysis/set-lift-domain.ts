@@ -102,9 +102,9 @@ export class SetLiftDomain<
 	}
 
 	private isFullSet(elements: ReadonlySet<Elements[number]>): boolean {
-		const domain = this.base.domain;
-		return elements.size === domain.size
-			&& [...domain].every(element => elements.has(element));
+		const base = this.base.successors(this.base.baseBottom.value);
+		return this.reduce(elements).size === base.size
+			&& [...base].every(element => elements.has(element));
 	}
 
 	private isSingletonEqual(element: Elements[number]): boolean {

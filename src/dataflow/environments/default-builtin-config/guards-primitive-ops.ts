@@ -23,20 +23,24 @@ function conformable(this: void, other: BrandedIdentifier): readonly RFailure[] 
 	];
 }
 /* `e1` and `e2` of an operator of the `Ops` group, each with what is asked of its type */
-function operands(this: void, types: RCondition, message: string): GuardFacts['asks'] {
-	return { e1: [...dispatched(types, message), ...conformable('e2')], e2: [...dispatched(types, message), ...conformable('e1')] };
+function operands(this: void, asked: readonly RFailure[]): GuardFacts['asks'] {
+	return { e1: [...asked, ...conformable('e2')], e2: [...asked, ...conformable('e1')] };
 }
 
 const Calculable = is('is.numeric', 'is.logical', 'is.complex', 'is.null');
 const NonNumeric = 'non-numeric argument to binary operator';
-const Arithmetic: GuardFacts = { asks: operands(Calculable, NonNumeric), computes: true };
+const Arithmetic: GuardFacts = { asks: operands(dispatched(Calculable, NonNumeric)), computes: true };
 /* the remainder of complex numbers fails only once there is one to compute */
-/* `quote(a) == "a"` compares the deparsed call, while an order of a symbol or call is an error */
-const Compared = (operator: string, ordered: boolean): GuardFacts => ({
-	asks:     operands(ordered ? not('is.function', 'is.environment', 'is.symbol', 'is.call') : not('is.function', 'is.environment'), `comparison (${operator}) is possible only for atomic and list types`),
-	computes: true
-});
-const Elementwise: GuardFacts = { asks: operands(is('is.numeric', 'is.logical', 'is.complex', 'is.raw', 'is.null'), 'operations are possible only for numeric, logical or complex types'), computes: true };
+/* `quote(a) == "a"` compares the deparsed call, as did an order of a symbol or call before R 4.4.0 made it an error */
+const Compared = (operator: string, ordered: boolean): GuardFacts => {
+	const message = `comparison (${operator}) is possible only for atomic and list types`;
+	const unordered = dispatched(not('is.function', 'is.environment'), message);
+	return { asks: operands(ordered ? [
+		...unordered.map(f => ({ ...f, until: '4.4.0' })),
+		...dispatched(not('is.function', 'is.environment', 'is.symbol', 'is.call'), message).map(f => ({ ...f, since: '4.4.0' }))
+	] : unordered), computes: true };
+};
+const Elementwise: GuardFacts = { asks: operands(dispatched(is('is.numeric', 'is.logical', 'is.complex', 'is.raw', 'is.null'), 'operations are possible only for numeric, logical or complex types')), computes: true };
 /* no dispatch happens, but a class like `Date` may hide a number from `is.numeric`, and an empty operand reads as `NA` */
 const LogicalOperand = (operand: string, operator: string): readonly RFailure[] => [
 	{ requires: is('is.logical', 'is.numeric', 'is.complex', 'is.object'), message: `invalid '${operand}' type in 'x ${operator} y'` },
@@ -55,8 +59,8 @@ const Ordered: GuardFacts = { asks: { '...': dispatched(is('is.numeric', 'is.log
 /* `range.default`, which the primitive runs, flattens lists and expressions first */
 const Ranged: GuardFacts = { asks: { '...': dispatched(is('is.numeric', 'is.logical', 'is.character', 'is.null', 'is.list', 'is.expression'), InvalidType) }, computes: true };
 /* `all("a")` is `NA`, and `all(new.env())` holds, as an environment is empty to it */
-/* before R 4.6 a symbol coerced to `TRUE` with a warning */
-const Quantified: GuardFacts = { asks: { '...': [...dispatched(not('is.function', 'is.call'), 'cannot coerce to logical'), { ...dispatched(not('is.symbol'), 'cannot coerce to logical')[0], since: '4.6.0' }] }, computes: true, singleResult: true };
+/* before R 4.6.1 a symbol coerced to `TRUE` with a warning */
+const Quantified: GuardFacts = { asks: { '...': [...dispatched(not('is.function', 'is.call'), 'cannot coerce to logical'), { ...dispatched(not('is.symbol'), 'cannot coerce to logical')[0], since: '4.6.1' }] }, computes: true, singleResult: true };
 const ComplexPart = (returns: RValueTypes): GuardFacts => ({ asks: { z: dispatched(is('is.numeric', 'is.logical', 'is.complex'), 'non-numeric argument to function') }, required: ['z'], computes: true, returns: Dispatched('z', returns) });
 
 /* a matrix product asks for numbers, and of two matrices for the dimensions to match */

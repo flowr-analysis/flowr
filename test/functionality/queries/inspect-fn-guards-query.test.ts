@@ -625,6 +625,12 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		const atomic = 'f <- function(x) { if(!is.atomic(x)) stop("a"); x }';
 		assert.deepStrictEqual((await guardsOfF(parser, atomic, inVersion('4.3.3')))?.formals.x?.types, ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw']);
 		assert.deepStrictEqual((await guardsOfF(parser, atomic, inVersion('4.4.0')))?.formals.x?.types, ['logical', 'integer', 'double', 'complex', 'character', 'raw']);
+		const ordered = 'f <- function(x) { if(any(x < 0)) stop("no"); 1 }';
+		assert.strictEqual((await guardsOfF(parser, ordered, inVersion('4.3.3')))?.requires, '(!is.function(x) && !is.environment(x) || is.object(x)) && all(x >= 0)');
+		assert.strictEqual((await guardsOfF(parser, ordered, inVersion('4.4.0')))?.requires, '(!is.function(x) && !is.environment(x) && !is.symbol(x) && !is.call(x) || is.object(x)) && all(x >= 0)');
+		const quantified = 'f <- function(x) all(x)';
+		assert.strictEqual((await guardsOfF(parser, quantified, inVersion('4.6.0')))?.requires, '!is.function(x) && !is.call(x) || is.object(x)');
+		assert.strictEqual((await guardsOfF(parser, quantified, inVersion('4.6.1')))?.requires, '(!is.function(x) && !is.call(x) || is.object(x)) && (!is.symbol(x) || is.object(x))');
 	});
 
 	test('a branch on a formal tells its cases apart', async() => {

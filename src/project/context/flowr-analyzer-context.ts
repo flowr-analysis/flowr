@@ -35,7 +35,7 @@ import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-e
 import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
 import type { ReadOnlyFlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
 import { FlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
-import type { FlowrAnalyzer } from '../flowr-analyzer';
+import type { FlowrAnalyzer, ForkOptions } from '../flowr-analyzer';
 import type {
 	ReadOnlyFlowrAnalyzerIncrementalAnalysisContext
 } from './flowr-analyzer-incremental-analysis-context';
@@ -135,6 +135,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	/** an auto-detected R version (from the engine), recorded once at the analyzer boundary; see {@link resolvedRVersion} */
 	private _detectedR:    string | undefined;
 
+	public readonly plugins:    ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
 	/** the configuration as given, i.e. before {@link FlowrConfig.specializeConfig} is applied */
 	public readonly baseConfig: FlowrConfig;
 	/** {@link baseConfig}, specialized for {@link _configKind} */
@@ -247,6 +248,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]> | readonly FlowrAnalyzerPlugin[] = []) {
 		const byType = Array.isArray(plugins) ? arraysGroupBy(plugins as readonly FlowrAnalyzerPlugin[], p => p.type)
 			: plugins as ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
+		this.plugins = byType;
 		this.baseConfig = config;
 		this._config = config;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, byType.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
@@ -259,6 +261,31 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		// the plugins contributing the metadata are the ones the dependency context runs on demand
 		this.meta = new FlowrAnalyzerMetaContext(() => this.deps.ensureStaticsLoaded());
 		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (byType.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
+	}
+
+	/** Clone state from the source context into this context */
+	public fork(source: FlowrAnalyzerContext, options?: ForkOptions): void {
+		if(source._detectedR !== undefined) {
+			this.setDetectedRVersion(source._detectedR);
+		}
+
+		const decoupleFiles = options?.decoupleFiles ?? false;
+		for(const file of source.files.getAllFiles()) {
+			if(decoupleFiles && file instanceof FlowrInlineTextFile) {
+				this.files.addFile(new FlowrInlineTextFile(file.path(), file.content().toString()), file.roles);
+			} else {
+				this.addFile(file);
+			}
+		}
+
+		for(const consideredFile of source.files.consideredFilesList()) {
+			this.files.addConsideredFile(consideredFile);
+		}
+
+		this.addRequests(source.files.loadingOrder.getUnorderedRequests());
+		for(const plugin of source.activatedPlugins) {
+			this.activatedPlugins.add(plugin);
+		}
 	}
 
 	/**

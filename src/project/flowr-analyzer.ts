@@ -1,4 +1,4 @@
-import type { FlowrConfig } from '../config';
+import { FlowrConfig } from '../config';
 import type { DeepPartial } from 'ts-essentials';
 import { type KnownParser, type KnownParserInformation, ParserName } from '../r-bridge/parser';
 import { executeQueries, Query, type Queries, type QueryArgumentsWithType, type QueryResults, type SingleQueryResult, type SupportedQueryTypes } from '../queries/query';
@@ -31,6 +31,7 @@ import type { InvalidationEvent } from './cache/flowr-cache';
 import type { GasOverrides } from '../gas';
 import type { FnInfo } from '../dataflow/environments/query-fn-props';
 import type { Identifier } from '../dataflow/environments/identifier';
+import { FlowrAnalyzerBuilder } from './flowr-analyzer-builder';
 
 /** Options for a single analyzer operation, bounding what it may cost. */
 export interface FlowrAnalysisOptions {
@@ -43,6 +44,15 @@ export interface FlowrAnalysisOptions {
 	 * ```
 	 */
 	readonly gas?: GasOverrides;
+}
+
+/** Options for forking an analyzer */
+export interface ForkOptions {
+	readonly lazy?:          boolean;
+	/** Reuses the dataflow result from the parent analyzer */
+	readonly forkDataflow?:  boolean;
+	/** Decouples inline files instead of using their references */
+	readonly decoupleFiles?: boolean;
 }
 
 /**
@@ -261,6 +271,18 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.ctx = ctx;
 		ctx.setAnalyzer(this);
 		this.cache = cache;
+	}
+
+	public async fork(options?: ForkOptions): Promise<FlowrAnalyzer> {
+		const fork = await  new FlowrAnalyzerBuilder()
+			.setEngine(this.parser.name)
+			.setConfig(FlowrConfig.clone(this.flowrConfig))
+			.registerPlugins(...this.ctx.plugins.values().toArray().flat())
+			.build();
+
+		fork.ctx.fork(this.ctx, options);
+		fork.cache.fork(this.cache, options);
+		return fork;
 	}
 
 	public get flowrConfig(): FlowrConfig {

@@ -1,6 +1,7 @@
 import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { Bottom, Top } from '../abstract-interpretation/domains/lattice';
 import { guard } from '../util/assert';
+import { SetLiftDomain } from './set-lift-domain';
 
 export type LatticeElements<Top, Bottom> = (symbol | Top | Bottom)[];
 
@@ -58,7 +59,7 @@ export class FiniteDomain<Top extends symbol, Bot extends symbol, Elements exten
 		return this.value === other.value;
 	}
 
-	protected leqValue(this: FiniteDomain<Top, Bot, Elements>, other: FiniteDomain<Top, Bot, Elements>): boolean {
+	public leqValue(this: FiniteDomain<Top, Bot, Elements>, other: FiniteDomain<Top, Bot, Elements>): boolean {
 		return this.transitiveClosure(this.value).has(other.value);
 	}
 
@@ -156,5 +157,37 @@ export class FiniteDomain<Top extends symbol, Bot extends symbol, Elements exten
 
 	abstract(_concrete: ReadonlySet<Elements[number]> | typeof Top): this {
 		return this.create(this._value);
+	}
+
+	get domain(): ReadonlySet<Elements[number]> {
+		return this._config.elements;
+	}
+
+	get baseTop(): this & AbstractDomain<Elements[number], Top, Bot, Top> {
+		return this.create(this._config.top) as this & AbstractDomain<Elements[number], Top, Bot, Top>;
+	}
+
+	get baseBottom(): this & AbstractDomain<Elements[number], Top, Bot, Bot> {
+		return this.create(this._config.bottom) as this & AbstractDomain<Elements[number], Top, Bot, Bot>;
+	}
+
+	public setLift(): SetLiftDomain<Top, Bot, Elements> {
+		return new SetLiftDomain(this);
+	}
+
+	// return all elements of the domain directly above this element
+	public successors(element: Elements[number]): ReadonlySet<Elements[number]> {
+		return this._config.leq.get(element) ?? new Set<Elements[number]>();
+	}
+
+	// return all elements of the domain directly below this element
+	public predecessors(element: Elements[number]): ReadonlySet<Elements[number]> {
+		const predecessors = new Set<Elements[number]>();
+		for(const candidate of this._config.elements) {
+			if(candidate !== element && this._config.leq.get(candidate)?.has(element)) {
+				predecessors.add(candidate);
+			}
+		}
+		return predecessors;
 	}
 }

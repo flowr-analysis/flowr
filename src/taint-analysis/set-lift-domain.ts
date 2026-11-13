@@ -101,17 +101,28 @@ export class SetLiftDomain<
 		return this.join(other); //same behaviour as FiniteDomain
 	}
 
+	/**
+	 * return true if the input set contains all of the elements
+	 * on the lowest level of the base lattice (or any lub of them)
+	 */
 	private isFullSet(elements: ReadonlySet<Elements[number]>): boolean {
 		const base = this.base.successors(this.base.baseBottom.value);
 		return this.reduce(elements).size === base.size
 			&& [...base].every(element => elements.has(element));
 	}
 
+	/**
+	 * returns true if the value of this is a singleton and equal
+	 * to the function input element
+	 */
 	private isSingletonEqual(element: Elements[number]): boolean {
 		return this.value.size === 1 && this.value.has(element);
 	}
 
-
+	/**
+	 * reduces the input set to all elements leq than this set on the
+	 * lowest level of the base lattice
+	 */
 	public reduce(elements: ReadonlySet<Elements[number]>): ReadonlySet<Elements[number]> {
 		return new Set(
 			[...elements].flatMap(element =>
@@ -122,11 +133,17 @@ export class SetLiftDomain<
 		);
 	}
 
+	/**
+	 * returns true if an element is on the lowest level of the base lattice
+	 */
 	private isLowestRow(element: Elements[number]): boolean {
 		return this.base.baseBottom.value !== element
 			&& (this.base.successors(this.base.baseBottom.value)?.has(element) ?? false);
 	}
 
+	/**
+	 * collapses the input set to the minimal possible lub
+	 */
 	private collapseSet(
 		elements: ReadonlySet<Elements[number]>
 	): ReadonlySet<Elements[number]> {

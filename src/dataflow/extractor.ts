@@ -155,9 +155,19 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 	}
 }
 
-/** Whether the node creates or names an environment, as `new.env()`, `globalenv()` or `.GlobalEnv` do */
+/** Whether the call goes to a function whose body flowR does not see: one nothing resolves, or one of a package other than base R */
+function callsUnseenBody(id: NodeId, graph: DataflowGraph): boolean {
+	const call = graph.getVertex(id);
+	if(!DfgVertex.isFunctionCall(call) || Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)))) {
+		return false;
+	}
+	const ns = Identifier.getNamespace(Dataflow.qualify(id, graph, false));
+	return call.origin === 'unnamed' || (Array.isArray(call.origin) && call.origin.every(o => o === 'function' || o === 'unnamed')) || (ns !== undefined && !isBaseRPackage(ns));
+}
+
+/** Whether the node creates or names an environment, as `new.env()`, `globalenv()` or `.GlobalEnv` do, or may return one, as a function whose body flowR does not see (`R6` objects are environments) */
 function producesEnvironment(id: NodeId, graph: DataflowGraph): boolean {
-	return EnvironmentProducers.some(o => DfgVertex.hasOrigin(graph.getVertex(id), o)) || namesStackEnvironment(id, graph);
+	return EnvironmentProducers.some(o => DfgVertex.hasOrigin(graph.getVertex(id), o)) || namesStackEnvironment(id, graph) || callsUnseenBody(id, graph);
 }
 
 /** Whether the node names an environment of the search path or the call stack, as `globalenv()` or `.GlobalEnv` do, whose names no variable holds */
@@ -215,9 +225,7 @@ function linkEnvironmentsHandedToUnseenBodies(graph: DataflowGraph, environment:
 		return holders.get(producer);
 	};
 	for(const [id, call] of graph.verticesOfType(VertexType.FunctionCall)) {
-		const ns = Identifier.getNamespace(Dataflow.qualify(id, graph, false));
-		const unseen = call.origin === 'unnamed' || (Array.isArray(call.origin) && call.origin.every(o => o === 'function')) || (ns !== undefined && !isBaseRPackage(ns));
-		if(!unseen || Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)))) {
+		if(!callsUnseenBody(id, graph)) {
 			continue;
 		}
 		for(const arg of call.args) {

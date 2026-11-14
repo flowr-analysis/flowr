@@ -74,6 +74,8 @@ describe('Transitivity through environments and super assignments, checked again
 			{ name: 'a package function writing into an environment handed to a function of the program', code: 'e <- new.env()\nf <- function(x) rlang::env_poke(x, "k", 3)\nf(e)\nprint(e$k)' },
 			{ name: 'a package function writing into an environment handed through two functions', code: 'e <- new.env()\nf <- function(x) rlang::env_poke(x, "k", 3)\ng <- function(y) f(y)\ng(e)\nprint(e$k)' },
 			{ name: 'a package function writing into another environment handed to a function', code: 'e <- new.env()\nd <- new.env()\nf <- function(x) rlang::env_poke(x, "k", 3)\nf(d)\nprint(e$k)', dropped: 'f(d)' },
+			{ name: 'a package function writing into an environment another package function made', code: 'e <- rlang::child_env(globalenv())\nrlang::env_poke(e, "k", 3)\nprint(e$k)' },
+			{ name: 'a package function writing into an R6 object', code: 'library(R6)\nC <- R6Class("C", public = list(n = 0))\no <- C$new()\nrlang::env_poke(o, "n", 9)\nprint(o$n)', sigdb: true },
 			{ name: 'a data.table sorted in place', code: 'library(data.table)\ndt <- data.table(a = c(2, 1))\nsetorder(dt, a)\nprint(dt$a)', sigdb: true },
 			{ name: 'data.table columns reordered in place', code: 'library(data.table)\ndt <- data.table(a = 1, b = 2)\nsetcolorder(dt, c("b", "a"))\nprint(names(dt))', sigdb: true },
 			{ name: 'a data frame turned into a data.table in place', code: 'library(data.table)\nd <- data.frame(a = 1)\nsetDT(d)\nprint(class(d)[1])', sigdb: true }

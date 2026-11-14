@@ -20,6 +20,8 @@ import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RUnaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
+import { RIfThenElse } from '../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { requestFromInput, type RParseRequest } from '../../r-bridge/retriever';
@@ -1440,7 +1442,14 @@ function mayRepeat(arg: PotentiallyEmptyRArgument<ParentInformation> | undefined
 	return !(typeof resolved === 'boolean' || (Array.isArray(resolved) && resolved.every(v => typeof v === 'boolean')));
 }
 
-/** whether the value of `node` may be `NULL`, which removes a column it is assigned to: a call of a function of the program, or a variable holding one */
+/** the base functions that return `NULL` for what they do not find or select: `get0`, an attribute, a `switch` without a match, ..., and `c()` without arguments */
+const MayReturnNull: ReadonlySet<BrandedIdentifier> = new Set(['get0', 'mget', 'attr', 'attributes', 'names', 'colnames', 'rownames', 'dimnames', 'dim', 'levels', 'switch', 'invisible', 'return', 'tryCatch', 'try', 'do.call', 'Reduce', 'Recall', 'unlist', 'getOption', 'formals', 'body']);
+
+/**
+ * Whether the value of `node` may be `NULL`, which removes a column it is assigned to: `NULL` itself, an `if` without
+ * `else`, a block ending in one, a call of a function of the program or of one that returns `NULL` for nothing found,
+ * or a variable holding any of them.
+ */
 function mayBeNull(node: RNode<ParentInformation> | undefined, info: ResolveInfo, seen = new Set<NodeId>()): boolean {
 	if(node === undefined || seen.has(node.info.id)) {
 		return false;
@@ -1448,8 +1457,13 @@ function mayBeNull(node: RNode<ParentInformation> | undefined, info: ResolveInfo
 	seen.add(node.info.id);
 	if(isRNull(node)) {
 		return true;
+	} else if(RIfThenElse.is(node)) {
+		return node.otherwise === undefined || mayBeNull(node.then, info, seen) || mayBeNull(node.otherwise, info, seen);
+	} else if(RExpressionList.is(node)) {
+		return node.children.length === 0 || mayBeNull(node.children.at(-1), info, seen);
 	} else if(RFunctionCall.is(node)) {
-		return info.graph !== undefined && Dataflow.targetsOf(info.graph, node.info.id, EdgeType.Calls).some(t => DfgVertex.isFunctionDefinition(info.graph?.getVertex(t)));
+		return RFunctionCall.isNamed(node, MayReturnNull) || (RFunctionCall.isNamed(node, Identifier.make('c')) && node.arguments.length === 0)
+			|| (info.graph !== undefined && Dataflow.targetsOf(info.graph, node.info.id, EdgeType.Calls).some(t => DfgVertex.isFunctionDefinition(info.graph?.getVertex(t))));
 	} else if(RSymbol.is(node) && info.graph !== undefined) {
 		return (Dataflow.valueSources(node.info.id, info.graph) ?? []).some(v => v !== node.info.id && mayBeNull(info.idMap?.get(v), info, seen));
 	}

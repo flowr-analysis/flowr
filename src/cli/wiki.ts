@@ -174,18 +174,8 @@ if(require.main === module) {
 			header:  `flowR (version ${flowrVersion().toString()})`,
 			content: 'Documentation (wiki, issue, ...) generator for flowR'
 		},
-		{
-			header:  'Synopsis',
-			content: [
-				'$ wiki {bold --help}',
-				'$ wiki {bold --force}',
-				'$ wiki {bold --filter} {italic "dataflow"}'
-			]
-		},
-		{
-			header:     'Options',
-			optionList: wikiOptions
-		}
+		{ header: 'Synopsis', content: ['$ wiki {bold --help}', '$ wiki {bold --force}', '$ wiki {bold --filter} {italic "dataflow"}'] },
+		{ header: 'Options', optionList: wikiOptions }
 	];
 
 	setMinLevelOfAllLogs(LogLevel.Fatal);

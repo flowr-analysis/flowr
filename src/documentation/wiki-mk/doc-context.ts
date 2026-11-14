@@ -387,34 +387,21 @@ export function makeDocContextForTypes(
 		},
 		hierarchy(this: void, element: ElementIdOrRef, fmt?: Omit<PrintHierarchyArguments, 'info' | 'program' | 'root'>, filter?: ElementFilter): string {
 			guard(filter === undefined, 'ElementFilter is not yet supported for hierarchy');
-			return printHierarchy({
-				program, info,
-				root: getNameFromElementIdOrRef(element),
-				...fmt
-			});
+			return printHierarchy({ program, info, root: getNameFromElementIdOrRef(element), ...fmt });
 		},
 		code(this: void, element: ElementIdOrRef, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string {
 			guard(filter === undefined, 'ElementFilter is not yet supported for code');
-			return printCodeOfElement({
-				program, info,
-				...fmt,
-			}, getNameFromElementIdOrRef(element));
+			return printCodeOfElement({ program, info, ...fmt }, getNameFromElementIdOrRef(element));
 		},
 		codeFile(this: void, path: string, fmt?: Omit<FnElementInfo, 'info' | 'program'>): string {
-			return printCodeOfFile({
-				program, info,
-				...fmt,
-			}, path);
+			return printCodeOfFile({ program, info, ...fmt }, path);
 		},
 		async header(this: void, filename: string, purpose: string): Promise<string> {
 			const rVersion = (await shell?.usedRVersion())?.format();
 			return autoGenHeader({ filename, purpose, rVersion });
 		},
 		mermaid(this: void, element: ElementIdOrRef, options?: MermaidClassDiagramArguments): string {
-			return visualizeMermaidClassDiagram(info, {
-				typeNameForMermaid: getNameFromElementIdOrRef(element),
-				...options
-			}) as string;
+			return visualizeMermaidClassDiagram(info, { typeNameForMermaid: getNameFromElementIdOrRef(element), ...options }) as string;
 		},
 		linkPage(this: void, pageName: ValidWikiDocumentTargetsNoSuffix | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string {
 			let link: string;

@@ -114,11 +114,7 @@ export function isAbsolutePath(p: string, regex: RegExp | undefined): boolean {
 	return typeof normalized === 'string' && normalized === path.normalize(path.resolve(p) + '/');
 }
 
-const CorrespondingClose = {
-	'(': ')',
-	'[': ']',
-	'{': '}'
-} as const;
+const CorrespondingClose = { '(': ')', '[': ']', '{': '}' } as const;
 
 /** collect '-' at the start until '[' or '(' is reached, then drop the same from the end if present otherwise return the value as is */
 export function dropRawStringSurround(value: string): string {

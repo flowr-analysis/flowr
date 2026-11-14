@@ -34,11 +34,7 @@ export function verifyAndBuildPipeline(steps: readonly IPipelineStep[]): Pipelin
 	const sorted = sortedPerFile.concat(sortedPerRequest);
 	validateStepOutput(sorted, perRequestStepMap, steps);
 
-	return {
-		steps:               perRequestStepMap,
-		order:               sorted,
-		firstStepPerRequest: sortedPerFile.length
-	};
+	return { steps: perRequestStepMap, order: sorted, firstStepPerRequest: sortedPerFile.length };
 }
 
 function validateStepOutput(sorted: readonly PipelineStepName[], stepMap: Map<PipelineStepName, IPipelineStep>, steps: readonly IPipelineStep[]) {

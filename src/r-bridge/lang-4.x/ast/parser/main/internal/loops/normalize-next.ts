@@ -16,10 +16,5 @@ export function normalizeNext(data: NormalizerData, obj: JsonEntry): RNext {
 
 	const { location, content } = retrieveMetaStructure(obj);
 
-	return {
-		type:   RType.Next,
-		location,
-		lexeme: content,
-		info:   currentSourceInfo(data)
-	};
+	return { type: RType.Next, location, lexeme: content, info: currentSourceInfo(data) };
 }

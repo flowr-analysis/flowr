@@ -29,10 +29,7 @@ export interface MessageDefinition<T extends FlowrMessage | IdMessageBase> {
 
 export const baseMessage: MessageDefinition<IdMessageBase> = {
 	type:   '**base**',
-	schema: Joi.object({
-		type: Joi.string().required(),
-		id:   Joi.string().optional()
-	}).unknown(true)
+	schema: Joi.object({ type: Joi.string().required(), id: Joi.string().optional() }).unknown(true)
 };
 
 /**

@@ -216,10 +216,7 @@ export function makeDefaultReplReadline(config: FlowrConfig, historyFile: string
 
 /** Handles a string input for the REPL, returning the parsed string and any remaining input. */
 export function handleString(code: string) {
-	return {
-		rCode:     code.length === 0 ? undefined : startAndEndsWith(code, '"') ? JSON.parse(code) as string : code,
-		remaining: []
-	};
+	return { rCode: code.length === 0 ? undefined : startAndEndsWith(code, '"') ? JSON.parse(code) as string : code, remaining: [] };
 }
 
 /** Convert a statement containing {@link watchProtocol} into one using {@link fileProtocol} so it can be executed. */
@@ -439,9 +436,7 @@ export async function repl(
 		rl.on('history', h => fs.writeFileSync(historyFile, h.filter(l => !isReplStatsLine(l)).join('\n'), { encoding: 'utf-8' }));
 	}
 
-	const ghostHint = installGhostHint(rl, analyzer.flowrConfig, {
-		suggest: line => completionSuggestion(line, analyzer.flowrConfig)
-	});
+	const ghostHint = installGhostHint(rl, analyzer.flowrConfig, { suggest: line => completionSuggestion(line, analyzer.flowrConfig) });
 
 	let sigintCount = 0;
 	rl.on('SIGINT', () => {

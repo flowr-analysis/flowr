@@ -169,23 +169,11 @@ export function prepareParsedData(data: string): CsvEntry[] {
 
 /** Takes the CSV-Entries and maps them to the old json format for compatibility. */
 export function convertPreparedParsedData(roots: readonly CsvEntry[]): JsonEntry {
-	const partialEntry = {
-		token:  RawRType.ExpressionList,
-		text:   '',
-		id:     RootId,
-		parent: RootId
-	};
+	const partialEntry = { token: RawRType.ExpressionList, text: '', id: RootId, parent: RootId };
 
 	// if we don't have children, this is simple
 	if(roots.length <= 0) {
-		return {
-			...partialEntry,
-			line1:    1,
-			col1:     1,
-			line2:    1,
-			col2:     1,
-			children: []
-		};
+		return { ...partialEntry, line1: 1, col1: 1, line2: 1, col2: 1, children: [] };
 	}
 
 	// Locate start, end of a source file (order children in advance).

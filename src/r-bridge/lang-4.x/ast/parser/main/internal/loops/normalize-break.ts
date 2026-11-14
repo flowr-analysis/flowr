@@ -16,14 +16,5 @@ export function normalizeBreak(data: NormalizerData, obj: JsonEntry): RBreak {
 
 	const { location, content } = retrieveMetaStructure(obj);
 
-	return {
-		type:   RType.Break,
-		location,
-		lexeme: content,
-		info:   {
-			fullRange:  location,
-			adToks:     [],
-			fullLexeme: content
-		}
-	};
+	return { type: RType.Break, location, lexeme: content, info: { fullRange: location, adToks: [], fullLexeme: content } };
 }

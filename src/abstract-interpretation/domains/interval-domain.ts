@@ -103,10 +103,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	}
 
 	protected widenValue(this: this & IntervalDomain<IntervalValue>, other: IntervalDomain<IntervalValue>): this {
-		return this.create([
-			this.lower <= other.lower ? this.lower : this.minLower(),
-			this.upper >= other.upper ? this.upper : +Infinity
-		]);
+		return this.create([this.lower <= other.lower ? this.lower : this.minLower(), this.upper >= other.upper ? this.upper : +Infinity]);
 	}
 
 	protected narrowValue(this: this & IntervalDomain<IntervalValue>, other: IntervalDomain<IntervalValue>): this {

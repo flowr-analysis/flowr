@@ -54,12 +54,9 @@ export interface OutputCollectorConfiguration extends MergeableRecord {
 }
 
 export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguration = {
-	from:      'stdout',
-	postamble: `🐧${'-'.repeat(5)}🐧`,
-	timeout:   {
-		ms:             750_000,
-		resetOnNewData: true
-	},
+	from:                    'stdout',
+	postamble:               `🐧${'-'.repeat(5)}🐧`,
+	timeout:                 { ms: 750_000, resetOnNewData: true },
 	keepPostamble:           false,
 	automaticallyTrimOutput: true,
 	errorStopsWaiting:       true
@@ -368,14 +365,8 @@ class RShellSession {
 			cwd:         options.cwd,
 			windowsHide: true
 		});
-		this.sessionStdOut = readline.createInterface({
-			input:    this.bareSession.stdout,
-			terminal: false
-		});
-		this.sessionStdErr = readline.createInterface({
-			input:    this.bareSession.stderr,
-			terminal: false
-		});
+		this.sessionStdOut = readline.createInterface({ input: this.bareSession.stdout, terminal: false });
+		this.sessionStdErr = readline.createInterface({ input: this.bareSession.stderr, terminal: false });
 		this.onExit(() => {
 			this.end();
 		});

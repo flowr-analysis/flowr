@@ -12,10 +12,7 @@ function mergeJointRangesInSorted(loc: { location: SourceRange; selected: boolea
 	return loc.reduce((acc, curr) => {
 		const last = acc[acc.length - 1];
 		if(SourceRange.overlap(last.location, curr.location)) {
-			acc[acc.length - 1] = {
-				selected: curr.selected || last.selected,
-				location: SourceRange.merge([last.location, curr.location])
-			};
+			acc[acc.length - 1] = { selected: curr.selected || last.selected, location: SourceRange.merge([last.location, curr.location]) };
 		} else {
 			acc.push(curr);
 		}

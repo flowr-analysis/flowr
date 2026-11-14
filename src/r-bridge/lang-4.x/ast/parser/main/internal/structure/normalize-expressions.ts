@@ -111,11 +111,7 @@ function handleExpressionList(raw: readonly NamedJsonEntry[]): HandledExpression
 	if(close !== undefined) {
 		const endType = tokens[tokens.length - 1].name;
 		guard(endType === close, () => `expected a ${first === RawRType.BraceLeft ? 'brace' : 'parenthesis'} at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`);
-		return {
-			segments: [tokens.slice(1, tokens.length - 1)],
-			comments,
-			braces:   [tokens[0], tokens[tokens.length - 1]]
-		};
+		return { segments: [tokens.slice(1, tokens.length - 1)], comments, braces: [tokens[0], tokens[tokens.length - 1]] };
 	} else {
 		return { segments: splitExprs(tokens), comments, braces: undefined };
 	}
@@ -130,9 +126,7 @@ function processBraces([start, end]: [start: NamedJsonEntry, end: NamedJsonEntry
 		grouping: [newStart, newEnd],
 		lexeme:   undefined,
 		location: undefined,
-		info:     {
-			adToks: comments,
-		}
+		info:     { adToks: comments }
 	};
 }
 

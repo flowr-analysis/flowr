@@ -282,10 +282,7 @@ export class BenchmarkSlicer {
 			slicingCriteria:             [],
 			numberOfDataflowNodesSliced: 0,
 			timesHitThreshold:           0,
-			reconstructedCode:           {
-				code:                  '',
-				linesWithAutoSelected: 0
-			}
+			reconstructedCode:           { code: '', linesWithAutoSelected: 0 }
 		};
 		this.perSliceMeasurements.set(slicingCriteria, stats);
 
@@ -316,11 +313,7 @@ export class BenchmarkSlicer {
 		stats.timesHitThreshold = slicedOutput.timesHitThreshold;
 
 		stats.measurements = measurements.get();
-		return {
-			stats,
-			slice: slicedOutput,
-			code:  stats.reconstructedCode
-		};
+		return { stats, slice: slicedOutput, code: stats.reconstructedCode };
 	}
 
 	/**
@@ -427,9 +420,7 @@ export class BenchmarkSlicer {
 			}
 			const state = inference.getAbstractTrace().get(node.info.id);
 
-			const nodeStats: PerNodeStatsDfShape = {
-				numberOfEntries: state?.isValue() ? state.value.size : 0
-			};
+			const nodeStats: PerNodeStatsDfShape = { numberOfEntries: state?.isValue() ? state.value.size : 0 };
 
 			if(operations !== undefined) {
 				nodeStats.mappedOperations = operations.map(op => op.operation);

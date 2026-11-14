@@ -47,11 +47,7 @@ export function tryNormalizeFor(
     RDelimiter.is(parseBody)
 	) {
 		throw new ParseError(
-			`unexpected under-sided for-loop, received ${JSON.stringify([
-				parsedVariable,
-				parsedVariable,
-				parseBody,
-			])}`
+			`unexpected under-sided for-loop, received ${JSON.stringify([parsedVariable, parsedVariable, parseBody])}`
 		);
 	}
 
@@ -63,11 +59,7 @@ export function tryNormalizeFor(
 		vector:   parsedVector,
 		body:     ensureExpressionList(parseBody),
 		lexeme:   content,
-		info:     {
-			fullRange:  data.currentRange,
-			adToks:     comments,
-			fullLexeme: data.currentLexeme,
-		},
+		info:     { fullRange: data.currentRange, adToks: comments, fullLexeme: data.currentLexeme },
 		location
 	};
 }

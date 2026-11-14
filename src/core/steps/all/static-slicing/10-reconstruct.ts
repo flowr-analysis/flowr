@@ -48,9 +48,7 @@ export const NAIVE_RECONSTRUCT = {
 	description:       'Reconstruct R code from the static slice',
 	processor,
 	executed:          PipelineStepStage.OncePerRequest,
-	printer:           {
-		[StepOutputFormat.Internal]: internalPrinter
-	},
-	dependencies:  ['slice'],
-	requiredInput: requires<ReconstructRequiredInput>()
+	printer:           { [StepOutputFormat.Internal]: internalPrinter },
+	dependencies:      ['slice'],
+	requiredInput:     requires<ReconstructRequiredInput>()
 } as const satisfies DeepReadonly<IPipelineStep<'reconstruct', typeof processor>>;

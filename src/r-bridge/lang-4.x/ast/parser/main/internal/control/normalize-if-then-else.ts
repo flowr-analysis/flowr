@@ -31,8 +31,5 @@ export function tryNormalizeIfThenElse(
 	const parsedElse = normalizeSingleNode(data, ebT);
 	guard(!RDelimiter.is(parsedElse), () => `unexpected missing else-part of if-then-else, received ${JSON.stringify([parsedIfThen, parsedElse])} for ${JSON.stringify([ifT, lpT, cT, rpT, tT, eT, ebT])}`);
 
-	return {
-		...parsedIfThen,
-		otherwise: ensureExpressionList(parsedElse)
-	};
+	return { ...parsedIfThen, otherwise: ensureExpressionList(parsedElse) };
 }

@@ -212,13 +212,7 @@ export class FlowRServerConnection {
 					results: compact(sanitizedResults)
 				});
 			} else {
-				sendMessage(this.socket, {
-					type:    'response-file-analysis',
-					format:  'json',
-					id:      message.id,
-					cfg,
-					results: sanitizedResults
-				});
+				sendMessage(this.socket, { type: 'response-file-analysis', format: 'json', id: message.id, cfg, results: sanitizedResults });
 			}
 		}
 	}
@@ -247,10 +241,7 @@ export class FlowRServerConnection {
 
 		if(message.filetoken) {
 			this.logger.info(`Storing file token ${message.filetoken}`);
-			this.fileMap.set(message.filetoken, {
-				filename: message.filename,
-				analyzer: analyzer
-			});
+			this.fileMap.set(message.filetoken, { filename: message.filename, analyzer: analyzer });
 		}
 		return analyzer;
 	}
@@ -290,11 +281,7 @@ export class FlowRServerConnection {
 				noMagicComments: request.noMagicComments,
 				direction:       request.direction
 			});
-			sendMessage<SliceResponseMessage>(this.socket, {
-				type:    'response-slice',
-				id:      request.id,
-				results: result
-			});
+			sendMessage<SliceResponseMessage>(this.socket, { type: 'response-slice', id: request.id, results: result });
 		} catch(e) {
 			this.logger.error(`[${this.name}] Error while analyzing file for token ${request.filetoken}: ${String(e)}`);
 			this.sendError(request.id, `Error while analyzing file for token ${request.filetoken}: ${String(e)}`);
@@ -333,10 +320,7 @@ export class FlowRServerConnection {
 		this.allowRSessionAccess,
 		/* remote */ true
 		);
-		sendMessage<ExecuteEndMessage>(this.socket, {
-			type: 'end-repl-execution',
-			id:   request.id
-		});
+		sendMessage<ExecuteEndMessage>(this.socket, { type: 'end-repl-execution', id: request.id });
 	}
 
 	private async handleQueryRequest(base: QueryRequestMessage): Promise<void> {
@@ -357,11 +341,7 @@ export class FlowRServerConnection {
 
 		try {
 			const results = await fileInformation.analyzer.query(request.query);
-			sendMessage<QueryResponseMessage>(this.socket, {
-				type: 'response-query',
-				id:   request.id,
-				results
-			});
+			sendMessage<QueryResponseMessage>(this.socket, { type: 'response-query', id: request.id, results });
 		} catch(e) {
 			this.logger.error(`[${this.name}] Error while executing query: ${String(e)}`);
 			this.sendError(request.id, `Error while executing query: ${String(e)}`);
@@ -373,11 +353,8 @@ export class FlowRServerConnection {
 export function sanitizeAnalysisResults(parse: ParseStepOutput<string | Tree>, normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>> {
 	return {
 		parse:     parse as ParseStepOutput<string> & PipelinePerStepMetaInformation,
-		normalize: {
-			...normalize,
-			idMap: undefined
-		},
-		dataflow: {
+		normalize: { ...normalize, idMap: undefined },
+		dataflow:  {
 			...dataflow,
 			// we want to keep the DataflowGraph type information, but not the idMap
 			graph: new DataflowGraph(undefined).mergeWith(dataflow?.graph)

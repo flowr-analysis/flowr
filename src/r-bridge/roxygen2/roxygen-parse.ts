@@ -48,10 +48,7 @@ export function parseRoxygenCommentsOfNode(node: RNode<ParentInformation>, idMap
 		tags:        parseRoxygenComment(comments.map(c => c.lexeme)),
 		attachedTo:  cur?.info.id,
 		requestNode: node.info.id,
-		range:       [
-			...SourceRange.merge(comments.map(c => c.location)),
-			comments.find(c => c.info.file)?.info.file
-		]
+		range:       [...SourceRange.merge(comments.map(c => c.location)), comments.find(c => c.info.file)?.info.file]
 	};
 }
 
@@ -68,11 +65,7 @@ type TagLine = [tag: string, remTagLine?: string];
  * @see {@link parseRoxygenCommentsOfNode} - to parse comments attached to a node
  */
 export function parseRoxygenComment(commentText: readonly string[]): RoxygenTag[] {
-	const state: RoxygenParseContext = {
-		lines: prepareCommentContext(commentText),
-		tags:  [],
-		idx:   0
-	};
+	const state: RoxygenParseContext = { lines: prepareCommentContext(commentText), tags: [], idx: 0 };
 	let tag = val(state, [KnownRoxygenTags.Text]);
 	while(tag) {
 		tag = parseRoxygenTag(state, tag);
@@ -210,10 +203,7 @@ const TagMap = {
 	[KnownRoxygenTags.Name]:              val,
 	[KnownRoxygenTags.DocType]:           val,
 	[KnownRoxygenTags.Author]:            val,
-	[KnownRoxygenTags.Unknown]:           (s, t) => val(s, t, l => ({
-		tag:     t[0],
-		content: l.join(' ')
-	}))
+	[KnownRoxygenTags.Unknown]:           (s, t) => val(s, t, l => ({ tag: t[0], content: l.join(' ') }))
 } as const satisfies Record<KnownRoxygenTags, (state: RoxygenParseContext, tagName: TagLine) => TagLine | undefined>;
 
 /** returns the next tag */

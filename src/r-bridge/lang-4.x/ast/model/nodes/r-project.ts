@@ -78,9 +78,6 @@ export const RProject = {
 	 * This will remove the `info` property of the resulting project.
 	 */
 	merge<Info = NoInfo>(this: void, projects: readonly RProject<Info>[]): RProject<Info> {
-		return {
-			type:  RType.Project,
-			files: projects.flatMap(p => p.files)
-		};
+		return { type: RType.Project, files: projects.flatMap(p => p.files) };
 	}
 } as const;

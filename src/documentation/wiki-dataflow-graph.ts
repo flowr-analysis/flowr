@@ -1338,9 +1338,7 @@ ${await printDfGraphForCode(treeSitter, 'print(x)', { mark: new Set(['3->1']), c
 
 Retrieving the _types_ of the edge from the print call to its argument returns:
 ${await (async() => {
-			const dfg =  await createDataflowPipeline(treeSitter, {
-				context: contextFromInput('print(x)')
-			}).allRemainingSteps();
+			const dfg =  await createDataflowPipeline(treeSitter, { context: contextFromInput('print(x)') }).allRemainingSteps();
 			const edge = dfg.dataflow.graph.outgoingEdges(3);
 			if(edge) {
 				const wanted = edge.get(1);

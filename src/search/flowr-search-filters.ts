@@ -208,11 +208,7 @@ export class FlowrFilterCombinator {
 	}
 
 	private binaryRight<F extends FlowrFilter = FlowrFilter>(op: BooleanBinaryNode<BooleanNode>['type'], right: BooleanNodeOrCombinator | ValidFilterTypes<F>): this {
-		this.tree = {
-			type:  op,
-			left:  this.tree,
-			right: this.unpack(FlowrFilterCombinator.is(right))
-		};
+		this.tree = { type: op, left: this.tree, right: this.unpack(FlowrFilterCombinator.is(right)) };
 		return this;
 	}
 
@@ -221,10 +217,7 @@ export class FlowrFilterCombinator {
 	}
 
 	private unary(op: BooleanUnaryNode<BooleanNode>['type']): this {
-		this.tree = {
-			type:    op,
-			operand: this.tree
-		};
+		this.tree = { type: op, operand: this.tree };
 		return this;
 	}
 

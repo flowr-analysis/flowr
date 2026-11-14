@@ -79,11 +79,7 @@ export function initDiffContext<Graph>(left: NamedGraph<Graph>, right: NamedGrap
 		rightname: right.name,
 		report:    new GraphDifferenceReport(),
 		position:  '',
-		config:    {
-			rightIsSubgraph: false,
-			leftIsSubgraph:  false,
-			...config
-		}
+		config:    { rightIsSubgraph: false, leftIsSubgraph: false, ...config }
 	};
 }
 

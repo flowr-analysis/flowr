@@ -615,11 +615,6 @@ export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target
 			queue.potentialAdditions.delete(target);
 		}
 	} else {
-		queue.potentialAdditions.set(target, [id, {
-			id:                 target,
-			baseEnvironment,
-			envFingerprint,
-			onlyForSideEffects: false
-		}]);
+		queue.potentialAdditions.set(target, [id, { id: target, baseEnvironment, envFingerprint, onlyForSideEffects: false }]);
 	}
 }

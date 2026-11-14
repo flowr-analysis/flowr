@@ -38,11 +38,7 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 			location,
 			content: RString.unquote(content),
 			lexeme:  content,
-			info:    {
-				fullRange:  location,
-				adToks:     [],
-				fullLexeme: content
-			}
+			info:    { fullRange: location, adToks: [], fullLexeme: content }
 		};
 		parsedValue = parseWithValue(data, objs);
 	} else {
@@ -58,11 +54,7 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 		lexeme: content,
 		name,
 		value:  parsedValue ?? undefined,
-		info:   {
-			fullRange:  location,
-			fullLexeme: content,
-			adToks:     []
-		}
+		info:   { fullRange: location, fullLexeme: content, adToks: [] }
 	};
 }
 

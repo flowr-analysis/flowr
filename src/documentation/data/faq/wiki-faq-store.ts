@@ -57,16 +57,9 @@ export class FaqStore {
 	toMarkdown(): string {
 		return `
 ${collapsibleToc({
-	[FlowrFaqMainTitle]: {
-		[FlowrFaqTopics['flowr.development']]: {},
-		[FlowrFaqTopics['flowr.use']]:         {}
-	},
-	['🇷 R FAQ']: {
-		[FlowrFaqTopics['r.packages']]: {}
-	},
-	['💻 Editor FAQ']: {
-		[FlowrFaqTopics['editor.configs']]: {}
-	}
+	[FlowrFaqMainTitle]: { [FlowrFaqTopics['flowr.development']]: {}, [FlowrFaqTopics['flowr.use']]: {} },
+	['🇷 R FAQ']:         { [FlowrFaqTopics['r.packages']]: {} },
+	['💻 Editor FAQ']:    { [FlowrFaqTopics['editor.configs']]: {} }
 })}
 
 ${section(FlowrFaqMainTitle, 2)}

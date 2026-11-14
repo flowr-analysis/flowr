@@ -207,16 +207,8 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 			data.push({ name: `plugins (${type})`, unit: '#', value: names.length, extra: names.slice().sort().join(', ') });
 		}
 	}
-	data.push({
-		name:  'number of files',
-		unit:  '#',
-		value: ultimate.totalRequests
-	});
-	data.push({
-		name:  'number of slices',
-		unit:  '#',
-		value: ultimate.totalSlices
-	});
+	data.push({ name: 'number of files', unit: '#', value: ultimate.totalRequests });
+	data.push({ name: 'number of slices', unit: '#', value: ultimate.totalSlices });
 
 	// what the analysis works on and produces, so a change in runtime can be related to a change in size
 	for(const [name, measurement] of [
@@ -231,13 +223,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 		['control flow edges', ultimate.controlFlow?.numberOfEdges]
 	] as const) {
 		if(measurement) {
-			data.push({
-				name,
-				unit:  '#',
-				value: plotValue(measurement),
-				range: String(measurement.std),
-				extra: plotExtra(measurement)
-			});
+			data.push({ name, unit: '#', value: plotValue(measurement), range: String(measurement.std), extra: plotExtra(measurement) });
 		}
 	}
 	// what the data frame shape inference sees and how precise it is, so a change in its precision becomes visible
@@ -281,11 +267,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 		value: ultimate.failedToRepParse,
 		extra: `out of ${ultimate.totalSlices} slices`
 	});
-	data.push({
-		name:  'times hit threshold',
-		unit:  '#',
-		value: ultimate.timesHitThreshold
-	});
+	data.push({ name: 'times hit threshold', unit: '#', value: ultimate.timesHitThreshold });
 	// the reduction without comments and empty lines tells a different story than the raw one
 	for(const [name, measurement] of [
 		['reduction (lines)', ultimate.reduction.numberOfLines],
@@ -294,12 +276,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 		['reduction no fluff (normalized tokens)', ultimate.reductionNoFluff.numberOfNormalizedTokens]
 	] as const) {
 		if(measurement) {
-			data.push({
-				name,
-				unit:  '#',
-				value: plotValue(measurement),
-				extra: plotExtra(measurement, 4)
-			});
+			data.push({ name, unit: '#', value: plotValue(measurement), extra: plotExtra(measurement, 4) });
 		}
 	}
 	data.push({

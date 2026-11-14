@@ -50,10 +50,7 @@ export class RShellExecutor implements SyncParser<string> {
 	}
 
 	public information(): BaseRShellInformation {
-		return {
-			name:     ParserName.Shell,
-			rVersion: () => Promise.resolve(this.rVersion())
-		};
+		return { name: ParserName.Shell, rVersion: () => Promise.resolve(this.rVersion()) };
 	}
 
 	/**

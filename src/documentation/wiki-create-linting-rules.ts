@@ -31,10 +31,7 @@ function defineRule() {
 	const MY_NEW_RULE = {
 		createSearch: (_config) => Q.all(),
 
-		processSearchResult: (_elements, _config, _data) => ({
-			results: [],
-			'.meta': {}
-		}),
+		processSearchResult: (_elements, _config, _data) => ({ results: [], '.meta': {} }),
 
 		prettyPrint: {
 			query: (_result, _metadata) => 'my-rule finding',

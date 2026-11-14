@@ -80,10 +80,7 @@ export class WikiAnalyzer extends DocMaker<'wiki/Analyzer.md'> {
 		return `
 ${
 	collapsibleToc({
-		'Overview': {
-			'Overview of the Analyzer': undefined,
-			'Conducting Analyses':      undefined
-		},
+		'Overview':              { 'Overview of the Analyzer': undefined, 'Conducting Analyses': undefined },
 		'Builder Configuration': {
 			'Configuring flowR':      undefined,
 			'Configuring the Engine': undefined,

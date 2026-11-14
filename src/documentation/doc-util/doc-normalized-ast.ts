@@ -35,9 +35,7 @@ export interface PrintNormalizedAstOptions {
  */
 export async function printNormalizedAstForCode(parser: KnownParser, code: string, { showCode = true, prefix = 'flowchart TD\n', ctx }: PrintNormalizedAstOptions = {}) {
 	const now = performance.now();
-	const result = await createNormalizePipeline(parser, {
-		context: contextFromInput(code)
-	}).allRemainingSteps();
+	const result = await createNormalizePipeline(parser, { context: contextFromInput(code) }).allRemainingSteps();
 	const duration = performance.now() - now;
 
 	const metaInfo = `The analysis${docTook(duration)} ran (including parsing with the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment.`;

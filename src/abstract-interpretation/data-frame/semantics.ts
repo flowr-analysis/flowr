@@ -111,11 +111,7 @@ function applyAccessColsSemantics(
 	{ columns }: { columns: string[] | number[] | undefined }
 ): DataFrameDomain {
 	if(columns?.every(col => typeof col === 'string')) {
-		return value.create({
-			colnames: value.colnames.union(setRange(columns)),
-			cols:     value.cols,
-			rows:     value.rows
-		});
+		return value.create({ colnames: value.colnames.union(setRange(columns)), cols: value.cols, rows: value.rows });
 	} else if(columns?.every(col => typeof col === 'number')) {
 		return value.create({
 			colnames: value.colnames,
@@ -157,11 +153,7 @@ function applyAssignColsSemantics(
 			rows:     value.rows
 		});
 	}
-	return value.create({
-		colnames: value.colnames.widenUp(),
-		cols:     value.cols.widenUp(),
-		rows:     value.rows
-	});
+	return value.create({ colnames: value.colnames.widenUp(), cols: value.cols.widenUp(), rows: value.rows });
 }
 
 function applyAssignRowsSemantics(
@@ -175,11 +167,7 @@ function applyAssignRowsSemantics(
 			rows:     rows.reduce((current, row) => current.max([row, row]), value.rows)
 		});
 	}
-	return value.create({
-		colnames: value.colnames,
-		cols:     value.cols,
-		rows:     value.rows.widenUp()
-	});
+	return value.create({ colnames: value.colnames, cols: value.cols, rows: value.rows.widenUp() });
 }
 
 function applySetColNamesSemantics(
@@ -188,11 +176,7 @@ function applySetColNamesSemantics(
 	options?: { partial?: boolean }
 ): DataFrameDomain {
 	if(options?.partial) {
-		return value.create({
-			colnames: value.colnames.widenDown().union(setRange(colnames)),
-			cols:     value.cols,
-			rows:     value.rows
-		});
+		return value.create({ colnames: value.colnames.widenDown().union(setRange(colnames)), cols: value.cols, rows: value.rows });
 	}
 	const allColNames = colnames?.every(isNotUndefined) && value.cols.isValue() && colnames.length >= value.cols.upper;
 
@@ -284,11 +268,7 @@ function applyConcatColsSemantics(
 	value: DataFrameDomain,
 	{ other }: { other: DataFrameDomain }
 ): DataFrameDomain {
-	return value.create({
-		colnames: value.colnames.union(other.colnames),
-		cols:     value.cols.add(other.cols),
-		rows:     value.rows
-	});
+	return value.create({ colnames: value.colnames.union(other.colnames), cols: value.cols.add(other.cols), rows: value.rows });
 }
 
 function applyConcatRowsSemantics(
@@ -302,11 +282,7 @@ function applyConcatRowsSemantics(
 			rows:     value.rows.add(other.rows)
 		});
 	}
-	return value.create({
-		colnames: value.colnames,
-		cols:     value.cols,
-		rows:     value.rows.add(other.rows)
-	});
+	return value.create({ colnames: value.colnames, cols: value.cols, rows: value.rows.add(other.rows) });
 }
 
 function applySubsetColsSemantics(
@@ -383,11 +359,7 @@ function applyGroupBySemantics(
 	options?: { mutatedCols?: boolean }
 ): DataFrameDomain {
 	if(options?.mutatedCols) {
-		return value.create({
-			colnames: value.colnames.union(setRange(by)),
-			cols:     value.cols.add([0, by.length]),
-			rows:     value.rows
-		});
+		return value.create({ colnames: value.colnames.union(setRange(by)), cols: value.cols.add([0, by.length]), rows: value.rows });
 	}
 	// Group by only marks columns as groups but does not change the shape itself
 	return value;

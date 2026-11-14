@@ -606,10 +606,7 @@ registerQueryDocumentation('taint', {
 This query infers all taints for one or multiple analysis definitions within the code using taint analysis. 
 For example, you can use the following query to get the results of the normalization analysis:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'taint',
-		defs: defs
-	}], { showCode: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'taint', defs: defs }], { showCode: true, ctx })
 }
 `;
 	}
@@ -1167,12 +1164,7 @@ To find out what a script _uses_, reach for the ${linkToQueryOfName('dependencie
 
 /** Pins the R version so this page reports the same bounds, whatever R the machine regenerating it has. */
 function guessDepVersionsExampleOptions(ctx: GeneralDocContext): ShowQueryOptions {
-	return {
-		showCode:       false,
-		collapseResult: true,
-		ctx,
-		prepare:        b => b.configure('solver.sigdb.assumedRVersion', DefaultAssumedRVersion)
-	};
+	return { showCode: false, collapseResult: true, ctx, prepare: b => b.configure('solver.sigdb.assumedRVersion', DefaultAssumedRVersion) };
 }
 
 registerQueryDocumentation('guess-dep-versions', {

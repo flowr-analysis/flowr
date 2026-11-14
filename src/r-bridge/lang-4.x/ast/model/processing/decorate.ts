@@ -62,10 +62,7 @@ export interface ParentContextInfo extends MergeableRecord {
 	index: number
 }
 
-const defaultParentContext: Omit<ParentContextInfo, 'nest'> = {
-	role:  RoleInParent.Root,
-	index: 0
-};
+const defaultParentContext: Omit<ParentContextInfo, 'nest'> = { role: RoleInParent.Root, index: 0 };
 
 export interface ParentInformation extends ParentContextInfo {
 	/** uniquely identifies an AST-Node */
@@ -133,11 +130,8 @@ export function decorateAst<OtherInfo = NoInfo>(
 		foldBinaryOp: foldBinaryOp,
 		foldPipe:     foldBinaryOp,
 		foldUnaryOp:  unaryOp,
-		other:        {
-			foldComment:       foldLeaf,
-			foldLineDirective: foldLeaf
-		},
-		loop: {
+		other:        { foldComment: foldLeaf, foldLineDirective: foldLeaf },
+		loop:         {
 			foldFor:    createFoldForForLoop(info),
 			foldRepeat: createFoldForRepeatLoop(info),
 			foldWhile:  createFoldForWhileLoop(info),
@@ -162,20 +156,12 @@ export function decorateAst<OtherInfo = NoInfo>(
 			const decoratedAst = guardNesting('AST decoration', file.filePath, () => foldAstStateful(file.root, 0, folds));
 			decoratedAst.info.role = RoleInParent.Root;
 			decoratedAst.info.index = 0;
-			return {
-				root:     decoratedAst as RExpressionList<OtherInfo & ParentInformation>,
-				filePath: file.filePath
-			};
+			return { root: decoratedAst as RExpressionList<OtherInfo & ParentInformation>, filePath: file.filePath };
 		}),
-		info: {
-			id: getId(project)
-		}
+		info: { id: getId(project) }
 	};
 
-	return {
-		ast: decoratedProject,
-		idMap
-	};
+	return { ast: decoratedProject, idMap };
 }
 
 function adopt<OtherInfo>(child: RNodeWithParent<OtherInfo>, parent: NodeId, role: RoleInParent, index?: number): void {
@@ -192,13 +178,7 @@ function createFoldForLeaf<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const id = info.getId(data);
 		const decorated = {
 			...data,
-			info: {
-				...data.info,
-				id,
-				parent: undefined,
-				...defaultParentContext,
-				nest:   nesting
-			}
+			info: { ...data.info, id, parent: undefined, ...defaultParentContext, nest: nesting }
 		} as RNodeWithParent<OtherInfo>;
 		decorated.info.file = info.file;
 		info.idMap.set(id, decorated);

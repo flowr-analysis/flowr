@@ -283,10 +283,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	 * @param shouldOptimize - This may optimize the search.
 	 */
 	build(shouldOptimize = true): FlowrSearch<Info, Generator, Transformers, ElementType> {
-		return shouldOptimize ? optimize(this.generator, this.search) : {
-			generator: this.generator,
-			search:    this.search
-		};
+		return shouldOptimize ? optimize(this.generator, this.search) : { generator: this.generator, search: this.search };
 	}
 }
 

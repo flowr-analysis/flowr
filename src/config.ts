@@ -629,15 +629,8 @@ export const FlowrConfig = {
 			ignoreSourceCalls: false,
 			ignoreLoadCalls:   false,
 			semantics:         {
-				environment: {
-					overwriteBuiltIns: {
-						loadDefaults: true,
-						definitions:  []
-					}
-				},
-				ambient: {
-					drawingWritesDevice: false
-				}
+				environment: { overwriteBuiltIns: { loadDefaults: true, definitions: [] } },
+				ambient:     { drawingWritesDevice: false }
 			},
 			defaultPlugins: FlowrDefaultPlugins,
 			repl:           {
@@ -649,12 +642,8 @@ export const FlowrConfig = {
 				queryStats:          true,
 				showPlugins:         false,
 			},
-			project: {
-				resolveUnknownPathsOnDisk: true,
-				failOnInaccessiblePath:    false,
-				assumeImplicitEcho:        true
-			},
-			linter: {
+			project: { resolveUnknownPathsOnDisk: true, failOnInaccessiblePath: false, assumeImplicitEcho: true },
+			linter:  {
 				/* tests and the R CMD check rules only make sense for a package, which re-enables them below */
 				disabledRules: ['software-has-tests'],
 				disabledTags:  ['cmd-check']
@@ -690,45 +679,24 @@ export const FlowrConfig = {
 				},
 				transitiveSideEffectRounds: DefaultTransitiveSideEffectRounds,
 				maxOverlayDepth:            DefaultMaxOverlayDepth,
-				instrument:                 {
-					dataflowExtractors: undefined
-				},
-				slicer: {
-					threshold:  50,
-					autoExtend: false
-				}
+				instrument:                 { dataflowExtractors: undefined },
+				slicer:                     { threshold: 50, autoExtend: false }
 			},
 			abstractInterpretation: {
 				wideningThreshold: 4,
 				followCalls:       true,
-				dataFrame:         {
-					maxColNames:    50,
-					readLoadedData: {
-						readExternalFiles: true,
-						maxReadLines:      1e6
-					}
-				}
+				dataFrame:         { maxColNames: 50, readLoadedData: { readExternalFiles: true, maxReadLines: 1e6 } }
 			},
 			incremental: {
 				alwaysIncremental: false,
 				parsing:           {
 					activated:  false,
-					heuristics: {
-						activated:       true,
-						mtime:           true,
-						linesFrom:       500,
-						bytesFrom:       50_000,
-						alwaysWithEdits: false,
-						minFiles:        1,
-					}
+					heuristics: { activated: true, mtime: true, linesFrom: 500, bytesFrom: 50_000, alwaysWithEdits: false, minFiles: 1 }
 				}
 			},
 			gas: {
-				thresholds: {
-					memory: { problematic: 0.7,       critical: 0.9 },
-					timeMs: { problematic: 100_000,   critical: 120_000 }
-				},
-				features: {}
+				thresholds: { memory: { problematic: 0.7,       critical: 0.9 }, timeMs: { problematic: 100_000,   critical: 120_000 } },
+				features:   {}
 			}
 		};
 	},

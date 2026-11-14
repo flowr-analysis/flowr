@@ -37,16 +37,10 @@ export function normalizeTreeSitterTreeToAst(tree: ParseStepOutputSingleFile<Tre
 		if(!RExpressionList.is(root)) {
 			throw new ParseError(`expected root to resolve to an expression list, got a ${root.type}`);
 		}
-		files.push({
-			filePath: t.filePath,
-			root:     root
-		});
+		files.push({ filePath: t.filePath, root: root });
 	}
 
-	return {
-		type: RType.Project,
-		files
-	};
+	return { type: RType.Project, files };
 }
 
 function rejectUnsupportedPipeBind(node: SyntaxNode): void {
@@ -72,14 +66,7 @@ function nonErrorChildrenLax(node: SyntaxNode): SyntaxNode[] {
 let nonErrorChildren: (node: SyntaxNode) => SyntaxNode[] = nonErrorChildrenStrict;
 
 function makeDefaultInfo(node: SyntaxNode, fullRange: SourceRange, fullLexeme: string) {
-	return {
-		info: {
-			fullRange,
-			adToks: [],
-			fullLexeme,
-			tsId:   node.id
-		}
-	};
+	return { info: { fullRange, adToks: [], fullLexeme, tsId: node.id } };
 }
 
 function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
@@ -111,10 +98,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					children: body.map(n => n[1]),
 					grouping: undefined,
 					lexeme:   undefined,
-					info:     {
-						adToks: remainingComments.map(c => c[1]),
-						tsId:   node.id
-					}
+					info:     { adToks: remainingComments.map(c => c[1]), tsId: node.id }
 				};
 			}
 			case TreeSitterType.BracedExpression:
@@ -146,10 +130,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 							...defaultInfo()
 						}
 					],
-					info: {
-						adToks: remainingComments.map(c => c[1]),
-						tsId:   node.id
-					}
+					info: { adToks: remainingComments.map(c => c[1]), tsId: node.id }
 				};
 			}
 			case TreeSitterType.BinaryOperator: {
@@ -167,40 +148,25 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					value:    lhs,
 					name:     undefined,
 					lexeme:   lhs.lexeme as string,
-					info:     {
-						tsId: lhs.info.tsId
-					}
+					info:     { tsId: lhs.info.tsId }
 				};
 				if(op.type === 'special') {
 					return {
 						type:         RType.FunctionCall,
 						location:     opSource,
 						lexeme:       text(),
-						functionName: {
-							type:     RType.Symbol,
-							location: opSource,
-							lexeme:   opText,
-							content:  opText,
-							info:     {
-								tsId: op.id
-							}
-						},
-						arguments: [lhsAsArg, {
+						functionName: { type: RType.Symbol, location: opSource, lexeme: opText, content: opText, info: { tsId: op.id } },
+						arguments:    [lhsAsArg, {
 							type:     RType.Argument,
 							location: rhs.location as SourceRange,
 							value:    rhs,
 							name:     undefined,
 							lexeme:   rhs.lexeme as string,
-							info:     {
-								tsId: rhs.info.tsId
-							}
+							info:     { tsId: rhs.info.tsId }
 						}],
 						named:        true,
 						infixSpecial: true,
-						info:         {
-							adToks: comments,
-							tsId:   node.id
-						}
+						info:         { adToks: comments, tsId: node.id }
 					};
 				} else if(opText === '|>') {
 					return {
@@ -233,10 +199,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					location: makeSourceRange(op),
 					operator: opText,
 					lexeme:   opText,
-					info:     {
-						...defaultInfo().info,
-						adToks: comments.map(c => c[1]),
-					}
+					info:     { ...defaultInfo().info, adToks: comments.map(c => c[1]) }
 				};
 			}
 			case TreeSitterType.NamespaceOperator: {
@@ -252,10 +215,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					content:  Identifier.make(rhsText, lhs.text, int.text === ':::'),
 					lexeme:   rhsText,
 					...defaultInfo(),
-					info:     {
-						...defaultInfo().info,
-						adToks: comments.map(c => c[1]),
-					}
+					info:     { ...defaultInfo().info, adToks: comments.map(c => c[1]) }
 				};
 			}
 			case '(' as TreeSitterType:
@@ -266,13 +226,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			case TreeSitterType.DotDotI:
 			case TreeSitterType.Identifier:
 			case TreeSitterType.Return:
-				return {
-					type:     RType.Symbol,
-					location: range,
-					content:  RString.unquote(text()),
-					lexeme:   text(),
-					...defaultInfo()
-				};
+				return { type: RType.Symbol, location: range, content: RString.unquote(text()), lexeme: text(), ...defaultInfo() };
 			case TreeSitterType.IfStatement: {
 				const [comments, children] = splitCommentNodes(nonErrorChildren(node));
 				const [ifNode, /* ( */, condition, /* ) */, then, /* else */, ...otherwise] = children;
@@ -284,10 +238,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					otherwise: filteredOtherwise.length > 0 ? ensureExpressionList(convertTreeNode(filteredOtherwise[0])) : undefined,
 					location:  makeSourceRange(ifNode),
 					lexeme:    ifNode.text,
-					info:      {
-						...defaultInfo().info,
-						adToks: comments.map(c => c[1]),
-					}
+					info:      { ...defaultInfo().info, adToks: comments.map(c => c[1]) }
 				};
 			}
 			case TreeSitterType.ForStatement: {
@@ -306,12 +257,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						location: makeSourceRange(variableNode),
 						content:  RString.unquote(variableText),
 						lexeme:   variableText,
-						info:     {
-							fullRange:  undefined,
-							adToks:     [],
-							fullLexeme: undefined,
-							tsId:       variableNode.id
-						}
+						info:     { fullRange: undefined, adToks: [], fullLexeme: undefined, tsId: variableNode.id }
 					},
 					vector:   convertTreeNode(sequenceNode),
 					body:     ensureExpressionList(convertTreeNode(body)),
@@ -329,10 +275,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					body:      ensureExpressionList(convertTreeNode(body)),
 					location:  makeSourceRange(whileNode),
 					lexeme:    whileNode.text,
-					info:      {
-						...defaultInfo().info,
-						adToks: comments.map(c => c[1]),
-					}
+					info:      { ...defaultInfo().info, adToks: comments.map(c => c[1]) }
 				};
 			}
 			case TreeSitterType.RepeatStatement: {
@@ -342,20 +285,14 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					body:     ensureExpressionList(convertTreeNode(body)),
 					location: makeSourceRange(repeatNode),
 					lexeme:   repeatNode.text,
-					info:     {
-						...defaultInfo().info,
-						adToks: comments.map(c => c[1]),
-					}
+					info:     { ...defaultInfo().info, adToks: comments.map(c => c[1]) }
 				};
 			}
 			case TreeSitterType.Call: {
 				const [func, argsParentheses] = nonErrorChildren(node);
 				// tree-sitter wraps next and break in a function call, but we don't, so unwrap
 				if(func.type === TreeSitterType.Next || func.type === TreeSitterType.Break) {
-					return {
-						...convertTreeNode(func),
-						...defaultInfo()
-					};
+					return { ...convertTreeNode(func), ...defaultInfo() };
 				}
 				const rawArgs = nonErrorChildren(argsParentheses);
 				const [comments, noCommentrawArgs] = splitCommentNodes(rawArgs);
@@ -368,36 +305,21 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					location:  funcRange,
 					lexeme:    funcText,
 					...defaultInfo(),
-					info:      {
-						...defaultInfo().info,
-						adToks: comments.map(c => c[1]),
-					}
+					info:      { ...defaultInfo().info, adToks: comments.map(c => c[1]) }
 				};
 				if(func.type === TreeSitterType.Identifier || func.type === TreeSitterType.String || func.type === TreeSitterType.NamespaceOperator || func.type === TreeSitterType.Return) {
 					let funcNode = convertTreeNode(func) as RSymbol<TreeSitterInfo> | RString<TreeSitterInfo>;
 					if(RString.is(funcNode)) {
-						funcNode = {
-							...funcNode,
-							type:    RType.Symbol,
-							content: RString.unquote(funcText)
-						};
+						funcNode = { ...funcNode, type: RType.Symbol, content: RString.unquote(funcText) };
 					}
 					return {
 						...call,
 						type:         RType.FunctionCall,
-						functionName: {
-							...funcNode,
-							info: { ...defaultInfo().info, adToks: [] }
-						},
-						named: true
+						functionName: { ...funcNode, info: { ...defaultInfo().info, adToks: [] } },
+						named:        true
 					};
 				} else {
-					return {
-						...call,
-						type:           RType.FunctionCall,
-						calledFunction: convertTreeNode(func),
-						named:          undefined
-					};
+					return { ...call, type: RType.FunctionCall, calledFunction: convertTreeNode(func), named: undefined };
 				}
 			}
 			case TreeSitterType.FunctionDefinition: {
@@ -411,55 +333,24 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					body:       ensureExpressionList(convertTreeNode(body)),
 					location:   makeSourceRange(name),
 					lexeme:     name.text,
-					info:       {
-						...defaultInfo().info,
-						adToks: comments.map(c => c[1]),
-					}
+					info:       { ...defaultInfo().info, adToks: comments.map(c => c[1]) }
 				};
 			}
 			case TreeSitterType.String:
-				return {
-					type:     RType.String,
-					location: range,
-					content:  RStringValue.fromRLexeme(text()),
-					lexeme:   text(),
-					...defaultInfo()
-				};
+				return { type: RType.String, location: range, content: RStringValue.fromRLexeme(text()), lexeme: text(), ...defaultInfo() };
 			case TreeSitterType.Float:
 			case TreeSitterType.Integer:
 			case TreeSitterType.Complex:
 			case TreeSitterType.Inf:
 			case TreeSitterType.Nan:
-				return {
-					type:     RType.Number,
-					location: range,
-					content:  RNumberValue.fromRLexeme(text()),
-					lexeme:   text(),
-					...defaultInfo()
-				};
+				return { type: RType.Number, location: range, content: RNumberValue.fromRLexeme(text()), lexeme: text(), ...defaultInfo() };
 			case TreeSitterType.True:
 			case TreeSitterType.False:
-				return {
-					type:     RType.Logical,
-					location: range,
-					content:  text() === RTrue,
-					lexeme:   text(),
-					...defaultInfo()
-				};
+				return { type: RType.Logical, location: range, content: text() === RTrue, lexeme: text(), ...defaultInfo() };
 			case TreeSitterType.Break:
-				return {
-					type:     RType.Break,
-					location: range,
-					lexeme:   text(),
-					...defaultInfo()
-				};
+				return { type: RType.Break, location: range, lexeme: text(), ...defaultInfo() };
 			case TreeSitterType.Next:
-				return {
-					type:     RType.Next,
-					location: range,
-					lexeme:   text(),
-					...defaultInfo()
-				};
+				return { type: RType.Next, location: range, lexeme: text(), ...defaultInfo() };
 			case TreeSitterType.Subset:
 			case TreeSitterType.Subset2: {
 				// subset has children like a and [x]
@@ -476,10 +367,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					access:   args.map(n => n.length === 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>),
 					location: makeSourceRange(bracket),
 					lexeme:   bracketText,
-					info:     {
-						...defaultInfo().info,
-						adToks: argsComments.map(c => c[1]),
-					}
+					info:     { ...defaultInfo().info, adToks: argsComments.map(c => c[1]) }
 				};
 			}
 			case TreeSitterType.ExtractOperator: {
@@ -497,12 +385,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						value:    convertTreeNode(rhs),
 						location: rhsRange,
 						lexeme:   rhsText,
-						info:     {
-							fullRange:  rhsRange,
-							adToks:     [],
-							fullLexeme: rhsText,
-							tsId:       rhs?.id
-						}
+						info:     { fullRange: rhsRange, adToks: [], fullLexeme: rhsText, tsId: rhs?.id }
 					}],
 					location: makeSourceRange(operator),
 					lexeme:   operatorText,
@@ -525,23 +408,13 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						location: nameRange,
 						content:  Identifier.getName(Identifier.make(nameText)),
 						lexeme:   nameText,
-						info:     {
-							fullRange:  range,
-							adToks:     [],
-							fullLexeme: nameText,
-							tsId:       name.id
-						}
+						info:     { fullRange: range, adToks: [], fullLexeme: nameText, tsId: name.id }
 					},
 					special:  nameText === '...',
 					defaultValue,
 					location: nameRange,
 					lexeme:   nameText,
-					info:     {
-						fullRange:  range,
-						adToks:     [],
-						fullLexeme: nameText,
-						tsId:       name.id
-					}
+					info:     { fullRange: range, adToks: [], fullLexeme: nameText, tsId: name.id }
 				};
 			}
 			case TreeSitterType.Argument: {
@@ -554,10 +427,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						value:    convertTreeNode(arg),
 						location: range,
 						lexeme:   text(),
-						info:     {
-							...defaultInfo().info,
-							adToks: commentChildren.map(c => c[1]),
-						}
+						info:     { ...defaultInfo().info, adToks: commentChildren.map(c => c[1]) }
 					};
 				} else {
 					const [nameNode, /* = */, valueNode] = children;
@@ -565,11 +435,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 
 					// unescape argument names
 					if(RString.is(name)) {
-						name = {
-							...name,
-							type:    RType.Symbol,
-							content: name.content.str
-						};
+						name = { ...name, type: RType.Symbol, content: name.content.str };
 					} else {
 						name.content = RString.unquote(name.content);
 					}
@@ -582,22 +448,12 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						value:    valueNode ? convertTreeNode(valueNode) : undefined,
 						location: nameRange,
 						lexeme:   nameLexeme,
-						info:     {
-							fullRange:  nameRange,
-							adToks:     commentChildren.map(c => c[1]),
-							fullLexeme: nameLexeme,
-							tsId:       nameNode.id
-						}
+						info:     { fullRange: nameRange, adToks: commentChildren.map(c => c[1]), fullLexeme: nameLexeme, tsId: nameNode.id }
 					};
 				}
 			}
 			case TreeSitterType.Comment:
-				return {
-					type:     RType.Comment,
-					location: range,
-					lexeme:   text(),
-					...defaultInfo()
-				};
+				return { type: RType.Comment, location: range, lexeme: text(), ...defaultInfo() };
 			case TreeSitterType.Error:
 				return emptyExpressionList(defaultInfo().info);
 		}
@@ -635,11 +491,7 @@ function splitCommentNodes(nodes: readonly SyntaxNode[]): [comments: SyntaxAndRN
 				type:     RType.Comment,
 				location: makeSourceRange(node),
 				lexeme:   commentText,
-				info:     {
-					adToks:     [],
-					fullLexeme: commentText,
-					tsId:       node.id
-				}
+				info:     { adToks: [], fullLexeme: commentText, tsId: node.id }
 			}]);
 		} else {
 			others.push(node);

@@ -67,15 +67,9 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}` | stri
 	const file = content.startsWith(fileProtocol);
 
 	if(file) {
-		return {
-			request: 'file',
-			content: content.slice(fileProtocol.length),
-		};
+		return { request: 'file', content: content.slice(fileProtocol.length) };
 	} else {
-		return {
-			request: 'text',
-			content
-		};
+		return { request: 'text', content };
 	}
 }
 

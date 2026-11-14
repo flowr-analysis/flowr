@@ -212,10 +212,7 @@ function dedupeCallTargets(
  */
 export const Enrichments = {
 	[Enrichment.CallTargets]: {
-		enrichSearch: async(_search, data, _args, prev) => prev ?? {
-			dfg: await data.dataflow(),
-			ast: await data.normalize()
-		},
+		enrichSearch:  async(_search, data, _args, prev) => prev ?? { dfg: await data.dataflow(), ast: await data.normalize() },
 		enrichElement: async(e, s, analyzer, args, prev) => {
 			const content: CallTargetsContent = { targets: [] };
 			const shared = s.enrichmentContent(Enrichment.CallTargets) as CallTargetsSearchContent | undefined;
@@ -323,21 +320,13 @@ export const Enrichments = {
 			};
 		},
 		enrichSearch: async(_search, data, args, prev) => {
-			args = {
-				forceRefresh:         false,
-				checkReachable:       false,
-				simplificationPasses: DefaultCfgSimplificationOrder,
-				...args
-			};
+			args = { forceRefresh: false, checkReachable: false, simplificationPasses: DefaultCfgSimplificationOrder, ...args };
 
 			// short-circuit if we already have a cfg stored (and the reachability info if requested)
 			if(!args.forceRefresh && prev?.cfg && (!args.checkReachable || prev.reachableNodes)) {
 				return prev;
 			}
-			const content: CfgInformationSearchContent = {
-				...prev,
-				cfg: await data.controlflow(args.simplificationPasses),
-			};
+			const content: CfgInformationSearchContent = { ...prev, cfg: await data.controlflow(args.simplificationPasses) };
 			if(args.checkReachable) {
 				content.reachableNodes = cfgFindAllReachable(content.cfg);
 				content.aliveNodes = collectAliveNodes(await data.normalize(), content.reachableNodes);
@@ -348,10 +337,7 @@ export const Enrichments = {
 	[Enrichment.Roxygen]: {
 		enrichSearch:  async(_search, data, _args, prev) => prev ?? { ast: await data.normalize() },
 		enrichElement: async(e, search, analyzer, _args, prev) => {
-			const content = (prev ?? {
-				documentation: [],
-				tags:          {}
-			}) as DeepWritable<RoxygenElementContent>;
+			const content = (prev ?? { documentation: [], tags: {} }) as DeepWritable<RoxygenElementContent>;
 			const shared = search.enrichmentContent(Enrichment.Roxygen) as RoxygenSearchContent | undefined;
 			const normalize = shared?.ast ?? await analyzer.normalize();
 			const roxygen = RNode.documentation(e.node.info.id, normalize.idMap);
@@ -390,9 +376,6 @@ export async function enrichElement<Element extends FlowrSearchElement<ParentInf
 	const prev = e?.enrichments;
 	return {
 		...e,
-		enrichments: {
-			...prev ?? {},
-			[enrichment]: await enrichmentData.enrichElement?.(e, s, analyzer, args, prev?.[enrichment])
-		}
+		enrichments: { ...prev ?? {}, [enrichment]: await enrichmentData.enrichElement?.(e, s, analyzer, args, prev?.[enrichment]) }
 	};
 }

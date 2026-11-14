@@ -43,11 +43,7 @@ export function normalizeRootObjToAst(
 					children: nodes as RNode[],
 					grouping: undefined,
 					lexeme:   undefined,
-					info:     {
-						fullRange:  data.currentRange,
-						adToks:     delimiters,
-						fullLexeme: data.currentLexeme
-					}
+					info:     { fullRange: data.currentRange, adToks: delimiters, fullLexeme: data.currentLexeme }
 				}
 			}
 		]

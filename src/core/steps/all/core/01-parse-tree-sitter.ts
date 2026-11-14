@@ -10,10 +10,7 @@ export const PARSE_WITH_TREE_SITTER_STEP = {
 	description:       'Parse the given R code into an AST using tree-sitter',
 	processor:         parseRequests<Tree>,
 	executed:          PipelineStepStage.OncePerFile,
-	printer:           {
-		[StepOutputFormat.Internal]: internalPrinter,
-		[StepOutputFormat.Json]:     JSON.stringify
-	},
-	dependencies:  [],
-	requiredInput: requires<ParseRequiredInput<Tree>>()
+	printer:           { [StepOutputFormat.Internal]: internalPrinter, [StepOutputFormat.Json]: JSON.stringify },
+	dependencies:      [],
+	requiredInput:     requires<ParseRequiredInput<Tree>>()
 } as const satisfies DeepReadonly<IPipelineStep<'parse', typeof parseRequests<Tree>>>;

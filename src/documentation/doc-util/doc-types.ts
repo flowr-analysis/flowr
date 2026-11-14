@@ -456,11 +456,7 @@ function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMerma
 	guard(files.length > 0, () => `No source files found for ${JSON.stringify(fileNames)}`);
 	const withProgram = { ...options, program };
 	const hierarchyList = collectTypeHierarchy(files, withProgram);
-	return {
-		mermaid: visualizeMermaidClassDiagram(hierarchyList, withProgram),
-		info:    hierarchyList,
-		program
-	};
+	return { mermaid: visualizeMermaidClassDiagram(hierarchyList, withProgram), info: hierarchyList, program };
 }
 
 export interface GetTypesAsMermaidOption {

@@ -160,10 +160,7 @@ function parseComments(commentStr: string | undefined): { contents: string[], or
 	return comments.length > 0 || orcid ? { contents: comments, orcid: orcid } : undefined;
 }
 
-function assignArg(argMap: Map<string, string | undefined>, split: {
-	name?: string;
-	value: string | undefined
-}) {
+function assignArg(argMap: Map<string, string | undefined>, split: { name?: string; value: string | undefined }) {
 	argMap.set(
 		split.name as (typeof defaultPosArgNames)[number],
 		split.value === undefined || split.value?.length === 0 ? undefined : RString.unquote(split.value)
@@ -229,13 +226,7 @@ function collectUntil(source: string, anyOf: RegExp): { collected: string; rest:
  * like `First Middle Last <email> [roles] (comment)...`. It does not support the full R `person()` syntax.
  */
 export function parseTextualAuthorString(authorString: string, addRoles: AuthorRole[] = []): RAuthorInfo[] {
-	const parts = splitOnNestingSensitive(authorString, 'and', {
-		'<': '>',
-		'[': ']',
-		'(': ')',
-		'"': '"',
-		"'": "'"
-	} as const);
+	const parts = splitOnNestingSensitive(authorString, 'and', { '<': '>', '[': ']', '(': ')', '"': '"', "'": "'" } as const);
 	const authors: RAuthorInfo[] = [];
 	for(const part of parts) {
 		const name = collectUntil(part.trim(), /[<[(]/);

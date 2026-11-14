@@ -17,15 +17,9 @@ export type StdioProcessor = (stdio: Stdio) => void;
  */
 export function stdioCaptureProcessor(stdio: Stdio, onStdOutLine: (msg: string) => void, onStdErrLine: (msg: string) => void) {
 	guard(stdio[1] !== null, 'no stdout given in stdio!');
-	const outRl = readline.createInterface({
-		input:    stdio[1],
-		terminal: false
-	});
+	const outRl = readline.createInterface({ input: stdio[1], terminal: false });
 	guard(stdio[2] !== null, 'no stderr given in stdio!');
-	const errRl = readline.createInterface({
-		input:    stdio[2],
-		terminal: false
-	});
+	const errRl = readline.createInterface({ input: stdio[2], terminal: false });
 	outRl.on('line', onStdOutLine);
 	errRl.on('line', onStdErrLine);
 }
@@ -46,9 +40,7 @@ export function stdioCaptureProcessor(stdio: Stdio, onStdOutLine: (msg: string) 
 export async function waitOnScript(module: string, args: readonly string[], io?: StdioProcessor, exitOnError = false): Promise<void> {
 	log.info(`starting script ${module} with args ${JSON.stringify(args)}`);
 	SecureMode.guard('starting a process', module);
-	const child = cp.fork(module, args, {
-		silent: io !== undefined
-	});
+	const child = cp.fork(module, args, { silent: io !== undefined });
 	if(io !== undefined) {
 		io(child.stdio);
 	}

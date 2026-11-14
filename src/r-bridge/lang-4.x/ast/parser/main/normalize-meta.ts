@@ -21,10 +21,7 @@ export function retrieveMetaStructure(entry: JsonEntry): {
 	location: SourceRange
 	content:  string
 } {
-	return {
-		location: extractLocation(entry),
-		content:  entry.text
-	};
+	return { location: extractLocation(entry), content: entry.text };
 }
 
 /** Ensure that the given token is of the expected type. */
@@ -45,10 +42,7 @@ export function getTokenType(content: JsonEntry): RawRType {
 
 /** Given a list of JSON objects, extract their token-types and return them alongside the original objects. */
 export function getWithTokenType(obj: JsonEntry[]) {
-	return obj.map((content) => ({
-		name: getTokenType(content),
-		content
-	}));
+	return obj.map((content) => ({ name: getTokenType(content), content }));
 }
 
 /** Extract the operation name from the given operator node. */

@@ -87,19 +87,9 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: reado
 	if(parsedArguments.length === 0) {
 		// interestingly, next() and break() work
 		if(RNext.is(calledFunction)) {
-			return {
-				type:   RType.Next,
-				lexeme: content,
-				location,
-				info:   currentSourceInfo(data)
-			};
+			return { type: RType.Next, lexeme: content, location, info: currentSourceInfo(data) };
 		} else if(RBreak.is(calledFunction)) {
-			return {
-				type:   RType.Break,
-				lexeme: content,
-				location,
-				info:   currentSourceInfo(data)
-			};
+			return { type: RType.Break, lexeme: content, location, info: currentSourceInfo(data) };
 		}
 	}
 

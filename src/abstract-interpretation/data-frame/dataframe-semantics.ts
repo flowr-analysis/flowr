@@ -214,18 +214,15 @@ const DataFrameSemantics = {
 			separator: { pos: 2, name: 'sep', default: '\\t' }
 		}, DataFrameType.DataFrame, true),
 		'readr::read_table': applyFunctionCall(mapDataFrameRead, {
-			fileName:   { pos: 0, name: 'file' },
-			header:     { pos: 1, name: 'col_names', default: true },
-			separator:  { pos: -1, default: '\\s' },
-			quote:      { pos: -1, default: '"' },
-			skipLines:  { pos: 5, name: 'skip', default: 0 },
-			comment:    { pos: 9, name: 'comment', default: '' },
-			checkNames: { pos: -1, default: false },
-			noDupNames: { pos: -1, default: true },
-			critical:   [
-				{ pos: 6, name: 'n_max', default: Infinity },
-				{ pos: 11, name: 'skip_empty_rows', default: true }
-			],
+			fileName:     { pos: 0, name: 'file' },
+			header:       { pos: 1, name: 'col_names', default: true },
+			separator:    { pos: -1, default: '\\s' },
+			quote:        { pos: -1, default: '"' },
+			skipLines:    { pos: 5, name: 'skip', default: 0 },
+			comment:      { pos: 9, name: 'comment', default: '' },
+			checkNames:   { pos: -1, default: false },
+			noDupNames:   { pos: -1, default: true },
+			critical:     [{ pos: 6, name: 'n_max', default: Infinity }, { pos: 11, name: 'skip_empty_rows', default: true }],
 			noEmptyNames: true
 		}, DataFrameType.Tibble, true),
 		'readr::read_csv': applyFunctionCall(mapDataFrameRead, {
@@ -318,10 +315,8 @@ const DataFrameSemantics = {
 			dataFrame: { pos: 0, name: '.data' },
 			special:   ['.by', '.groups']
 		}, DataFrameType.DataFrame, true),
-		'dplyr::inner_join': applyFunctionCall(mapDataFrameJoin, {
-			...DplyrJoinParams
-		}, DataFrameType.DataFrame, true),
-		'dplyr::left_join': applyFunctionCall(mapDataFrameJoin, {
+		'dplyr::inner_join': applyFunctionCall(mapDataFrameJoin, { ...DplyrJoinParams }, DataFrameType.DataFrame, true),
+		'dplyr::left_join':  applyFunctionCall(mapDataFrameJoin, {
 			...DplyrJoinParams,
 			joinLeft: { pos: -1, default: true }
 		}, DataFrameType.DataFrame, true),
@@ -340,10 +335,7 @@ const DataFrameSemantics = {
 			joinAll:        { pos: 5, name: 'all', default: false },
 			joinLeft:       { pos: 6, name: 'all.x', default: false },
 			joinRight:      { pos: 7, name: 'all.y', default: false },
-			critical:       [
-				{ pos: 3, name: 'by.x' },
-				{ pos: 4, name: 'by.y' }
-			]
+			critical:       [{ pos: 3, name: 'by.x' }, { pos: 4, name: 'by.y' }]
 		}, DataFrameType.DataFrame, true),
 		'dplyr::relocate': applyFunctionCall(mapDataFrameIdentity, {
 			dataFrame:         { pos: 0, name: '.data' },
@@ -792,12 +784,7 @@ function mapDataFrameCreate(
 	} else {
 		colnames = filterValidNames(colnames, checkNames, noDupNames);
 	}
-	return [{
-		operation: 'create',
-		operand:   undefined,
-		colnames,
-		rows
-	}];
+	return [{ operation: 'create', operand: undefined, colnames, rows }];
 }
 
 /** Maps a data frame conversion function, such as `as.data.frame(x)`, to abstract data frame operations. */
@@ -812,10 +799,7 @@ function mapDataFrameConvert(
 	if(RArgument.isEmpty(dataFrame) || !RArgument.isWithValue(dataFrame)) {
 		return [{ operation: 'unknown', operand: undefined }];
 	}
-	return [{
-		operation: 'identity',
-		operand:   dataFrame.value.info.id
-	}];
+	return [{ operation: 'identity', operand: dataFrame.value.info.id }];
 }
 
 /**
@@ -855,13 +839,7 @@ function mapDataFrameRead(
 		typeof skipLines === 'number' && typeof checkNames === 'boolean' && typeof noDupNames === 'boolean';
 
 	if(request === undefined || !info.ctx.config.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles || !validArguments) {
-		return [{
-			operation: 'read',
-			operand:   undefined,
-			source,
-			colnames:  undefined,
-			rows:      undefined
-		}];
+		return [{ operation: 'read', operand: undefined, source, colnames: undefined, rows: undefined }];
 	}
 	const LineCommentRegex = new RegExp(`\\s*[${escapeRegExp(comment, true)}].*`);
 	let firstLine = undefined as (string | undefined)[] | undefined;
@@ -889,13 +867,7 @@ function mapDataFrameRead(
 	} else if(firstLine !== undefined) {
 		colnames = Array(firstLine.length).fill(undefined);
 	}
-	return [{
-		operation: 'read',
-		operand:   undefined,
-		source,
-		colnames,
-		rows:      allLines ? rowCount : [rowCount, Infinity]
-	}];
+	return [{ operation: 'read', operand: undefined, source, colnames, rows: allLines ? rowCount : [rowCount, Infinity] }];
 }
 
 /** Maps a function adding columns or rows to a data frame, such as `cbind(df, id = 1:5)` or `rbind(df, c(1, "A"))`, to abstract data frame operations. */
@@ -922,11 +894,7 @@ function mapDataFrameBind(
 			const otherDataFrame = ctx.getAbstractValue(arg.value);
 
 			if(otherDataFrame !== undefined) {
-				result.push({
-					operation: params.cols ? 'concatCols' : 'concatRows',
-					operand:   operand?.info.id,
-					other:     otherDataFrame
-				});
+				result.push({ operation: params.cols ? 'concatCols' : 'concatRows', operand: operand?.info.id, other: otherDataFrame });
 				operand = undefined;
 			// added columns/rows are top if argument cannot be resolved to constant (vector-like) value
 			} else if(Resolve.argument.value(arg, info) !== undefined) {
@@ -1047,36 +1015,20 @@ function mapDataFrameSubset(
 	const duplicateCols = accessedCols.some((col, index, list) => col !== undefined && list.indexOf(col) !== index);
 
 	if(accessedCols.some(isColName)) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedCols.filter(isColName)
-		});
+		result.push({ operation: 'accessCols', operand: operand?.info.id, columns: accessedCols.filter(isColName) });
 	}
 	if(accessedCols.some(isIndex)) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedCols.filter(isIndex).map(Math.abs)
-		});
+		result.push({ operation: 'accessCols', operand: operand?.info.id, columns: accessedCols.filter(isIndex).map(Math.abs) });
 	}
 
 	if(filterArg !== undefined && RArgument.isNotEmpty(filterArg)) {
-		result.push({
-			operation: 'filterRows',
-			operand:   operand?.info.id,
-			condition: condition
-		});
+		result.push({ operation: 'filterRows', operand: operand?.info.id, condition: condition });
 		operand = undefined;
 	}
 
 	if(dropArg === undefined || accessedCols.length > 1) {
 		if(unselectedCols === undefined || unselectedCols.length > 0) {
-			result.push({
-				operation: 'removeCols',
-				operand:   operand?.info.id,
-				colnames:  unselectedCols?.map(toColName)
-			});
+			result.push({ operation: 'removeCols', operand: operand?.info.id, colnames: unselectedCols?.map(toColName) });
 			operand = undefined;
 		}
 		if(selectedCols === undefined || selectedCols.length > 0) {
@@ -1117,18 +1069,10 @@ function mapDataFrameFilter(
 	const condition = filterValues.every(value => typeof value === 'boolean') ? filterValues.every(Boolean) : undefined;
 
 	if(accessedNames.length > 0) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   accessedNames
-		});
+		result.push({ operation: 'accessCols', operand: dataFrame.value.info.id, columns: accessedNames });
 	}
 
-	result.push({
-		operation: 'filterRows',
-		operand:   dataFrame.value.info.id,
-		condition: condition
-	});
+	result.push({ operation: 'filterRows', operand: dataFrame.value.info.id, condition: condition });
 	return result;
 }
 
@@ -1164,26 +1108,14 @@ function mapDataFrameSelect(
 	}
 
 	if(accessedCols.some(isColName)) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedCols.filter(isColName)
-		});
+		result.push({ operation: 'accessCols', operand: operand?.info.id, columns: accessedCols.filter(isColName) });
 	}
 	if(accessedCols.some(isIndex)) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedCols.filter(isIndex).map(Math.abs)
-		});
+		result.push({ operation: 'accessCols', operand: operand?.info.id, columns: accessedCols.filter(isIndex).map(Math.abs) });
 	}
 
 	if(unselectedCols === undefined || unselectedCols.length > 0) {
-		result.push({
-			operation: 'removeCols',
-			operand:   operand?.info.id,
-			colnames:  unselectedCols?.map(toColName)
-		});
+		result.push({ operation: 'removeCols', operand: operand?.info.id, colnames: unselectedCols?.map(toColName) });
 		operand = undefined;
 	}
 	if(selectedCols === undefined || selectedCols.length > 0 || unselectedCols?.length === 0) {
@@ -1243,28 +1175,15 @@ function mapDataFrameMutate(
 	mutatedCols = filterValidNames(mutatedCols, params.checkNames, params.noDupNames, undefined, true);
 
 	if(accessedNames.length > 0) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedNames
-		});
+		result.push({ operation: 'accessCols', operand: operand?.info.id, columns: accessedNames });
 	}
 
 	if(mutatedCols === undefined || mutatedCols.length > 0 || deletedCols?.length === 0) {
-		result.push({
-			operation: 'mutateCols',
-			operand:   operand?.info.id,
-			colnames:  mutatedCols
-		});
+		result.push({ operation: 'mutateCols', operand: operand?.info.id, colnames: mutatedCols });
 		operand = undefined;
 	}
 	if(deletedCols === undefined || deletedCols.length > 0) {
-		result.push({
-			operation: 'removeCols',
-			operand:   operand?.info.id,
-			colnames:  deletedCols,
-			options:   { maybe: true }
-		});
+		result.push({ operation: 'removeCols', operand: operand?.info.id, colnames: deletedCols, options: { maybe: true } });
 		// eslint-disable-next-line no-useless-assignment -- ends the chain
 		operand = undefined;
 	}
@@ -1299,11 +1218,7 @@ function mapDataFrameGroupBy(
 	const mutatedCols = byArgs.some(RArgument.isNamed) || byNames.some(isUndefined);
 
 	if(accessedNames.length > 0) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   accessedNames
-		});
+		result.push({ operation: 'accessCols', operand: dataFrame.value.info.id, columns: accessedNames });
 	}
 
 	result.push({
@@ -1339,18 +1254,10 @@ function mapDataFrameSummarize(
 		.filter(arg => !summarizedCols.includes(arg));
 
 	if(accessedNames.length > 0) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   accessedNames
-		});
+		result.push({ operation: 'accessCols', operand: dataFrame.value.info.id, columns: accessedNames });
 	}
 
-	result.push({
-		operation: 'summarize',
-		operand:   dataFrame.value.info.id,
-		colnames:  summarizedCols
-	});
+	result.push({ operation: 'summarize', operand: dataFrame.value.info.id, colnames: summarizedCols });
 	return result;
 }
 
@@ -1407,18 +1314,10 @@ function mapDataFrameJoin(
 	}
 
 	if(byCols?.some(isColName)) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   byCols.filter(isColName)
-		});
+		result.push({ operation: 'accessCols', operand: dataFrame.value.info.id, columns: byCols.filter(isColName) });
 	}
 	if(byCols?.some(isIndex)) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   byCols.filter(isIndex)
-		});
+		result.push({ operation: 'accessCols', operand: dataFrame.value.info.id, columns: byCols.filter(isIndex) });
 	}
 
 	result.push({
@@ -1450,10 +1349,7 @@ function mapDataFrameIdentity(
 	} else if(params.disallowNamedArgs && args.some(RArgument.isNamed)) {
 		return [{ operation: 'unknown', operand: dataFrame.value.info.id }];
 	}
-	return [{
-		operation: 'identity',
-		operand:   dataFrame.value.info.id
-	}];
+	return [{ operation: 'identity', operand: dataFrame.value.info.id }];
 }
 
 /** Maps a function that is not explicitly supported but returns or modifies a data frame, such as `na.omit(df)` or `setNames(df, "id")`, to abstract data frame operations. */
@@ -1510,11 +1406,7 @@ function mapDataFrameNamedColumnAccess(
 	}
 	const colname = Resolve.argument.symbolName(access.access[0], info);
 
-	return [{
-		operation: 'accessCols',
-		operand:   dataFrame.info.id,
-		columns:   colname ? [colname] : undefined
-	}];
+	return [{ operation: 'accessCols', operand: dataFrame.info.id, columns: colname ? [colname] : undefined }];
 }
 
 /** the largest absolute index of a list, which can hold more entries than a spread could pass as arguments */
@@ -1562,11 +1454,7 @@ function mapDataFrameIndexColRowAccess(
 		} else if(Array.isArray(rowValue) && rowValue.every(isIndex)) {
 			rows = rowValue;
 		}
-		result.push({
-			operation: 'accessRows',
-			operand:   dataFrame.info.id,
-			rows:      rows?.map(Math.abs)
-		});
+		result.push({ operation: 'accessRows', operand: dataFrame.info.id, rows: rows?.map(Math.abs) });
 	}
 	if(colArg !== undefined && RArgument.isNotEmpty(colArg)) {
 		const colValue = Resolve.argument.value(colArg, info);
@@ -1673,18 +1561,9 @@ function mapDataFrameContentAssignment(
 		return;
 	}
 	if(isRNull(expression)) {
-		return [{
-			operation: 'subsetCols',
-			operand:   dataFrame.info.id,
-			colnames:  [],
-			type:      ConstraintType.OperandModification
-		}];
+		return [{ operation: 'subsetCols', operand: dataFrame.info.id, colnames: [], type: ConstraintType.OperandModification }];
 	} else {
-		return [{
-			operation: 'identity',
-			operand:   dataFrame.info.id,
-			type:      ConstraintType.OperandModification
-		}];
+		return [{ operation: 'identity', operand: dataFrame.info.id, type: ConstraintType.OperandModification }];
 	}
 }
 
@@ -1711,11 +1590,7 @@ function mapDataFrameNamedColumnAssignment(
 			options:   { maybe: true }
 		}];
 	} else {
-		return [{
-			operation: 'assignCols',
-			operand:   dataFrame.info.id,
-			columns:   colname ? [colname] : undefined
-		}];
+		return [{ operation: 'assignCols', operand: dataFrame.info.id, columns: colname ? [colname] : undefined }];
 	}
 }
 
@@ -1745,11 +1620,7 @@ function mapDataFrameIndexColRowAssignment(
 		} else if(Array.isArray(rowValue) && rowValue.every(isIndex)) {
 			rows = rowValue;
 		}
-		result.push({
-			operation: 'assignRows',
-			operand:   dataFrame.info.id,
-			rows
-		});
+		result.push({ operation: 'assignRows', operand: dataFrame.info.id, rows });
 	}
 	if(colArg !== undefined && RArgument.isNotEmpty(colArg)) {
 		const colValue = Resolve.argument.value(colArg, info);
@@ -1771,11 +1642,7 @@ function mapDataFrameIndexColRowAssignment(
 				options:   { maybe: true }
 			});
 		} else {
-			result.push({
-				operation: 'assignCols',
-				operand:   dataFrame.info.id,
-				columns
-			});
+			result.push({ operation: 'assignCols', operand: dataFrame.info.id, columns });
 		}
 	}
 	return result;
@@ -1817,11 +1684,7 @@ function mapDataFrameRowNamesAssignment(
 	if(operand === undefined) {
 		return;
 	}
-	return [{
-		operation: 'identity',
-		operand:   operand.value.info.id,
-		type:      ConstraintType.OperandModification
-	}];
+	return [{ operation: 'identity', operand: operand.value.info.id, type: ConstraintType.OperandModification }];
 }
 
 /** Maps an assignment to the dimension names of a data frame, such as `dimnames(df) <- list(NULL, c("id"))`, to abstract data frame operations. */
@@ -1835,11 +1698,7 @@ function mapDataFrameDimNamesAssignment(
 	if(operand === undefined) {
 		return;
 	}
-	return [{
-		operation: 'setColNames',
-		operand:   operand.value.info.id,
-		colnames:  undefined
-	}];
+	return [{ operation: 'setColNames', operand: operand.value.info.id, colnames: undefined }];
 }
 
 /**

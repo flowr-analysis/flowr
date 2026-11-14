@@ -24,11 +24,7 @@ export interface ReplOutput {
  * Default repl output that redirects everything to the stdout and stderror channels (linked to `console`).
  * @see ReplOutput
  */
-export const standardReplOutput: ReplOutput = {
-	formatter: formatter,
-	stdout:    console.log,
-	stderr:    console.error
-};
+export const standardReplOutput: ReplOutput = { formatter: formatter, stdout: console.log, stderr: console.error };
 
 /** Information passed to each {@link ReplCommand#fn}. */
 export interface ReplCommandInformation {

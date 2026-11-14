@@ -32,12 +32,5 @@ function parseUnaryOp(data: NormalizerData, operator: NamedJsonEntry, operand: N
 	const operationName = retrieveOpName(operator);
 	const { location, content } = retrieveMetaStructure(operator.content);
 
-	return {
-		type:     RType.UnaryOp,
-		location,
-		operator: operationName,
-		lexeme:   content,
-		operand:  parsedOperand,
-		info:     currentSourceInfo(data)
-	};
+	return { type: RType.UnaryOp, location, operator: operationName, lexeme: content, operand: parsedOperand, info: currentSourceInfo(data) };
 }

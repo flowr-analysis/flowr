@@ -28,11 +28,5 @@ export function tryNormalizeRepeat(data: NormalizerData, [repeatToken, bodyToken
 
 	const { location, content } = retrieveMetaStructure(repeatToken.content);
 
-	return {
-		type:   RType.RepeatLoop,
-		location,
-		lexeme: content,
-		body:   ensureExpressionList(parseBody),
-		info:   currentSourceInfo(data)
-	};
+	return { type: RType.RepeatLoop, location, lexeme: content, body: ensureExpressionList(parseBody), info: currentSourceInfo(data) };
 }

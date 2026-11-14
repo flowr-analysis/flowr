@@ -13,10 +13,7 @@ async function staticSliceExample() {
 		.setEngine('tree-sitter')
 		.build();
 	analyzer.addRequest('x <- 1\ny <- x\nx');
-	const { slice, reconstruct } = await analyzer.query({
-		type:     'static-slice',
-		criteria: ['3@x']
-	});
+	const { slice, reconstruct } = await analyzer.query({ type: 'static-slice', criteria: ['3@x'] });
 	return { slice, reconstruct };
 }
 

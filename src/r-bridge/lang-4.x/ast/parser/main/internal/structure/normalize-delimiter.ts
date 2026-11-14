@@ -6,10 +6,5 @@ import type { NamedJsonEntry } from '../../../json/format';
 /** Normalizes a delimiter node like `,`. */
 export function normalizeDelimiter(elem: NamedJsonEntry): RDelimiter {
 	const { location, content } = retrieveMetaStructure(elem.content);
-	return {
-		type:    RType.Delimiter,
-		location,
-		lexeme:  content,
-		subtype: elem.name
-	};
+	return { type: RType.Delimiter, location, lexeme: content, subtype: elem.name };
 }

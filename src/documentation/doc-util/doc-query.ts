@@ -118,10 +118,7 @@ export interface QueryDocumentation {
 	readonly buildExplanation: (shell: RShell, ctx: GeneralDocContext) => Promise<string>;
 }
 
-export const RegisteredQueries = {
-	'active':  new Map<string, QueryDocumentation>(),
-	'virtual': new Map<string, QueryDocumentation>()
-};
+export const RegisteredQueries = { 'active': new Map<string, QueryDocumentation>(), 'virtual': new Map<string, QueryDocumentation>() };
 
 /** Registers a new documentation for a query. */
 export function registerQueryDocumentation(query: SupportedQueryTypes | SupportedVirtualQueryTypes, doc: QueryDocumentation) {

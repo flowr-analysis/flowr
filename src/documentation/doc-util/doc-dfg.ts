@@ -21,12 +21,7 @@ import { CallGraph } from '../../dataflow/graph/call-graph';
  */
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>, simplified = false) {
 	return `
-${codeBlock('mermaid', Dataflow.visualize.mermaid.convert({
-	graph,
-	prefix: 'flowchart LR',
-	mark,
-	simplified
-}).string)}
+${codeBlock('mermaid', Dataflow.visualize.mermaid.convert({ graph, prefix: 'flowchart LR', mark, simplified }).string)}
 	`;
 }
 
@@ -63,9 +58,7 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, opt
  */
 export async function printDfGraphForCode(parser: KnownParser, code: string, { callGraph = false, simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false, timeless = false, ctx }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
-	const result = await createDataflowPipeline(parser, {
-		context: contextFromInput(code)
-	}).allRemainingSteps();
+	const result = await createDataflowPipeline(parser, { context: contextFromInput(code) }).allRemainingSteps();
 	const duration = performance.now() - now;
 
 	if(switchCodeAndGraph) {
@@ -108,19 +101,14 @@ ${switchCodeAndGraph ? dfGraph : codeText}
 export async function verifyExpectedSubgraph(parser: KnownParser, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
 	const context = contextFromInput(code);
 	/* we verify that we get what we want first! */
-	const info = await createDataflowPipeline(parser, {
-		context: context,
-		getId:   deterministicCountingIdGenerator(0)
-	}).allRemainingSteps();
+	const info = await createDataflowPipeline(parser, { context: context, getId: deterministicCountingIdGenerator(0) }).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);
 	expectedSubgraph = Dataflow.resolveGraphCriteria(expectedSubgraph, context);
 	const report: GraphDifferenceReport = Dataflow.diffGraphs(
 		{ name: 'expected', graph: expectedSubgraph },
 		{ name: 'got',      graph: info.dataflow.graph },
-		{
-			leftIsSubgraph: true
-		}
+		{ leftIsSubgraph: true }
 	);
 
 	guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`);

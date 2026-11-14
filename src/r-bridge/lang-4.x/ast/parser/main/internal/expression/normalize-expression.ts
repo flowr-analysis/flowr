@@ -61,11 +61,7 @@ export function normalizeExpression(data: NormalizerData, entry: JsonEntry): RNo
 			location,
 			children: nodes as RNode[],
 			lexeme:   content,
-			info:     {
-				fullRange:  childData.currentRange,
-				adToks:     delimiters,
-				fullLexeme: childData.currentLexeme
-			}
+			info:     { fullRange: childData.currentRange, adToks: delimiters, fullLexeme: childData.currentLexeme }
 		};
 	}
 }

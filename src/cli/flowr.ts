@@ -89,10 +89,7 @@ export const optionHelp = [
 			`$ ${toolName} {bold slicer} {bold --help}`,
 		]
 	},
-	{
-		header:     'Options',
-		optionList: flowrMainOptionDefinitions
-	}
+	{ header: 'Options', optionList: flowrMainOptionDefinitions }
 ];
 
 const options = commandLineArgs(flowrMainOptionDefinitions) as FlowrCliOptions;

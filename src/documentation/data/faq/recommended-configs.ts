@@ -1,14 +1,6 @@
 export const recommendedZedConfig = {
 	'languages': {
-		'TypeScript': {
-			'formatter': [],
-			'prettier':  {
-				'allowed': false
-			},
-			'code_actions_on_format': {
-				'source.fixAll.eslint': true
-			}
-		}
+		'TypeScript': { 'formatter': [], 'prettier': { 'allowed': false }, 'code_actions_on_format': { 'source.fixAll.eslint': true } }
 	},
 	'hard_tabs': true
 };
@@ -27,11 +19,6 @@ export const recommendedVsCodeTask = {
 			'preLaunchTask': 'npm: build:dev',
 			'console':       'integratedTerminal',
 		},
-		{
-			'type':    'node',
-			'request': 'attach',
-			'name':    'Attach to Process',
-			'port':    9229
-		}
+		{ 'type': 'node', 'request': 'attach', 'name': 'Attach to Process', 'port': 9229 }
 	]
 };

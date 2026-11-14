@@ -122,13 +122,7 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 	return args;
 }
 
-const MatchingClose = {
-	'<': '>',
-	'[': ']',
-	'(': ')',
-	'"': '"',
-	"'": "'"
-} as const;
+const MatchingClose = { '<': '>', '[': ']', '(': ')', '"': '"', "'": "'" } as const;
 
 /**
  * Splits the given string on 'and', but only if not nested inside `<>`, `[]`, `()`, or quotes.

@@ -179,14 +179,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 		}
 	}
 
-	return {
-		query: await executeQueries({
-			analyzer,
-		},
-		parsedQuery),
-		parsedQuery,
-		analyzer
-	};
+	return { query: await executeQueries({ analyzer }, parsedQuery), parsedQuery, analyzer };
 }
 
 const ConfigLineRegex = /^(@config)(?:\s+([\s\S]*))?$/;

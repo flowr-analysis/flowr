@@ -61,30 +61,10 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 			infixSpecial: true,
 			lexeme:       data.currentLexeme ?? content,
 			location,
-			functionName: {
-				type:   RType.Symbol,
-				location,
-				lexeme: content,
-				content,
-				info:   {}
-			},
-			arguments: [
-				{
-					type:     RType.Argument,
-					location: lhsLoc,
-					value:    parsedLhs,
-					name:     undefined,
-					lexeme:   parsedLhs.lexeme ?? '',
-					info:     {}
-				},
-				{
-					type:     RType.Argument,
-					location: rhsLoc,
-					value:    parsedRhs,
-					name:     undefined,
-					lexeme:   parsedRhs.lexeme ?? '',
-					info:     {}
-				}
+			functionName: { type: RType.Symbol, location, lexeme: content, content, info: {} },
+			arguments:    [
+				{ type: RType.Argument, location: lhsLoc, value: parsedLhs, name: undefined, lexeme: parsedLhs.lexeme ?? '', info: {} },
+				{ type: RType.Argument, location: rhsLoc, value: parsedRhs, name: undefined, lexeme: parsedRhs.lexeme ?? '', info: {} }
 			],
 			info: {}
 		};

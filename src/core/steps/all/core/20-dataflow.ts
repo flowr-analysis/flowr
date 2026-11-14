@@ -33,6 +33,5 @@ export const STATIC_DATAFLOW = {
 	...staticDataflowCommon,
 	humanReadableName: 'dataflow',
 	processor,
-	requiredInput:     {
-	}
+	requiredInput:     {}
 } as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof processor>>;

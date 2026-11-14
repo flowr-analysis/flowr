@@ -214,10 +214,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	public updateRequest(newRequestData: PipelinePerRequestInput<P>): void {
 		const requestStep = this.pipeline.firstStepPerRequest;
 		guard(this.stepCounter >= requestStep, 'Cannot reset request prior to once-per-request stage');
-		this.input = {
-			...(this.input as object),
-			...newRequestData
-		} as PipelineInput<P>;
+		this.input = { ...(this.input as object), ...newRequestData } as PipelineInput<P>;
 		this.stepCounter = requestStep;
 		// clear the results for all steps with an index >= firstStepPerRequest, this is more of a sanity check
 		for(let i = requestStep; i < this.length; i++) {

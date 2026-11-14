@@ -267,31 +267,17 @@ ${codeBlock('json', JSON.stringify(
 			semantics:         {
 				environment: {
 					overwriteBuiltIns: {
-						definitions: [
-							{ type: 'function', names: ['foo'], processor: BuiltInProcName.Assignment, config: {} }
-						]
+						definitions: [{ type: 'function', names: ['foo'], processor: BuiltInProcName.Assignment, config: {} }]
 					}
 				}
 			},
-			defaultPlugins: ['file:description', 'versions:description'],
-			repl:           {
-				quickStats:      false,
-				dfProcessorHeat: false,
-				hints:           true,
-				plugins:         ['flowr:default']
-			},
-			project: {
-				resolveUnknownPathsOnDisk: true,
-				implicitSources:           ['global.R', 'app.R']
-			},
-			linter: {
-				disabledRules: []
-			},
-			specializeConfig: {
-				[ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } }
-			},
-			engines: [{ type: 'r-shell' }],
-			solver:  {
+			defaultPlugins:   ['file:description', 'versions:description'],
+			repl:             { quickStats: false, dfProcessorHeat: false, hints: true, plugins: ['flowr:default'] },
+			project:          { resolveUnknownPathsOnDisk: true, implicitSources: ['global.R', 'app.R'] },
+			linter:           { disabledRules: [] },
+			specializeConfig: { [ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } } },
+			engines:          [{ type: 'r-shell' }],
+			solver:           {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
@@ -303,41 +289,23 @@ ${codeBlock('json', JSON.stringify(
 					searchPath:            []
 				},
 				instrument: {},
-				slicer:     {
-					threshold: 50
-				}
+				slicer:     { threshold: 50 }
 			},
 			abstractInterpretation: {
 				wideningThreshold: 4,
 				followCalls:       true,
-				dataFrame:         {
-					maxColNames:    20,
-					readLoadedData: {
-						readExternalFiles: true,
-						maxReadLines:      1_000_000
-					}
-				}
+				dataFrame:         { maxColNames: 20, readLoadedData: { readExternalFiles: true, maxReadLines: 1_000_000 } }
 			},
 			incremental: {
 				alwaysIncremental: false,
 				parsing:           {
 					activated:  false,
-					heuristics: {
-						activated:       true,
-						mtime:           true,
-						linesFrom:       500,
-						bytesFrom:       50_000,
-						alwaysWithEdits: false,
-						minFiles:        1,
-					},
+					heuristics: { activated: true, mtime: true, linesFrom: 500, bytesFrom: 50_000, alwaysWithEdits: false, minFiles: 1 },
 				},
 			},
 			gas: {
-				thresholds: {
-					memory: { problematic: 0.7,     critical: 0.9 },
-					timeMs: { problematic: 100_000, critical: 120_000 }
-				},
-				features: {}
+				thresholds: { memory: { problematic: 0.7,     critical: 0.9 }, timeMs: { problematic: 100_000, critical: 120_000 } },
+				features:   {}
 			}
 		} satisfies FlowrConfig,
 		null, 2))

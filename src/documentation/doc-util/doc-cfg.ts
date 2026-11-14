@@ -24,11 +24,7 @@ export async function getCfg(parser: KnownParser, code: string, simplifications:
 	const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
 	const dataflow = result.dataflow;
 	const cfg = simplifyControlFlowInformation(extractCfg(dataflow), { ast: result.normalize, dfg: dataflow.graph, ctx: context }, [...DefaultCfgSimplificationOrder, ...simplifications]);
-	return {
-		info: cfg,
-		ast:  result.normalize,
-		dataflow
-	};
+	return { info: cfg, ast: result.normalize, dataflow };
 }
 
 /** Serializes the given control flow graph to a mermaid diagram. */

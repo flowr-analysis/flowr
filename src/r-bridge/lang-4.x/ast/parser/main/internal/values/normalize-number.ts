@@ -17,30 +17,14 @@ import type { JsonEntry } from '../../../json/format';
  */
 export function normalizeNumber(data: NormalizerData, obj: JsonEntry): RNumber | RLogical | RSymbol<NoInfo, typeof RNa> {
 	const { location, content } = retrieveMetaStructure(obj);
-	const common = {
-		location,
-		lexeme: content,
-		info:   currentSourceInfo(data)
-	};
+	const common = { location, lexeme: content, info: currentSourceInfo(data) };
 
 	/* the special symbol */
 	if(isNA(content)) {
-		return {
-			...common,
-			type: RType.Symbol,
-			content
-		};
+		return { ...common, type: RType.Symbol, content };
 	} else if(isBoolean(content)) {
-		return {
-			...common,
-			type:    RType.Logical,
-			content: boolean2ts(content)
-		};
+		return { ...common, type: RType.Logical, content: boolean2ts(content) };
 	} else {
-		return {
-			...common,
-			type:    RType.Number,
-			content: RNumberValue.fromRLexeme(content)
-		};
+		return { ...common, type: RType.Number, content: RNumberValue.fromRLexeme(content) };
 	}
 }

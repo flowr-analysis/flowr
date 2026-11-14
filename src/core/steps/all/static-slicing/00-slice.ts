@@ -38,9 +38,7 @@ export const STATIC_SLICE = {
 	description:       'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
 	processor,
 	executed:          PipelineStepStage.OncePerRequest,
-	printer:           {
-		[StepOutputFormat.Internal]: internalPrinter
-	},
-	dependencies:  ['dataflow'],
-	requiredInput: requires<SliceRequiredInput>()
+	printer:           { [StepOutputFormat.Internal]: internalPrinter },
+	dependencies:      ['dataflow'],
+	requiredInput:     requires<SliceRequiredInput>()
 } as const satisfies DeepReadonly<IPipelineStep<'slice', typeof processor>>;

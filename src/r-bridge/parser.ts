@@ -21,10 +21,7 @@ interface ParserContent<T> {
 }
 
 /** The parser engines flowR knows. */
-export const ParserName = {
-	Shell:      'r-shell',
-	TreeSitter: 'tree-sitter'
-} as const;
+export const ParserName = { Shell: 'r-shell', TreeSitter: 'tree-sitter' } as const;
 export type ParserName = typeof ParserName[keyof typeof ParserName];
 
 export interface BaseParserInformation {

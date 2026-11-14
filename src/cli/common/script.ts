@@ -25,18 +25,12 @@ export interface HelpContent {
  */
 export function helpForOptions(script: keyof typeof scripts, content: HelpContent): string {
 	return commandLineUsage([
-		{
-			header:  scripts[script].description,
-			content: content.subtitle
-		},
+		{ header: scripts[script].description, content: content.subtitle },
 		{
 			header:  'Synopsis',
 			content: content.examples.map(e => `$ ${scripts[script].toolName} ${e}`)
 		},
-		{
-			header:     'Options',
-			optionList: scripts[script].options
-		}
+		{ header: 'Options', optionList: scripts[script].options }
 	]);
 }
 

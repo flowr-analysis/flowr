@@ -342,8 +342,5 @@ export function summarizeSummarizedTimePerToken(times: TimePerToken[]): TimePerT
 
 /** Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement. */
 export function summarizeTimePerToken(times: TimePerToken<number>[]): TimePerToken {
-	return {
-		raw:        summarizeMeasurement(times.map(t => t.raw)),
-		normalized: summarizeMeasurement(times.map(t => t.normalized)),
-	};
+	return { raw: summarizeMeasurement(times.map(t => t.raw)), normalized: summarizeMeasurement(times.map(t => t.normalized)) };
 }

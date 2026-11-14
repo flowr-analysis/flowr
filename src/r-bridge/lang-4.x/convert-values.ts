@@ -99,28 +99,16 @@ export const RNumberValue = {
 		}
 
 		if(value === RInf) {
-			return {
-				num: Infinity,
-				complexNumber,
-				markedAsInt
-			};
+			return { num: Infinity, complexNumber, markedAsInt };
 		}
 
 		if(value === RNa) {
-			return {
-				num: NaN,
-				complexNumber,
-				markedAsInt
-			};
+			return { num: NaN, complexNumber, markedAsInt };
 		}
 
 		const floatHex = lcValue.match(RNumHexFloatRegex);
 		if(floatHex == null) {
-			return {
-				num: Number(lcValue),
-				complexNumber,
-				markedAsInt
-			};
+			return { num: Number(lcValue), complexNumber, markedAsInt };
 		} else {
 			const {
 				intPart,
@@ -130,11 +118,7 @@ export const RNumberValue = {
 			const base = intPart === undefined ? 0 : parseInt(`${intPart}`, 16);
 			const floatSuffix = floatPart === undefined ? 0 : getDecimalPlacesWithRadix(floatPart, 16);
 			const exponent = parseInt(exp, 10);
-			return {
-				num: (base + floatSuffix) * Math.pow(2, exponent),
-				complexNumber,
-				markedAsInt
-			};
+			return { num: (base + floatSuffix) * Math.pow(2, exponent), complexNumber, markedAsInt };
 		}
 	}
 } as const;
@@ -164,18 +148,11 @@ export const RStringValue = {
 		}
 		const init = value[0];
 		if(init === '"' || init === '\'') {
-			return {
-				str:    value.slice(1, -1),
-				quotes: init
-			};
+			return { str: value.slice(1, -1), quotes: init };
 		} else if((init === 'r' || init === 'R') && value.length >= 3) {
 			const flags = value[1];
 			if(flags === '"' || flags === '\'') {
-				return {
-					str:    dropRawStringSurround(value.slice(2, -1)),
-					quotes: flags,
-					flag:   'raw'
-				};
+				return { str: dropRawStringSurround(value.slice(2, -1)), quotes: flags, flag: 'raw' };
 			} else {
 				throw new ValueConversionError(`expected string to start with a known quote (' or "), or raw, yet received ${value}`);
 			}

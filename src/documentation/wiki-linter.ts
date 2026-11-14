@@ -322,11 +322,7 @@ server <- function(input, output, session) {
 };
 
 /** the kinds of issue a rule finds, each rule carries at most one */
-const RuleKinds = [
-	[LintingRuleTag.Bug, 'Bugs'],
-	[LintingRuleTag.Smell, 'Smells'],
-	[LintingRuleTag.Style, 'Style']
-] as const;
+const RuleKinds = [[LintingRuleTag.Bug, 'Bugs'], [LintingRuleTag.Smell, 'Smells'], [LintingRuleTag.Style, 'Style']] as const;
 
 /** the tags of a rule as the wiki shows them: its kind, R CMD check, quick fixes, then the aspects by name */
 function sortedTags(tags: readonly LintingRuleTag[]): LintingRuleTag[] {
@@ -618,10 +614,7 @@ async function getRulesPages(knownParser: KnownParser, tagTypes: TypeReport): Pr
 
 /** Maps file-names to their content, the 'main' file is named 'main' */
 async function getTexts(parser: KnownParser, ctx: GeneralDocContext): Promise<Record<string, string> & { main: string }> {
-	const tagTypes = getTypesFromFolder({
-		rootFolder:  path.resolve('./src/linter/'),
-		inlineTypes: mermaidHide
-	});
+	const tagTypes = getTypesFromFolder({ rootFolder: path.resolve('./src/linter/'), inlineTypes: mermaidHide });
 
 	return {
 		'main':                                           await getTextMainPage(parser, tagTypes, ctx),

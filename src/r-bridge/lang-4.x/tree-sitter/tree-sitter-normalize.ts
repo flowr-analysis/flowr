@@ -210,12 +210,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						rhs,
 						lexeme:   opText,
 						...defaultInfo(),
-						info:     {
-							fullRange:  range,
-							adToks:     comments,
-							fullLexeme: text(),
-							tsId:       node.id
-						}
+						info:     { ...defaultInfo().info, adToks: comments }
 					};
 				} else {
 					return {
@@ -224,12 +219,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						lhs, rhs,
 						operator: opText,
 						lexeme:   opText,
-						info:     {
-							fullRange:  range,
-							adToks:     comments,
-							fullLexeme: text(),
-							tsId:       node.id
-						}
+						info:     { ...defaultInfo().info, adToks: comments }
 					};
 				}
 			}
@@ -327,12 +317,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					body:     ensureExpressionList(convertTreeNode(body)),
 					location: makeSourceRange(forNode),
 					lexeme:   forNode.text,
-					info:     {
-						fullRange:  range,
-						adToks:     variableComments.concat(comments, sequenceComments).map(c => c[1]),
-						fullLexeme: text(),
-						tsId:       node.id
-					}
+					info:     { ...defaultInfo().info, adToks: variableComments.concat(comments, sequenceComments).map(c => c[1]) }
 				};
 			}
 			case TreeSitterType.WhileStatement: {
@@ -402,12 +387,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						type:         RType.FunctionCall,
 						functionName: {
 							...funcNode,
-							info: {
-								fullRange:  range,
-								adToks:     [],
-								fullLexeme: text(),
-								tsId:       node.id
-							}
+							info: { ...defaultInfo().info, adToks: [] }
 						},
 						named: true
 					};

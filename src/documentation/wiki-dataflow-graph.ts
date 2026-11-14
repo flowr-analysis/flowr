@@ -114,13 +114,25 @@ function linkEdgeName(edgeType: EdgeType, page = ''): string {
 	return `[\`${DfEdge.typeToName(edgeType)}\`](${page}#${edgeTypeToId(edgeType)})`;
 }
 
+type Explanations<T> = Map<T, [Omit<ExplanationParameters, 'type'>, SubExplanationParameters[]]>;
+
+/** explains every type in the given order, `anchor` prefixing each explanation */
+async function explainAll<T extends VertexType | EdgeType>(parser: KnownParser, ctx: GeneralDocContext, kind: string, types: readonly [string, T][], explanations: Explanations<T>, anchor: (type: T) => string = () => ''): Promise<string> {
+	const results = [];
+	for(const [i, [, type]] of types.entries()) {
+		const get = explanations.get(type);
+		guard(get !== undefined, () => `No explanation for ${kind} type ${type}`);
+		results.push(anchor(type) + await explanation({ ...get[0], type }, parser, ctx, i + 1, ...get[1]));
+	}
+	return results.join('\n');
+}
+
 async function getVertexExplanations(parser: TreeSitterExecutor, ctx: GeneralDocContext): Promise<string> {
 	/* we use the map to ensure order easily :D */
-	const vertexExplanations = new Map<VertexType, [ExplanationParameters, SubExplanationParameters[]]>();
+	const vertexExplanations: Explanations<VertexType> = new Map();
 
 	vertexExplanations.set(VertexType.Value, [{
 		name:        'Value Vertex',
-		type:        VertexType.Value,
 		description: `
 Describes a constant value (numbers, booleans/logicals, strings, ...).
 The respective vertex is more or less a dummy vertex.
@@ -152,7 +164,6 @@ ${
 
 	vertexExplanations.set(VertexType.Use, [{
 		name:        'Use Vertex',
-		type:        VertexType.Use,
 		description: `
 		
 Describes symbol/variable references which are read (or potentially read at a given position).
@@ -222,7 +233,6 @@ ${block('IMPORTANT', `
 
 	vertexExplanations.set(VertexType.FunctionCall, [{
 		name:        'Function Call Vertex',
-		type:        VertexType.FunctionCall,
 		description: `
 Describes any kind of function call, including unnamed calls and those that happen implicitly!
 In general the vertex provides you with information about
@@ -444,7 +454,6 @@ ${details('Example: Function Call with a Side-Effect', await printDfGraphForCode
 
 	vertexExplanations.set(VertexType.VariableDefinition, [{
 		name:        'Variable Definition Vertex',
-		type:        VertexType.VariableDefinition,
 		description: `
 Defined variables most commonly occur in the context of an assignment, for example, with the \`<-\` operator as shown above.
 
@@ -497,7 +506,6 @@ _flowR_ recognizes that the initial definition of \`x\` has no influence on the 
 
 	vertexExplanations.set(VertexType.FunctionDefinition, [{
 		name:        'Function Definition Vertex',
-		type:        VertexType.FunctionDefinition,
 		description: `
 Defining a function does do a lot of things:  1) it creates a new scope,  2) it may introduce parameters which act as promises and which are only evaluated if they are actually required in the body,  3) it may access the enclosing environments and the callstack.
 The vertex object in the dataflow graph stores multiple things, including all exit points, the enclosing environment if necessary, and the information of the subflow (the "body" of the function).
@@ -589,23 +597,14 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 		expectedSubgraph: emptyGraph().defineFunction('1@function', [0], { hooks: [], graph: new Set('0'), in: [{ nodeId: 0, cds: [], type: ReferenceType.Constant, name: undefined }], out: [], unknownReferences: [], entryPoint: 0, environment: defaultEnv() })
 	}, []]);
 
-	const results = [];
-	let i = 0;
-	for(const [,vertex] of getAllVertices()) {
-		const get = vertexExplanations.get(vertex);
-		guard(get !== undefined, () => `No explanation for vertex type ${vertex}`);
-		const [expl, subExplanations] = get;
-		results.push(await explanation(expl, parser, ctx, ++i, ...subExplanations));
-	}
-	return results.join('\n');
+	return explainAll(parser, ctx, 'vertex', getAllVertices(), vertexExplanations);
 }
 
 async function getEdgesExplanations(parser: KnownParser, ctx: GeneralDocContext): Promise<string> {
-	const edgeExplanations = new Map<EdgeType, [ExplanationParameters, SubExplanationParameters[]]>();
+	const edgeExplanations: Explanations<EdgeType> = new Map();
 
 	edgeExplanations.set(EdgeType.Reads, [{
 		name:        'Reads Edge',
-		type:        EdgeType.Reads,
 		description: `
 Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) reads whatever is defined by the target vertex (usually a [variable definition](#variable-definition-vertex)).
 
@@ -647,7 +646,6 @@ Please refer to the explanation of the respective vertices for more information.
 
 	edgeExplanations.set(EdgeType.DefinedBy, [{
 		name:        'DefinedBy Edge', /* concat for link generation */
-		type:        EdgeType.DefinedBy,
 		description: `
 The source vertex is usually a [\`variable definition\`](#variable-definition-vertex) linking the defined symbol to the entry point of the resulting side.
 ${
@@ -673,7 +671,6 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 
 	edgeExplanations.set(EdgeType.Calls, [{
 		name:        'Calls Edge',
-		type:        EdgeType.Calls,
 		description: `Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called. To find all called definitions, 
 		please use the ${ctx.link(Dataflow.origin.name)} function, as explained in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')}.
 		If you are interested in the call graph, refer to ${ctx.linkM(FlowrAnalyzer, 'callGraph')} and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph wiki', 'perspectives-cg')} for more information.
@@ -684,7 +681,6 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 
 	edgeExplanations.set(EdgeType.Returns, [{
 		name:        'Returns Edge',
-		type:        EdgeType.Returns,
 		description: `Link the [function call](#function-call-vertex) to the exit points of the target definition (this may incorporate the call-context).
 This happens for user-defined functions (like \`foo\`) as well as for built-in functions (like \`<-\`).
 However, these edges are specific to scenarios in which flowR knows that a specific element is returned. 
@@ -731,7 +727,6 @@ f()
 
 	edgeExplanations.set(EdgeType.DefinesOnCall, [{
 		name:        'DefinesOnCall Edge',
-		type:        EdgeType.DefinesOnCall,
 		description: `*This edge is usually joined with ${linkEdgeName(EdgeType.DefinedByOnCall)}!*
 
  Links an argument to whichever parameter they cause to be defined if the related function call is invoked.
@@ -754,7 +749,6 @@ ${dfInfo}
 	}, []]);
 	edgeExplanations.set(EdgeType.DefinedByOnCall, [{
 		name:        'DefinedByOnCall Edge',
-		type:        EdgeType.DefinedByOnCall,
 		description: `*This edge is usually joined with ${linkEdgeName(EdgeType.DefinesOnCall)}!*
 
  This represents the other part of the ${linkEdgeName(EdgeType.DefinesOnCall)} edge (e.g., links the parameter to the argument). Please look there for further documentation.`,
@@ -764,7 +758,6 @@ ${dfInfo}
 
 	edgeExplanations.set(EdgeType.Argument, [{
 		name:        'Argument Edge',
-		type:        EdgeType.Argument,
 		description: `Links a [function call](#function-call-vertex) to the entry point of its arguments. If we do not know the target of such a call, we automatically assume that all arguments are read by the call as well!
 		
 The exception to this is the [function definition](#function-definition-vertex) which does no longer hold these argument relationships (as they are not implicit in the structure).
@@ -775,7 +768,6 @@ The exception to this is the [function definition](#function-definition-vertex) 
 
 	edgeExplanations.set(EdgeType.SideEffectOnCall, [{
 		name:             'SideEffectOnCall Edge',
-		type:             EdgeType.SideEffectOnCall,
 		description:      'Links a global side effect to an affected function call (e.g., a super definition within the function body)',
 		code:             'f <- function() { x <<- 2 }\nf()',
 		expectedSubgraph: emptyGraph().sideEffectOnCall('1@x', '2@f')
@@ -783,7 +775,6 @@ The exception to this is the [function definition](#function-definition-vertex) 
 
 	edgeExplanations.set(EdgeType.NonStandardEvaluation, [{
 		name:        'NonStandardEvaluation Edge',
-		type:        EdgeType.NonStandardEvaluation,
 		description: `
 Marks cases in which R's non-standard evaluation mechanisms cause the default semantics to deviate (see the case below for multiple vertices)
 
@@ -821,7 +812,6 @@ ${ctx.link({ name: 'Deferred' }, undefined, { type: 'variable' })} links an expr
 
 	edgeExplanations.set(EdgeType.FlowEdge, [{
 		name:        'FlowDependency Edge',
-		type:        EdgeType.FlowEdge,
 		description: `
 Marks that the source is evaluated before the target, which is what the ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')} is a view on.
 The dataflow analysis records the control flow while it walks the program, so these edges (together with the
@@ -833,7 +823,6 @@ ${linkEdgeName(EdgeType.ControlEdge)} edges) already carry the program's control
 
 	edgeExplanations.set(EdgeType.ControlEdge, [{
 		name:        'ControlDependency Edge',
-		type:        EdgeType.ControlEdge,
 		description: `
 The counterpart of the ${linkEdgeName(EdgeType.FlowEdge)} edge for everything that only happens under a condition:
 the edge names the vertex that decides (e.g. an \`if\`) and whether it is the branch taken when that decision holds.
@@ -842,15 +831,8 @@ the edge names the vertex that decides (e.g. an \`if\`) and whether it is the br
 		expectedSubgraph: emptyGraph()
 	}, []]);
 
-	const results = [];
-	let i = 0;
-	for(const [,edge] of getAllEdges()) {
-		const get = edgeExplanations.get(edge);
-		guard(get !== undefined, () => `No explanation for edge type ${edge}`);
-		const [expl, subExplanations] = get;
-		results.push(`<a id='${edgeTypeToId(edge)}'></a>` + await explanation(expl, parser, ctx, ++i, ...subExplanations));
-	}
-	return results.join('\n');
+
+	return explainAll(parser, ctx, 'edge', getAllEdges(), edgeExplanations, edge => `<a id='${edgeTypeToId(edge)}'></a>`);
 }
 
 /** what `library(tidyverse)` would do, asked without analyzing any code */

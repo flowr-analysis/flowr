@@ -102,20 +102,9 @@ export function detectCasing(identifier: BrandedIdentifier, ignorePrefix?:  stri
 
 /** Determines the most used casing convention in the given list of symbols. */
 export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[]): CasingConvention {
-	const counts = new Map<CasingConvention, number>();
-	for(const { detectedCasing } of symbols) {
-		counts.set(detectedCasing, (counts.get(detectedCasing) ?? 0) + 1);
-	}
 	/* on a tie, the casing counted last wins */
-	let mostUsed = CasingConvention.Unknown;
-	let mostCount = 0;
-	for(const [casing, count] of counts) {
-		if(count >= mostCount) {
-			mostUsed = casing;
-			mostCount = count;
-		}
-	}
-	return mostUsed;
+	return Map.groupBy(symbols, s => s.detectedCasing).entries()
+		.reduce<[CasingConvention, number]>((best, [casing, { length }]) => length >= best[1] ? [casing, length] : best, [CasingConvention.Unknown, 0])[0];
 }
 
 /** Attempts to fix the casing of the given identifier to match the provided convention. */
@@ -193,13 +182,7 @@ export const NAMING_CONVENTION = {
 		const symbols = elements.getElements()
 			.map(m => {
 				const name = RString.splitQuotes(m.node.lexeme as string).content;
-				return {
-					certainty:      LintingResultCertainty.Certain,
-					detectedCasing: detectCasing(name, config.ignorePrefix),
-					name,
-					loc:            SourceLocation.fromNode(m.node),
-					id:             m.node.info.id
-				};
+				return { certainty: LintingResultCertainty.Certain, detectedCasing: detectCasing(name, config.ignorePrefix), name, loc: SourceLocation.fromNode(m.node), id: m.node.info.id };
 			})
 			/* an S3 method is named after its generic and class, renaming it breaks the dispatch */
 			.filter(e => isNotUndefined(e.loc) && !isS3MethodName(e.name, data.inspectContext(), called));
@@ -213,17 +196,12 @@ export const NAMING_CONVENTION = {
 		const results = casing === CasingConvention.Unknown ? [] : symbols
 			/* a name that already reads as the wanted convention is no violation, whatever else it could also be
 			   read as: `f` carries no separator and no capital, so it is snake_case and camelCase at once */
-			.filter(m => !detectPotentialCasings(m.name, config.ignorePrefix).includes(casing)
-				&& (!config.ignoreNonAlpha || containsAlpha(m.name)))
+			.filter(m => !detectPotentialCasings(m.name, config.ignorePrefix).includes(casing) && (!config.ignoreNonAlpha || containsAlpha(m.name)))
 			.map(({ id, ...m }) => {
 				const fix = fixCasing(m.name, casing, config.ignorePrefix);
 				/* renaming onto a name already in use would merge two variables */
-				const canRename = fix !== undefined && !taken.has(fix);
-				return {
-					...m,
-					involvedId: id,
-					quickFix:   canRename ? createNamingConventionQuickFixes(dataflow.graph, id, fix, casing) : undefined
-				} as NamingConventionResult;
+				const quickFix = fix !== undefined && !taken.has(fix) ? createNamingConventionQuickFixes(dataflow.graph, id, fix, casing) : undefined;
+				return { ...m, involvedId: id, quickFix } as NamingConventionResult;
 			});
 		return { results, '.meta': { numMatches: symbols.length - results.length, numBreak: results.length } };
 	},

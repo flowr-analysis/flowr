@@ -1,4 +1,4 @@
-import type { SummarizedSlicerStats, UltimateSlicerStats } from '../data';
+import type { SummarizedDfShapeStats, SummarizedSlicerStats, UltimateSlicerStats } from '../data';
 import { summarizeSummarizedReductions, summarizeSummarizedMeasurement, summarizeSummarizedTimePerToken, summarizeTimePerToken } from '../first-phase/process';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { type SummarizedMeasurement, summarizeMeasurement } from '../../../util/summarizer';
@@ -25,6 +25,32 @@ const DataflowKeys = allKeys<SlicerStatsDataflow>()(['numberOfNodes', 'numberOfF
 /** Each of the fields `keys` of the objects `of` summarized by `summarize`. */
 function summarizeFields<O, K extends keyof O, R>(of: readonly O[], keys: readonly K[], summarize: (values: O[K][]) => R): Record<K, R> {
 	return Object.fromEntries(keys.map(k => [k, summarize(of.map(o => o[k]))])) as Record<K, R>;
+}
+
+/** The fields of a data frame shape summary in the order they are written, `perOperationNumber` aside; a few are summed or are summaries already. */
+const DfShapeKeys = allKeys<Omit<SummarizedDfShapeStats, 'perOperationNumber'>>()([
+	'numberOfDataFrameFiles', 'numberOfNonDataFrameFiles', 'numberOfResultConstraints', 'numberOfResultingValues', 'numberOfResultingBottom',
+	'numberOfResultingTop', 'numberOfEmptyNodes', 'numberOfOperationNodes', 'numberOfValueNodes', 'sizeOfInfo', 'numberOfEntriesPerNode',
+	'numberOfOperations', 'numberOfTotalConstraints', 'numberOfTotalExact', 'numberOfTotalValues', 'numberOfTotalBottom', 'numberOfTotalTop',
+	'inferredColNames', 'approxRangeColNames', 'numberOfColNamesExact', 'numberOfColNamesValues', 'numberOfColNamesBottom', 'numberOfColNamesInfinite',
+	'numberOfColNamesTop', 'inferredColCount', 'approxRangeColCount', 'numberOfColCountExact', 'numberOfColCountValues', 'numberOfColCountBottom',
+	'numberOfColCountInfinite', 'numberOfColCountTop', 'inferredRowCount', 'approxRangeRowCount', 'numberOfRowCountExact', 'numberOfRowCountValues',
+	'numberOfRowCountBottom', 'numberOfRowCountInfinite', 'numberOfRowCountTop'
+]);
+const SummedShapeKeys: ReadonlySet<string> = new Set(['numberOfDataFrameFiles', 'numberOfNonDataFrameFiles']);
+const SummaryShapeKeys: ReadonlySet<string> = new Set(['numberOfEntriesPerNode', 'inferredColNames', 'approxRangeColNames', 'inferredColCount', 'approxRangeColCount', 'inferredRowCount', 'approxRangeRowCount']);
+
+/** The data frame shapes summarized field by field, the measured fields by `measure`, `undefined` if no run has one. */
+function summarizeShapes<T, S>(shapes: readonly (SummarizedDfShapeStats<T> | undefined)[], measure: (values: T[]) => S, rest: Pick<SummarizedDfShapeStats<S>, 'perOperationNumber'>): SummarizedDfShapeStats<S> | undefined {
+	const present = shapes.filter(isNotUndefined);
+	if(present.length === 0) {
+		return undefined;
+	}
+	const field = (k: typeof DfShapeKeys[number]) => {
+		const values = present.map(p => p[k]).filter(isNotUndefined);
+		return SummedShapeKeys.has(k) ? arraySum(values as number[]) : SummaryShapeKeys.has(k) ? summarizeSummarizedMeasurement(values as SummarizedMeasurement[]) : measure(values as T[]);
+	};
+	return { ...Object.fromEntries(DfShapeKeys.map(k => [k, field(k)])), ...rest } as SummarizedDfShapeStats<S>;
 }
 
 /** This big function summarizes multiple summarized stats into one ultimate stat. */
@@ -93,47 +119,9 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 			numberOfEdges:    summarizeMeasurement(stats.map(s => s.controlFlow?.numberOfEdges).filter(isNotUndefined)),
 			sizeOfObject:     summarizeMeasurement(stats.map(s => s.controlFlow?.sizeOfObject).filter(isNotUndefined))
 		} : undefined,
-		dataFrameShape: stats.some(s => s.dataFrameShape !== undefined) ? {
-			numberOfDataFrameFiles:    arraySum(stats.map(s => s.dataFrameShape?.numberOfDataFrameFiles).filter(isNotUndefined)),
-			numberOfNonDataFrameFiles: arraySum(stats.map(s => s.dataFrameShape?.numberOfNonDataFrameFiles).filter(isNotUndefined)),
-			numberOfResultConstraints: summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultConstraints).filter(isNotUndefined)),
-			numberOfResultingValues:   summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultingValues).filter(isNotUndefined)),
-			numberOfResultingBottom:   summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultingBottom).filter(isNotUndefined)),
-			numberOfResultingTop:      summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultingTop).filter(isNotUndefined)),
-			numberOfEmptyNodes:        summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfEmptyNodes).filter(isNotUndefined)),
-			numberOfOperationNodes:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfOperationNodes).filter(isNotUndefined)),
-			numberOfValueNodes:        summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfValueNodes).filter(isNotUndefined)),
-			sizeOfInfo:                summarizeMeasurement(stats.map(s => s.dataFrameShape?.sizeOfInfo).filter(isNotUndefined)),
-			numberOfEntriesPerNode:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfEntriesPerNode).filter(isNotUndefined)),
-			numberOfOperations:        summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfOperations).filter(isNotUndefined)),
-			numberOfTotalConstraints:  summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalConstraints).filter(isNotUndefined)),
-			numberOfTotalExact:        summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalExact).filter(isNotUndefined)),
-			numberOfTotalValues:       summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalValues).filter(isNotUndefined)),
-			numberOfTotalBottom:       summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalBottom).filter(isNotUndefined)),
-			numberOfTotalTop:          summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalTop).filter(isNotUndefined)),
-			inferredColNames:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.inferredColNames).filter(isNotUndefined)),
-			approxRangeColNames:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.approxRangeColNames).filter(isNotUndefined)),
-			numberOfColNamesExact:     summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesExact).filter(isNotUndefined)),
-			numberOfColNamesValues:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesValues).filter(isNotUndefined)),
-			numberOfColNamesBottom:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesBottom).filter(isNotUndefined)),
-			numberOfColNamesInfinite:  summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesInfinite).filter(isNotUndefined)),
-			numberOfColNamesTop:       summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesTop).filter(isNotUndefined)),
-			inferredColCount:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.inferredColCount).filter(isNotUndefined)),
-			approxRangeColCount:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.approxRangeColCount).filter(isNotUndefined)),
-			numberOfColCountExact:     summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountExact).filter(isNotUndefined)),
-			numberOfColCountValues:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountValues).filter(isNotUndefined)),
-			numberOfColCountBottom:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountBottom).filter(isNotUndefined)),
-			numberOfColCountInfinite:  summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountInfinite).filter(isNotUndefined)),
-			numberOfColCountTop:       summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountTop).filter(isNotUndefined)),
-			inferredRowCount:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.inferredRowCount).filter(isNotUndefined)),
-			approxRangeRowCount:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.approxRangeRowCount).filter(isNotUndefined)),
-			numberOfRowCountExact:     summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountExact).filter(isNotUndefined)),
-			numberOfRowCountValues:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountValues).filter(isNotUndefined)),
-			numberOfRowCountBottom:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountBottom).filter(isNotUndefined)),
-			numberOfRowCountInfinite:  summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountInfinite).filter(isNotUndefined)),
-			numberOfRowCountTop:       summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountTop).filter(isNotUndefined)),
-			perOperationNumber:        new Map(DataFrameOperationNames.map(n => [n, summarizeMeasurement(stats.map(s => s.dataFrameShape?.perOperationNumber.get(n) ?? 0))]))
-		} : undefined
+		dataFrameShape: summarizeShapes(stats.map(s => s.dataFrameShape), summarizeMeasurement, {
+			perOperationNumber: new Map(DataFrameOperationNames.map(n => [n, summarizeMeasurement(stats.map(s => s.dataFrameShape?.perOperationNumber.get(n) ?? 0))]))
+		})
 	};
 }
 
@@ -175,47 +163,9 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 			numberOfEdges:    summarizeSummarizedMeasurement(stats.map(s => s.controlFlow?.numberOfEdges).filter(isNotUndefined)),
 			sizeOfObject:     summarizeSummarizedMeasurement(stats.map(s => s.controlFlow?.sizeOfObject).filter(isNotUndefined))
 		} : undefined,
-		dataFrameShape: stats.some(s => s.dataFrameShape !== undefined) ? {
-			numberOfDataFrameFiles:    arraySum(stats.map(s => s.dataFrameShape?.numberOfDataFrameFiles).filter(isNotUndefined)),
-			numberOfNonDataFrameFiles: arraySum(stats.map(s => s.dataFrameShape?.numberOfNonDataFrameFiles).filter(isNotUndefined)),
-			numberOfResultConstraints: summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultConstraints).filter(isNotUndefined)),
-			numberOfResultingValues:   summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultingValues).filter(isNotUndefined)),
-			numberOfResultingBottom:   summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultingBottom).filter(isNotUndefined)),
-			numberOfResultingTop:      summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultingTop).filter(isNotUndefined)),
-			numberOfEmptyNodes:        summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfEmptyNodes).filter(isNotUndefined)),
-			numberOfOperationNodes:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfOperationNodes).filter(isNotUndefined)),
-			numberOfValueNodes:        summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfValueNodes).filter(isNotUndefined)),
-			sizeOfInfo:                summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.sizeOfInfo).filter(isNotUndefined)),
-			numberOfEntriesPerNode:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfEntriesPerNode).filter(isNotUndefined)),
-			numberOfOperations:        summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfOperations).filter(isNotUndefined)),
-			numberOfTotalConstraints:  summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalConstraints).filter(isNotUndefined)),
-			numberOfTotalExact:        summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalExact).filter(isNotUndefined)),
-			numberOfTotalValues:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalValues).filter(isNotUndefined)),
-			numberOfTotalBottom:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalBottom).filter(isNotUndefined)),
-			numberOfTotalTop:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalTop).filter(isNotUndefined)),
-			inferredColNames:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.inferredColNames).filter(isNotUndefined)),
-			approxRangeColNames:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.approxRangeColNames).filter(isNotUndefined)),
-			numberOfColNamesExact:     summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesExact).filter(isNotUndefined)),
-			numberOfColNamesValues:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesValues).filter(isNotUndefined)),
-			numberOfColNamesBottom:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesBottom).filter(isNotUndefined)),
-			numberOfColNamesInfinite:  summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesInfinite).filter(isNotUndefined)),
-			numberOfColNamesTop:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesTop).filter(isNotUndefined)),
-			inferredColCount:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.inferredColCount).filter(isNotUndefined)),
-			approxRangeColCount:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.approxRangeColCount).filter(isNotUndefined)),
-			numberOfColCountExact:     summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountExact).filter(isNotUndefined)),
-			numberOfColCountValues:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountValues).filter(isNotUndefined)),
-			numberOfColCountBottom:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountBottom).filter(isNotUndefined)),
-			numberOfColCountInfinite:  summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountInfinite).filter(isNotUndefined)),
-			numberOfColCountTop:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountTop).filter(isNotUndefined)),
-			inferredRowCount:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.inferredRowCount).filter(isNotUndefined)),
-			approxRangeRowCount:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.approxRangeRowCount).filter(isNotUndefined)),
-			numberOfRowCountExact:     summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountExact).filter(isNotUndefined)),
-			numberOfRowCountValues:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountValues).filter(isNotUndefined)),
-			numberOfRowCountBottom:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountBottom).filter(isNotUndefined)),
-			numberOfRowCountInfinite:  summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountInfinite).filter(isNotUndefined)),
-			numberOfRowCountTop:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountTop).filter(isNotUndefined)),
-			perOperationNumber:        new Map(DataFrameOperationNames.map(n => [n, summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.perOperationNumber.get(n)).filter(isNotUndefined))]))
-		} : undefined
+		dataFrameShape: summarizeShapes(stats.map(s => s.dataFrameShape), summarizeSummarizedMeasurement, {
+			perOperationNumber: new Map(DataFrameOperationNames.map(n => [n, summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.perOperationNumber.get(n)).filter(isNotUndefined))]))
+		})
 	};
 }
 

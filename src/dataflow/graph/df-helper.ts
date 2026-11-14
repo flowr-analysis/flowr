@@ -27,6 +27,22 @@ import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
+/** Copies the unknown side effects and ambient accesses of the selected ids of `graph` to `df`. */
+function copySelectedMarks(graph: DataflowGraph, df: DataflowGraph, select: ReadonlySet<NodeId>): DataflowGraph {
+	for(const u of graph.unknownSideEffects) {
+		const id = UnknownSideEffect.id(u);
+		if(select.has(id)) {
+			df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
+		}
+	}
+	for(const id of graph.ambientAccessIds()) {
+		if(select.has(id)) {
+			df.recordAmbientAccess(id, AmbientAccess.names(graph.ambientAccessOf(id) as AmbientAccess));
+		}
+	}
+	return df;
+}
+
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
  * @helper dataflow This is the root helper object to work with the DataflowGraph.
@@ -246,18 +262,7 @@ export const Dataflow = {
 				df.addEdge(from, tar, types);
 			}
 		}
-		for(const u of graph.unknownSideEffects) {
-			const id = UnknownSideEffect.id(u);
-			if(select.has(id)) {
-				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
-			}
-		}
-		for(const id of graph.ambientAccessIds()) {
-			if(select.has(id)) {
-				df.recordAmbientAccess(id, AmbientAccess.names(graph.ambientAccessOf(id) as AmbientAccess));
-			}
-		}
-		return df as G;
+		return copySelectedMarks(graph, df, select) as G;
 	},
 
 	/** Equivalent to {@link Dataflow.reduceGraph|`reduceGraph`} followed by {@link Dataflow.invertGraph|`invertGraph`} but in a single pass over the graph, allocating only one intermediate object instead of two. */
@@ -279,18 +284,7 @@ export const Dataflow = {
 				df.addEdge(to, from, types);
 			}
 		}
-		for(const u of graph.unknownSideEffects) {
-			const id = UnknownSideEffect.id(u);
-			if(select.has(id)) {
-				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
-			}
-		}
-		for(const id of graph.ambientAccessIds()) {
-			if(select.has(id)) {
-				df.recordAmbientAccess(id, AmbientAccess.names(graph.ambientAccessOf(id) as AmbientAccess));
-			}
-		}
-		return df as G;
+		return copySelectedMarks(graph, df, select) as G;
 	},
 
 	/** See {@link DataflowGraph#isQuoted}, which this answers for `graph`. */

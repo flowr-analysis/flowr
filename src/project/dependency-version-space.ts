@@ -26,6 +26,7 @@ import type { ReadonlyFlowrAnalysisProvider } from './flowr-analyzer';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { arraySum, uniqueArray } from '../util/collections/arrays';
+import { memoize } from '../util/collections/defaultmap';
 
 /** the pseudo-package standing for the analyzed project itself, never one of its own dependencies */
 export const ProjectPackage = 'current';
@@ -278,11 +279,7 @@ function addClassOwnershipUsage(usage: Map<BrandedNamespace, PackageUsage>, deps
 			if(owner === undefined) {
 				continue;
 			}
-			let pkgUsage = usage.get(owner);
-			if(pkgUsage === undefined) {
-				pkgUsage = new Map();
-				usage.set(owner, pkgUsage);
-			}
+			const pkgUsage = atKey(usage, owner, () => new Map());
 			// narrow by the same-named constructor's presence only when it actually resolves (else just mark used)
 			if(!pkgUsage.has(cls) && src.functionByName(owner, cls) !== undefined) {
 				pkgUsage.set(cls, { named: new Map(), calls: new Map([['#0', []]]) });
@@ -309,11 +306,7 @@ function isSyntheticArgument(arg: FunctionArgument): boolean {
 
 /** record one call of `fn` (made at `at`) into `pkgUsage`: union its named argument names and keep one representative per call shape */
 function recordCallUsage(pkgUsage: PackageUsage, fn: BrandedIdentifier, rawArgs: readonly FunctionArgument[], at: NodeId): void {
-	let entry = pkgUsage.get(fn);
-	if(entry === undefined) {
-		entry = { named: new Map(), calls: new Map() };
-		pkgUsage.set(fn, entry);
-	}
+	const entry = atKey(pkgUsage, fn, () => ({ named: new Map(), calls: new Map() }));
 	entry.at ??= at;
 	const args = rawArgs.some(isSyntheticArgument) ? rawArgs.filter(a => !isSyntheticArgument(a)) : rawArgs;
 	const named: BrandedIdentifier[] = [];
@@ -348,12 +341,7 @@ export function collectUsage(graph: DataflowGraph, deps?: ReadOnlyFlowrAnalyzerD
 		if(pkg === undefined) {
 			continue;
 		}
-		let pkgUsage = usage.get(pkg);
-		if(pkgUsage === undefined) {
-			pkgUsage = new Map();
-			usage.set(pkg, pkgUsage);
-		}
-		recordCallUsage(pkgUsage, Identifier.getName(qualified), vertex.args, id);
+		recordCallUsage(atKey(usage, pkg, () => new Map()), Identifier.getName(qualified), vertex.args, id);
 	}
 	if(deps) {
 		addClassOwnershipUsage(usage, deps, graph);
@@ -451,7 +439,7 @@ export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnal
 		if(pkg === undefined || Dataflow.origin(graph, id)?.some(o => o.type === OriginType.FunctionCallOrigin) === true) {
 			continue;
 		}
-		recordCallUsage(atKey(usage, pkg, (): PackageUsage => new Map()), name, vertex.args, id);
+		recordCallUsage(atKey(usage, pkg, () => new Map()), name, vertex.args, id);
 		// a package the project already declares or loads is a normal target, not an orphan needing attachment
 		if(isKnown(pkg)) {
 			continue;
@@ -465,14 +453,14 @@ export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnal
 		const losers = providers.filter(p => p !== pkg);
 		alternatives.set(pkg, uniqueArray([...alternatives.get(pkg) ?? [], ...losers]));
 		for(const alt of losers) {
-			recordCallUsage(atKey(alternativeUsage, alt, (): PackageUsage => new Map()), name, vertex.args, id);
+			recordCallUsage(atKey(alternativeUsage, alt, () => new Map()), name, vertex.args, id);
 		}
 	}
 	return { attributed, alternatives, alternativeUsage };
 }
 
 /** the entry of `key`, inserting what `make` builds when the map has none yet */
-function atKey<K, V>(map: Map<K, V>, key: K, make: () => V): V {
+function atKey<K, V>(map: Map<K, V>, key: K, make: () => NoInfer<V>): V {
 	let found = map.get(key);
 	if(found === undefined) {
 		map.set(key, found = make());
@@ -647,11 +635,7 @@ export function collectTransitiveConstraints(deps: ReadOnlyFlowrAnalyzerDependen
 					continue;
 				}
 				seen.add(dep.name);
-				let entry = perDep.get(dep.name);
-				if(entry === undefined) {
-					entry = { ranges: new Map(), declaredBy: 0 };
-					perDep.set(dep.name, entry);
-				}
+				const entry = atKey(perDep, dep.name, () => ({ ranges: new Map(), declaredBy: 0 }));
 				entry.ranges.set(range.raw, range);
 				entry.declaredBy++;
 			}
@@ -711,15 +695,7 @@ function makeSignatureFilter(src: PackageSignatureSource | undefined, pkg: Brand
 	}
 	// tracked names appear in some carried version; untracked names must not reject all versions
 	const tracked = new Set([...usage.keys()].filter(fn => timeline.some(e => getFn(fn, e.ver) !== undefined)));
-	const verdict = new Map<VersionString, boolean>();
-	return version => {
-		let ok = verdict.get(version);
-		if(ok === undefined) {
-			ok = !src.hasVersion(pkg, version) || isCompatible(getFn, version, usage, tracked);
-			verdict.set(version, ok);
-		}
-		return ok;
-	};
+	return memoize(version => !src.hasVersion(pkg, version) || isCompatible(getFn, version, usage, tracked));
 }
 
 /**

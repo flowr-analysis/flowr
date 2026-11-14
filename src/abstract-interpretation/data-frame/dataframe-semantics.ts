@@ -265,11 +265,13 @@ const DataFrameSemantics = {
 			],
 			noEmptyNames: true
 		}, DataFrameType.Tibble, true),
-		'base::cbind': applyFunctionCall(mapDataFrameColBind, {
-			special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude']
+		'base::cbind': applyFunctionCall(mapDataFrameBind, {
+			special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'],
+			cols:    true
 		}, DataFrameType.DataFrame),
-		'base::rbind': applyFunctionCall(mapDataFrameRowBind, {
-			special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude']
+		'base::rbind': applyFunctionCall(mapDataFrameBind, {
+			special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'],
+			cols:    false
 		}, DataFrameType.DataFrame),
 		'utils::head': applyFunctionCall(mapDataFrameHeadTail, {
 			dataFrame: { pos: 0, name: 'x' },
@@ -909,11 +911,11 @@ function mapDataFrameRead(
 }
 
 /**
- * Maps a function adding columns to a data frame, such as `cbind(df, id = 1:5)`, to abstract data frame operations.
+ * Maps a function adding columns or rows to a data frame, such as `cbind(df, id = 1:5)` or `rbind(df, c(1, "A"))`, to abstract data frame operations.
  */
-function mapDataFrameColBind(
+function mapDataFrameBind(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
-	params: { special: string[] },
+	params: { special: string[], cols: boolean },
 	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
@@ -927,7 +929,7 @@ function mapDataFrameColBind(
 	}
 	const result: DataFrameOperations = [];
 	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
-	let colnames: (string | undefined)[] | undefined = [];
+	let added: (string | undefined)[] | undefined = [];
 
 	for(const arg of args) {
 		if(arg !== dataFrame && RArgument.isNotEmpty(arg)) {
@@ -935,76 +937,23 @@ function mapDataFrameColBind(
 
 			if(otherDataFrame !== undefined) {
 				result.push({
-					operation: 'concatCols',
+					operation: params.cols ? 'concatCols' : 'concatRows',
 					operand:   operand?.info.id,
 					other:     otherDataFrame
 				});
 				operand = undefined;
-			// added columns are top if argument cannot be resolved to constant (vector-like) value
+			// added columns/rows are top if argument cannot be resolved to constant (vector-like) value
 			} else if(Resolve.argument.value(arg, info) !== undefined) {
-				const colname = Resolve.argument.toName(arg, info);
-				colnames?.push(colname);
+				added?.push(params.cols ? Resolve.argument.toName(arg, info) : undefined);
 			} else {
-				colnames = undefined;
+				added = undefined;
 			}
 		}
 	}
-	if(colnames === undefined || colnames.length > 0) {
-		result.push({
-			operation: 'addCols',
-			operand:   operand?.info.id,
-			colnames
-		});
-	}
-	return result;
-}
-
-/**
- * Maps a function adding rows to a data frame, such as `rbind(df, c(1, "A"))`, to abstract data frame operations.
- */
-function mapDataFrameRowBind(
-	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
-	params: { special: string[] },
-	ctx: AbsintContext<DataFrameStateDomain>,
-	info: ResolveInfo
-): DataFrameOperations {
-	args = getEffectiveArgs(args, params.special);
-	const dataFrame = args.find(arg => isDataFrameArgument(arg, ctx));
-
-	if(dataFrame === undefined) {
-		return;
-	} else if(args.length === 1) {
-		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
-	}
-	const result: DataFrameOperations = [];
-	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
-	let rows: number | undefined = 0;
-
-	for(const arg of args) {
-		if(arg !== dataFrame && RArgument.isNotEmpty(arg)) {
-			const otherDataFrame = ctx.getAbstractValue(arg.value);
-
-			if(otherDataFrame !== undefined) {
-				result.push({
-					operation: 'concatRows',
-					operand:   operand?.info.id,
-					other:     otherDataFrame
-				});
-				operand = undefined;
-			// number of added rows is top if arguments cannot be resolved to constant (vector-like) value
-			} else if(Resolve.argument.value(arg, info) !== undefined) {
-				rows = rows !== undefined ? rows + 1 : undefined;
-			} else {
-				rows = undefined;
-			}
-		}
-	}
-	if(rows === undefined || rows > 0) {
-		result.push({
-			operation: 'addRows',
-			operand:   operand?.info.id,
-			rows
-		});
+	if(added === undefined || added.length > 0) {
+		result.push(params.cols
+			? { operation: 'addCols', operand: operand?.info.id, colnames: added }
+			: { operation: 'addRows', operand: operand?.info.id, rows: added?.length });
 	}
 	return result;
 }

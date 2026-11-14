@@ -288,12 +288,7 @@ export function happensInEveryBranch(cds: readonly ControlDependency[] | undefin
 
 function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDependency[]): boolean {
 	/* as deep as the surrounding branches, so the pairwise scan beats any set */
-	for(const { id, when } of cds) {
-		if(when !== undefined && !hasCounterpart(cds, id, !when)) {
-			return false;
-		}
-	}
-	return true;
+	return cds.values().every(({ id, when }) => when === undefined || hasCounterpart(cds, id, !when));
 }
 
 function hasCounterpart(cds: ReadonlySet<ControlDependency> | readonly ControlDependency[], id: NodeId, when: boolean): boolean {

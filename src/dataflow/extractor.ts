@@ -153,12 +153,7 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 }
 
 function tracksAnyEnvironment(environment: REnvironmentInformation): boolean {
-	for(const e of REnvironment.frames(environment.current)) {
-		if(e.memory.values().some(defs => defs.some(hasEnvState))) {
-			return true;
-		}
-	}
-	return false;
+	return REnvironment.frames(environment.current).some(e => e.memory.values().some(defs => defs.some(hasEnvState)));
 }
 
 /** Collects, per parameter, the replacements (`x$f <- v`) and the side-effecting calls in the body of its function that write into it. */

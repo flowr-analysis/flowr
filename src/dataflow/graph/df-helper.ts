@@ -82,13 +82,7 @@ export const Dataflow = {
 	},
 	/** Whether the call's result is passed on -- assigned, handed to another call, returned -- rather than left for R to auto-print. */
 	valueIsUsed(this: void, id: NodeId, graph: DataflowGraph): boolean {
-		const consuming = EdgeType.Argument | EdgeType.Returns | EdgeType.DefinedBy;
-		for(const [, edge] of graph.edgesTo(id)) {
-			if(DfEdge.includesType(edge, consuming)) {
-				return true;
-			}
-		}
-		return false;
+		return graph.edgesTo(id).values().some(edge => DfEdge.includesType(edge, EdgeType.Argument | EdgeType.Returns | EdgeType.DefinedBy));
 	},
 	/** Whether any argument of the call carries a value the program worked out, rather than only literals the author typed: `cat("starting\n")` is a log line, `cat("n =", length(m))` is a finding. */
 	hasComputedArguments(this: void, id: NodeId, graph: DataflowGraph): boolean {

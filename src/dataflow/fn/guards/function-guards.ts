@@ -301,12 +301,7 @@ function onceBoundLiteral(this: void, name: BrandedIdentifier, scope: Scope, sta
 
 /** Whether the read reads what a call of another function writes into this frame, rather than only a definition of the function itself. */
 function readsCallWrite(this: void, id: NodeId, scope: Scope, state: GuardState): boolean {
-	for(const [target, edge] of state.graph.edgesFrom(id)) {
-		if(DfEdge.includesType(edge, EdgeType.Reads) && !scope.vertex.subflow.graph.has(target) && DfgVertex.isFunctionCall(state.graph.getVertex(target))) {
-			return true;
-		}
-	}
-	return false;
+	return state.graph.edgesFrom(id).entries().some(([target, edge]) => DfEdge.includesType(edge, EdgeType.Reads) && !scope.vertex.subflow.graph.has(target) && DfgVertex.isFunctionCall(state.graph.getVertex(target)));
 }
 
 /** What the symbol stands for in terms of the function it is read in: a formal, a value that was bound to a local, or a name from outside. */

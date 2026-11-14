@@ -236,12 +236,7 @@ function handedTo(param: NodeId, state: StrictnessState): Ternary {
 
 /** Whether the call reads a name from the program itself (a parameter, a variable) rather than a built-in. */
 function readsProgramName(call: DataflowGraphVertexFunctionCall, graph: DataflowGraph): boolean {
-	for(const [target, edge] of graph.edgesFrom(call.id)) {
-		if(DfEdge.includesType(edge, EdgeType.Reads) && !DfEdge.includesType(edge, EdgeType.Argument) && !NodeId.isBuiltIn(target)) {
-			return true;
-		}
-	}
-	return false;
+	return graph.edgesFrom(call.id).entries().some(([target, edge]) => DfEdge.includesType(edge, EdgeType.Reads) && !DfEdge.includesType(edge, EdgeType.Argument) && !NodeId.isBuiltIn(target));
 }
 
 /** The parameter at `index` of the definition, `undefined` if it is no definition or a `...` comes first. */

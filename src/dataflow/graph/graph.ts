@@ -71,10 +71,7 @@ export const FunctionArgument = {
 	},
 	/** The value node id of a non-empty `arg`: its own id if positional, or its value's id (skipping the name) if named. */
 	getReference(this: void, arg: FunctionArgument): NodeId | undefined {
-		if(arg === EmptyArgument) {
-			return undefined;
-		}
-		return arg.name === undefined ? arg.nodeId : arg.valueId;
+		return arg === EmptyArgument ? undefined : arg.name === undefined ? arg.nodeId : arg.valueId;
 	},
 	/** Whether `arg` is named exactly `name` (textual match only, not R's argument-matching; see {@link FunctionSemantics.call.match.toSpec} for that). */
 	hasName(this: void, arg: FunctionArgument, name: BrandedIdentifier | undefined): arg is NamedFunctionArgument {

@@ -122,27 +122,17 @@ export const NAMESPACE_TAMPERING = {
 				return ids?.length === 1 ? idMap.get(ids[0]) : undefined;
 			};
 			switch(name) {
-				case 'unlockBinding': {
-					if(isInternalArgument(node, idMap, df.graph)) {
+				case 'unlockBinding': case 'assignInNamespace': {
+					const unlock = name === 'unlockBinding';
+					if(unlock && isInternalArgument(node, idMap, df.graph)) {
 						break;
 					}
-					const ns = namespaceOf(arg({ sym: 'sym', env: 'env' }, 'env'), info, pkg.name);
+					const ns = namespaceOf(unlock ? arg({ sym: 'sym', env: 'env' }, 'env') : arg({ x: 'x', value: 'value', ns: 'ns', pos: 'pos', envir: 'envir' }, 'ns'), info, pkg.name);
 					if(ns !== 'own') {
 						add(node, {
-							kind:    'unlock-binding',
+							kind:    unlock ? 'unlock-binding' : 'assign-in-namespace',
 							...(ns !== undefined ? { namespace: ns } : {}),
-							message: `unlockBinding() ${ns === undefined ? 'of a binding outside of the package' : `in the namespace of '${ns}'`} changes code the package does not own`
-						}, ns !== undefined);
-					}
-					break;
-				}
-				case 'assignInNamespace': {
-					const ns = namespaceOf(arg({ x: 'x', value: 'value', ns: 'ns', pos: 'pos', envir: 'envir' }, 'ns'), info, pkg.name);
-					if(ns !== 'own') {
-						add(node, {
-							kind:    'assign-in-namespace',
-							...(ns !== undefined ? { namespace: ns } : {}),
-							message: `assignInNamespace() ${ns === undefined ? 'into a namespace outside of the package' : `into the namespace of '${ns}'`} changes code the package does not own`
+							message: `${name}() ${ns === undefined ? `${unlock ? 'of a binding' : 'into a namespace'} outside of the package` : `${unlock ? 'in' : 'into'} the namespace of '${ns}'`} changes code the package does not own`
 						}, ns !== undefined);
 					}
 					break;

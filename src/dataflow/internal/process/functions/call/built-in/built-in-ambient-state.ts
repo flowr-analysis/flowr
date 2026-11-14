@@ -150,10 +150,7 @@ export function reachesBuiltInLate(call: DataflowGraphVertexFunctionCall): boole
 
 /** A call into code flowR cannot see may read any option, draw random numbers (with `draws` advancing the generator), and with `graphics` draw on the device. */
 export function readsAllAmbientState<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, graphics: boolean, draws = true): DataflowInformation {
-	const reads: AmbientStateName[] = [AmbientStateName.allOptions, AmbientStateName.rng, AmbientStateName.allOf(KeyedState.Env)];
-	if(graphics) {
-		reads.push(AmbientStateName.graphics, AmbientStateName.palette);
-	}
+	const reads = [AmbientStateName.allOptions, AmbientStateName.rng, AmbientStateName.allOf(KeyedState.Env), ...graphics ? [AmbientStateName.graphics, AmbientStateName.palette] : []];
 	return withAccess(res, rootId, data, reads, draws ? [{ ...maybe(AmbientStateName.rng), assumed: true }] : []);
 }
 
@@ -272,11 +269,7 @@ export function makeAmbientWritesMaybe(after: REnvironmentInformation, before: R
 
 /** The states written in `after` that `before` does not hold, as by a promise (`delayedAssign`) whose writes only happen once a read forces it. */
 export function ambientWritesBetween(after: REnvironmentInformation, before: REnvironmentInformation): AmbientStateName[] {
-	const names = new Set<AmbientStateName>();
-	for(const [name] of ambientDefinitionsBetween(after, before, false)) {
-		names.add(name);
-	}
-	return [...names];
+	return uniqueArray(ambientDefinitionsBetween(after, before, false).map(([name]) => name));
 }
 
 /** Notes that a definition binds a promise or a text connection, which reads have to look for from now on. */
@@ -335,10 +328,8 @@ function ambientReadsOfSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 		return [AmbientStateName.anyFile];
 	} else if(name === AmbientStateName.rngVariable) {
 		return [AmbientStateName.rng, AmbientStateName.rngKind];
-	} else if(name !== '.Options') {
-		return [];
 	}
-	return optionsVariableReads(symbol, data);
+	return name === '.Options' ? optionsVariableReads(symbol, data) : [];
 }
 
 /** `.Options$digits` (or `.Options[["digits"]]`) reads that option, anything else done with `.Options` reads all of them. */
@@ -348,12 +339,7 @@ function optionsVariableReads<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 		return optionReads(undefined);
 	}
 	const value = RArgument.valueOf(parent.access[0]);
-	if(RString.is(value)) {
-		return optionReads([value.content.str]);
-	} else if(parent.operator === '$' && RSymbol.is(value)) {
-		return optionReads([Identifier.getName(value.content)]);
-	}
-	return optionReads(undefined);
+	return optionReads(RString.is(value) ? [value.content.str] : parent.operator === '$' && RSymbol.is(value) ? [Identifier.getName(value.content)] : undefined);
 }
 
 /** Options affecting calls we cannot name (`scipen` changes every number-to-string conversion), so setting one stays an unknown side effect. */
@@ -670,8 +656,7 @@ function mayHoldPlot<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | und
 	}
 	seen.add(node.info.id);
 	if(RFunctionCall.isNamed(node)) {
-		return (statedFunctions(node.functionName.content, data.environment) ?? [])
-			.some(t => hiddenAccess(t).some(a => a.family === AmbientPart.Plot && a.access === AmbientVerb.Builds));
+		return (statedFunctions(node.functionName.content, data.environment) ?? []).some(t => hiddenAccess(t).some(a => a.family === AmbientPart.Plot && a.access === AmbientVerb.Builds));
 	} else if(RBinaryOp.is(node)) {
 		return node.operator === '+' && (mayHoldPlot(node.lhs, data, seen) || mayHoldPlot(node.rhs, data, seen));
 	} else if(RIfThenElse.is(node)) {
@@ -767,8 +752,7 @@ function callsTagged<OtherInfo>(node: RNodeWithParent<OtherInfo> | undefined, da
 /** Whether the resource argument `id` names no file: `""` (the console for `cat`), `NULL`, or a console connection like `stdout()`. */
 function namesNoFile<OtherInfo>(id: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	const values = boundValues(id, data);
-	return values.length > 0 && values.every(v => (RString.is(v) && v.content.str === '') || (RSymbol.is(v) && v.content === RNull)
-		|| callsTagged(v, data, SemanticCallTag.Console));
+	return values.length > 0 && values.every(v => (RString.is(v) && v.content.str === '') || (RSymbol.is(v) && v.content === RNull) || callsTagged(v, data, SemanticCallTag.Console));
 }
 
 /** The stems of the files the call names, `undefined` unless every file argument is a known path to a file with an extension (a device's `plot%03d.png` or a directory may stand for others). */
@@ -962,8 +946,7 @@ export function hiddenSideEffects(graph: DataflowGraph, environment: REnvironmen
 	for(const target of targets) {
 		const builtIn = target.type === ReferenceType.BuiltInFunction ? target : undefined;
 		const processor = builtIn?.processorName;
-		const effect = builtIn?.config?.hasUnknownSideEffects
-			?? (processor !== undefined && WritesEnvironment.has(processor));
+		const effect = builtIn?.config?.hasUnknownSideEffects ?? (processor !== undefined && WritesEnvironment.has(processor));
 		if(effect) {
 			handleUnknownSideEffect(graph, environment, callId, effect === true ? undefined : effect);
 		} else if(processor !== undefined && WritesSearchPath.has(processor)) {
@@ -1014,24 +997,9 @@ function setOptions<OtherInfo>(res: DataflowInformation, args: readonly Potentia
 	}
 	/* the call returns the previous values of what it sets, which only matters if that value is used */
 	const previous = resultIsUsed(rootId, data) ? written : [];
-	const reads: AmbientStateName[] = [...queried.map(AmbientStateName.option), ...previous];
-	if(args.length === 0 || unknownKeys) {
-		reads.push(AmbientStateName.allOptions);
-	}
-	if(reads.length > 0) {
-		reads.push(AmbientStateName.unknownOption);
-	}
-	const writes = [...written];
-	if(unknownKeys) {
-		writes.push(AmbientStateName.unknownOption);
-	}
-	if(warnsAsErrors) {
-		writes.push(AmbientStateName.warnsAsErrors);
-	}
-	if(writes.length > 0) {
-		writes.push(AmbientStateName.allOptions);
-	}
-	return withAccess(res, rootId, data, reads, writes);
+	const reads = [...queried.map(AmbientStateName.option), ...previous, ...args.length === 0 || unknownKeys ? [AmbientStateName.allOptions] : []];
+	const writes = [...written, ...unknownKeys ? [AmbientStateName.unknownOption] : [], ...warnsAsErrors ? [AmbientStateName.warnsAsErrors] : []];
+	return withAccess(res, rootId, data, reads.length > 0 ? [...reads, AmbientStateName.unknownOption] : [], writes.length > 0 ? [...writes, AmbientStateName.allOptions] : []);
 }
 
 /** Whether the call to `fn` only queries the state it may set, as `par("mar")`, `options("digits")` and `palette()` do, which hand that state back visibly where setting it returns the previous one invisibly. */
@@ -1048,8 +1016,7 @@ function onlyQueries<OtherInfo>(effects: readonly AmbientEffect[], args: readonl
 
 /** `par()`, `par("mar", "usr")`, and `par(no.readonly = TRUE)` only query the graphics state */
 function isQuery<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]): boolean {
-	return args.every(a => a === EmptyArgument
-		|| (a.name === undefined ? RString.is(a.value) : Identifier.getName(a.name.content) === 'no.readonly'));
+	return args.every(a => a === EmptyArgument || (a.name === undefined ? RString.is(a.value) : Identifier.getName(a.name.content) === 'no.readonly'));
 }
 
 /** Whether the call's value may be used: anything but a non-final statement or, unless it is `printed` there, a top-level statement of the script (the last of a block is its value). */
@@ -1460,10 +1427,7 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 
 /** Whether `node` branches or loops on a value R may reject: a condition that is not `TRUE` or `FALSE` (`if(NA)`, `if(logical(0))`) or a vector that is not a constant. */
 export function testsValue(node: RNode<ParentInformation>): boolean {
-	if(RIfThenElse.is(node) || RWhileLoop.is(node)) {
-		return !RLogical.is(node.condition);
-	}
-	return RForLoop.is(node) && !RConstant.is(node.vector);
+	return RIfThenElse.is(node) || RWhileLoop.is(node) ? !RLogical.is(node.condition) : RForLoop.is(node) && !RConstant.is(node.vector);
 }
 
 /** The handlers of a `withCallingHandlers` whose first handler muffles every `warning` of its `expr`, `undefined` otherwise. */

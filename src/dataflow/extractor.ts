@@ -38,6 +38,7 @@ import { VertexType, DfgVertex } from './graph/vertex';
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierReference } from './environments/identifier';
 import { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
@@ -52,7 +53,9 @@ import { AmbientStateName, MessageSinks, OutputSinks } from './environments/ambi
 import { AmbientAccess, AmbientAccessKind } from './graph/ambient-access';
 import { UnnamedFunctionCallPrefix } from './internal/process/functions/call/unnamed-call-handling';
 import { BuiltInProcName } from './environments/built-in-proc-name';
-import { holdsValueOf } from './internal/process/functions/call/built-in/built-in-envir-utils';
+import { EnvironmentProducers, holdsValueOf } from './internal/process/functions/call/built-in/built-in-envir-utils';
+import { isBaseRPackage } from '../util/r-base-packages';
+import { StackEnvBuiltins } from './environments/default-builtin-config/shared-configs';
 import { replayedAt } from './internal/process/functions/call/built-in/built-in-deferred-env-ops';
 import { partitionArray, uniqueArray } from '../util/collections/arrays';
 import { DefaultMap, memoize } from '../util/collections/defaultmap';
@@ -148,6 +151,33 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 					todo.push(outer);
 				}
 			}
+		}
+	}
+}
+
+/** Whether the node creates or names an environment, as `new.env()`, `globalenv()` or `.GlobalEnv` do */
+function producesEnvironment(id: NodeId, graph: DataflowGraph): boolean {
+	const node = graph.idMap?.get(id);
+	const name = RSymbol.is(node) ? node.content : RFunctionCall.calledName(node);
+	return EnvironmentProducers.some(o => DfgVertex.hasOrigin(graph.getVertex(id), o))
+		|| (name !== undefined && Object.hasOwn(StackEnvBuiltins, Identifier.getName(name)));
+}
+
+/** A function whose body flowR does not see may write into an environment it is handed, as environments are shared by reference. */
+function markEnvironmentsHandedToUnseenBodies(graph: DataflowGraph, environment: REnvironmentInformation): void {
+	const mayHoldEnvironment = (id: NodeId): boolean => {
+		return producesEnvironment(id, graph) || (DfgVertex.isUse(graph.getVertex(id))
+			&& Dataflow.targetsOf(graph, id, EdgeType.Reads).some(d => Dataflow.valueSources(d, graph)?.some(v => producesEnvironment(v, graph)) === true));
+	};
+	for(const [id, call] of graph.verticesOfType(VertexType.FunctionCall)) {
+		const ns = Identifier.getNamespace(Dataflow.qualify(id, graph, false));
+		const unseen = call.origin === 'unnamed' || (Array.isArray(call.origin) && call.origin.every(o => o === 'function')) || (ns !== undefined && !isBaseRPackage(ns));
+		if(unseen && !Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)))
+			&& call.args.some(a => {
+				const ref = FunctionArgument.getReference(a);
+				return ref !== undefined && mayHoldEnvironment(ref);
+			})) {
+			handleUnknownSideEffect(graph, environment, id);
 		}
 	}
 }
@@ -754,6 +784,7 @@ function extractDataFlowGraph<OtherInfo>(
 	FunctionSemantics.settleJumpsInPromises(df.graph, df.exitPoints, { ctx });
 	FunctionSemantics.settleDefinitionsInPromises(df.graph, { ctx });
 	linkEnvironmentArgumentsWrittenByCallee(df.graph, df.environment);
+	markEnvironmentsHandedToUnseenBodies(df.graph, df.environment);
 	resolveLinkToSideEffects(df.graph, ctx);
 	linkResourceReadersToWriters(df.graph, df.environment, ctx);
 	linkReadsOfDivertedOutput(df.graph, df.environment);

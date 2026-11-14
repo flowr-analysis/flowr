@@ -311,6 +311,10 @@ function processAssignmentTarget<OtherInfo>(
 	const target = RArgument.valueOf(effectiveArgs[0]);
 	const source = RArgument.valueOf(effectiveArgs[1]);
 
+	/* an in-place setter of one argument, as `setDT(d)`, works on its target alone */
+	if(source === undefined && args.length === 1 && config.readTarget && RSymbol.is(target)) {
+		return processAssignmentTarget(name, [args[0], args[0]], rootId, data, config);
+	}
 	if(target === undefined || source === undefined) {
 		dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has an undefined target or source, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;

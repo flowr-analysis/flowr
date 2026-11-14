@@ -381,7 +381,7 @@ export const BaseDefinitions = [
 	fn(base('local'), BuiltInProcName.Local, { args: { env: 'envir', expr: 'expr' }, sig: sig({ expr: ArgProp.Alias | ArgProp.Forced, envir: ArgProp.Written }) }),
 	fn(base('with'), BuiltInProcName.With, { sig: WithSig }),
 	fn(base('within'), BuiltInProcName.With, { tags: [SemanticCallTag.Transforms], sig: WithSig }),
-	fn([...base('new.env'), ...pkg(PkgName.Rlang, 'new_environment')], BuiltInProcName.NewEnv, { sig: sig({ hash: ArgProp.Forced, parent: ArgProp.Forced, size: ArgProp.Forced }) }, Primitive),
+	fn([...base('new.env'), ...pkg(PkgName.Rlang, 'new_environment', 'env')], BuiltInProcName.NewEnv, { sig: sig({ hash: ArgProp.Forced, parent: ArgProp.Forced, size: ArgProp.Forced }) }, Primitive),
 	/* env-returning builtins pointing into the current search-path stack (`e <- globalenv(); e$x`) */
 	fn(Object.entries(StackEnvBuiltins).filter(([n,
 		kind]) => !n.startsWith('.') && (kind === StackEnvKind.Global || kind === StackEnvKind.Base || kind === StackEnvKind.Empty)).map(([n]) => Identifier.from([n, PkgName.Base])),

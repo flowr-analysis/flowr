@@ -1,12 +1,10 @@
-import type { Reduction, SummarizedDfShapeStats, SummarizedSlicerStats, TimePerToken, UltimateSlicerStats } from '../data';
+import type { SummarizedSlicerStats, UltimateSlicerStats } from '../data';
 import { summarizeSummarizedReductions, summarizeSummarizedMeasurement, summarizeSummarizedTimePerToken, summarizeTimePerToken } from '../first-phase/process';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { type SummarizedMeasurement, summarizeMeasurement } from '../../../util/summarizer';
 import { guard, isNotUndefined } from '../../../util/assert';
 import {
 	type BenchmarkMemoryMeasurement,
-	type SlicerStatsDataflow,
-	type SlicerStatsInput,
 	AdditionalSlicerMeasurements,
 	CommonSlicerMeasurements,
 	PerSliceMeasurements
@@ -19,34 +17,6 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => []);
 	const perSliceMeasurements = new DefaultMap<PerSliceMeasurements, SummarizedMeasurement[]>(() => []);
 	const additionalMeasurements = new DefaultMap<AdditionalSlicerMeasurements, number[]>(() => []);
-	const retrieveTimesPer100Lines: number[] = [];
-	const normalizeTimesPer100Lines: number[] = [];
-	const dataflowTimesPer100Lines: number[] = [];
-	const totalCommonTimesPer100Lines: number[] = [];
-	const controlFlowTimesPer100Lines: number[] = [];
-	const sliceTimesPer100Lines: SummarizedMeasurement[] = [];
-	const reconstructTimesPer100Lines: SummarizedMeasurement[] = [];
-	const totalPerSliceTimesPer100Lines: SummarizedMeasurement[] = [];
-	const sliceTimesPerToken: TimePerToken[] = [];
-	const reconstructTimesPerToken: TimePerToken[] = [];
-	const totalPerSliceTimesPerToken: TimePerToken[] = [];
-	const retrieveTimesPerToken: TimePerToken<number>[] = [];
-	const normalizeTimesPerToken: TimePerToken<number>[] = [];
-	const dataflowTimesPerToken: TimePerToken<number>[] = [];
-	const totalCommonTimesPerToken: TimePerToken<number>[] = [];
-	const controlFlowTimePerToken: TimePerToken<number>[] = [];
-	const callGraphTimePerToken: TimePerToken<number>[] = [];
-	const dataFrameShapeTimePerToken: TimePerToken<number>[] = [];
-	const memory = new DefaultMap<CommonSlicerMeasurements, BenchmarkMemoryMeasurement[]>(() => []);
-	const reductions: Reduction<SummarizedMeasurement>[] = [];
-	const reductionsNoFluff: Reduction<SummarizedMeasurement>[] = [];
-	const inputs: SlicerStatsInput[] = [];
-	const dataflows: SlicerStatsDataflow[] = [];
-	const dataFrameShapes: SummarizedDfShapeStats[] = [];
-	let failedToRepParse = 0;
-	let timesHitThreshold = 0;
-	let totalSlices = 0;
-
 	for(const stat of stats) {
 		for(const [k, v] of stat.commonMeasurements) {
 			commonMeasurements.get(k).push(Number(v));
@@ -57,52 +27,19 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		for(const [k, v] of stat.additionalMeasurements ?? []) {
 			additionalMeasurements.get(k).push(Number(v));
 		}
-		retrieveTimesPer100Lines.push(stat.retrieveTimePer100Lines);
-		normalizeTimesPer100Lines.push(stat.normalizeTimePer100Lines);
-		dataflowTimesPer100Lines.push(stat.dataflowTimePer100Lines);
-		totalCommonTimesPer100Lines.push(stat.totalCommonTimePer100Lines);
-		if(stat.controlFlowTimePer100Lines !== undefined) {
-			controlFlowTimesPer100Lines.push(stat.controlFlowTimePer100Lines);
-		}
-		sliceTimesPer100Lines.push(stat.perSliceMeasurements.sliceTimePer100Lines);
-		reconstructTimesPer100Lines.push(stat.perSliceMeasurements.reconstructTimePer100Lines);
-		totalPerSliceTimesPer100Lines.push(stat.perSliceMeasurements.totalPerSliceTimePer100Lines);
-		sliceTimesPerToken.push(stat.perSliceMeasurements.sliceTimePerToken);
-		reconstructTimesPerToken.push(stat.perSliceMeasurements.reconstructTimePerToken);
-		totalPerSliceTimesPerToken.push(stat.perSliceMeasurements.totalPerSliceTimePerToken);
-		retrieveTimesPerToken.push(stat.retrieveTimePerToken);
-		normalizeTimesPerToken.push(stat.normalizeTimePerToken);
-		dataflowTimesPerToken.push(stat.dataflowTimePerToken);
-		totalCommonTimesPerToken.push(stat.totalCommonTimePerToken);
-
-		if(stat.controlFlowTimePerToken !== undefined) {
-			controlFlowTimePerToken.push(stat.controlFlowTimePerToken);
-		}
-		if(stat.callGraphTimePerToken !== undefined) {
-			callGraphTimePerToken.push(stat.callGraphTimePerToken);
-		}
-		if(stat.dataFrameShapeTimePerToken !== undefined) {
-			dataFrameShapeTimePerToken.push(stat.dataFrameShapeTimePerToken);
-		}
-		for(const [k, v] of stat.memory) {
-			memory.get(k).push(v);
-		}
-		reductions.push(stat.perSliceMeasurements.reduction);
-		reductionsNoFluff.push(stat.perSliceMeasurements.reductionNoFluff);
-		inputs.push(stat.input);
-		dataflows.push(stat.dataflow);
-
-		if(stat.dataFrameShape !== undefined) {
-			dataFrameShapes.push(stat.dataFrameShape);
-		}
-		failedToRepParse += stat.perSliceMeasurements.failedToRepParse;
-		totalSlices += stat.perSliceMeasurements.numberOfSlices;
-		timesHitThreshold += stat.perSliceMeasurements.timesHitThreshold;
 	}
+	const perSlice = stats.map(s => s.perSliceMeasurements);
+	const optional = <T, R>(values: readonly (T | undefined)[], summarize: (present: T[]) => R): R | undefined => {
+		const present = values.filter(isNotUndefined);
+		return present.length > 0 ? summarize(present) : undefined;
+	};
+	const inputs = stats.map(s => s.input);
+	const dataflows = stats.map(s => s.dataflow);
+	const sum = (f: (s: SummarizedSlicerStats['perSliceMeasurements']) => number) => arraySum(perSlice.map(f));
 
 	return {
 		totalRequests:      stats.length,
-		totalSlices:        totalSlices,
+		totalSlices:        sum(p => p.numberOfSlices),
 		commonMeasurements: new Map(
 			[...commonMeasurements.entries()].map(([k, v]) => [k, summarizeMeasurement(v)])
 		),
@@ -112,28 +49,28 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		additionalMeasurements: new Map(
 			[...additionalMeasurements.entries()].map(([k, v]) => [k, summarizeMeasurement(v)])
 		),
-		sliceTimePerToken:            summarizeSummarizedTimePerToken(sliceTimesPerToken),
-		reconstructTimePerToken:      summarizeSummarizedTimePerToken(reconstructTimesPerToken),
-		totalPerSliceTimePerToken:    summarizeSummarizedTimePerToken(totalPerSliceTimesPerToken),
-		retrieveTimePerToken:         summarizeTimePerToken(retrieveTimesPerToken),
-		normalizeTimePerToken:        summarizeTimePerToken(normalizeTimesPerToken),
-		dataflowTimePerToken:         summarizeTimePerToken(dataflowTimesPerToken),
-		totalCommonTimePerToken:      summarizeTimePerToken(totalCommonTimesPerToken),
-		controlFlowTimePerToken:      controlFlowTimePerToken.length > 0 ? summarizeTimePerToken(controlFlowTimePerToken) : undefined,
-		callGraphTimePerToken:        callGraphTimePerToken.length > 0 ? summarizeTimePerToken(callGraphTimePerToken) : undefined,
-		dataFrameShapeTimePerToken:   dataFrameShapeTimePerToken.length > 0 ? summarizeTimePerToken(dataFrameShapeTimePerToken) : undefined,
-		retrieveTimePer100Lines:      summarizeMeasurement(retrieveTimesPer100Lines),
-		normalizeTimePer100Lines:     summarizeMeasurement(normalizeTimesPer100Lines),
-		dataflowTimePer100Lines:      summarizeMeasurement(dataflowTimesPer100Lines),
-		totalCommonTimePer100Lines:   summarizeMeasurement(totalCommonTimesPer100Lines),
-		controlFlowTimePer100Lines:   controlFlowTimesPer100Lines.length > 0 ? summarizeMeasurement(controlFlowTimesPer100Lines) : undefined,
-		sliceTimePer100Lines:         summarizeSummarizedMeasurement(sliceTimesPer100Lines),
-		reconstructTimePer100Lines:   summarizeSummarizedMeasurement(reconstructTimesPer100Lines),
-		totalPerSliceTimePer100Lines: summarizeSummarizedMeasurement(totalPerSliceTimesPer100Lines),
-		failedToRepParse,
-		timesHitThreshold,
-		reduction:                    summarizeSummarizedReductions(reductions),
-		reductionNoFluff:             summarizeSummarizedReductions(reductionsNoFluff),
+		sliceTimePerToken:            summarizeSummarizedTimePerToken(perSlice.map(p => p.sliceTimePerToken)),
+		reconstructTimePerToken:      summarizeSummarizedTimePerToken(perSlice.map(p => p.reconstructTimePerToken)),
+		totalPerSliceTimePerToken:    summarizeSummarizedTimePerToken(perSlice.map(p => p.totalPerSliceTimePerToken)),
+		retrieveTimePerToken:         summarizeTimePerToken(stats.map(s => s.retrieveTimePerToken)),
+		normalizeTimePerToken:        summarizeTimePerToken(stats.map(s => s.normalizeTimePerToken)),
+		dataflowTimePerToken:         summarizeTimePerToken(stats.map(s => s.dataflowTimePerToken)),
+		totalCommonTimePerToken:      summarizeTimePerToken(stats.map(s => s.totalCommonTimePerToken)),
+		controlFlowTimePerToken:      optional(stats.map(s => s.controlFlowTimePerToken), summarizeTimePerToken),
+		callGraphTimePerToken:        optional(stats.map(s => s.callGraphTimePerToken), summarizeTimePerToken),
+		dataFrameShapeTimePerToken:   optional(stats.map(s => s.dataFrameShapeTimePerToken), summarizeTimePerToken),
+		retrieveTimePer100Lines:      summarizeMeasurement(stats.map(s => s.retrieveTimePer100Lines)),
+		normalizeTimePer100Lines:     summarizeMeasurement(stats.map(s => s.normalizeTimePer100Lines)),
+		dataflowTimePer100Lines:      summarizeMeasurement(stats.map(s => s.dataflowTimePer100Lines)),
+		totalCommonTimePer100Lines:   summarizeMeasurement(stats.map(s => s.totalCommonTimePer100Lines)),
+		controlFlowTimePer100Lines:   optional(stats.map(s => s.controlFlowTimePer100Lines), summarizeMeasurement),
+		sliceTimePer100Lines:         summarizeSummarizedMeasurement(perSlice.map(p => p.sliceTimePer100Lines)),
+		reconstructTimePer100Lines:   summarizeSummarizedMeasurement(perSlice.map(p => p.reconstructTimePer100Lines)),
+		totalPerSliceTimePer100Lines: summarizeSummarizedMeasurement(perSlice.map(p => p.totalPerSliceTimePer100Lines)),
+		failedToRepParse:             sum(p => p.failedToRepParse),
+		timesHitThreshold:            sum(p => p.timesHitThreshold),
+		reduction:                    summarizeSummarizedReductions(perSlice.map(p => p.reduction)),
+		reductionNoFluff:             summarizeSummarizedReductions(perSlice.map(p => p.reductionNoFluff)),
 		input:                        {
 			numberOfLines:                             summarizeMeasurement(inputs.map(i => i.numberOfLines)),
 			numberOfNonEmptyLines:                     summarizeMeasurement(inputs.map(i => i.numberOfNonEmptyLines)),

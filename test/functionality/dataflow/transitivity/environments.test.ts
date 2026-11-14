@@ -70,7 +70,10 @@ describe('Transitivity through environments and super assignments, checked again
 			{ name: 'a package function binding into the global environment', code: 'rlang::env_bind(globalenv(), kk = 5)\nprint(kk)' },
 			{ name: 'a package function writing into an environment made from a list', code: 'e <- as.environment(list(a = 1))\nrlang::env_poke(e, "a", 2)\nprint(e$a)' },
 			{ name: 'a package function writing into an environment rlang made', code: 'e <- rlang::env()\nrlang::env_poke(e, "k", 3)\nprint(e$k)' },
-			{ name: 'a package function writing into another environment', code: 'e <- new.env()\ng <- new.env()\nrlang::env_poke(g, "k", 3)\nprint(e$k)', dropped: 'env_poke', imprecise: 'a call handed an environment it may write into stays in every slice' },
+			{ name: 'a package function writing into another environment', code: 'e <- new.env()\ng <- new.env()\nrlang::env_poke(g, "k", 3)\nprint(e$k)', dropped: 'env_poke' },
+			{ name: 'a package function writing into an environment handed to a function of the program', code: 'e <- new.env()\nf <- function(x) rlang::env_poke(x, "k", 3)\nf(e)\nprint(e$k)' },
+			{ name: 'a package function writing into an environment handed through two functions', code: 'e <- new.env()\nf <- function(x) rlang::env_poke(x, "k", 3)\ng <- function(y) f(y)\ng(e)\nprint(e$k)' },
+			{ name: 'a package function writing into another environment handed to a function', code: 'e <- new.env()\nd <- new.env()\nf <- function(x) rlang::env_poke(x, "k", 3)\nf(d)\nprint(e$k)', dropped: 'f(d)' },
 			{ name: 'a data.table sorted in place', code: 'library(data.table)\ndt <- data.table(a = c(2, 1))\nsetorder(dt, a)\nprint(dt$a)', sigdb: true },
 			{ name: 'data.table columns reordered in place', code: 'library(data.table)\ndt <- data.table(a = 1, b = 2)\nsetcolorder(dt, c("b", "a"))\nprint(names(dt))', sigdb: true },
 			{ name: 'a data frame turned into a data.table in place', code: 'library(data.table)\nd <- data.frame(a = 1)\nsetDT(d)\nprint(class(d)[1])', sigdb: true }

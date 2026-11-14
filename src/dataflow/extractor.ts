@@ -157,27 +157,85 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 
 /** Whether the node creates or names an environment, as `new.env()`, `globalenv()` or `.GlobalEnv` do */
 function producesEnvironment(id: NodeId, graph: DataflowGraph): boolean {
-	const node = graph.idMap?.get(id);
-	const name = RSymbol.is(node) ? node.content : RFunctionCall.calledName(node);
-	return EnvironmentProducers.some(o => DfgVertex.hasOrigin(graph.getVertex(id), o))
-		|| (name !== undefined && Object.hasOwn(StackEnvBuiltins, Identifier.getName(name)));
+	return EnvironmentProducers.some(o => DfgVertex.hasOrigin(graph.getVertex(id), o)) || namesStackEnvironment(id, graph);
 }
 
-/** A function whose body flowR does not see may write into an environment it is handed, as environments are shared by reference. */
-function markEnvironmentsHandedToUnseenBodies(graph: DataflowGraph, environment: REnvironmentInformation): void {
-	const mayHoldEnvironment = (id: NodeId): boolean => {
-		return producesEnvironment(id, graph) || (DfgVertex.isUse(graph.getVertex(id))
-			&& Dataflow.targetsOf(graph, id, EdgeType.Reads).some(d => Dataflow.valueSources(d, graph)?.some(v => producesEnvironment(v, graph)) === true));
+/** Whether the node names an environment of the search path or the call stack, as `globalenv()` or `.GlobalEnv` do, whose names no variable holds */
+function namesStackEnvironment(id: NodeId, graph: DataflowGraph): boolean {
+	const node = graph.idMap?.get(id);
+	const name = RSymbol.is(node) ? node.content : RFunctionCall.calledName(node);
+	return DfgVertex.hasOrigin(graph.getVertex(id), BuiltInProcName.StackEnv) || (name !== undefined && Object.hasOwn(StackEnvBuiltins, Identifier.getName(name)));
+}
+
+/**
+ * The environments the value at `id` may be: the vertices creating them, followed through the parameters of the functions
+ * of the program to the arguments of their calls, and these calls, which hand the environment on.
+ */
+function environmentsAt(id: NodeId, graph: DataflowGraph, parameters: ReadonlySet<NodeId>): { producers: NodeId[], via: NodeId[] } {
+	const producers: NodeId[] = [];
+	const via: NodeId[] = [];
+	const seen = new Set<NodeId>();
+	const todo = [id];
+	for(let at = todo.pop(); at !== undefined; at = todo.pop()) {
+		if(seen.has(at)) {
+			continue;
+		}
+		seen.add(at);
+		for(const source of producesEnvironment(at, graph) ? [at] : Dataflow.valueSources(at, graph) ?? []) {
+			if(producesEnvironment(source, graph)) {
+				producers.push(source);
+			} else if(parameters.has(source)) {
+				for(const argument of Dataflow.argumentsBoundTo(graph, source)) {
+					via.push(...Dataflow.sourcesOf(graph, argument, EdgeType.Argument).filter(c => DfgVertex.isFunctionCall(graph.getVertex(c))));
+					todo.push(argument);
+				}
+			}
+		}
+	}
+	return { producers, via };
+}
+
+/**
+ * A function whose body flowR does not see may write into an environment it is handed, as environments are shared by reference.
+ * So every variable holding that environment is defined by the call (and by the calls of the program's functions handing it on),
+ * while an environment of the search path or the call stack, whose names no variable holds, makes the call a side effect of its own.
+ */
+function linkEnvironmentsHandedToUnseenBodies(graph: DataflowGraph, environment: REnvironmentInformation): void {
+	const parameters = new Set(graph.verticesOfType(VertexType.FunctionDefinition).flatMap(([, d]) => Dataflow.parametersOf(d)));
+	let holders: DefaultMap<NodeId, NodeId[]> | undefined;
+	const holdersOf = (producer: NodeId): readonly NodeId[] => {
+		if(holders === undefined) {
+			holders = new DefaultMap(() => []);
+			for(const [definition] of graph.verticesOfType(VertexType.VariableDefinition)) {
+				for(const source of Dataflow.valueSources(definition, graph) ?? []) {
+					holders.get(source).push(definition);
+				}
+			}
+		}
+		return holders.get(producer);
 	};
 	for(const [id, call] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const ns = Identifier.getNamespace(Dataflow.qualify(id, graph, false));
 		const unseen = call.origin === 'unnamed' || (Array.isArray(call.origin) && call.origin.every(o => o === 'function')) || (ns !== undefined && !isBaseRPackage(ns));
-		if(unseen && !Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)))
-			&& call.args.some(a => {
-				const ref = FunctionArgument.getReference(a);
-				return ref !== undefined && mayHoldEnvironment(ref);
-			})) {
-			handleUnknownSideEffect(graph, environment, id);
+		if(!unseen || Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)))) {
+			continue;
+		}
+		for(const arg of call.args) {
+			const ref = FunctionArgument.getReference(arg);
+			const { producers, via } = ref === undefined ? { producers: [], via: [] } : environmentsAt(ref, graph, parameters);
+			for(const producer of producers) {
+				if(namesStackEnvironment(producer, graph)) {
+					for(const writer of [id, ...via]) {
+						handleUnknownSideEffect(graph, environment, writer);
+					}
+					continue;
+				}
+				for(const holder of holdersOf(producer)) {
+					for(const writer of [id, ...via]) {
+						graph.addEdge(holder, writer, EdgeType.Reads);
+					}
+				}
+			}
 		}
 	}
 }
@@ -784,7 +842,7 @@ function extractDataFlowGraph<OtherInfo>(
 	FunctionSemantics.settleJumpsInPromises(df.graph, df.exitPoints, { ctx });
 	FunctionSemantics.settleDefinitionsInPromises(df.graph, { ctx });
 	linkEnvironmentArgumentsWrittenByCallee(df.graph, df.environment);
-	markEnvironmentsHandedToUnseenBodies(df.graph, df.environment);
+	linkEnvironmentsHandedToUnseenBodies(df.graph, df.environment);
 	resolveLinkToSideEffects(df.graph, ctx);
 	linkResourceReadersToWriters(df.graph, df.environment, ctx);
 	linkReadsOfDivertedOutput(df.graph, df.environment);

@@ -488,21 +488,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	private fileIndex(): ReadonlyMap<string, ReadonlyMap<string, FilePath>> {
 		if(this.caseIndex === undefined) {
-			const index = new Map<string, Map<string, FilePath>>();
-			for(const file of this.files.values()) {
-				const f = file.path();
-				const dir = RPath.dirname(f).toLowerCase();
-				let entries = index.get(dir);
-				if(entries === undefined) {
-					entries = new Map<string, FilePath>();
-					index.set(dir, entries);
-				}
-				const base = RPath.basename(f).toLowerCase();
-				if(!entries.has(base)) {
-					entries.set(base, f);
-				}
-			}
-			this.caseIndex = index;
+			const paths = Map.groupBy(this.files.values().map(file => file.path()), f => RPath.dirname(f).toLowerCase());
+			this.caseIndex = new Map(paths.entries().map(([dir, fs]) => [dir, new Map(fs.toReversed().map(f => [RPath.basename(f).toLowerCase(), f]))]));
 		}
 		return this.caseIndex;
 	}

@@ -1,6 +1,6 @@
 import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
-import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
+import { queryHeader } from '../../query-print';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type ControlFlowInformation, CfgVertex } from '../../../control-flow/control-flow-graph';
@@ -43,7 +43,7 @@ export const ControlFlowQueryDefinition = {
 	executor:        executeControlFlowQuery,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'control-flow'>['control-flow'];
-		result.push(`Query: ${bold('control-flow', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+		result.push(queryHeader('control-flow', formatter, out['.meta'].timing, true));
 		result.push(`   ╰ CFG: ${cfgToMermaidUrl(out.controlFlow, await analyzer.normalize())}`);
 		return true;
 	},

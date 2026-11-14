@@ -1,9 +1,9 @@
 import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
-import { bold, markdownFormatter } from '../../../util/text/ansi';
+import { markdownFormatter } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { DataflowGraphClusters } from '../../../dataflow/cluster';
-import { summarizeIdsIfTooLong } from '../../query-print';
+import { queryHeader, summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { findAllClusters } from '../../../dataflow/cluster';
@@ -36,7 +36,7 @@ export const ClusterQueryDefinition = {
 	executor:        executeDataflowClusterQuery,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow-cluster'>['dataflow-cluster'];
-		result.push(`Query: ${bold('dataflow-cluster', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+		result.push(queryHeader('dataflow-cluster', formatter, out['.meta'].timing, true));
 		result.push(`   ╰ Found ${out.clusters.length} cluster${out.clusters.length === 1 ? '' : 's'}`);
 		for(const cluster of out.clusters) {
 			const unknownSideEffects = cluster.hasUnknownSideEffects ? '(has unknown side effect)' : '';

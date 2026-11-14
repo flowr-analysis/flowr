@@ -1,6 +1,7 @@
 import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import { bold, ColorEffect, Colors } from '../../../util/text/ansi';
 import Joi from 'joi';
+import { queryHeader } from '../../query-print';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FileRole } from '../../../project/context/flowr-file';
@@ -140,7 +141,7 @@ export const FilesQueryDefinition = {
 	executor:        executeFileQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'files'>['files'];
-		result.push(`Query: ${bold('files', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+		result.push(queryHeader('files', formatter, out['.meta'].timing, true));
 		result.push(`   ╰ Found ${out.files.length} file${out.files.length === 1 ? '' : 's'}`);
 		for(const f of out.files) {
 			const nam = guessProto(f.content);

@@ -1,6 +1,7 @@
 import { type BasicQueryData, type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
+import { queryHeader } from '../../query-print';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
@@ -244,7 +245,7 @@ export const DoesCallQueryDefinition = {
 	perQueryResults: true,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'does-call'>['does-call'];
-		result.push(`Query: ${bold('does-call', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+		result.push(queryHeader('does-call', formatter, out['.meta'].timing, true));
 		for(const [r, v] of Object.entries(out.results)) {
 			const idMap = (await processed.normalize()).idMap;
 			result.push(`  - ${bold(r, formatter)} found:`);

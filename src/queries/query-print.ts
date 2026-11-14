@@ -1,4 +1,4 @@
-import { SourceRange } from '../util/range';
+import { SourceLocation, SourceRange } from '../util/range';
 import { type OutputFormatter, bold, italic, markdownFormatter } from '../util/text/ansi';
 import { type Queries, type Query, type QueryResult, type QueryResults, type SupportedQueryTypes, SupportedQueries } from './query';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -11,9 +11,14 @@ import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import fs from 'fs';
 
-/** The first line of a query's ascii summary: its name and how long it took. */
-export function queryHeader(name: string, formatter: OutputFormatter, timing: number): string {
-	return `Query: ${bold(name, formatter)} (${printAsMs(timing, 0)})`;
+/** The first line of a query's ascii summary: its name and how long it took (`plainMs` for a plain `ms` suffix). */
+export function queryHeader(name: string, formatter: OutputFormatter, timing: number, plainMs = false): string {
+	return `Query: ${bold(name, formatter)} (${plainMs ? `${timing.toFixed(0)}ms` : printAsMs(timing, 0)})`;
+}
+
+/** The bullet naming a function definition of an `inspect-*` summary with its location. */
+export function functionBullet(id: NodeId, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {
+	return `  - Function ${bold(id, formatter)} (${SourceLocation.format(SourceLocation.fromNode(idMap.get(NodeId.normalize(id))))})`;
 }
 
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object }, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {

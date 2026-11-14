@@ -1,4 +1,5 @@
 import { escapeRegex } from '../../../util/text/strings';
+import { scanRCode, splitRCodeArgs } from '../../../util/text/args';
 import { contentOf } from '../../../dataflow/eval/values/string/string-constants';
 import { prettyPrint, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
@@ -80,54 +81,7 @@ function unquote(name: string): string {
 
 /** the index of the bracket closing the one at `open`, string-aware */
 function closing(text: string, open: number): number | undefined {
-	let depth = 0;
-	let quote: string | undefined;
-	for(let i = open; i < text.length; i++) {
-		const c = text[i];
-		if(quote !== undefined) {
-			if(c === '\\') {
-				i++;
-			} else if(c === quote) {
-				quote = undefined;
-			}
-		} else if(c === '"' || c === '\'' || c === '`') {
-			quote = c;
-		} else if(c === '(' || c === '[' || c === '{') {
-			depth++;
-		} else if((c === ')' || c === ']' || c === '}') && --depth === 0) {
-			return i;
-		}
-	}
-	return undefined;
-}
-
-/** splits `text` at the commas outside of brackets and strings */
-function splitArgs(text: string): string[] {
-	const parts: string[] = [];
-	let depth = 0;
-	let quote: string | undefined;
-	let from = 0;
-	for(let i = 0; i < text.length; i++) {
-		const c = text[i];
-		if(quote !== undefined) {
-			if(c === '\\') {
-				i++;
-			} else if(c === quote) {
-				quote = undefined;
-			}
-		} else if(c === '"' || c === '\'' || c === '`') {
-			quote = c;
-		} else if(c === '(' || c === '[' || c === '{') {
-			depth++;
-		} else if(c === ')' || c === ']' || c === '}') {
-			depth--;
-		} else if(c === ',' && depth === 0) {
-			parts.push(text.slice(from, i));
-			from = i + 1;
-		}
-	}
-	parts.push(text.slice(from));
-	return parts.map(p => p.trim());
+	return scanRCode(text, (_c, _i, depth) => depth === 0, open);
 }
 
 /**
@@ -159,7 +113,7 @@ function parseUsageEntry(entry: string): UsageCall | 'ignored' | undefined {
 	}
 	const inner = text.slice(open + 1, close);
 	const args: UsageArg[] = [];
-	for(const part of inner.trim() === '' ? [] : splitArgs(inner)) {
+	for(const part of inner.trim() === '' ? [] : splitRCodeArgs(inner)) {
 		if(part === '') {
 			continue;
 		}

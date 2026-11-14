@@ -22,6 +22,7 @@ import { SourceRange } from '../../../../util/range';
 import { parseRRegexPattern } from '../../../../util/r-regex';
 import { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { uniqueArray } from '../../../../util/collections/arrays';
+import { splitRCodeArgs } from '../../../../util/text/args';
 
 export interface NamespaceInfo {
 	exportedSymbols:      BrandedIdentifier[];
@@ -466,34 +467,10 @@ const namedArgument = /^([\w.]+)\s*=(?!=)\s*(.*)$/s;
  * arguments as written. Only top-level commas separate, so an argument that is itself a call stays in one piece.
  */
 function splitNamespaceArgs(args: string): DirectiveArgument[] {
-	const names: DirectiveArgument[] = [];
-	let depth = 0;
-	let start = 0;
-	let quote: string | undefined;
-	for(let i = 0; i <= args.length; i++) {
-		const c = args[i];
-		if(quote !== undefined) {
-			if(c === '\\') {
-				i++;
-			} else if(c === quote) {
-				quote = undefined;
-			}
-		} else if(c === '"' || c === '\'' || c === '`') {
-			quote = c;
-		} else if(c === '(' || c === '[') {
-			depth++;
-		} else if(c === ')' || c === ']') {
-			depth--;
-		} else if(i === args.length || (c === ',' && depth === 0)) {
-			const part = args.slice(start, i).trim();
-			start = i + 1;
-			const named = namedArgument.exec(part);
-			if(part.length > 0) {
-				names.push(named === null ? { value: part } : { name: named[1], value: named[2] });
-			}
-		}
-	}
-	return names;
+	return splitRCodeArgs(args, '([', ')]').filter(part => part.length > 0).map(part => {
+		const named = namedArgument.exec(part);
+		return named === null ? { value: part } : { name: named[1], value: named[2] };
+	});
 }
 
 /**

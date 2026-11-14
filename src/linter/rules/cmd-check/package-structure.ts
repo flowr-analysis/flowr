@@ -330,10 +330,9 @@ export const PACKAGE_STRUCTURE = {
 	processSearchResult: onPackageFiles({ inspectedEntries: 0, onDisk: false }, (pf, pkg, config) => {
 		const found = fileFindings<PackageStructureKind>(pf);
 		const entries = pf.entries;
-		const byParent = new Map<string, PackageEntry[]>();
+		const byParent = Map.groupBy(entries, e => path.posix.dirname(e.relative));
 		const firstByLower = new Map<string, string>();
 		for(const e of entries) {
-			byParent.set(path.posix.dirname(e.relative), [...byParent.get(path.posix.dirname(e.relative)) ?? [], e]);
 			const first = firstByLower.get(e.relative.toLowerCase());
 			if(first === undefined || e.relative < first) {
 				firstByLower.set(e.relative.toLowerCase(), e.relative);

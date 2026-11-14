@@ -351,27 +351,20 @@ export function makeDocContextForTypes(
 			return getDocumentationForType(getNameFromElementIdOrRef(element), info, '', filter);
 		},
 		docM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, filter?: Omit<ElementFilter, 'file'>): string {
-			const className = cls.prototype.constructor.name;
-			const fullName = `${className}::${String(element)}`;
-			return this.doc(fullName, filter);
+			return this.doc(`${cls.prototype.constructor.name}::${String(element)}`, filter);
 		},
 		docO<T extends object & { name: string }>(obj: T, element: keyof T, filter?: Omit<ElementFilter, 'file'>): string {
-			const fullName = `${obj.name}::${String(element)}`;
-			return this.doc(fullName, filter);
+			return this.doc(`${obj.name}::${String(element)}`, filter);
 		},
 		link(this: void, element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
 			guard(filter?.file === undefined, 'filtering for files is not yet supported for link');
 			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper, filter?.fuzzy, filter?.type);
 		},
 		linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string {
-			const className = cls.prototype.constructor.name;
-			const sep = (fmt?.hideClass) ? ':::' : '::';
-			const fullName = `${className}${sep}${String(element)}`;
-			return this.link(fullName, fmt, filter);
+			return this.link(`${cls.prototype.constructor.name}${fmt?.hideClass ? ':::' : '::'}${String(element)}`, fmt, filter);
 		},
 		linkO<T extends object &  { name: string }>(obj: T, element: keyof T, fmt?: LinkFormat, filter?: ElementFilter): string {
-			const fullName = `${obj.name}::${String(element)}`;
-			return this.link(fullName, fmt, filter);
+			return this.link(`${obj.name}::${String(element)}`, fmt, filter);
 		},
 		linkE<E>(enumName: string, element: keyof E, fmt?: LinkFormat, filter?: ElementFilter): string {
 			return this.link(`${enumName}::${String(element)}`, fmt, filter);

@@ -96,13 +96,8 @@ interface ConditionalEntry {
 
 /** The entries by bare name, as a call names its package only when written `pkg::fn`. */
 function indexConditionals(conditionally: DeprecatedFunctionsConfig['conditionally']): Map<BrandedIdentifier, ConditionalEntry[]> {
-	const index = new Map<BrandedIdentifier, ConditionalEntry[]>();
-	const entries = new DefaultMap<BrandedIdentifier, ConditionalEntry[]>(() => [], index);
-	for(const [key, info] of Object.entries(conditionally)) {
-		const id = Identifier.parse(key);
-		entries.get(Identifier.getName(id)).push({ info, pkg: Identifier.getNamespace(id) });
-	}
-	return index;
+	const entries = Object.entries(conditionally).map(([key, info]) => [Identifier.parse(key), info] as const);
+	return new Map([...Map.groupBy(entries, ([id]) => Identifier.getName(id))].map(([name, group]) => [name, group.map(([id, info]) => ({ info, pkg: Identifier.getNamespace(id) }))]));
 }
 
 /** The entry for `target`: its own package's, else a bare one; a call naming no package takes the first. */
@@ -117,7 +112,7 @@ function conditionalFor(index: ReadonlyMap<BrandedIdentifier, ConditionalEntry[]
 
 /** The packages each `always` name belongs to; `undefined` for an entry claiming none. */
 function indexAlways(always: readonly Identifier[]): Map<BrandedIdentifier, (BrandedNamespace | undefined)[]> {
-	return new Map(Map.groupBy(always, Identifier.getName).entries().map(([name, ids]) => [name, uniqueArray(ids.map(Identifier.getNamespace))]));
+	return new Map([...Map.groupBy(always, entry => Identifier.getName(entry))].map(([name, group]) => [name, uniqueArray(group.map(entry => Identifier.getNamespace(entry)))]));
 }
 
 /** The packages the code attaches; `undefined` when one of them cannot be named, so nothing is ruled out. */
@@ -146,7 +141,7 @@ function alwayDeprecatedFromBuiltinConfig(definitions: BuiltInDefinitions): Iden
 function conditionalyDeprecatedFromBuiltinConfig(definitions: BuiltInDefinitions): DeprecatedFunctionsConfig['conditionally'] {
 	return Object.fromEntries(definitions.flatMap(def => {
 		const info = def.type === 'function' ? def.config?.deprInfo : undefined;
-		return info === undefined ? [] : def.names.map(name => [Identifier.toString(name), info]);
+		return info === undefined ? [] : def.names.map(name => [Identifier.toString(name), info] as const);
 	}));
 }
 

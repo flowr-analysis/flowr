@@ -127,6 +127,11 @@ export function registerQueryDocumentation(query: SupportedQueryTypes | Supporte
 	map.set(query, doc);
 }
 
+/** Registers the documentation of an active query, see {@link registerQueryDocumentation}. */
+export function registerActiveQuery(query: SupportedQueryTypes, shortDescription: string, buildExplanation: QueryDocumentation['buildExplanation']) {
+	registerQueryDocumentation(query, { type: 'active', shortDescription, buildExplanation });
+}
+
 /**
  * Creates a REPL shorthand for the given slicing criteria and R code (`f` requests a forward slice,
  * `i` inlines resolvable `source()` calls into the reconstruction; the flags may be combined as `fi`).

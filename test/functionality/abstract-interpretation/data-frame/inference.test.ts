@@ -2105,6 +2105,25 @@ print(df)
 				`,
 				['3@df']
 			);
+
+			testShape(
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+df$name <- unlist(list())
+print(df)
+				`,
+				['3@df']
+			);
+
+			testShape(
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+l <- list(a = 1)
+df$name <- l$b
+print(df)
+				`,
+				['4@df']
+			);
 		});
 	});
 

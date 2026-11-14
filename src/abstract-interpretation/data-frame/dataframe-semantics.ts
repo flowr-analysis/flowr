@@ -20,6 +20,9 @@ import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RUnaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
+import { RLogical } from '../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RValueType } from '../../dataflow/environments/guard-facts';
 import { RIfThenElse } from '../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -1442,32 +1445,48 @@ function mayRepeat(arg: PotentiallyEmptyRArgument<ParentInformation> | undefined
 	return !(typeof resolved === 'boolean' || (Array.isArray(resolved) && resolved.every(v => typeof v === 'boolean')));
 }
 
-/** the base functions that return `NULL` for what they do not find or select: `get0`, an attribute, a `switch` without a match, ..., and `c()` without arguments */
-const MayReturnNull: ReadonlySet<BrandedIdentifier> = new Set(['get0', 'mget', 'attr', 'attributes', 'names', 'colnames', 'rownames', 'dimnames', 'dim', 'levels', 'switch', 'invisible', 'return', 'tryCatch', 'try', 'do.call', 'Reduce', 'Recall', 'unlist', 'getOption', 'formals', 'body']);
-
 /**
- * Whether the value of `node` may be `NULL`, which removes a column it is assigned to: `NULL` itself, an `if` without
- * `else`, a block ending in one, a call of a function of the program or of one that returns `NULL` for nothing found,
- * or a variable holding any of them.
+ * Whether the value of `node` may be `NULL`, which removes a column it is assigned to. A constant, an operator, a
+ * function and a part of what is not `NULL` are not, an `if` without `else` is, a block is what it ends in, a call of a function of the program what
+ * it returns, and a call of a built-in what its stated return type says, any type if it states none. Anything else may be.
  */
 function mayBeNull(node: RNode<ParentInformation> | undefined, info: ResolveInfo, seen = new Set<NodeId>()): boolean {
 	if(node === undefined || seen.has(node.info.id)) {
 		return false;
 	}
 	seen.add(node.info.id);
+	const graph = info.graph;
 	if(isRNull(node)) {
 		return true;
+	} else if(RNumber.is(node) || RString.is(node) || RLogical.is(node) || RBinaryOp.is(node) || RUnaryOp.is(node) || RFunctionDefinition.is(node)) {
+		return false;
 	} else if(RIfThenElse.is(node)) {
 		return node.otherwise === undefined || mayBeNull(node.then, info, seen) || mayBeNull(node.otherwise, info, seen);
 	} else if(RExpressionList.is(node)) {
 		return node.children.length === 0 || mayBeNull(node.children.at(-1), info, seen);
-	} else if(RFunctionCall.is(node)) {
-		return RFunctionCall.isNamed(node, MayReturnNull) || (RFunctionCall.isNamed(node, Identifier.make('c')) && node.arguments.length === 0)
-			|| (info.graph !== undefined && Dataflow.targetsOf(info.graph, node.info.id, EdgeType.Calls).some(t => DfgVertex.isFunctionDefinition(info.graph?.getVertex(t))));
-	} else if(RSymbol.is(node) && info.graph !== undefined) {
-		return (Dataflow.valueSources(node.info.id, info.graph) ?? []).some(v => v !== node.info.id && mayBeNull(info.idMap?.get(v), info, seen));
+	} else if(RAccess.is(node) && node.operator === '[') {
+		/* a single bracket selects part of what it accesses, `NULL` only if that is */
+		return mayBeNull(node.accessed, info, seen);
+	} else if(RSymbol.is(node)) {
+		const sources = graph === undefined ? undefined : Dataflow.valueSources(node.info.id, graph);
+		return sources === undefined || sources.some(v => v === node.info.id || mayBeNull(info.idMap?.get(v), info, seen));
+	} else if(!RFunctionCall.is(node) || graph === undefined) {
+		return true;
 	}
-	return false;
+	const callees = Dataflow.targetsOf(graph, node.info.id, EdgeType.Calls).map(t => graph.getVertex(t)).filter(v => DfgVertex.isFunctionDefinition(v));
+	if(callees.length > 0) {
+		return callees.some(fn => fn.exitPoints.length === 0 || fn.exitPoints.some(e => mayBeNull(info.idMap?.get(e.nodeId), info, seen)));
+	} else if(!RFunctionCall.isNamed(node)) {
+		return true;
+	} else if(RFunctionCall.isNamed(node, Identifier.make('c'))) {
+		return node.arguments.every(a => a === EmptyArgument || mayBeNull(a.value, info, seen));
+	}
+	const name = node.functionName.content;
+	const returns = info.ctx.env.builtInFunctionOf(name)?.config?.guards?.[Identifier.getName(name)]?.returns;
+	if(returns === 'argument') {
+		return node.arguments.length === 0 || node.arguments[0] === EmptyArgument || mayBeNull(node.arguments[0].value, info, seen);
+	}
+	return typeof returns !== 'object' || returns.dispatchesOn !== undefined || (returns.types & RValueType.Null) !== 0;
 }
 
 /** whether the shape pins the number of columns down to exactly one */

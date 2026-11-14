@@ -80,11 +80,6 @@ function unquote(name: string): string {
 	return /^[`"']/.test(name) ? name.slice(1, -1) : name;
 }
 
-/** the index of the bracket closing the one at `open`, string-aware */
-function closing(text: string, open: number): number | undefined {
-	return scanRCode(text, (_c, _i, depth) => depth === 0, open);
-}
-
 /**
  * What a `\usage` entry states: a call (or replacement call) with its arguments, `'ignored'` for a bare variable or
  * a `data()` call, and `undefined` for anything else (operators, indexing, ...), which is not understood.
@@ -99,7 +94,7 @@ function parseUsageEntry(entry: string): UsageCall | 'ignored' | undefined {
 		return undefined;
 	}
 	const open = head[0].length - 1;
-	const close = closing(text, open);
+	const close = scanRCode(text, (_c, _i, depth) => depth === 0, open);
 	if(close === undefined) {
 		return undefined;
 	}
@@ -201,8 +196,6 @@ function findIn(raw: string | undefined, from: RegExp | undefined, needles: read
 	return [line, start + best.index - before.lastIndexOf('\n'), best.length];
 }
 
-const quoteRe = escapeRegex;
-
 function rdLoc(file: string, raw: string | undefined, from: RegExp | undefined, needles: readonly RegExp[]): SourceLocation {
 	const found = findIn(raw, from, needles) ?? findIn(raw, undefined, [/\\usage/]);
 	return found === undefined ? [1, 1, 1, 1, file] : [found[0], found[1], found[0], found[1] + Math.max(found[2] - 1, 0), file];
@@ -211,9 +204,9 @@ function rdLoc(file: string, raw: string | undefined, from: RegExp | undefined, 
 /** the spellings an entry name may have in the Rd source: `print.foo` as `\method{print}{foo}` too */
 function usageNeedles(name: string): RegExp[] {
 	const plain = name.replace(/<-$/, '');
-	const needles = [new RegExp(`${quoteRe(plain)}(?=\\s*\\()`)];
+	const needles = [new RegExp(`${escapeRegex(plain)}(?=\\s*\\()`)];
 	for(let i = plain.indexOf('.', 1); i >= 0; i = plain.indexOf('.', i + 1)) {
-		needles.push(new RegExp(`\\\\(?:S3)?method\\{${quoteRe(plain.slice(0, i))}\\}\\{${quoteRe(plain.slice(i + 1))}\\}`));
+		needles.push(new RegExp(`\\\\(?:S3)?method\\{${escapeRegex(plain.slice(0, i))}\\}\\{${escapeRegex(plain.slice(i + 1))}\\}`));
 	}
 	return needles;
 }
@@ -410,10 +403,10 @@ function checkPage(page: RdPage, rdName: string, path: string, raw: string | und
 	const usageText = page.usage.join('\n').replace(/\\l?dots/g, '...');
 	for(const arg of page.arguments.keys()) {
 		const simple = /^[\w.]+$/.test(arg);
-		if(usageArgs.has(arg) || simple && new RegExp(`(^|\\W)${quoteRe(arg)}($|\\W)`).test(usageText)) {
+		if(usageArgs.has(arg) || simple && new RegExp(`(^|\\W)${escapeRegex(arg)}($|\\W)`).test(usageText)) {
 			continue;
 		}
 		add('documented-argument-not-in-usage', arg, `Documented arguments not in \\usage in Rd file '${rdName}': '${arg}'`,
-			rdLoc(path, raw, ArgumentsStart, [new RegExp(`\\\\item\\s*\\{[^}]*${quoteRe(arg)}[^}]*\\}`)]));
+			rdLoc(path, raw, ArgumentsStart, [new RegExp(`\\\\item\\s*\\{[^}]*${escapeRegex(arg)}[^}]*\\}`)]));
 	}
 }

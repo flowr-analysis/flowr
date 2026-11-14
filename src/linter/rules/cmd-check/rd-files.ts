@@ -585,9 +585,7 @@ type Add = ReturnType<typeof fileFindings<RdFilesKind>>['add'];
 
 /** the pages grouped by `key`, only the groups of more than one */
 function shared<T>(items: readonly T[], key: (t: T) => string): [string, T[]][] {
-	const m = new Map<string, T[]>();
-	items.forEach(i => m.set(key(i), [...m.get(key(i)) ?? [], i]));
-	return [...m].filter(([, g]) => g.length > 1);
+	return [...Map.groupBy(items, key)].filter(([, g]) => g.length > 1);
 }
 
 /** `checking Rd metadata`: names and aliases that more than one page uses, and the package aliases */

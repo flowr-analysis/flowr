@@ -283,7 +283,8 @@ export const SYNTACTICALLY_VALID = {
 				const lines = root.text.split('\n');
 				for(const finding of collectFindings(root, lines)) {
 					// a single fix per error, favouring the preferred direction (alternatives are never emitted together)
-					const fix = (patterns.find(p => p.direction === config.preferFix && p.appliesTo(finding)) ?? patterns.find(p => p.appliesTo(finding)))?.quickFix(finding, file.filePath);
+					const applies = (preferred: boolean) => patterns.find(p => (p.direction === config.preferFix) === preferred && p.appliesTo(finding));
+					const fix = (applies(true) ?? applies(false))?.quickFix(finding, file.filePath);
 					results.push({
 						certainty:  LintingResultCertainty.Certain,
 						kind:       finding.kind,

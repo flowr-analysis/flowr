@@ -62,8 +62,7 @@ const DotsParameter = '...';
  * as a process-wide memo would let the first analyzer's built-ins answer for every later one.
  */
 function knownS3Generics(index: BuiltInIndex): ReadonlySet<BrandedIdentifier> {
-	return new Set([...Object.keys(RS3Generics.genericFormals), ...Object.keys(RGroupGenerics),
-		...index.with(CallProp.Generic).map(g => Identifier.getName(g))]);
+	return new Set([...Object.keys(RS3Generics.genericFormals), ...Object.keys(RGroupGenerics), ...index.with(CallProp.Generic).map(Identifier.getName)]);
 }
 
 /** Whether `generic`, or any member of it when it is a group generic (`Ops.cls` dispatches on `+`), is called. */
@@ -104,9 +103,7 @@ const GenericDispatchers = new Set<BrandedIdentifier>(['UseMethod', 'standardGen
 
 /** Whether a function body is a single call to a generic dispatcher. */
 function isGenericDispatcherOnlyBody(node: RNode<ParentInformation>): boolean {
-	const isDispatcherCall = (n: RNode<ParentInformation> | undefined) =>
-		RFunctionCall.isNamed(n, GenericDispatchers);
-	return isDispatcherCall(node) || (RExpressionList.is(node) && node.children.length === 1 && isDispatcherCall(node.children[0]));
+	return RFunctionCall.isNamed(node, GenericDispatchers) || (RExpressionList.is(node) && node.children.length === 1 && RFunctionCall.isNamed(node.children[0], GenericDispatchers));
 }
 
 /** Collects the parameter IDs of generic dispatcher functions, which hand them on to their methods. */
@@ -159,14 +156,7 @@ const InterestingEdgesTargets = EdgeType.SideEffectOnCall;
  * lifecycle hook R calls with a set of arguments, or an S3 method a generic dispatches to. Such a parameter is
  * unused only in the sense that this body ignores it, which is no reason to change what the function accepts.
  */
-function hasContractedSignature(
-	node: RNode<ParentInformation>,
-	ast: NormalizedAst,
-	config: UnusedDefinitionConfig,
-	pkg: PackageInfo,
-	called: ReadonlySet<BrandedIdentifier>,
-	ctx: ReadOnlyFlowrAnalyzerContext
-): boolean {
+function hasContractedSignature(node: RNode<ParentInformation>, ast: NormalizedAst, config: UnusedDefinitionConfig, pkg: PackageInfo, called: ReadonlySet<BrandedIdentifier>, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	let inParameter = false;
 	for(const parent of RNode.iterateParents(node, ast.idMap)) {
 		inParameter ||= RParameter.is(parent);
@@ -204,8 +194,7 @@ function doesMoreThanCompute(id: NodeId, graph: DataflowGraph, environment: REnv
 
 /** whether the functions handed to a call like `do.call(f, args)` are all known, see {@link Dataflow.callsOnlyKnownFunctions} */
 function runsOnlyKnownFunctions(vertex: DataflowGraphVertexFunctionCall, graph: DataflowGraph, environment: REnvironmentInformation | undefined): boolean {
-	const handed = vertex.args.map(FunctionArgument.getReference)
-		.filter(r => r !== undefined && RSymbol.is(graph.idMap?.get(r)) && DfgVertex.isFunctionCall(graph.getVertex(r))) as NodeId[];
+	const handed = vertex.args.map(FunctionArgument.getReference).filter(r => r !== undefined && RSymbol.is(graph.idMap?.get(r)) && DfgVertex.isFunctionCall(graph.getVertex(r))) as NodeId[];
 	return handed.length > 0 && handed.every(h => Dataflow.callsOnlyKnownFunctions(h, graph, environment));
 }
 
@@ -235,10 +224,7 @@ function yieldsFunctionValue(node: RNode<ParentInformation>, ast: NormalizedAst,
 }
 
 function isStandaloneStatement(node: RNode<ParentInformation>, ast: NormalizedAst): boolean {
-	if(node.info.role !== RoleInParent.ExpressionListChild) {
-		return false;
-	}
-	const parent = RNode.directParent(node, ast.idMap);
+	const parent = node.info.role === RoleInParent.ExpressionListChild ? RNode.directParent(node, ast.idMap) : undefined;
 	if(!RExpressionList.is(parent)) {
 		return false;
 	}
@@ -257,10 +243,8 @@ function hasImportantArgs(definedBys: readonly NodeId[], dfg: DataflowGraph, env
 }
 
 function quickFixForUnused(variable: RNode<ParentInformation>, dfg: DataflowGraph, environment: REnvironmentInformation | undefined, ast: NormalizedAst): LintQuickFix[] | undefined {
-	// first we check whether any of the 'Defined by' targets have any obligations - if so, we can not remove the definition
-	// otherwise we can automatically remove the full definition!
+	/* accesses and for variables cannot be removed, nor can a definition whose 'defined by' targets have obligations */
 	if(variable.info.role === RoleInParent.Accessed || variable.info.role === RoleInParent.ForVariable) {
-		// this is an access or a for variable, we can not remove it currently
 		return undefined;
 	}
 	const definedBys = Dataflow.targetsOf(dfg, variable.info.id, EdgeType.DefinedBy);
@@ -268,13 +252,8 @@ function quickFixForUnused(variable: RNode<ParentInformation>, dfg: DataflowGrap
 	if(hasImportantArgs(definedBys, dfg, environment, assignment?.statement.info.id ?? variable.info.parent)) {
 		return undefined;
 	}
-	const totalRangeToRemove = SourceLocation.merge([
-		...definedBys.map(d => SourceLocation.fromNode(ast.idMap.get(d))),
-		SourceLocation.fromNode(assignment?.value),
-		SourceLocation.fromNode(variable)
-	]);
+	const totalRangeToRemove = SourceLocation.merge([...definedBys.map(d => SourceLocation.fromNode(ast.idMap.get(d))), SourceLocation.fromNode(assignment?.value), SourceLocation.fromNode(variable)]);
 	if(totalRangeToRemove === undefined) {
-		/* a fix that names no place cannot be carried out, so none is offered */
 		return undefined;
 	}
 	const description = `Remove unused definition of \`${NodeId.recoverBareName(variable.info.id, ast.idMap)}\``;
@@ -302,8 +281,7 @@ function onlyKeepSupersetOfUnused(elements: UnusedDefinitionResult[]): UnusedDef
 function isWithinPromise(node: RNode<ParentInformation>, idMap: AstIdMap): boolean {
 	let child = node;
 	for(const parent of RNode.iterateParents(node, idMap)) {
-		if((RParameter.is(parent) && parent.defaultValue?.info.id === child.info.id)
-			|| (RFunctionCall.isNamed(parent, 'delayedAssign'))) {
+		if((RParameter.is(parent) && parent.defaultValue?.info.id === child.info.id) || RFunctionCall.isNamed(parent, 'delayedAssign')) {
 			return true;
 		}
 		child = parent;
@@ -330,8 +308,7 @@ function mayWriteIntoCallerObject(node: RNode<ParentInformation>, graph: Dataflo
 }
 
 export const UNUSED_DEFINITION = {
-	createSearch: config => Q.all().filter(
-		config.includeFunctionDefinitions ? F.or(VertexType.VariableDefinition, VertexType.FunctionDefinition) : VertexType.VariableDefinition),
+	createSearch:        config => Q.all().filter(config.includeFunctionDefinitions ? F.or(VertexType.VariableDefinition, VertexType.FunctionDefinition) : VertexType.VariableDefinition),
 	processSearchResult: async(elements, config, data): Promise<{ results: UnusedDefinitionResult[], '.meta': UnusedDefinitionMetadata }> => {
 		const normalize = await data.normalize();
 		const dataflow = await data.dataflow();
@@ -342,26 +319,13 @@ export const UNUSED_DEFINITION = {
 		const s3GenericParams = collectS3GenericParameterIds(normalize);
 		const metadata: UnusedDefinitionMetadata = { totalConsidered: 0 };
 		const isUnused = (node: RNode<ParentInformation>): boolean => {
-			if(isWithinPromise(node, normalize.idMap)) {
-				return false;
-			}
 			const vertex = graph.getVertex(node.info.id);
-			if(!vertex || (!DfgVertex.isVariableDefinition(vertex) && DfgVertex.isFunctionDefinition(vertex) && !config.includeFunctionDefinitions)) {
-				return false;
-			}
-			if(s3GenericParams.has(node.info.id) || mayWriteIntoCallerObject(node, graph, normalize.idMap, ctx)) {
-				return false;
-			}
-			// an anonymous dispatcher passed to setGeneric()/new_generic() runs on every dispatch, so it is used
-			if(DfgVertex.isFunctionDefinition(vertex) && RFunctionDefinition.is(node) && isGenericDispatcherOnlyBody(node.body)) {
-				return false;
-			}
-			if(isConsideredUsed(node.lexeme, config, packageInfo, calledNames, ctx)) {
-				return false;
-			}
-			/* what calls a hook or dispatches to a method decides its parameters, so they are no more the
-			   author's to drop than the name is: `print.foo` keeps the `x` the generic hands it */
-			if(hasContractedSignature(node, normalize, config, packageInfo, calledNames, ctx)) {
+			/* an anonymous dispatcher passed to setGeneric()/new_generic() runs on every dispatch, and what calls a hook or dispatches to a
+			   method decides its parameters, so they are no more the author's to drop than the name is: `print.foo` keeps the `x` the generic hands it */
+			if(isWithinPromise(node, normalize.idMap) || !vertex || (!DfgVertex.isVariableDefinition(vertex) && DfgVertex.isFunctionDefinition(vertex) && !config.includeFunctionDefinitions)
+				|| s3GenericParams.has(node.info.id) || mayWriteIntoCallerObject(node, graph, normalize.idMap, ctx)
+				|| (DfgVertex.isFunctionDefinition(vertex) && RFunctionDefinition.is(node) && isGenericDispatcherOnlyBody(node.body))
+				|| isConsideredUsed(node.lexeme, config, packageInfo, calledNames, ctx) || hasContractedSignature(node, normalize, config, packageInfo, calledNames, ctx)) {
 				return false;
 			}
 			const interestedIn = DfgVertex.isVariableDefinition(vertex) ? InterestingEdgesVariable : InterestingEdgesFunction;
@@ -370,10 +334,7 @@ export const UNUSED_DEFINITION = {
 		return {
 			results: onlyKeepSupersetOfUnused(elements.getElements().flatMap(({ node }) => {
 				metadata.totalConsidered++;
-				if(!isUnused(node)) {
-					return [];
-				}
-				return [{
+				return !isUnused(node) ? [] : [{
 					certainty:    LintingResultCertainty.Uncertain,
 					variableName: NodeId.recoverBareName(node.info.id, normalize.idMap),
 					involvedId:   node.info.id,

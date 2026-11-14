@@ -22,6 +22,19 @@ import { CallTargets } from '../../../queries/catalog/call-context-query/identif
 import type { KnownParser } from '../../../r-bridge/parser';
 
 
+function requestResponseDiagram(request: string, response: string): string {
+	return `
+    Client->>+Server: ${request}
+
+    alt
+        Server-->>Client: ${response}
+    else
+        Server-->>Client: error
+    end
+    deactivate  Server
+	`;
+}
+
 /**
  * Documents every message the flowR server understands, in the order the wiki presents them.
  * @param ctx - the documentation context to write into
@@ -66,17 +79,9 @@ Requests for the [REPL](#message-request-repl-execution) are independent of that
 		definitionPath:         '../cli/repl/server/messages/message-analysis.ts',
 		defRequest:             requestAnalysisMessage,
 		defResponse:            analysisResponseMessage,
-		mermaidSequenceDiagram: `
-    Client->>+Server: request-file-analysis
-    alt
-        Server-->>Client: response-file-analysis
-    else
-        Server-->>Client: error
-    end
-    deactivate  Server
-	`,
-		shortDescription: 'The server builds the dataflow graph for a given input file (or a set of files).',
-		text:             async(shell: KnownParser) => {
+		mermaidSequenceDiagram: requestResponseDiagram('request-file-analysis', 'response-file-analysis'),
+		shortDescription:       'The server builds the dataflow graph for a given input file (or a set of files).',
+		text:                   async(shell: KnownParser) => {
 			return `
 	
 The request allows the server to analyze a file and prepare it for slicing.
@@ -274,18 +279,9 @@ The base message format is still JSON, only the individual results are printed a
 		definitionPath:         '../cli/repl/server/messages/message-slice.ts',
 		defRequest:             requestSliceMessage,
 		defResponse:            responseSliceMessage,
-		mermaidSequenceDiagram: `
-    Client->>+Server: request-slice
-
-    alt
-        Server-->>Client: response-slice
-    else
-        Server-->>Client: error
-    end
-    deactivate  Server
-	`,
-		shortDescription: `${deprecatedByQuery} The server slices a file based on the given criteria.`,
-		text:             async(shell: KnownParser) => {
+		mermaidSequenceDiagram: requestResponseDiagram('request-slice', 'response-slice'),
+		shortDescription:       `${deprecatedByQuery} The server slices a file based on the given criteria.`,
+		text:                   async(shell: KnownParser) => {
 			return `
 **We deprecated the slice request in favor of the \`static-slice\` ${ctx.linkPage('wiki/Query API', 'Query')}.**
 
@@ -448,18 +444,9 @@ ${codeBlock('text', (msg as ExecuteIntermediateResponseMessage).result)}
 		definitionPath:         '../cli/repl/server/messages/message-query.ts',
 		defRequest:             requestQueryMessage,
 		defResponse:            responseQueryMessage,
-		mermaidSequenceDiagram: `
-    Client->>+Server: request-query
-
-    alt
-        Server-->>Client: response-query
-    else
-        Server-->>Client: error
-    end
-    deactivate  Server
-	`,
-		shortDescription: 'Query an analysis result for specific information.',
-		text:             async(shell: KnownParser) => {
+		mermaidSequenceDiagram: requestResponseDiagram('request-query', 'response-query'),
+		shortDescription:       'Query an analysis result for specific information.',
+		text:                   async(shell: KnownParser) => {
 			return `
 To send queries, you have to send an [analysis request](#message-request-file-analysis) first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly query the same file.
 This message provides direct access to _flowR_'s Query API. Please consult the ${ctx.linkPage('wiki/Query API', 'Query API documentation')} for more information.

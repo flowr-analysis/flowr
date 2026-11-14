@@ -93,12 +93,7 @@ export const FILE_PATH_VALIDITY = {
 	}).with(Enrichment.CfgInformation),
 	processSearchResult: async(elements, config, data): Promise<{ results: FilePathValidityResult[], '.meta': FilePathValidityMetadata }> => {
 		const cfg = elements.enrichmentContent(Enrichment.CfgInformation).cfg.graph;
-		const metadata: FilePathValidityMetadata = {
-			totalReads:              0,
-			totalUnknown:            0,
-			totalWritesBeforeAlways: 0,
-			totalValid:              0
-		};
+		const metadata: FilePathValidityMetadata = { totalReads: 0, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 };
 		const results = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'];
 		const ctx = data.inspectContext();
 		const df = await data.dataflow();
@@ -188,10 +183,7 @@ export const FILE_PATH_VALIDITY = {
 			const uncertain = maybeWrittenBefore || guardedByFileQuery(df, id, path, data);
 			return verdict(false, path, uncertain ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain, quickFix);
 		}));
-		return {
-			results: findings.flat(),
-			'.meta': metadata
-		};
+		return { results: findings.flat(), '.meta': metadata };
 	},
 	info: {
 		name:          'File Path Validity',
@@ -199,12 +191,7 @@ export const FILE_PATH_VALIDITY = {
 		// checks all found paths for whether they're valid to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug, LintingRuleTag.QuickFix],
-		defaultConfig: () => ({
-			additionalReadFunctions:  [],
-			additionalWriteFunctions: [],
-			includeUnknown:           false,
-			checkUrls:                false
-		})
+		defaultConfig: () => ({ additionalReadFunctions: [], additionalWriteFunctions: [], includeUnknown: false, checkUrls: false })
 	},
 	prettyPrint: prettyPrintAt(result => `Path \`${result.filePath}\``, () => 'does not point to a valid file')
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig>;

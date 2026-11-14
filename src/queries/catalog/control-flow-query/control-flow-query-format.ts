@@ -16,10 +16,7 @@ export async function executeControlFlowQuery({ analyzer }: BasicQueryData, quer
 
 	const start = Date.now();
 	const controlFlow = await analyzer.controlflow(query.config?.simplificationPasses);
-	return {
-		...metaSince(start),
-		controlFlow
-	};
+	return { ...metaSince(start), controlFlow };
 }
 
 /** Provides the control flow graph with an optional, fixed configuration */

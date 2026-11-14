@@ -1,18 +1,10 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
 import { type RecordedRun, recordsRuns } from '../plugins/file-plugins/files/recorded-runs';
-import type {
-	RParseRequestFromText,
-	RParseRequest,
-	RParseRequestFromFile } from '../../r-bridge/retriever';
+import type { RParseRequestFromText, RParseRequest, RParseRequestFromFile } from '../../r-bridge/retriever';
 import { isParseRequest } from '../../r-bridge/retriever';
 import { guard } from '../../util/assert';
-import type {
-	FlowrAnalyzerLoadingOrderContext,
-	ReadOnlyFlowrAnalyzerLoadingOrderContext
-} from './flowr-analyzer-loading-order-context';
-import {
-	FlowrAnalyzerProjectDiscoveryPlugin
-} from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
+import type { FlowrAnalyzerLoadingOrderContext, ReadOnlyFlowrAnalyzerLoadingOrderContext } from './flowr-analyzer-loading-order-context';
+import { FlowrAnalyzerProjectDiscoveryPlugin } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
 import { type FilePath, FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole } from './flowr-file';
 import type { FlowrDescriptionFile } from '../plugins/file-plugins/files/flowr-description-file';
@@ -600,13 +592,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		guard(file !== undefined && file !== null, `File ${r.content} not found in context.`);
 
 		const content = file.content();
-		return {
-			r: {
-				request: 'text',
-				content: typeof content === 'string' ? content : '',
-			},
-			path: file.path()
-		};
+		return { r: { request: 'text', content: typeof content === 'string' ? content : '' }, path: file.path() };
 	}
 
 	/**

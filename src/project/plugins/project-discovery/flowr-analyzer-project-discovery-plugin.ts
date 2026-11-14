@@ -144,19 +144,13 @@ const manPageFile = /(^|[\\/])man[\\/](macros[\\/])?[^\\/]+\.rd$/i;
 /** a package's system data, which R lazy-loads into its namespace (source `R/sysdata.rda`, installed `R/sysdata.rdx`) */
 const sysdataFile = /(^|[\\/])R[\\/]sysdata\.(rda|rdx)$/i;
 /** the tables R keeps beside the pages: what a package documents, and what its datasets provide */
-const documentationTables = [
-	/^(INDEX|00Index)$/,
-	/^datalist$/i
-];
+const documentationTables = [/^(INDEX|00Index)$/, /^datalist$/i];
 
 interface KeepRules { readonly include: readonly ((p: string) => boolean)[]; readonly exclude: readonly ((p: string) => boolean)[] }
 
 /** compile the `project.discovery.perKind` include/exclude globs into matchers */
 function resolveRules(override: { include?: string[], exclude?: string[] } | undefined): KeepRules {
-	return {
-		include: (override?.include ?? []).map(globMatcher),
-		exclude: (override?.exclude ?? []).map(globMatcher)
-	};
+	return { include: (override?.include ?? []).map(globMatcher), exclude: (override?.exclude ?? []).map(globMatcher) };
 }
 
 /** over-approximating default: R sources, role metadata, `tests/`/`vignettes/`, and what documents a name */

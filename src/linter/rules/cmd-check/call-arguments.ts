@@ -257,9 +257,6 @@ export const CALL_ARGUMENTS = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds calls with arguments the called function does not take, names that match a formal only partially or match several formals, `...` used in a function without `...`, and local functions defined twice with different formals. Calls are resolved through the dataflow graph.',
-		defaultConfig: () => ({
-			reportPartialMatches:  true,
-			checkPackageFunctions: true
-		})
+		defaultConfig: () => ({ reportPartialMatches: true, checkPackageFunctions: true })
 	}
 } as const satisfies LintingRule<CallArgumentsResult, CallArgumentsMetadata, CallArgumentsConfig>;

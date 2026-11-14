@@ -236,13 +236,7 @@ export function parsePackagesWithVersions(packageStrings: readonly string[], typ
 		const [, name, operator, version] = match;
 
 		const range = Package.parsePkgVersionRange(operator, version);
-		packages.push(new Package(
-			{
-				name:               name,
-				type:               type,
-				versionConstraints: range ? [range] : undefined
-			}
-		));
+		packages.push(new Package({ name: name, type: type, versionConstraints: range ? [range] : undefined }));
 		str = str.slice(match.index + match[0].length);
 	}
 	return packages;

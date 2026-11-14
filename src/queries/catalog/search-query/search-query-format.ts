@@ -18,16 +18,10 @@ export async function executeSearch({ analyzer }: BasicQueryData, queries: reado
 
 		const searchResult = await runSearch(search, analyzer);
 
-		results.push({
-			ids: searchResult.getElements().map(({ node }) => node.info.id),
-			search
-		});
+		results.push({ ids: searchResult.getElements().map(({ node }) => node.info.id), search });
 	}
 
-	return {
-		...metaSince(start),
-		results
-	};
+	return { ...metaSince(start), results };
 }
 
 export interface SearchQuery extends BaseQueryFormat {

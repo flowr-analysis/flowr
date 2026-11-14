@@ -76,9 +76,7 @@ function isDispatched(generic: BrandedIdentifier, called: ReadonlySet<BrandedIde
  * R package lifecycle hooks called automatically by R's package machinery.
  * These functions are invoked by the package system, so they are used even without textual callers.
  */
-const PackageHookFunctions = new Set<string>([
-	'.onLoad', '.onAttach', '.onUnload', '.onDetach', '.Last.lib', '.First.lib'
-]);
+const PackageHookFunctions = new Set<string>(['.onLoad', '.onAttach', '.onUnload', '.onDetach', '.Last.lib', '.First.lib']);
 
 interface PackageInfo {
 	/** all names the project exports via its `NAMESPACE` (functions, symbols, patterns, S3 methods as `generic.class`) */
@@ -342,9 +340,7 @@ export const UNUSED_DEFINITION = {
 		const packageInfo = collectPackageInfo(data);
 		const calledNames = collectCalledNames(graph);
 		const s3GenericParams = collectS3GenericParameterIds(normalize);
-		const metadata: UnusedDefinitionMetadata = {
-			totalConsidered: 0
-		};
+		const metadata: UnusedDefinitionMetadata = { totalConsidered: 0 };
 		const isUnused = (node: RNode<ParentInformation>): boolean => {
 			if(isWithinPromise(node, normalize.idMap)) {
 				return false;
@@ -395,9 +391,6 @@ export const UNUSED_DEFINITION = {
 		tags:          [LintingRuleTag.Readability, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
 		// our limited analysis causes unused definitions involving complex reflection etc. not to be included in our result, but unused definitions are correctly validated
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: () => ({
-			includeFunctionDefinitions: true,
-			excludeExportedDefinitions: true
-		})
+		defaultConfig: () => ({ includeFunctionDefinitions: true, excludeExportedDefinitions: true })
 	}
 } as const satisfies LintingRule<UnusedDefinitionResult, UnusedDefinitionMetadata, UnusedDefinitionConfig>;

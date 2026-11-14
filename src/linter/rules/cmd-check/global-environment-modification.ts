@@ -280,9 +280,6 @@ export const GLOBAL_ENVIRONMENT_MODIFICATION = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds code that changes the global environment: `assign()` or `data()` into it, `attach()`, `<<-` without a binding in an enclosing function, and `<<-` to a package variable, whose binding is locked at run time.',
-		defaultConfig: () => ({
-			checkSuperAssignments: true,
-			allowedGlobals:        ['.Random.seed']
-		})
+		defaultConfig: () => ({ checkSuperAssignments: true, allowedGlobals: ['.Random.seed'] })
 	}
 } as const satisfies LintingRule<GlobalEnvironmentModificationResult, GlobalEnvironmentModificationMetadata, GlobalEnvironmentModificationConfig>;

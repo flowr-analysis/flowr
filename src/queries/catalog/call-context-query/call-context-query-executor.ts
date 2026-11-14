@@ -92,10 +92,7 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 			callName:   promoteCallName(q.callName, q.callNameExact),
 			exactNames: exactNamesOf(q.callName, q.callNameExact),
 			idx,
-			fileFilter: q.fileFilter && {
-				...q.fileFilter,
-				filter: promoteCallName(q.fileFilter.filter)
-			}
+			fileFilter: q.fileFilter && { ...q.fileFilter, filter: promoteCallName(q.fileFilter.filter) }
 		};
 		if(!isSubCallQuery(q)) {
 			return promoted;
@@ -399,8 +396,5 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 		}
 	}
 
-	return {
-		...metaSince(now),
-		kinds: makeReport(initialIdCollector)
-	};
+	return { ...metaSince(now), kinds: makeReport(initialIdCollector) };
 }

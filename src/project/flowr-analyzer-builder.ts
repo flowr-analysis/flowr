@@ -203,11 +203,7 @@ export class FlowrAnalyzerBuilder {
 		if(this.flowrConfig.solver.sigdb.enabled && this.flowrConfig.solver.sigdb.eagerlyLoad) {
 			context.deps.eagerlyLoadSignatureDatabases();
 		}
-		const cache = FlowrAnalyzerCache.create({
-			parser: this.parser,
-			context,
-			...(this.input ?? {})
-		});
+		const cache = FlowrAnalyzerCache.create({ parser: this.parser, context, ...(this.input ?? {}) });
 
 		return new FlowrAnalyzer(
 			this.parser,

@@ -156,8 +156,7 @@ function certaintyOf(target: Identifier, owners: readonly (BrandedNamespace | un
 }
 
 function alwayDeprecatedFromBuiltinConfig(definitions: BuiltInDefinitions): Identifier[] {
-	return definitions.filter(def => def.type === 'function'
-		&& FunctionSemantics.call.props.hasAny(def.config, SemanticCallTag.Deprecated))
+	return definitions.filter(def => def.type === 'function' && FunctionSemantics.call.props.hasAny(def.config, SemanticCallTag.Deprecated))
 		.flatMap(def => def.names);
 }
 
@@ -191,9 +190,7 @@ export const DEPRECATED_FUNCTIONS = {
 			return enrichmentContent(e, Enrichment.CallTargets).targets.map(target => {
 				const sourceLocation = SourceLocation.fromNode(e.node);
 				if(sourceLocation !== undefined) {
-					return {
-						node: e.node, target: Identifier.parse(target as string), sourceLocation
-					};
+					return { node: e.node, target: Identifier.parse(target as string), sourceLocation };
 				}
 			});
 		}).filter(p => isNotUndefined(p));
@@ -258,10 +255,7 @@ export const DEPRECATED_FUNCTIONS = {
 			});
 		}
 
-		return {
-			results: results.concat(sigdbFlagged),
-			'.meta': { builtin: results.length, sigdb: sigdbFlagged.length }
-		};
+		return { results: results.concat(sigdbFlagged), '.meta': { builtin: results.length, sigdb: sigdbFlagged.length } };
 	},
 	prettyPrint: prettyPrint(
 		(result: DeprecatedFunctionRuleResult) => `${result.type === 'deprecated-argument' ? `Argument \`${result.arg}\` of ` : ''}function \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)}`,

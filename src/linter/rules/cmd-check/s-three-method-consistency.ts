@@ -249,11 +249,6 @@ export const S3_METHOD_CONSISTENCY = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds S3 methods whose formals do not match their generic, methods not registered in the NAMESPACE, and replacement functions whose last formal is not `value`.',
-		defaultConfig: () => ({
-			checkMethods:           true,
-			checkApparentMethods:   true,
-			checkUnregistered:      true,
-			checkReplacementValues: true
-		})
+		defaultConfig: () => ({ checkMethods: true, checkApparentMethods: true, checkUnregistered: true, checkReplacementValues: true })
 	}
 } as const satisfies LintingRule<S3MethodConsistencyResult, S3MethodConsistencyMetadata, S3MethodConsistencyConfig>;

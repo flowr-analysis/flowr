@@ -377,11 +377,7 @@ export const PACKAGE_RUNTIME = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds what makes installing, loading, or running the package fail without doing so: undefined exports, export patterns matching nothing, a NAMESPACE exporting nothing, S3 methods without a function, bad NAMESPACE imports, a package attaching itself, tests that never run, test or vignette code that does not parse, missing vignette metadata, and files written into the working directory.',
-		defaultConfig: () => ({
-			checkWrites:    true,
-			checkExports:   true,
-			requireExports: true
-		})
+		defaultConfig: () => ({ checkWrites: true, checkExports: true, requireExports: true })
 	}
 } as const satisfies LintingRule<PackageRuntimeResult, PackageRuntimeMetadata, PackageRuntimeConfig>;
 

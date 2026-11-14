@@ -31,10 +31,7 @@ export async function executeOriginQuery({ analyzer }: BasicQueryData, queries: 
 		results[key] = Dataflow.origin((await analyzer.dataflow()).graph, astId);
 	}
 
-	return {
-		...metaSince(start),
-		results
-	};
+	return { ...metaSince(start), results };
 }
 
 export interface OriginQuery extends BaseQueryFormat {
@@ -54,13 +51,7 @@ function originQueryLineParser(output: ReplOutput, line: readonly string[], _con
 		return invalidQueryLine(output, 'Invalid origin query format, slicing criterion must be given in parentheses, e.g. (2@var), (1:5) or ($10)');
 	}
 
-	return {
-		query: {
-			type:      'origin',
-			criterion: criterion
-		},
-		rCode: queryLineCode(line)
-	};
+	return { query: { type: 'origin', criterion: criterion }, rCode: queryLineCode(line) };
 }
 
 export const OriginQueryDefinition = {

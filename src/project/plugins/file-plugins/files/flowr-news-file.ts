@@ -134,12 +134,7 @@ function parseNews(file: FlowrFileProvider): NewsChunk[] {
 					return l.replace(new RegExp(`^\\s*[${separator}]\\s+`), '').replace(/^\t?/gm, '').trim();
 				}).join('\n')
 			);
-			return compactRecord({
-				header,
-				version: head,
-				date,
-				entries: lineChunks
-			});
+			return compactRecord({ header, version: head, date, entries: lineChunks });
 		} else {
 			// from the spec: "Categories should be non-empty starting in column 1."
 			const categoryChunks = splitLinesRegex(

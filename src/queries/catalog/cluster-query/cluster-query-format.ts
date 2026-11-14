@@ -15,10 +15,7 @@ export async function executeDataflowClusterQuery({ analyzer }: BasicQueryData, 
 
 	const start = Date.now();
 	const clusters = findAllClusters((await analyzer.dataflow()).graph);
-	return {
-		...metaSince(start),
-		clusters
-	};
+	return { ...metaSince(start), clusters };
 }
 
 /** Calculates and returns all clusters encountered in the dataflow graph. */

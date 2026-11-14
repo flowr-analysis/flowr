@@ -87,8 +87,6 @@ export const INTERACTIVE_FUNCTIONS = {
 		tags:          [LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds calls that only do their job in an interactive session, such as `View`, `edit`, `browser`, or `debug`, left in a script, where `Rscript` skips or stops at them. A call in the branch an `interactive()` check takes is fine, one within a function is uncertain, as the function may only be meant for interactive use.',
-		defaultConfig: ctx => ({
-			fns: ctx.env.deriveFromIndex(index => index.with(SemanticCallTag.Interactive))
-		})
+		defaultConfig: ctx => ({ fns: ctx.env.deriveFromIndex(index => index.with(SemanticCallTag.Interactive)) })
 	}
 } as const satisfies LintingRule<FunctionsResult, FunctionsMetadata, InteractiveFunctionsConfig>;

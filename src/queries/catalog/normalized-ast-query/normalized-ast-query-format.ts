@@ -11,10 +11,7 @@ export async function executeNormalizedAstQuery({ analyzer }: BasicQueryData, qu
 	warnUnlessSingleQuery('Normalized-Ast', queries);
 	const startTime = Date.now();
 	const normalized = await analyzer.normalize();
-	return {
-		...metaSince(startTime),
-		normalized
-	};
+	return { ...metaSince(startTime), normalized };
 }
 
 /** Simple re-returns the normalized AST of the analysis. */

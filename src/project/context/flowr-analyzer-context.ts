@@ -1,25 +1,12 @@
-import {
-	FlowrAnalyzerFilesContext,
-	type RAnalysisRequest,
-	type ReadOnlyFlowrAnalyzerFilesContext
-} from './flowr-analyzer-files-context';
+import { FlowrAnalyzerFilesContext, type RAnalysisRequest, type ReadOnlyFlowrAnalyzerFilesContext } from './flowr-analyzer-files-context';
 import type { ProjectKind } from './project-kind';
-import {
-	FlowrAnalyzerDependenciesContext,
-	type ReadOnlyFlowrAnalyzerDependenciesContext
-} from './flowr-analyzer-dependencies-context';
+import { FlowrAnalyzerDependenciesContext, type ReadOnlyFlowrAnalyzerDependenciesContext } from './flowr-analyzer-dependencies-context';
 import type { Range } from 'semver';
 import { type FlowrAnalyzerPlugin, PluginType } from '../plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerLoadingOrderContext } from './flowr-analyzer-loading-order-context';
-import type {
-	FlowrAnalyzerLoadingOrderPlugin
-} from '../plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
-import type {
-	FlowrAnalyzerPackageVersionsPlugin
-} from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
-import type {
-	FlowrAnalyzerProjectDiscoveryPlugin
-} from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
+import type { FlowrAnalyzerLoadingOrderPlugin } from '../plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
+import type { FlowrAnalyzerPackageVersionsPlugin } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
+import type { FlowrAnalyzerProjectDiscoveryPlugin } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import type { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
 import { FlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 import { arraysGroupBy } from '../../util/collections/arrays';
@@ -36,22 +23,11 @@ import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-co
 import type { ReadOnlyFlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
 import { FlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
 import type { FlowrAnalyzer } from '../flowr-analyzer';
-import type {
-	ReadOnlyFlowrAnalyzerIncrementalAnalysisContext
-} from './flowr-analyzer-incremental-analysis-context';
-import {
-	FlowrAnalyzerIncrementalAnalysisContext
-} from './flowr-analyzer-incremental-analysis-context';
-import type {
-	InvalidationEvent,
-	InvalidationEventReceiver } from '../cache/flowr-cache';
-import {
-	InvalidationEventType
-} from '../cache/flowr-cache';
-import {
-	FlowrAnalyzerGasContext,
-	type ReadOnlyFlowrAnalyzerGasContext
-} from './flowr-analyzer-gas-context';
+import type { ReadOnlyFlowrAnalyzerIncrementalAnalysisContext } from './flowr-analyzer-incremental-analysis-context';
+import { FlowrAnalyzerIncrementalAnalysisContext } from './flowr-analyzer-incremental-analysis-context';
+import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
+import { InvalidationEventType } from '../cache/flowr-cache';
+import { FlowrAnalyzerGasContext, type ReadOnlyFlowrAnalyzerGasContext } from './flowr-analyzer-gas-context';
 import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { type FnInfo, fnInfo } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';

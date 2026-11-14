@@ -64,11 +64,7 @@ export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: 
 	/* rendered here, not when printing, so an api client gets it too */
 	const format = queries.map(q => q.format).find(isNotUndefined);
 	const formatted = format ? formatLints((results as LinterQueryResult).results, format, flowrVersion().toString()) : undefined;
-	return {
-		...results,
-		...(formatted ? { formatted } : {}),
-		...metaSince(start)
-	};
+	return { ...results, ...(formatted ? { formatted } : {}), ...metaSince(start) };
 }
 
 export interface LinterQuery extends BaseQueryFormat {
@@ -231,10 +227,7 @@ export const LinterQueryDefinition = {
 			format: Joi.string().valid(...Object.values(LinterOutputFormat)).optional().description('Print the findings in a machine-readable format instead of the human-readable summary.'),
 			rules:  Joi.array().items(
 				Joi.string().valid(...Object.keys(LintingRules)),
-				Joi.object({
-					name:   Joi.string().valid(...Object.keys(LintingRules)).required(),
-					config: Joi.object()
-				})
+				Joi.object({ name: Joi.string().valid(...Object.keys(LintingRules)).required(), config: Joi.object() })
 			).description('The rules to lint for. If unset, all rules will be included.'),
 			tags: Joi.array().items(Joi.string().valid(...Object.values(LintingRuleTag))).optional().description('Lint for every rule carrying one of these tags, e.g. cmd-check for the R CMD check rules.')
 		}).description('The linter query lints for the given set of rules and returns the result.');

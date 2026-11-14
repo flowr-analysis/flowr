@@ -155,9 +155,6 @@ export const CLASS_STRING_COMPARISON = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds `if`/`while` conditions comparing `class(x)` with a string, which fail for objects with several classes. Offers `inherits(x, ...)` as a quick fix.',
-		defaultConfig: () => ({
-			checkWhile:     true,
-			resolveStrings: true
-		})
+		defaultConfig: () => ({ checkWhile: true, resolveStrings: true })
 	}
 } as const satisfies LintingRule<ClassStringComparisonResult, ClassStringComparisonMetadata, ClassStringComparisonConfig>;

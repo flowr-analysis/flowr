@@ -9,8 +9,5 @@ import type { BuiltInIndex } from '../../../../dataflow/environments/query-fn-pr
  * for the time-series `stats::filter`. Label a built-in `Transforms` and it shows up here.
  */
 export function transformFunctions(index: BuiltInIndex): FunctionInfo[] {
-	return index.with(SemanticCallTag.Transforms).map(call => ({
-		name:    Identifier.getName(call),
-		package: Identifier.getNamespace(call)
-	}));
+	return index.with(SemanticCallTag.Transforms).map(call => ({ name: Identifier.getName(call), package: Identifier.getNamespace(call) }));
 }

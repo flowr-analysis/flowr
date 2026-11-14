@@ -202,10 +202,7 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 	public readonly cleanEnv = (): REnvironmentInformation => this.makeCleanEnv();
 
 	public makeCleanEnv(): REnvironmentInformation {
-		return {
-			current: new Environment(this.builtInEnv).asGlobal(),
-			level:   0
-		};
+		return { current: new Environment(this.builtInEnv).asGlobal(), level: 0 };
 	}
 
 	public getCleanEnvFingerprint(): Fingerprint {
@@ -216,16 +213,10 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 	}
 
 	public makeCleanEnvWithEmptyBuiltIns(): REnvironmentInformation {
-		return {
-			current: new Environment(this.emptyBuiltInEnv).asGlobal(),
-			level:   0
-		};
+		return { current: new Environment(this.emptyBuiltInEnv).asGlobal(), level: 0 };
 	}
 
 	public makeEmptyEnv(): REnvironmentInformation {
-		return {
-			current: Environment.root(),
-			level:   0
-		};
+		return { current: Environment.root(), level: 0 };
 	}
 }

@@ -134,12 +134,7 @@ export function parseSweave(raw: string): SweaveInfo {
 					blocks.push({ type: 'reuse', reuse: result.reuse, startLine: lineNum });
 					continue;
 				}
-				currentBlock = {
-					type:      'content',
-					options:   result,
-					content:   '',
-					startLine: lineNum
-				};
+				currentBlock = { type: 'content', options: result, content: '', startLine: lineNum };
 			}
 		}
 	}
@@ -160,10 +155,7 @@ export function parseSweave(raw: string): SweaveInfo {
 		}
 	}
 
-	return {
-		content: content.join('\n'),
-		blocks:  blocks
-	};
+	return { content: content.join('\n'), blocks: blocks };
 }
 
 const evalWithFlagPattern = /eval\s*=\s*(TRUE|FALSE)/i;
@@ -206,9 +198,7 @@ export function parseSweaveCodeblockStart(line: string): SweaveBlockOptions | Sw
 			}
 		}
 
-		return {
-			name, eval: evalOpt
-		};
+		return { name, eval: evalOpt };
 	}
 
 	return undefined;

@@ -224,20 +224,12 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 		const options = parseCodeBlockOptions(node.info, node.literal);
 		const engineOpt = options.get('engine');
 		if(engineOpt === undefined || engineOpt.trim().toLowerCase() === 'r') {
-			blocks.push({
-				code:     node.literal,
-				options,
-				header:   node.info,
-				startpos: { line: node.sourcepos[0][0] + 1, col: 0 }
-			});
+			blocks.push({ code: node.literal, options, header: node.info, startpos: { line: node.sourcepos[0][0] + 1, col: 0 } });
 		}
 	}
 	blocks.push(...parseIncludeShortcodes(raw));
 	blocks.sort((a, b) => a.startpos.line - b.startpos.line);
-	return {
-		blocks,
-		options: typeof frontmatter === 'object' && frontmatter !== null ? frontmatter : {}
-	};
+	return { blocks, options: typeof frontmatter === 'object' && frontmatter !== null ? frontmatter : {} };
 }
 
 const IncludeShortcodeRegex = /{{<\s*include\s+["']?(.+?)["']?\s*>}}/;
@@ -246,12 +238,7 @@ const IncludeShortcodeRegex = /{{<\s*include\s+["']?(.+?)["']?\s*>}}/;
 function parseIncludeShortcodes(raw: string): CodeBlock[] {
 	return raw.split(LineRegex).flatMap((line, i) => {
 		const match = IncludeShortcodeRegex.exec(line);
-		return match ? [{
-			code:     '',
-			options:  new Map([['child', match[1]]]),
-			header:   '',
-			startpos: { line: i + 1, col: 0 }
-		}] : [];
+		return match ? [{ code: '', options: new Map([['child', match[1]]]), header: '', startpos: { line: i + 1, col: 0 } }] : [];
 	});
 }
 

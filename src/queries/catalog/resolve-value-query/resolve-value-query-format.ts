@@ -37,15 +37,10 @@ export async function executeResolveValueQuery({ analyzer }: BasicQueryData, que
 			.map(criteria => SlicingCriterion.parse(criteria, idMap))
 			.flatMap(ident => Resolve.toValue(ident, { graph, full: true, idMap, resolve: analyzer.flowrConfig.solver.variables, ctx: analyzer.inspectContext() }));
 
-		results[key] = {
-			values: values
-		};
+		results[key] = { values: values };
 	}
 
-	return {
-		...metaSince(start),
-		results
-	};
+	return { ...metaSince(start), results };
 }
 
 export interface ResolveValueQuery extends BaseQueryFormat {
@@ -64,14 +59,7 @@ function resolveValueLineParser(output: ReplOutput, line: readonly string[], _co
 		return invalidQueryLine(output, 'Invalid resolve-value query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"');
 	}
 
-	return {
-		query: [
-			{
-				type:     'resolve-value',
-				criteria: criteria,
-			}],
-		rCode: queryLineCode(line)
-	};
+	return { query: [{ type: 'resolve-value', criteria: criteria }], rCode: queryLineCode(line) };
 }
 
 export const ResolveValueQueryDefinition = {

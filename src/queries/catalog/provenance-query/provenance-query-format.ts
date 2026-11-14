@@ -26,16 +26,9 @@ export async function executeProvenanceQuery({ analyzer }: BasicQueryData, queri
 
 		const provenanceNode = nast.idMap.get(criterionId);
 		const fdef = RFunctionDefinition.wrappingFunctionDefinition(provenanceNode, nast.idMap);
-		results[key] = Array.from(Dataflow.provenance(
-			criterionId,
-			df.graph,
-			fdef ? RNode.collectAllIds(fdef) : undefined
-		));
+		results[key] = Array.from(Dataflow.provenance(criterionId, df.graph, fdef ? RNode.collectAllIds(fdef) : undefined));
 	}
-	return {
-		...metaSince(start),
-		results
-	};
+	return { ...metaSince(start), results };
 }
 
 /** Calculates the provenance starting from a given criterion */

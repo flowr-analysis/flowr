@@ -12,10 +12,7 @@ export async function executeDataflowQuery({ analyzer }: BasicQueryData, queries
 	warnUnlessSingleQuery('Dataflow', queries);
 	const startTime = Date.now();
 	const { graph } = await analyzer.dataflow();
-	return {
-		...metaSince(startTime),
-		graph: queries.every(q => q.environments === false) ? graph.withoutEnvironments() : graph
-	};
+	return { ...metaSince(startTime), graph: queries.every(q => q.environments === false) ? graph.withoutEnvironments() : graph };
 }
 
 /** Above this many characters, the mermaid.live link is dropped from the REPL output (large graphs produce megabyte-sized base64 urls). */

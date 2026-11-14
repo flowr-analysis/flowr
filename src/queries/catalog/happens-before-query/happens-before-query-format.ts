@@ -36,10 +36,7 @@ export async function executeHappensBefore({ analyzer }: BasicQueryData, queries
 		}
 	}
 
-	return {
-		...metaSince(start),
-		results
-	};
+	return { ...metaSince(start), results };
 }
 
 export interface HappensBeforeQuery extends BaseQueryFormat {

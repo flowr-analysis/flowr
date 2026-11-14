@@ -31,10 +31,7 @@ const CodecNames: Readonly<Record<string, string>> = { '.zst': 'zstd', '.br': 'b
 
 /** the codec name of a manifest's resolved shard + dict sources, or `mixed` when they do not all agree */
 function manifestFormat(set: SigDatabaseSet): string {
-	const paths = [
-		...set.manifest.shards.map(s => s.path),
-		...(set.manifest.dicts?.map(d => d.path) ?? [])
-	];
+	const paths = [...set.manifest.shards.map(s => s.path), ...(set.manifest.dicts?.map(d => d.path) ?? [])];
 	const codecs = uniqueArray(paths.map(p => CodecNames[compressedExtOf(resolveSource(set.baseDir, p)) ?? ''] ?? 'plain'));
 	return codecs.length === 1 ? codecs[0] : 'mixed';
 }

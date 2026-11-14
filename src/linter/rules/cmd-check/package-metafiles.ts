@@ -307,11 +307,6 @@ export const PACKAGE_METAFILES = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds problems in the demo index, `INDEX`, `inst/CITATION`, and relative links in README, NEWS, and vignettes.',
-		defaultConfig: () => ({
-			index:         true,
-			citation:      true,
-			superseded:    true,
-			relativeLinks: true
-		})
+		defaultConfig: () => ({ index: true, citation: true, superseded: true, relativeLinks: true })
 	}
 } as const satisfies LintingRule<PackageMetafilesResult, PackageMetafilesMetadata, PackageMetafilesConfig>;

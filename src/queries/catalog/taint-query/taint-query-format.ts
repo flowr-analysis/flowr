@@ -19,24 +19,14 @@ export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: r
 
 	if(flattened.length === 0) {
 		log.warn('Missing taint query definition');
-		return {
-			results: new Map(),
-			'.meta': {
-				timing: Date.now() - start
-			},
-		};
+		return { results: new Map(), '.meta': { timing: Date.now() - start } };
 	}
 
 	const analysis = analyzer
 		.taint<AllPredefinedTaintAnalysisNames>()
 		.addPredefined(...flattened);
 
-	return {
-		results: await analysis.run(),
-		'.meta': {
-			timing: Date.now() - start
-		},
-	};
+	return { results: await analysis.run(), '.meta': { timing: Date.now() - start } };
 }
 
 export interface TaintQuery extends BaseQueryFormat {

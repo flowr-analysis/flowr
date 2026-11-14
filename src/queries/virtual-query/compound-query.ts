@@ -38,11 +38,7 @@ export function executeCompoundQueries<
 ): QueryArgumentsWithType<SubQueryType>[] {
 	const results: QueryArgumentsWithType<SubQueryType>[] = [];
 	for(const arg of query.arguments) {
-		results.push({
-			type: query.query,
-			...query.commonArguments,
-			...arg
-		} as unknown as QueryArgumentsWithType<SubQueryType>);
+		results.push({ type: query.query, ...query.commonArguments, ...arg } as unknown as QueryArgumentsWithType<SubQueryType>);
 	}
 	return results;
 }

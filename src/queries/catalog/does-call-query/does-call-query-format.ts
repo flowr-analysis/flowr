@@ -39,10 +39,7 @@ export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries
 		const c = makeCallMatcher(query.calls);
 		results[id] = findCallersMatchingConstraints(cg, nodeId, c, query.expandLibraryInternals ? deps : undefined);
 	}
-	return {
-		...metaSince(start),
-		results
-	};
+	return { ...metaSince(start), results };
 }
 
 type CheckCallMatch = (vtx: { id: NodeId, name?: Identifier }, cg: CallGraph) => boolean;
@@ -200,24 +197,11 @@ function constraintParser(argument: string | undefined): { call: SlicingCriterio
 	const [criteria, ...rhs] = args;
 	const rhsStr = rhs.join(' ');
 	if(rhsStr.startsWith('$')) {
-		return {
-			call:       criteria as SlicingCriterion,
-			constraint: {
-				type: 'calls-id',
-				id:   rhsStr.slice(1) as SlicingCriterion,
-			}
-		};
+		return { call: criteria as SlicingCriterion, constraint: { type: 'calls-id', id: rhsStr.slice(1) as SlicingCriterion } };
 	} else {
 		const isExact = startAndEndsWith(rhsStr, '"');
 		const name = isExact ? rhsStr.slice(1, -1) : rhsStr;
-		return {
-			call:       criteria as SlicingCriterion,
-			constraint: {
-				type:      'name',
-				name:      name,
-				nameExact: isExact ? true : undefined,
-			}
-		};
+		return { call: criteria as SlicingCriterion, constraint: { type: 'name', name: name, nameExact: isExact ? true : undefined } };
 	}
 }
 
@@ -228,13 +212,7 @@ function doesCallQueryLineParser(output: ReplOutput, line: readonly string[], _c
 	}
 
 	return {
-		query: [
-			{
-				type:    'does-call',
-				queryId: constraint.call + ' (shorthand)',
-				call:    constraint.call,
-				calls:   constraint.constraint,
-			}],
+		query: [{ type: 'does-call', queryId: constraint.call + ' (shorthand)', call: constraint.call, calls: constraint.constraint }],
 		rCode: queryLineCode(line)
 	};
 }

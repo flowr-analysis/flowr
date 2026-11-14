@@ -1,10 +1,4 @@
-import {
-	prettyPrintAt,
-	type LintingResult,
-	LintingResultCertainty,
-	type LintingRule,
-	LintingRuleCertainty
-} from '../linter-format';
+import { prettyPrintAt, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
 import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -34,21 +28,8 @@ export const DEAD_CODE = {
 		checkReachable:       true,
 		simplificationPasses: config.simplificationPasses ?? [...DefaultCfgSimplificationOrder, 'analyze-dead-code']
 	}).filter(F.not(F.or(
-		{
-			name: FlowrFilter.MatchesEnrichment,
-			args: {
-				enrichment: Enrichment.CfgInformation,
-				test:       {
-					isReachable: true
-				}
-			}
-		},
-		{
-			name: FlowrFilter.RoleInParent,
-			args: {
-				roleInParent: RoleInParent.ExpressionListGrouping
-			}
-		}
+		{ name: FlowrFilter.MatchesEnrichment, args: { enrichment: Enrichment.CfgInformation, test: { isReachable: true } } },
+		{ name: FlowrFilter.RoleInParent, args: { roleInParent: RoleInParent.ExpressionListGrouping } }
 	))),
 	processSearchResult: async(elements, _config, data) => {
 		const { idMap } = await data.normalize();

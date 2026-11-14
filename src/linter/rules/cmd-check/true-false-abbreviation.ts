@@ -133,8 +133,6 @@ export const TRUE_FALSE_ABBREVIATION = {
 		/* R CMD check only runs `checkTnF` for a package without a NAMESPACE, which no current package is */
 		activeByDefault: false,
 		description:     'Finds `T` and `F` used for `TRUE` and `FALSE`, and top-level definitions of `T` or `F`. Off by default, as R only checks this for packages without a NAMESPACE.',
-		defaultConfig:   () => ({
-			reportRedefinitions: true
-		})
+		defaultConfig:   () => ({ reportRedefinitions: true })
 	}
 } as const satisfies LintingRule<TrueFalseAbbreviationResult, TrueFalseAbbreviationMetadata, TrueFalseAbbreviationConfig>;

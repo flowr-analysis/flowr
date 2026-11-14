@@ -53,19 +53,13 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 		return {
 			...result,
 			results: result.results.map(found => locatedIn(found, idMap)),
-			'.meta': {
-				...(result['.meta'] as LintingRuleMetadata<Name> ?? {}),
-				searchTimeMs:  searchTime,
-				processTimeMs: processTime
-			}
+			'.meta': { ...(result['.meta'] as LintingRuleMetadata<Name> ?? {}), searchTimeMs: searchTime, processTimeMs: processTime }
 		};
 	} catch(e) {
 		/* a project without any code (e.g. a package of data only) has nothing to lint, which is no error of the rule */
 		if(!input.inspectContext().files.hasRequests()) {
 			return { results: [], '.meta': { searchTimeMs: 0, processTimeMs: 0 } } as unknown as LintingResults<Name>;
 		}
-		return {
-			error: e
-		};
+		return { error: e };
 	}
 }

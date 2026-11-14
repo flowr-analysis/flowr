@@ -198,17 +198,9 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 			result.splice(0, result.length, ...remote);
 		}
 	},
-	'source': {
-		queryDisplayName: 'Sourced Files',
-		functions:        SourceFunctions,
-		defaultValue:     Unknown
-	},
-	'read': {
-		queryDisplayName: 'Read Data',
-		functions:        env.deriveFromDefinitions(computeReadFunctions),
-		defaultValue:     Unknown
-	},
-	'write': {
+	'source': { queryDisplayName: 'Sourced Files', functions: SourceFunctions, defaultValue: Unknown },
+	'read':   { queryDisplayName: 'Read Data', functions: env.deriveFromDefinitions(computeReadFunctions), defaultValue: Unknown },
+	'write':  {
 		queryDisplayName:   'Outputs',
 		functions:          env.derive(writeFunctionsOf),
 		defaultValue:       StdOut,
@@ -225,10 +217,7 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 			collectImplicitEchoes(ast, dataflow, accountedFor, invisible, result);
 		}
 	},
-	'visualize': {
-		queryDisplayName: 'Visualizations',
-		functions:        VisualizeFunctions
-	},
+	'visualize': { queryDisplayName: 'Visualizations', functions: VisualizeFunctions },
 	'transform': {
 		queryDisplayName:   'Data Transformations',
 		functions:          transformFunctions(env.builtInIndex),
@@ -238,18 +227,9 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 			}
 		}
 	},
-	'test': {
-		queryDisplayName: 'Tests',
-		functions:        TestFunctions
-	},
-	'statistics': {
-		queryDisplayName: 'Statistics',
-		functions:        functionsTagged(env.builtInIndex, SemanticCallTag.Statistics)
-	},
-	'interactive': {
-		queryDisplayName: 'Interactive Use',
-		functions:        functionsTagged(env.builtInIndex, SemanticCallTag.Interactive)
-	}
+	'test':        { queryDisplayName: 'Tests', functions: TestFunctions },
+	'statistics':  { queryDisplayName: 'Statistics', functions: functionsTagged(env.builtInIndex, SemanticCallTag.Statistics) },
+	'interactive': { queryDisplayName: 'Interactive Use', functions: functionsTagged(env.builtInIndex, SemanticCallTag.Interactive) }
 });
 export type DependencyCategoryName = DefaultDependencyCategoryName | string;
 

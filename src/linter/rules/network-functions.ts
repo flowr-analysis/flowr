@@ -134,8 +134,6 @@ export const NETWORK_FUNCTIONS = {
 		// ensures all network functions found are actually network functions through its limited config, but doesn't find all network functions since the config is pre-crawled, and the DFG may be over-approximated
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds functions that execute network operations, such as downloading files or making HTTP requests.',
-		defaultConfig: ctx => ({
-			fns: ctx.env.deriveFromIndex(networkFunctions)
-		})
+		defaultConfig: ctx => ({ fns: ctx.env.deriveFromIndex(networkFunctions) })
 	}
 } as const satisfies LintingRule<FunctionsResult, FunctionsMetadata, NetworkFunctionsConfig>;

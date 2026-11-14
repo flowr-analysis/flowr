@@ -36,10 +36,7 @@ export const functionFinderUtil = {
 			.with(Enrichment.CallTargets, { onlyBuiltin: true, qualifyNames });
 		return functions === undefined ? search : search.filter({
 			name: FlowrFilter.MatchesEnrichment,
-			args: {
-				enrichment: Enrichment.CallTargets,
-				test:       { targets: Identifier.regex(...functions) }
-			}
+			args: { enrichment: Enrichment.CallTargets, test: { targets: Identifier.regex(...functions) } }
 		});
 	},
 	async processSearchResult<T extends FlowrSearchElement<ParentInformation>[]>(
@@ -49,10 +46,7 @@ export const functionFinderUtil = {
 		_data: unknown,
 		refineSearch: (elements: T) => AsyncOrSync<(T[number] & { certainty?: LintingResultCertainty })[]> = e => e,
 	) {
-		const metadata: FunctionsMetadata = {
-			totalCalls:               0,
-			totalFunctionDefinitions: 0
-		};
+		const metadata: FunctionsMetadata = { totalCalls: 0, totalFunctionDefinitions: 0 };
 
 		const results = (await refineSearch(elements.getElements()))
 			.flatMap(element => {
@@ -112,8 +106,7 @@ export const functionFinderUtil = {
 };
 
 function suppliesArgument(call: DataflowGraphVertexFunctionCall, argIdx: number | 'unnamed' | undefined, argName: BrandedIdentifier | undefined): boolean {
-	return call.args.some((arg, index) => arg !== EmptyArgument
-		&& (argName !== undefined ? arg.name === argName : index === argIdx));
+	return call.args.some((arg, index) => arg !== EmptyArgument && (argName !== undefined ? arg.name === argName : index === argIdx));
 }
 
 /** Test if a function call has an argument with a specific value */

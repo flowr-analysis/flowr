@@ -442,10 +442,7 @@ export const UNESCAPED_ARGUMENTS = {
 				}
 			}
 		}
-		return {
-			results,
-			'.meta': { totalCriticalArguments: targets.length, totalEscapedArguments: escaped }
-		};
+		return { results, '.meta': { totalCriticalArguments: targets.length, totalEscapedArguments: escaped } };
 	},
 	prettyPrint: prettyPrint(
 		result =>

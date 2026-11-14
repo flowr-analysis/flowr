@@ -44,10 +44,7 @@ export async function executeAbsintQuery<AbsintType extends AbsintQueryType>({ a
 	if(queries.length === 1 && queries[0].criteria === undefined) {
 		const state = ('domain' in inference ? interpreter.getEndState(inference.domain) : interpreter.getEndState()) as AbsintQueryStateDomain<AbsintType>;
 
-		return {
-			...metaSince(start),
-			result: state
-		};
+		return { ...metaSince(start), result: state };
 	}
 	const result = new Map<SlicingCriterion, AbsintQueryDomain<AbsintType> | undefined>();
 
@@ -71,10 +68,7 @@ export async function executeAbsintQuery<AbsintType extends AbsintQueryType>({ a
 		}
 	}
 
-	return {
-		...metaSince(start),
-		result: result
-	};
+	return { ...metaSince(start), result: result };
 }
 
 export interface AbsintQuery<AbsintType extends AbsintQueryType = AbsintQueryType> extends BaseQueryFormat {
@@ -151,14 +145,7 @@ function absintQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	}
 	const code = queryLineCode(line, criteria ? 2 : 1);
 
-	return {
-		query: {
-			type:      'absint',
-			inference: type,
-			criteria:  criteria
-		},
-		rCode: code
-	};
+	return { query: { type: 'absint', inference: type, criteria: criteria }, rCode: code };
 }
 
 export const AbsintQueryDefinition = {

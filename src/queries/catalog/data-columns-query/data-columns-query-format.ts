@@ -231,10 +231,7 @@ export interface DataColumnsQueryResult extends BaseQueryResult {
 
 function dataColumnsLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'data-columns'> {
 	const positions = sliceCriteriaParser(line[0]);
-	return {
-		query: { type: 'data-columns', positions: positions ?? [] },
-		rCode: queryLineCode(line, positions ? 1 : 0)
-	};
+	return { query: { type: 'data-columns', positions: positions ?? [] }, rCode: queryLineCode(line, positions ? 1 : 0) };
 }
 
 export const DataColumnsQueryDefinition = {

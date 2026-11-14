@@ -184,8 +184,6 @@ export const NAMESPACE_TAMPERING = {
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.CmdCheck, LintingRuleTag.Robustness, LintingRuleTag.Security],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds `unlockBinding()` and `assignInNamespace()` on other namespaces, `.Internal()` calls, and `library.dynam()` given a file extension.',
-		defaultConfig: () => ({
-			checkInternal: true
-		})
+		defaultConfig: () => ({ checkInternal: true })
 	}
 } as const satisfies LintingRule<NamespaceTamperingResult, NamespaceTamperingMetadata, NamespaceTamperingConfig>;

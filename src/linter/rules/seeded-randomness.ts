@@ -1,10 +1,4 @@
-import {
-	prettyPrintAt,
-	type LintingResult,
-	LintingResultCertainty,
-	type LintingRule,
-	LintingRuleCertainty
-} from '../linter-format';
+import { prettyPrintAt, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
 import { RValue } from '../../dataflow/eval/values/r-value';
 import { functionFinderUtil } from './function-finder-util';
 import { SourceLocation, SourceRange } from '../../util/range';

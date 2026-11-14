@@ -20,11 +20,7 @@ export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly
 	const foundFingerprints = new Set<string>();
 	for(const query of queries) {
 		if(query.matchesPathRegex === undefined && query.roles === undefined) {
-			files = base.map(l => ({
-				roles:   l.roles,
-				content: l.content(),
-				path:    l.path()
-			}));
+			files = base.map(l => ({ roles: l.roles, content: l.content(), path: l.path() }));
 			break;
 		}
 		const pathRegex = query.matchesPathRegex ? new RegExp(query.matchesPathRegex) : undefined;
@@ -40,18 +36,11 @@ export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly
 				continue;
 			}
 			foundFingerprints.add(fingerprint);
-			files.push({
-				roles:   file.roles,
-				content: file.content(),
-				path:    file.path()
-			});
+			files.push({ roles: file.roles, content: file.content(), path: file.path() });
 		}
 	}
 
-	return Promise.resolve({
-		...metaSince(start),
-		files
-	});
+	return Promise.resolve({ ...metaSince(start), files });
 }
 
 /** Returns the content(s) of all files matching the given pattern. */

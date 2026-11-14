@@ -11,10 +11,7 @@ export async function executeIdMapQuery({ analyzer }: BasicQueryData, queries: r
 
 	const startTime = Date.now();
 	const idMap = (await analyzer.normalize()).idMap;
-	return {
-		...metaSince(startTime),
-		idMap
-	};
+	return { ...metaSince(startTime), idMap };
 }
 
 export interface IdMapQuery extends BaseQueryFormat {

@@ -15,8 +15,6 @@ type SupportedVirtualQueries = {
 	[QueryType in VirtualQueryArgumentsWithType<SupportedQueryTypes>['type']]: VirtualQueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryFormat[]>
 };
 
-export const SupportedVirtualQueries = {
-	'compound': executeCompoundQueries
-} as const satisfies SupportedVirtualQueries;
+export const SupportedVirtualQueries = { 'compound': executeCompoundQueries } as const satisfies SupportedVirtualQueries;
 
 export type SupportedVirtualQueryTypes = keyof typeof SupportedVirtualQueries;

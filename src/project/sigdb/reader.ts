@@ -1405,8 +1405,5 @@ export async function verifyShardedDatabase(
 	}
 
 	set.close();
-	return {
-		ok:             errors.length === 0, dictsOk, shards:         shardResults,
-		routedPackages: routed.size, spotChecked, missingRequired, errors
-	};
+	return { ok: errors.length === 0, dictsOk, shards: shardResults, routedPackages: routed.size, spotChecked, missingRequired, errors };
 }

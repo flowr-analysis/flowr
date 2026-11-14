@@ -65,8 +65,7 @@ export function detectPotentialCasings(identifier: BrandedIdentifier, ignorePref
 	const isAllUpper = identifier === upper;
 	const isAllLower = identifier === lower;
 	const hasUnderscores = identifier.includes('_');
-	const upperAfterAllScores = Array(identifier.length - 1).keys().every(i =>
-		identifier[i] !== '_' || identifier[i + 1] === upper[i + 1]);
+	const upperAfterAllScores = Array(identifier.length - 1).keys().every(i => identifier[i] !== '_' || identifier[i + 1] === upper[i + 1]);
 	const hasAnyUpperAfterLower = Array(identifier.length - 1).keys().some(i =>
 		containsAlpha(identifier[i]) && identifier[i] === lower[i] &&
 		containsAlpha(identifier[i + 1]) && identifier[i + 1] === upper[i + 1]);
@@ -226,13 +225,7 @@ export const NAMING_CONVENTION = {
 					quickFix:   canRename ? createNamingConventionQuickFixes(dataflow.graph, id, fix, casing) : undefined
 				} as NamingConventionResult;
 			});
-		return {
-			results,
-			'.meta': {
-				numMatches: symbols.length - results.length,
-				numBreak:   results.length
-			}
-		};
+		return { results, '.meta': { numMatches: symbols.length - results.length, numBreak: results.length } };
 	},
 	prettyPrint: prettyPrint(
 		result => `Identifier '${result.name}' at ${SourceLocation.format(result.loc)} (${result.detectedCasing})`,
@@ -246,9 +239,6 @@ export const NAMING_CONVENTION = {
 		tags:            [LintingRuleTag.Style, LintingRuleTag.QuickFix],
 		// heuristic and noisy on real package code, so only run when requested explicitly
 		activeByDefault: false,
-		defaultConfig:   () => ({
-			caseing:        'auto',
-			ignoreNonAlpha: true
-		})
+		defaultConfig:   () => ({ caseing: 'auto', ignoreNonAlpha: true })
 	}
 } as const satisfies LintingRule<NamingConventionResult, NamingConventionMetadata, NamingConventionConfig>;

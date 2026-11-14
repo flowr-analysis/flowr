@@ -424,10 +424,6 @@ export const DESCRIPTION_METADATA = {
 		tags:          [LintingRuleTag.CmdCheck],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds problems in the DESCRIPTION: required fields, package name, version, maintainer, dependency fields, license, Authors@R, encoding, and the Title and Description style CRAN asks for.',
-		defaultConfig: () => ({
-			cranIncoming: true,
-			maxDepends:   5,
-			maxImports:   0
-		})
+		defaultConfig: () => ({ cranIncoming: true, maxDepends: 5, maxImports: 0 })
 	}
 } as const satisfies LintingRule<DescriptionMetadataResult, DescriptionMetadataMetadata, DescriptionMetadataConfig>;

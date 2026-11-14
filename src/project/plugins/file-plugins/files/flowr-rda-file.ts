@@ -834,11 +834,7 @@ export class RDAParser {
 			}
 		}
 		if(!s.enClos || s.enClos === RValues.NilValue) {
-			this.SetEnClos(s, {
-				value:  RValues.BaseEnv,
-				type:   SexpType.EnvSxp,
-				enClos: RValues.NilValue
-			});
+			this.SetEnClos(s, { value: RValues.BaseEnv, type: SexpType.EnvSxp, enClos: RValues.NilValue });
 		}
 		return s;
 	}
@@ -1257,10 +1253,7 @@ export class RDAParser {
 		if(index < 0 || index >= Object.keys(RFunTabOffsets).length) {
 			throw new Error('offset is out of R_FunTab range');
 		}
-		return {
-			type:   evaluation ? SexpType.BuiltInSxp : SexpType.SpecialSxp,
-			offset: index
-		};
+		return { type: evaluation ? SexpType.BuiltInSxp : SexpType.SpecialSxp, offset: index };
 	}
 
 	/**
@@ -1792,10 +1785,7 @@ export class RDAParser {
 			}
 			const name = (n.tag as RObjectData)?.name;
 			if(name !== undefined) {
-				result.push(shortcut ? {
-					name: (n.tag as RObjectData).name,
-					type: (n.car as RObjectData).type,
-				} : {
+				result.push(shortcut ? { name: (n.tag as RObjectData).name, type: (n.car as RObjectData).type } : {
 					name:         (n.tag as RObjectData).name,
 					value:        (n.car as RObjectData).value,
 					hasAttribute: !!n.hasAttribute,

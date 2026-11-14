@@ -36,14 +36,7 @@ export function computeEditRegion(oldContent: string, newContent: string): Parse
 	const [startPosition, oldEndPosition] = indexesToPoints(oldContent, [startIndex, oldEndIndex]);
 	const [newEndPosition] = indexesToPoints(newContent, [newEndIndex]);
 
-	return {
-		startIndex,
-		oldEndIndex,
-		newEndIndex,
-		startPosition,
-		oldEndPosition,
-		newEndPosition,
-	};
+	return { startIndex, oldEndIndex, newEndIndex, startPosition, oldEndPosition, newEndPosition };
 }
 
 function indexesToPoints(text: string, orderedIndexes: readonly number[]): Parser.Point[] {

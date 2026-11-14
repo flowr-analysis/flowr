@@ -36,10 +36,7 @@ export async function executeDataflowLensQuery({ analyzer }: BasicQueryData, que
 		}
 	}, analyzer.inspectContext().env.makeCleanEnv());
 
-	return {
-		...metaSince(now),
-		simplifiedGraph
-	};
+	return { ...metaSince(now), simplifiedGraph };
 }
 
 /** Returns a simplified view on the dataflow graph of the analysis */

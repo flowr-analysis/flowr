@@ -240,9 +240,6 @@ export const UNCLOSED_CONNECTION = {
 		/* a connection handed to code flowR cannot resolve, as in `lapply(cons, close)`, is reported although it is closed */
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds connections that are opened but not closed on every path opening them.',
-		defaultConfig: () => ({
-			openFns:  [],
-			closeFns: []
-		})
+		defaultConfig: () => ({ openFns: [], closeFns: [] })
 	}
 } as const satisfies LintingRule<UnclosedConnectionResult, UnclosedConnectionMetadata, UnclosedConnectionConfig>;

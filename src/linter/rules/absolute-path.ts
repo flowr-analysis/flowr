@@ -142,10 +142,7 @@ export const ABSOLUTE_PATH = {
 		return q.unique();
 	},
 	processSearchResult: async(elements, config, data): Promise<{ results: AbsoluteFilePathResult[], '.meta': AbsoluteFilePathMetadata }> => {
-		const metadata: AbsoluteFilePathMetadata = {
-			totalConsidered: 0,
-			totalUnknown:    0
-		};
+		const metadata: AbsoluteFilePathMetadata = { totalConsidered: 0, totalUnknown: 0 };
 		const queryResults = elements.enrichmentContent(Enrichment.QueryData)?.queries;
 		const regex = config.absolutePathRegex ? new RegExp(config.absolutePathRegex) : undefined;
 		const { idMap } = await data.normalize();
@@ -209,10 +206,7 @@ export const ABSOLUTE_PATH = {
 		// checks all found paths for whether they're absolute to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,
 		defaultConfig: () => ({
-			include: {
-				constructed: true,
-				allStrings:  false
-			},
+			include:                 { constructed: true, allStrings: false },
 			additionalPathFunctions: [],
 			absolutePathRegex:       undefined,
 			useAsWd:                 '@project',

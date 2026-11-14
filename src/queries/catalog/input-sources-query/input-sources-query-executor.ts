@@ -49,10 +49,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 		}
 	}
 
-	return {
-		...metaSince(start),
-		results
-	};
+	return { ...metaSince(start), results };
 }
 
 /** The default classifier config with the configured entries added, its searches (e.g. linter rules) resolved. */

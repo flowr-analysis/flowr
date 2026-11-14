@@ -42,6 +42,11 @@ import type { AbsintQueryType } from '../queries/catalog/absint-query/absint-que
 import { warnMissingSigDb } from './doc-util/doc-sigdb';
 import type { AnyPredefinedTaintAnalysisName } from '../taint-analysis/predefined/predefined';
 
+/** the criterion mode of a query inspecting functions, answering only for the function defined in the first line */
+async function functionFilterExample(shell: RShell, ctx: GeneralDocContext, code: string, type: 'inspect-higher-order' | 'inspect-recursion' | 'inspect-fn-props', showCode = true): Promise<string> {
+	return `This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
+${await showQuery(shell, code, [{ type, filter: ['1@function'] }], { showCode, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(code)), ctx })}`;
+}
 
 registerActiveQuery('call-context', 'Finds all calls in a set of files that matches specified criteria.', async(shell, ctx) => `
 Call context queries can be used to identify calls to specific functions that match criteria of your interest.
@@ -214,10 +219,7 @@ ${
 	await showQuery(shell, exampleCode, [{ type: 'inspect-higher-order' }], { showCode: true, ctx })
 }
 
-This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
-${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-higher-order', filter: ['1@function'] }], { showCode: false, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
-}
+${await functionFilterExample(shell, ctx, exampleCode, 'inspect-higher-order', false)}
 		`;
 });
 
@@ -232,10 +234,7 @@ ${
 	await showQuery(shell, exampleCode, [{ type: 'inspect-recursion' }], { showCode: true, ctx })
 }
 
-This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
-${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-recursion', filter: ['1@function'] }], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
-}
+${await functionFilterExample(shell, ctx, exampleCode, 'inspect-recursion')}
 		`;
 });
 
@@ -292,10 +291,7 @@ ${
 	await showQuery(shell, exampleCode, [{ type: 'inspect-fn-props' }], { showCode: true, ctx })
 }
 
-This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
-${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-fn-props', filter: ['1@function'] }], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
-}
+${await functionFilterExample(shell, ctx, exampleCode, 'inspect-fn-props')}
 		`;
 });
 

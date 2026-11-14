@@ -1,5 +1,5 @@
 import {
-	prettyPrint,
+	prettyPrintAt,
 	type LintingResult,
 	LintingResultCertainty,
 	type LintingRule,
@@ -214,10 +214,7 @@ export const SEEDED_RANDOMNESS = {
 		name:        'Seeded Randomness',
 		description: 'Finds randomness-based function calls not preceded by a random seed generation function. For consistent reproducibility, functions that use randomness should only be called after a constant random seed is set using a function like `set.seed`.'
 	},
-	prettyPrint: prettyPrint(
-		result => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)}`,
-		result => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)} is called without a preceding random seed function like \`set.seed\``
-	)
+	prettyPrint: prettyPrintAt(result => `Function \`${result.function}\``, () => 'is called without a preceding random seed function like `set.seed`')
 } as const satisfies LintingRule<SeededRandomnessResult, SeededRandomnessMeta, SeededRandomnessConfig>;
 
 function getDefaultAssignments(definitions: BuiltInDefinitions): BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[] {

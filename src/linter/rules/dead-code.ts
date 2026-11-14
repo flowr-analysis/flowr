@@ -1,5 +1,5 @@
 import {
-	prettyPrint,
+	prettyPrintAt,
 	type LintingResult,
 	LintingResultCertainty,
 	type LintingRule,
@@ -71,11 +71,8 @@ export const DEAD_CODE = {
 			})
 		};
 	},
-	prettyPrint: prettyPrint(
-		result => `Code at ${SourceLocation.format(result.loc)}`,
-		result => `Code at ${SourceLocation.format(result.loc)} can never be executed`
-	),
-	info: {
+	prettyPrint: prettyPrintAt(() => 'Code', () => 'can never be executed'),
+	info:        {
 		name:          'Dead Code',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility, LintingRuleTag.QuickFix],
 		// our limited dead code analysis causes complex cases of dead code not to be included in the linting result, but deadness is properly investigated for returned results

@@ -254,6 +254,11 @@ export enum LintingPrettyPrintContext {
 	Full  = 'full'
 }
 
+/** Builds the pretty printers of a rule stating `what` a result is at its location, the `full` one followed by `why`. */
+export function prettyPrintAt<R extends LintingResult>(what: (r: R) => string, why: (r: R) => string) {
+	return prettyPrint<R>(r => `${what(r)} at ${SourceLocation.format(r.loc)}`, r => `${what(r)} at ${SourceLocation.format(r.loc)} ${why(r)}`);
+}
+
 /** Builds the pretty printers of a rule, the `full` printer defaults to the `query` one. */
 export function prettyPrint<R>(query: (r: R) => string, full: (r: R) => string = query): { readonly [C in LintingPrettyPrintContext]: (r: R, metadata: unknown) => string } {
 	return {

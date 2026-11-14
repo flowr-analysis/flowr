@@ -1,4 +1,4 @@
-import { prettyPrint, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFixReplacement } from '../linter-format';
+import { prettyPrintAt, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFixReplacement } from '../linter-format';
 import { RPath } from '../../util/files';
 import { compactRecord, type MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -201,11 +201,8 @@ export const ABSOLUTE_PATH = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: prettyPrint(
-		result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)}`,
-		result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)} is absolute`
-	),
-	info: {
+	prettyPrint: prettyPrintAt(result => `Path \`${result.filePath}\``, () => 'is absolute'),
+	info:        {
 		name:          'Absolute Paths',
 		description:   'Finds absolute file paths.',
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.QuickFix],

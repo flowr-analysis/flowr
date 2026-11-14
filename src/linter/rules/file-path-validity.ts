@@ -1,5 +1,5 @@
 import { DataSetExtensions } from './cmd-check/cmd-check-util';
-import { type LintingResult, type LintingRule, type LintQuickFixReplacement, prettyPrint, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, type LintQuickFixReplacement, prettyPrintAt, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { isUrl, fileUrlToPath } from '../../util/text/strings';
 import { Q } from '../../search/flowr-search-builder';
@@ -206,10 +206,7 @@ export const FILE_PATH_VALIDITY = {
 			checkUrls:                false
 		})
 	},
-	prettyPrint: prettyPrint(
-		result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)}`,
-		result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)} does not point to a valid file`
-	)
+	prettyPrint: prettyPrintAt(result => `Path \`${result.filePath}\``, () => 'does not point to a valid file')
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig>;
 
 /** Whether the read only runs depending on a condition that queries the same file, as in `if(file.exists(p)) readLines(p)`. */

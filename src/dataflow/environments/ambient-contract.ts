@@ -169,7 +169,7 @@ export const AmbientContract = {
 		}
 		const index = info.ctx.env.builtInIndex;
 		const targets = Dataflow.targetsOf(graph, call, EdgeType.Calls).filter(NodeId.isBuiltIn);
-		const lists = targets.length === 0 ? [] : CallSites.contexts(node.arguments, graph, sites);
+		const lists = targets.length === 0 ? [] : CallSites.contexts(node.arguments, graph, sites, info.ctx);
 		/* a target naming no package may be the definition of any package, so each one has its contract */
 		const own = targets.flatMap(target => {
 			const pkgFn = NodeId.toPkgFn(target);

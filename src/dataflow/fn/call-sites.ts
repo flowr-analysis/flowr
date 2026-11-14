@@ -13,6 +13,8 @@ import { Dataflow } from '../graph/df-helper';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { type BrandedIdentifier, Identifier } from '../environments/identifier';
 import { DotsParameterName, matchArgumentsToParameters } from '../../util/arg-matching';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import { FileRole } from '../../project/context/flowr-file';
 
 /** One call of a function the program defines: the call and the definition it runs. */
 export interface CallSite<Info = ParentInformation> {
@@ -80,11 +82,18 @@ export const CallSites = {
 	handsOwnArguments(this: void, vertex: DataflowGraphVertexArgument | undefined): vertex is DataflowGraphVertexFunctionCall {
 		return DfgVertex.isFunctionCall(vertex) && (vertex.origin === 'unnamed' || DfgVertex.hasOrigin(vertex, BuiltInProcName.Function));
 	},
+	/** Whether code other than the analyzed one may call the functions it defines, as for a package, whose users call what it exports (and `:::` reaches the rest). */
+	calledFromOutside(this: void, ctx: ReadOnlyFlowrAnalyzerContext | undefined): boolean {
+		return ctx !== undefined && (ctx.files.getFilesByRole(FileRole.Namespace).length > 0 || ctx.files.getFilesByRole(FileRole.Description).length > 0);
+	},
 	/**
 	 * The known calls of `definition`, `undefined` if it may run with arguments flowR does not see: when it has no call,
-	 * or a call runs it with arguments of its own making (`lapply(x, f)`, `do.call(f, args)`).
+	 * a call runs it with arguments of its own making (`lapply(x, f)`, `do.call(f, args)`), or, with `ctx`, code other than the analyzed one may call it (see {@link CallSites.calledFromOutside}).
 	 */
-	callersOf<Info>(this: void, definition: RFunctionDefinition<Info & ParentInformation>, graph: DataflowGraph): RFunctionCall<ParentInformation>[] | undefined {
+	callersOf<Info>(this: void, definition: RFunctionDefinition<Info & ParentInformation>, graph: DataflowGraph, ctx?: ReadOnlyFlowrAnalyzerContext): RFunctionCall<ParentInformation>[] | undefined {
+		if(CallSites.calledFromOutside(ctx)) {
+			return undefined;
+		}
 		const callers = Dataflow.sourcesOf(graph, definition.info.id, EdgeType.Calls);
 		const calls: RFunctionCall<ParentInformation>[] = [];
 		for(const caller of callers) {
@@ -139,9 +148,9 @@ export const CallSites = {
 	 * The argument lists the arguments `args` of a call stand for across the calls that reach it, one per chain of calls:
 	 * each argument handing on a parameter of a function (`...`, or `x` of `function(x)`) is replaced by what the call in `sites`
 	 * running that function gives, or else by what each known call of it gives (see {@link CallSites.callersOf}).
-	 * An argument no known call settles stays as written, so what it stands for stays open.
+	 * An argument no known call settles stays as written, so what it stands for stays open; `ctx` tells whether other code may call the functions, see {@link CallSites.callersOf}.
 	 */
-	contexts<Info>(this: void, args: Args<Info>, graph: DataflowGraph, sites: readonly CallSite<Info>[] = []): PotentiallyEmptyRArgument<Info & ParentInformation>[][] {
+	contexts<Info>(this: void, args: Args<Info>, graph: DataflowGraph, sites: readonly CallSite<Info>[] = [], ctx?: ReadOnlyFlowrAnalyzerContext): PotentiallyEmptyRArgument<Info & ParentInformation>[][] {
 		type Arg = PotentiallyEmptyRArgument<Info & ParentInformation>;
 		const done: Arg[][] = [];
 		/* per list, how many calls deep it is and the arguments left as they are, as no call settles them or one hands them back */
@@ -156,7 +165,7 @@ export const CallSites = {
 			const arg = list[at] as Exclude<Arg, typeof EmptyArgument>;
 			const [definition, index] = parameterAt<Info>(arg.value?.info.id ?? -1, graph) as [RFunctionDefinition<Info & ParentInformation>, number];
 			const own = sites.filter(s => s.definition === definition);
-			const callers = own.length > 0 ? own : depth >= MaxDepth ? undefined : CallSites.callersOf(definition, graph)?.map(call => ({ call, definition }) as CallSite<Info>);
+			const callers = own.length > 0 ? own : depth >= MaxDepth ? undefined : CallSites.callersOf(definition, graph, ctx)?.map(call => ({ call, definition }) as CallSite<Info>);
 			if(callers === undefined) {
 				work.push([list, depth, new Set([...kept, arg])]);
 				continue;

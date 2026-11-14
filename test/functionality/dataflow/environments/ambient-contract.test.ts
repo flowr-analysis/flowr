@@ -11,13 +11,15 @@ import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { DfgVertex } from '../../../../src/dataflow/graph/vertex';
 import { Ternary } from '../../../../src/util/logic';
 import { SourceRange } from '../../../../src/util/range';
+import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 describe('Ambient contracts of calls', withTreeSitter(ts => {
 	/** per definition the call of `fn` in line `line` (`2@map`) may reach, its effects as `happens family access [keys] (open condition) @ deciders` */
-	async function contracts(code: string, criterion: string): Promise<Record<string, string[]>> {
+	async function contracts(code: string, criterion: string, files: readonly FlowrInlineTextFile[] = []): Promise<Record<string, string[]>> {
 		const [line, fn] = criterion.split('@');
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.addFile(...files);
 		analyzer.addRequest(requestFromInput(code));
 		const info = await Resolve.infoOf(analyzer);
 		const idMap = (await analyzer.normalize()).idMap;
@@ -36,9 +38,9 @@ describe('Ambient contracts of calls', withTreeSitter(ts => {
 			...c.ruledOut.map(({ effect, decidedBy }) => [`never ${effect.family} ${effect.access}`, ...decidedBy.length === 0 ? [] : [`@${decidedBy.map(shown).join(',')}`]].join(' '))
 		]]));
 	}
-	function check(name: string, code: string, criterion: string, expected: Record<string, string[]>): void {
+	function check(name: string, code: string, criterion: string, expected: Record<string, string[]>, files: readonly FlowrInlineTextFile[] = []): void {
 		test(label(name, [], ['dataflow']), async() => {
-			assert.deepStrictEqual(await contracts(code, criterion), expected);
+			assert.deepStrictEqual(await contracts(code, criterion, files), expected);
 		});
 	}
 
@@ -74,6 +76,8 @@ describe('Ambient contracts of calls', withTreeSitter(ts => {
 		check('a recursive function stops', 'g <- function(n, ...) if(n > 0) g(n - 1, ...) else maps::map(...)\ng(3, add = TRUE)', '1@map', { 'maps::map': adds('2@add') });
 		check('a recursive call adding arguments stays open', 'g <- function(n, ...) if(n > 0) g(n - 1, add = FALSE, ...) else maps::map(...)\ng(3, add = TRUE)', '1@map', { 'maps::map': ['maybe plot adds (if add is TRUE) @1@add,2@add', 'maybe plot resets (unless add is TRUE) @1@add,2@add', ...plot] });
 		check('parameters of two functions in one call', 'g <- function(a, ...) h(a, ...)\nh <- function(b, ...) maps::map(add = b, ...)\ng(TRUE)\ng(TRUE, fill = TRUE)', '2@map', { 'maps::map': ['always plot adds @4@TRUE,3@TRUE', ...plot, 'never plot resets @4@TRUE,3@TRUE'] });
+		check('a package function may be called from outside', 'g <- function(...) maps::map(...)\ng(add = TRUE)', '1@map', { 'maps::map': ['maybe plot adds (if add is TRUE)', 'maybe plot resets (unless add is TRUE)', ...plot] }, [new FlowrInlineTextFile('NAMESPACE', 'export(g)')]);
+		check('a call within a package still narrows its callee', 'g <- function(...) maps::map(...)\ng(add = TRUE)', '2@g', { 'maps::map': adds('2@add') }, [new FlowrInlineTextFile('NAMESPACE', 'export(g)')]);
 		check('the entries a parameter names', 'f <- function(p) library(p, character.only = TRUE)\nf("dplyr")', '2@f', { 'base::library': ['always search-path writes [dplyr]', 'always lib-paths reads', 'always installed-packages reads [dplyr]'] });
 	});
 	describe('a contract states its decisions as data', () => {

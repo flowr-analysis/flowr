@@ -1532,7 +1532,7 @@ result <- df[c(1, 1, 1, 1, 1), ]
 			{ '1@result': { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [3, 3] } }
 		);
 
-		describe('Unsupported', { fails: true }, () => {
+		describe('Formerly unsupported', () => {
 			testShape(
 				`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
@@ -2028,7 +2028,7 @@ print(df)
 			}
 		);
 
-		describe('Unsupported', { fails: true }, () => {
+		describe('Formerly unsupported', () => {
 			testShape(
 				`
 null <- \\() NULL
@@ -3011,7 +3011,7 @@ result <- subset(TRUE, FALSE, x = df)
 			['2@result']
 		);
 
-		describe('Unsupported', { fails: true }, () => {
+		describe('Formerly unsupported', () => {
 			testShape(
 				`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")

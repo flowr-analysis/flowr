@@ -1,7 +1,8 @@
 import { VariableResolve } from '../../config';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { Identifier, type IdentifierString } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type IdentifierString } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
+import { EdgeType } from '../../dataflow/graph/edge';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { datasetShape } from '../../util/r-datasets';
@@ -1028,7 +1029,7 @@ function mapDataFrameSubset(
 
 	if(dropArg === undefined || accessedCols.length > 1) {
 		if(unselectedCols === undefined || unselectedCols.length > 0) {
-			result.push({ operation: 'removeCols', operand: operand?.info.id, colnames: unselectedCols?.map(toColName) });
+			result.push({ operation: 'removeCols', operand: operand?.info.id, colnames: unselectedCols?.map(toColName), maxIndex: unselectedCols?.every(isIndex) ? maxAbs(unselectedCols) : undefined });
 			operand = undefined;
 		}
 		if(selectedCols === undefined || selectedCols.length > 0) {
@@ -1036,7 +1037,7 @@ function mapDataFrameSubset(
 				operation: 'subsetCols',
 				operand:   operand?.info.id,
 				colnames:  selectedCols?.map(toColName),
-				...(duplicateCols || mixedAccess ? { options: { duplicateCols: true } } : {})
+				...(duplicateCols || mixedAccess || (selectedCols === undefined && mayRepeat(selectArg, info)) ? { options: { duplicateCols: true } } : {})
 			});
 			// eslint-disable-next-line no-useless-assignment -- ends the chain
 			operand = undefined;
@@ -1418,6 +1419,43 @@ function maxAbs(indices: readonly number[]): number {
 	return max;
 }
 
+const LogicalOperators: ReadonlySet<string> = new Set(['<', '>', '<=', '>=', '==', '!=', '&', '|', '&&', '||', '%in%', '!']);
+
+/** the calls yielding indices without repeating one: `sample` without replacement, `which`, and the sequences */
+const DistinctIndices: ReadonlySet<BrandedIdentifier> = new Set(['sample', 'which', 'seq_len', 'seq_along', 'order']);
+
+/**
+ * Whether an index the semantics cannot resolve may name an entry twice or past the end, as `rep(1, 12)` does, rather than
+ * select among the entries: a condition, a logical vector, a range (`id:name`) or distinct indices do not.
+ */
+function mayRepeat(arg: PotentiallyEmptyRArgument<ParentInformation> | undefined, info: ResolveInfo): boolean {
+	const value = arg !== undefined && RArgument.isNotEmpty(arg) ? arg.value : undefined;
+	if(value === undefined || ((RBinaryOp.is(value) || RUnaryOp.is(value)) && LogicalOperators.has(value.operator)) || (RBinaryOp.is(value) && value.operator === ':')) {
+		return false;
+	} else if(RFunctionCall.isNamed(value, DistinctIndices)) {
+		const replace = getArgumentValue(value.arguments, 'replace', info);
+		return replace !== undefined && replace !== false;
+	}
+	const resolved = Resolve.argument.value(arg, info);
+	return !(typeof resolved === 'boolean' || (Array.isArray(resolved) && resolved.every(v => typeof v === 'boolean')));
+}
+
+/** whether the value of `node` may be `NULL`, which removes a column it is assigned to: a call of a function of the program, or a variable holding one */
+function mayBeNull(node: RNode<ParentInformation> | undefined, info: ResolveInfo, seen = new Set<NodeId>()): boolean {
+	if(node === undefined || seen.has(node.info.id)) {
+		return false;
+	}
+	seen.add(node.info.id);
+	if(isRNull(node)) {
+		return true;
+	} else if(RFunctionCall.is(node)) {
+		return info.graph !== undefined && Dataflow.targetsOf(info.graph, node.info.id, EdgeType.Calls).some(t => DfgVertex.isFunctionDefinition(info.graph?.getVertex(t)));
+	} else if(RSymbol.is(node) && info.graph !== undefined) {
+		return (Dataflow.valueSources(node.info.id, info.graph) ?? []).some(v => v !== node.info.id && mayBeNull(info.idMap?.get(v), info, seen));
+	}
+	return false;
+}
+
 /** whether the shape pins the number of columns down to exactly one */
 function isSingleColumn(shape: DataFrameDomain | undefined): boolean {
 	return shape !== undefined && shape.cols.isValue() && shape.cols.lower === 1 && shape.cols.upper === 1;
@@ -1479,7 +1517,8 @@ function mapDataFrameIndexColRowAccess(
 	// The data frame extent is dropped if the operator `[[` is used, the argument `drop` is true, or only one column is accessed
 	const dropExtent = access.operator === '[[' ? true :
 		args.length === 2 && typeof drop === 'boolean' ? drop :
-			singleColumn || rowArg !== undefined && columns?.length === 1 && (isColName(columns[0]) || columns[0] > 0);
+			singleColumn || rowArg !== undefined && (columns?.length === 1 ? isColName(columns[0]) || columns[0] > 0
+				: columns === undefined && colArg !== undefined && RArgument.isNotEmpty(colArg));
 
 	if(!dropExtent) {
 		const rowSubset = rows === undefined || rows.every(row => row >= 0);
@@ -1495,7 +1534,8 @@ function mapDataFrameIndexColRowAccess(
 				result.push({
 					operation: 'subsetRows',
 					operand:   operand?.info.id,
-					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length
+					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length,
+					...(rows === undefined && mayRepeat(rowArg, info) ? { options: { repeats: true } } : {})
 				});
 			} else {
 				result.push({
@@ -1514,7 +1554,7 @@ function mapDataFrameIndexColRowAccess(
 					operation: 'subsetCols',
 					operand:   operand?.info.id,
 					colnames:  colZero ? [] : columns?.map(toColName),
-					...(duplicateCols ? { options: { duplicateCols: true } } : {})
+					...(duplicateCols || (columns === undefined && mayRepeat(colArg, info)) ? { options: { duplicateCols: true } } : {})
 				});
 			} else {
 				result.push({
@@ -1590,7 +1630,7 @@ function mapDataFrameNamedColumnAssignment(
 			options:   { maybe: true }
 		}];
 	} else {
-		return [{ operation: 'assignCols', operand: dataFrame.info.id, columns: colname ? [colname] : undefined }];
+		return [{ operation: 'assignCols', operand: dataFrame.info.id, columns: colname ? [colname] : undefined, ...(mayBeNull(expression, info) ? { options: { maybeNull: true } } : {}) }];
 	}
 }
 
@@ -1642,7 +1682,7 @@ function mapDataFrameIndexColRowAssignment(
 				options:   { maybe: true }
 			});
 		} else {
-			result.push({ operation: 'assignCols', operand: dataFrame.info.id, columns });
+			result.push({ operation: 'assignCols', operand: dataFrame.info.id, columns, ...(mayBeNull(expression, info) ? { options: { maybeNull: true } } : {}) });
 		}
 	}
 	return result;

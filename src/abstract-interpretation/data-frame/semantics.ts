@@ -138,9 +138,14 @@ function applyAccessRowsSemantics(
 
 function applyAssignColsSemantics(
 	value: DataFrameDomain,
-	{ columns }: { columns: string[] | number[] | undefined }
+	{ columns }: { columns: string[] | number[] | undefined },
+	options?: { maybeNull?: boolean }
 ): DataFrameDomain {
-	if(columns?.every(col => typeof col === 'string')) {
+	/* a value that may be `NULL` removes the columns instead */
+	if(options?.maybeNull) {
+		const removed = applyRemoveColsSemantics(value, { colnames: columns?.every(col => typeof col === 'string') ? columns : undefined }, { maybe: true });
+		return applyAssignColsSemantics(value, { columns }).join(removed);
+	} else if(columns?.every(col => typeof col === 'string')) {
 		return value.create({
 			colnames: value.colnames.union(setRange(columns)),
 			cols:     value.cols.add([0, columns.length]).max([columns.length, columns.length]),
@@ -318,10 +323,11 @@ function applySubsetColsSemantics(
 function applySubsetRowsSemantics(
 	value: DataFrameDomain,
 	{ rows }: { rows: number | undefined },
-	options?: { atMost?: boolean }
+	options?: { atMost?: boolean, repeats?: boolean }
 ): DataFrameDomain {
 	if(rows === undefined) {
-		return value.create({ colnames: value.colnames, cols: value.cols, rows: value.rows.widenDown() });
+		/* an index may name a row twice or past the end, a condition only selects among them */
+		return value.create({ colnames: value.colnames, cols: value.cols, rows: options?.repeats ? value.rows.top() : value.rows.widenDown() });
 	}
 	return value.create({
 		colnames: value.colnames,

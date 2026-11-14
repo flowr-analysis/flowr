@@ -6,16 +6,13 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { type ControlFlowInformation, CfgVertex } from '../../../control-flow/control-flow-graph';
 import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { type CfgSimplificationPassName, CfgSimplificationPasses } from '../../../control-flow/cfg-simplification';
-import { log } from '../../../util/log';
-import { metaSince } from '../../query-meta';
+import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
 /**
  * Executes the control flow query with the given simplification passes.
  */
 export async function executeControlFlowQuery({ analyzer }: BasicQueryData, queries: readonly ControlFlowQuery[]): Promise<ControlFlowQueryResult> {
-	if(queries.length !== 1) {
-		log.warn('The control flow query expects only up to one query, but got', queries.length);
-	}
+	warnUnlessSingleQuery('The control flow', queries);
 
 	const query = queries[0];
 

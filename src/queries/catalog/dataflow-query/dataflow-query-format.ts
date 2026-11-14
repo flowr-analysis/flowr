@@ -5,16 +5,13 @@ import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
-import { log } from '../../../util/log';
-import { metaSince } from '../../query-meta';
+import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
 /**
  * Executes the given dataflow queries.
  */
 export async function executeDataflowQuery({ analyzer }: BasicQueryData, queries: readonly DataflowQuery[]): Promise<DataflowQueryResult> {
-	if(queries.length !== 1) {
-		log.warn('Dataflow query expects only up to one query, but got', queries.length);
-	}
+	warnUnlessSingleQuery('Dataflow', queries);
 	const startTime = Date.now();
 	const { graph } = await analyzer.dataflow();
 	return {

@@ -6,17 +6,14 @@ import type { DataflowGraphClusters } from '../../../dataflow/cluster';
 import { summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
-import { log } from '../../../util/log';
 import { findAllClusters } from '../../../dataflow/cluster';
-import { metaSince } from '../../query-meta';
+import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
 /**
  * Executes the given dataflow cluster queries using the provided analyzer.
  */
 export async function executeDataflowClusterQuery({ analyzer }: BasicQueryData, queries: readonly DataflowClusterQuery[]): Promise<DataflowClusterQueryResult> {
-	if(queries.length !== 1) {
-		log.warn('The dataflow cluster query expects only up to one query, but got', queries.length);
-	}
+	warnUnlessSingleQuery('The dataflow cluster', queries);
 
 	const start = Date.now();
 	const clusters = findAllClusters((await analyzer.dataflow()).graph);

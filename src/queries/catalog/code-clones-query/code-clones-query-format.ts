@@ -14,16 +14,13 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { queryLineCode } from '../../../cli/repl/parser/slice-query-parser';
 import { CloneIndex } from '../../../clones/clone-index';
 import { deepMergeObject } from '../../../util/objects';
-import { metaSince } from '../../query-meta';
-import { log } from '../../../util/log';
+import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
 /**
  * Builds the clone index of the analyzed files and runs the requested clone detectors on it.
  */
 export async function executeCodeClonesQuery({ analyzer }: BasicQueryData, queries: readonly CodeClonesQuery[]): Promise<CodeClonesQueryResult> {
-	if(queries.length !== 1) {
-		log.warn('The code-clones query expects only up to one query, but got', queries.length);
-	}
+	warnUnlessSingleQuery('The code-clones', queries);
 	const query = queries[0];
 	const start = Date.now();
 	const algorithms = query.algorithms ?? DefaultCloneDetectionConfig.algorithms;

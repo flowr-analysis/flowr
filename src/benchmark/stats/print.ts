@@ -2,8 +2,8 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SummarizedSlicerStats}).
  * @module
  */
-import type { ElapsedTime, PerSliceMeasurements, SlicerStatsDataflow, SlicerStatsInput } from './stats';
-import type { Reduction, SummarizedPerSliceStats, SummarizedSlicerStats, UltimateSlicerStats } from '../summarizer/data';
+import type { CommonSlicerMeasurements, ElapsedTime, PerSliceMeasurements, SlicerStatsDataflow, SlicerStatsInput } from './stats';
+import type { Reduction, SummarizedPerSliceStats, SummarizedSlicerStats, TimePerToken, UltimateSlicerStats } from '../summarizer/data';
 import { guard } from '../../util/assert';
 import type { SummarizedMeasurement } from '../../util/summarizer';
 
@@ -115,43 +115,27 @@ function convertNumberToNiceBytes(x: number) {
 	return pad((x < 0 ? '-' : '') + n.toFixed(n < 10 && l > 0 ? 1 : 0) + ' ' + units[l]);
 }
 
+/** The phases every run times per token, by label, measurement, and the field holding the time per token; the optional ones only print when measured. */
+const TokenPhases = [['AST retrieval', 'retrieve AST from R code', 'retrieveTimePerToken'], ['AST normalization', 'normalize R AST', 'normalizeTimePerToken'], ['Dataflow creation', 'produce dataflow information', 'dataflowTimePerToken']] as const;
+const OptionalTokenPhases = [['Control flow extraction', 'extract control flow graph', 'controlFlowTimePerToken'], ['Call graph extraction', 'extract call graph', 'callGraphTimePerToken'], ['Dataframe shape inference', 'infer data frame shapes', 'dataFrameShapeTimePerToken']] as const;
+type PhaseKey = (typeof TokenPhases | typeof OptionalTokenPhases)[number][2] | 'totalCommonTimePerToken';
+
+/** The time of each phase and its time per token, a phase timed by `time`, a time per token formatted by `format`. */
+function phases2String<T>(stats: { readonly commonMeasurements: ReadonlyMap<CommonSlicerMeasurements, unknown> } & { readonly [K in PhaseKey]?: TimePerToken<T> }, time: (phase: CommonSlicerMeasurements) => string, format: (value: T) => string): string {
+	const line = (label: string, value: string) => `\n${(label + ':').padEnd(38)}${value}`;
+	const perToken = (label: string, of: TimePerToken<T> | undefined) => of === undefined ? '' : line(label + ' per token', format(of.normalized)) + line(label + ' per R token', format(of.raw));
+	const phase = ([label, measurement, key]: readonly [string, CommonSlicerMeasurements, PhaseKey]) => line(label, time(measurement)) + perToken(label, stats[key]);
+	return line('Shell init time', time('initialize R session')) + TokenPhases.map(phase).join('') + perToken('Total common time', stats.totalCommonTimePerToken)
+		+ OptionalTokenPhases.filter(([, measurement, key]) => stats.commonMeasurements.has(measurement) && stats[key] !== undefined).map(phase).join('');
+}
+
 /**
  * Converts the given stats to a human-readable string.
  * You may have to {@link summarizeSlicerStats | summarize} the stats first.
  */
 export function stats2string(stats: SummarizedSlicerStats): string {
 	let result = `
-Request: ${JSON.stringify(stats.request)}
-Shell init time:                      ${print(stats.commonMeasurements, 'initialize R session')}
-AST retrieval:                        ${print(stats.commonMeasurements, 'retrieve AST from R code')}
-AST retrieval per token:              ${formatNanoseconds(stats.retrieveTimePerToken.normalized)}
-AST retrieval per R token:            ${formatNanoseconds(stats.retrieveTimePerToken.raw)}
-AST normalization:                    ${print(stats.commonMeasurements, 'normalize R AST')}
-AST normalization per token:          ${formatNanoseconds(stats.normalizeTimePerToken.normalized)}
-AST normalization per R token:        ${formatNanoseconds(stats.normalizeTimePerToken.raw)}
-Dataflow creation:                    ${print(stats.commonMeasurements, 'produce dataflow information')}
-Dataflow creation per token:          ${formatNanoseconds(stats.dataflowTimePerToken.normalized)}
-Dataflow creation per R token:        ${formatNanoseconds(stats.dataflowTimePerToken.raw)}
-Total common time per token:          ${formatNanoseconds(stats.totalCommonTimePerToken.normalized)}
-Total common time per R token:        ${formatNanoseconds(stats.totalCommonTimePerToken.raw)}`;
-	if(stats.commonMeasurements.has('extract control flow graph') && stats.controlFlowTimePerToken !== undefined) {
-		result += `
-Control flow extraction:              ${print(stats.commonMeasurements, 'extract control flow graph')}
-Control flow extraction per token:    ${formatNanoseconds(stats.controlFlowTimePerToken.normalized)}
-Control flow extraction per R token:  ${formatNanoseconds(stats.controlFlowTimePerToken.raw)}`;
-	}
-	if(stats.commonMeasurements.has('extract call graph') && stats.callGraphTimePerToken !== undefined) {
-		result += `
-Call graph extraction:                ${print(stats.commonMeasurements, 'extract call graph')}
-Call graph extraction per token:      ${formatNanoseconds(stats.callGraphTimePerToken.normalized)}
-Call graph extraction per R token:    ${formatNanoseconds(stats.callGraphTimePerToken.raw)}`;
-	}
-	if(stats.commonMeasurements.has('infer data frame shapes') && stats.dataFrameShapeTimePerToken !== undefined) {
-		result += `
-Dataframe shape inference:            ${print(stats.commonMeasurements, 'infer data frame shapes')}
-Dataframe shape inference per token:  ${formatNanoseconds(stats.dataFrameShapeTimePerToken.normalized)}
-Dataframe shape inference per R token:${formatNanoseconds(stats.dataFrameShapeTimePerToken.raw)}`;
-	}
+Request: ${JSON.stringify(stats.request)}${phases2String(stats, key => print(stats.commonMeasurements, key), formatNanoseconds)}`;
 
 	if(stats.perSliceMeasurements.numberOfSlices > 0) {
 		result += `
@@ -219,37 +203,7 @@ Dataframe shape inference:
 /** Converts reduction stats to a human-readable string. */
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
 	let result = `
-Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices
-Shell init time:                      ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('initialize R session'))}
-AST retrieval:                        ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve AST from R code'))}
-AST retrieval per token:              ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.normalized)}
-AST retrieval per R token:            ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.raw)}
-AST normalization:                    ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('normalize R AST'))}
-AST normalization per token:          ${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.normalized)}
-AST normalization per R token:        ${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.raw)}
-Dataflow creation:                    ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('produce dataflow information'))}
-Dataflow creation per token:          ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.normalized)}
-Dataflow creation per R token:        ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.raw)}
-Total common time per token:          ${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.normalized)}
-Total common time per R token:        ${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.raw)}`;
-	if(stats.commonMeasurements.has('extract control flow graph') && stats.controlFlowTimePerToken !== undefined) {
-		result += `
-Control flow extraction:              ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('extract control flow graph'))}
-Control flow extraction per token:    ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.normalized)}
-Control flow extraction per R token:  ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.raw)}`;
-	}
-	if(stats.commonMeasurements.has('extract call graph') && stats.callGraphTimePerToken !== undefined) {
-		result += `
-Call graph extraction:                ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('extract call graph'))}
-Call graph extraction per token:      ${formatSummarizedTimeMeasure(stats.callGraphTimePerToken.normalized)}
-Call graph extraction per R token:    ${formatSummarizedTimeMeasure(stats.callGraphTimePerToken.raw)}`;
-	}
-	if(stats.commonMeasurements.has('infer data frame shapes') && stats.dataFrameShapeTimePerToken !== undefined) {
-		result += `
-Dataframe shape inference:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('infer data frame shapes'))}
-Dataframe shape inference per token:  ${formatSummarizedTimeMeasure(stats.dataFrameShapeTimePerToken.normalized)}
-Dataframe shape inference per R token:${formatSummarizedTimeMeasure(stats.dataFrameShapeTimePerToken.raw)}`;
-	}
+Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices${phases2String(stats, key => formatSummarizedTimeMeasure(stats.commonMeasurements.get(key)), formatSummarizedTimeMeasure)}`;
 
 	result += `
 

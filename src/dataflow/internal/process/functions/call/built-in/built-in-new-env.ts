@@ -105,10 +105,7 @@ export function createFreshEnvState(
 	if(sourceInfo !== undefined) {
 		const vertex = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
 		if(DfgVertex.isFunctionCall(vertex) && vertex.newEnvParent !== undefined) {
-			return {
-				current: new Environment(vertex.newEnvParent.current),
-				level:   vertex.newEnvParent.level + 1
-			};
+			return { current: new Environment(vertex.newEnvParent.current), level: vertex.newEnvParent.level + 1 };
 		}
 	}
 	return REnvironment.pushLocal(data.environment);

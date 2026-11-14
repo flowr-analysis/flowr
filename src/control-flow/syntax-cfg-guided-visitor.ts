@@ -1,15 +1,7 @@
-import type {
-	CfgExpressionVertex,
-	CfgStatementVertex,
-	ControlFlowInformation
-} from './control-flow-graph';
-import { CfgVertex
-} from './control-flow-graph';
+import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
+import { CfgVertex } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type {
-	NormalizedAst,
-	ParentInformation
-} from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type BasicCfgGuidedVisitorConfiguration, BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';

@@ -116,10 +116,7 @@ function propsOf(id: NodeId, state: LookupState): OwnProps {
 	for(const [node, vertex] of Dataflow.callsIn(definition, state.graph)) {
 		const info = state.info(vertex.name);
 		const carried = filter(info, PropagatedProps);
-		stated = join(stated, {
-			props: (carried.props ?? 0) & (bindsOutside(vertex, info) ? ~0 : ~CallProp.Scope),
-			tags:  carried.tags
-		});
+		stated = join(stated, { props: (carried.props ?? 0) & (bindsOutside(vertex, info) ? ~0 : ~CallProp.Scope), tags: carried.tags });
 		if(DispatchCallees.has(Identifier.getName(vertex.name))) {
 			stated = join(stated, { props: CallProp.Generic });
 		}

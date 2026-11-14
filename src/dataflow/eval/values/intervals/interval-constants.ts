@@ -30,11 +30,5 @@ function shiftNum(v: Lift<ValueNumber>): ValueNumber {
  * @param endInclusive   - whether `end` itself belongs to the interval
  */
 export function intervalFromValues(start: Lift<ValueNumber>, end = start, startInclusive = true, endInclusive = true): ValueInterval {
-	return {
-		type:  'interval',
-		start: shiftNum(start),
-		end:   shiftNum(end),
-		startInclusive,
-		endInclusive,
-	};
+	return { type: 'interval', start: shiftNum(start), end: shiftNum(end), startInclusive, endInclusive };
 }

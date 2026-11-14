@@ -27,9 +27,7 @@ const AllOfKeyedState: Readonly<Record<KeyedState, AmbientStateName>> = {
 };
 
 /** What R puts before the name of an entry that is no part of its key: `search()` lists `package:dplyr` for the entry `dplyr`. */
-const EntryPrefix: Readonly<Partial<Record<KeyedState, string>>> = {
-	[KeyedState.SearchPath]: 'package:'
-};
+const EntryPrefix: Readonly<Partial<Record<KeyedState, string>>> = { [KeyedState.SearchPath]: 'package:' };
 
 /** What a package name looks like, other than a path, url, or remote reference (`user/repo`) naming a package only implicitly. */
 export const PlainPackageName = /^[A-Za-z][A-Za-z0-9.]*$/;

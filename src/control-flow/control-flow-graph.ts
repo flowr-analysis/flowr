@@ -819,14 +819,7 @@ export interface ControlFlowInformation<Vertex extends CfgVertex = CfgVertex> ex
 
 /** Create an empty control flow information object. */
 export function emptyControlFlowInformation(): ControlFlowInformation {
-	return {
-		returns:     [],
-		breaks:      [],
-		nexts:       [],
-		entryPoints: [],
-		exitPoints:  [],
-		graph:       new ControlFlowGraph()
-	};
+	return { returns: [], breaks: [], nexts: [], entryPoints: [], exitPoints: [], graph: new ControlFlowGraph() };
 }
 
 /**
@@ -971,17 +964,9 @@ export function cfg2quads(cfg: ControlFlowInformation, config: QuadSerialization
 	return graph2quads({
 		rootIds:  [...cfg.graph.rootIds()],
 		vertices: [...cfg.graph.vertices().entries()]
-			.map(([id, v]) => ({
-				id,
-				children: CfgVertex.getChildren(v)
-			})),
+			.map(([id, v]) => ({ id, children: CfgVertex.getChildren(v) })),
 		edges: [...cfg.graph.edges()].flatMap(([fromId, targets]) =>
-			[...targets].map(([toId, info]) => ({
-				from: fromId,
-				to:   toId,
-				type: CfgEdge.getType(info),
-				when: CfgEdge.getWhen(info)
-			}))
+			[...targets].map(([toId, info]) => ({ from: fromId, to: toId, type: CfgEdge.getType(info), when: CfgEdge.getWhen(info) }))
 		),
 		entryPoints: cfg.entryPoints,
 		exitPoints:  cfg.exitPoints,

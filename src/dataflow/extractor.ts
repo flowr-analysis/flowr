@@ -388,10 +388,7 @@ function resourceArgs(vertex: DataflowGraphVertexFunctionCall, info: BuiltInFnIn
 }
 
 function definitionsReachedBy(node: NodeId, graph: DataflowGraph): ReadonlySet<NodeId> {
-	return Dataflow.reachable(graph, node, {
-		follow: EdgeType.Reads,
-		stopAt: id => DfgVertex.isVariableDefinition(graph.getVertex(id))
-	});
+	return Dataflow.reachable(graph, node, { follow: EdgeType.Reads, stopAt: id => DfgVertex.isVariableDefinition(graph.getVertex(id)) });
 }
 
 function fileCallNames(index: BuiltInIndex): ReadonlySet<BrandedIdentifier> {

@@ -1,9 +1,5 @@
 import { DataflowGraph } from './graph';
-import type {
-	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexInfo
-} from './vertex';
+import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo } from './vertex';
 import { VertexType, DfgVertex } from './vertex';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge, EdgeType } from './edge';
@@ -343,11 +339,7 @@ export const CallGraph = {
 	/** Computes the call graph from the given dataflow graph. */
 	compute(this: void, graph: DataflowGraph): CallGraph {
 		const result: CallGraph = new DataflowGraph(graph.idMap);
-		const state: State = {
-			visited:    new Set(),
-			potentials: [],
-			resolver:   new LinkedFunctionResolver(graph)
-		};
+		const state: State = { visited: new Set(), potentials: [], resolver: new LinkedFunctionResolver(graph) };
 		for(const [,vert] of graph.vertices(false)) {
 			if(DfgVertex.isFunctionCall(vert)) {
 				processCall(vert, undefined, graph, result, state);

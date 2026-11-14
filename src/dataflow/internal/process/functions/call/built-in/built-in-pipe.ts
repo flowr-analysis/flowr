@@ -146,12 +146,7 @@ export function processPipe<OtherInfo>(
 		// without a placeholder the lhs becomes the first argument of the rhs call
 		if(occurrenceIds.length === 0) {
 			dataflowLogger.trace(`Linking pipe arg ${argId} as first argument of ${rhs.info.id}`);
-			functionCallNode.args.unshift({
-				name:   undefined,
-				nodeId: argId,
-				cds:    data.cds,
-				type:   ReferenceType.Function
-			});
+			functionCallNode.args.unshift({ name: undefined, nodeId: argId, cds: data.cds, type: ReferenceType.Function });
 			information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument | EdgeType.Reads);
 		}
 

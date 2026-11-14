@@ -4,12 +4,7 @@
  */
 import { builtInEnvJsonReplacer, isDefaultBuiltInEnvironment } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
-import type {
-	BrandedNamespace,
-	BrandedIdentifier,
-	IdentifierDefinition,
-	ReferenceType
-} from './identifier';
+import type { BrandedNamespace, BrandedIdentifier, IdentifierDefinition, ReferenceType } from './identifier';
 import { anyRemovalMarker, removalMarkerOf } from './removal-marker';
 import { Identifier, PkgName } from './identifier';
 import { ControlDependency, happensInEveryBranch  } from '../info';
@@ -492,12 +487,7 @@ export class Environment implements IEnvironment {
 	}
 
 	toJSON(): Jsonified {
-		return this.builtInEnv ? {
-			id:         this.id,
-			parent:     this.parent,
-			builtInEnv: this.builtInEnv,
-			memory:     new Map(this.memory),
-		} : {
+		return this.builtInEnv ? { id: this.id, parent: this.parent, builtInEnv: this.builtInEnv, memory: new Map(this.memory) } : {
 			id:        this.id,
 			parent:    this.parent,
 			memory:    new Map(this.memory),

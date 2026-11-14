@@ -48,12 +48,7 @@ export function convertCfgToBasicBlocks(cfInfo: ControlFlowInformation): Control
 		return cfInfo;
 	}
 
-	return {
-		...cfInfo,
-		graph:       newCfg,
-		entryPoints: findEntries as NodeId[],
-		exitPoints:  findExits as NodeId[],
-	};
+	return { ...cfInfo, graph: newCfg, entryPoints: findEntries as NodeId[], exitPoints: findExits as NodeId[] };
 }
 
 /** only returns undefined when the cfg already contains basic blocks */

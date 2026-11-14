@@ -20,12 +20,9 @@ export function toUnnamedArgument<OtherInfo>(
 		type:     RType.Argument,
 		lexeme:   node.lexeme ?? '',
 		location: node.location ?? SourceRange.invalid(),
-		info:     {
-			...node.info,
-			id: NodeId.argumentOf(node.info.id)
-		},
-		name:  undefined,
-		value: node
+		info:     { ...node.info, id: NodeId.argumentOf(node.info.id) },
+		name:     undefined,
+		value:    node
 	};
 	idMap.set(arg.info.id, node);
 	return arg;

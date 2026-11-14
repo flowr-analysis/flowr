@@ -7,9 +7,7 @@ import { patchFunctionCall, processAllArguments, type ProcessAllArgumentResult }
 import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type {
-	PotentiallyEmptyRArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
@@ -145,12 +143,7 @@ export function processReplacementFunction<OtherInfo>(
 
 	const firstArg = RArgument.unnamedValueOf(args[0]);
 
-	handleReplacementOperator({
-		operator: name.content,
-		target:   firstArg?.lexeme,
-		env:      res.environment,
-		id:       rootId
-	});
+	handleReplacementOperator({ operator: name.content, target: firstArg?.lexeme, env: res.environment, id: rootId });
 
 	if(firstArg) {
 		res.graph.addEdge(
@@ -170,10 +163,7 @@ export function processReplacementFunction<OtherInfo>(
 
 	if(RSymbol.is(firstArg)) {
 		/* the target may hold anything, `environment(f) <- e` changes a function */
-		res = {
-			...res,
-			in: [...res.in, { name: firstArg.content, type: ReferenceType.Unknown, nodeId: firstArg.info.id, cds: data.cds }]
-		};
+		res = { ...res, in: [...res.in, { name: firstArg.content, type: ReferenceType.Unknown, nodeId: firstArg.info.id, cds: data.cds }] };
 	} else if(firstArg !== undefined && RAccess.is(firstArg)) {
 		/* a nested target (e.g. `a$b$c <- 5`) is no variable read, it is read through its own accessor */
 		res.graph.addEdge(firstArg.info.id, NodeId.toBuiltIn(firstArg.operator), EdgeType.Reads);

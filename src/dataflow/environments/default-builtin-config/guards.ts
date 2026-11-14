@@ -141,14 +141,9 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		/* a data frame of atomic columns, whatever the file holds */
 		...each(Returns(List, { elements: Atomic }), 'read.csv', 'read.csv2', 'read.delim', 'read.delim2', 'read.table', 'read.fwf')
 	},
-	[PkgName.Methods]: {
-		'is':     Computes,
-		'hasArg': Computes
-	},
-	[PkgName.AssertThat]: {
-		'assert_that': { asserts: ['msg', 'env'] }
-	},
-	[PkgName.Rlang]: {
+	[PkgName.Methods]:    { 'is': Computes, 'hasArg': Computes },
+	[PkgName.AssertThat]: { 'assert_that': { asserts: ['msg', 'env'] } },
+	[PkgName.Rlang]:      {
 		'is_null':             exact(Null),
 		'is_logical':          predicate(Logical),
 		'is_integer':          predicate(Integer),

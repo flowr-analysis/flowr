@@ -2,11 +2,7 @@
 import type { ControlDependency } from './info';
 import { DataflowInformation } from './info';
 import { activeDataflowBudget } from '../gas';
-import type {
-	NormalizedAst,
-	ParentInformation,
-	RNodeWithParent
-} from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation, RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from './environments/environment';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';

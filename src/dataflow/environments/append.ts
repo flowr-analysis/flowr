@@ -31,8 +31,5 @@ export function appendEnvironment(base: REnvironmentInformation | undefined, nex
 
 	({ base, next } = padToCommonScope(base, next));
 	// packages attached below the global env are unified branch-wise by Environment#append
-	return {
-		current: base.current.append(next.current),
-		level:   base.level,
-	};
+	return { current: base.current.append(next.current), level: base.level };
 }

@@ -310,10 +310,7 @@ export const CallProps = {
 	/** Keep only the properties in the stated properties that are in the property selector. */
 	filter(this: void, stated: StatedProps | undefined, selector: PropSelector): StatedProps {
 		const mask = getPropMask(selector);
-		return {
-			props: (stated?.props ?? 0) & mask.props,
-			tags:  stated?.tags?.filter(prop => mask.tags.has(prop))
-		};
+		return { props: (stated?.props ?? 0) & mask.props, tags: stated?.tags?.filter(prop => mask.tags.has(prop)) };
 	},
 	/** Transforms a property selector into a unique string identifier. */
 	key(this: void, selector: PropSelector): string {

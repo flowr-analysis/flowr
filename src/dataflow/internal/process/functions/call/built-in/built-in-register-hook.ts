@@ -39,9 +39,7 @@ export function processRegisterHook<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: RegisterHookConfig
 ): DataflowInformation {
-	const params: Record<BrandedIdentifier, string> = {
-		[config.args.expr.name]: 'expr',
-	};
+	const params: Record<BrandedIdentifier, string> = { [config.args.expr.name]: 'expr' };
 	if(config.args.add) {
 		params[config.args.add.name] = 'add';
 	}
@@ -70,16 +68,10 @@ export function processRegisterHook<OtherInfo>(
 				parameters: [],
 				body:       val,
 				lexeme:     'function',
-				info:       {
-					...val.info,
-					id: wrapId,
-				}
+				info:       { ...val.info, id: wrapId }
 			} satisfies RFunctionDefinition<OtherInfo & ParentInformation>;
 			data.completeAst.idMap.set(wrapId, wrapped);
-			return {
-				...arg,
-				value: wrapped
-			} satisfies RArgument;
+			return { ...arg, value: wrapped } satisfies RArgument;
 		} else {
 			return arg;
 		}

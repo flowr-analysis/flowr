@@ -69,14 +69,7 @@ export function processS3Dispatch<OtherInfo>(
 	const fnRef = { nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function };
 
 	if(ControlFlow.alwaysExits(dfObj, data.cds)) {
-		patchFunctionCall({
-			nextGraph:             dfObj.graph,
-			rootId,
-			name,
-			data,
-			argumentProcessResult: [dfObj],
-			origin:                BuiltInProcName.S3Dispatch
-		});
+		patchFunctionCall({ nextGraph: dfObj.graph, rootId, name, data, argumentProcessResult: [dfObj], origin: BuiltInProcName.S3Dispatch });
 		return dfObj;
 	}
 

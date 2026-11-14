@@ -1,7 +1,4 @@
-import type { AstIdMap,
-	ParentInformation,
-	RNodeWithParent
-} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
@@ -148,10 +145,7 @@ function tryReplacement<OtherInfo>(
 	/* every replacement function rebinds its target, no matter whether we ship a built-in for it or the user wrote it; a user-defined one is only ever bound under its `<-` name, the `<<-` form stays in the configuration */
 	const name = builtIn ? functionName.content : Identifier.mapName(functionName.content, n => superAssignment ? n.slice(0, -'<<-'.length) + '<-' : n);
 
-	const replacementConfig = builtIn ? builtIn.config : {
-		readIndices:        true,
-		assignmentOperator: superAssignment ? '<<-' : '<-'
-	};
+	const replacementConfig = builtIn ? builtIn.config : { readIndices: true, assignmentOperator: superAssignment ? '<<-' : '<-' };
 	const info = BuiltInProcessorMapper[BuiltInProcName.Replacement](
 		{ ...functionName, content: name },
 		wrapArgumentsUnnamed(args, data.completeAst.idMap),
@@ -165,10 +159,7 @@ function tryReplacement<OtherInfo>(
 		return info;
 	}
 	/* the replacement marks its callee as an S3 prefix, which only ever resolves to `name.<class>`; a user-defined replacement is bound under the plain name, so we read that first to link the call to its definition */
-	return {
-		...info,
-		in: [{ nodeId: functionName.info.id, name, cds: data.cds, type: ReferenceType.Function }, ...info.in]
-	};
+	return { ...info, in: [{ nodeId: functionName.info.id, name, cds: data.cds, type: ReferenceType.Function }, ...info.in] };
 }
 
 /** In contrast to `processAssignment`, this function allows more flexible handling of assignment-like functions. */

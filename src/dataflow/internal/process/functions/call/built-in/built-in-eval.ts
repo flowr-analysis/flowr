@@ -117,10 +117,7 @@ export function processEvalCall<OtherInfo>(
 		}
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId);
 
-		data = {
-			...data,
-			cds: code.length > 1 ? [...(data.cds ?? []), { id: rootId, when: true }] : data.cds
-		};
+		data = { ...data, cds: code.length > 1 ? [...(data.cds ?? []), { id: rootId, when: true }] : data.cds };
 		const originalInfo = { ...information };
 
 		const result: DataflowInformation[] = [];
@@ -250,13 +247,7 @@ function escapeWritesToParentFrame<OtherInfo>(
 		if(!RSymbol.is(inner) || !DfgVertex.isVariableDefinition(information.graph.getVertex(inner.info.id))) {
 			return false;
 		}
-		written.push({
-			nodeId:    inner.info.id,
-			name:      inner.content,
-			type:      ReferenceType.Variable,
-			definedAt: rootId,
-			cds:       data.cds
-		});
+		written.push({ nodeId: inner.info.id, name: inner.content, type: ReferenceType.Variable, definedAt: rootId, cds: data.cds });
 		return false;
 	});
 	if(written.length === 0) {

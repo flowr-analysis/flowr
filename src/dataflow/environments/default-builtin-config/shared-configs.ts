@@ -437,12 +437,10 @@ export const ReadsPlot = [Ambient.plot.reads, ...BasePlot] as const;
 
 /** what adding to a plot does */
 export const PlotAddonConfig = {
-	treatAsFnCall: {
-		'facet_grid': ['labeller']
-	},
-	ambient: BuildsGgPlot,
-	tags:    [SemanticCallTag.Graphics] as SemanticCallTags,
-	sig:     sig({ '...': ArgProp.Forced })
+	treatAsFnCall: { 'facet_grid': ['labeller'] },
+	ambient:       BuildsGgPlot,
+	tags:          [SemanticCallTag.Graphics] as SemanticCallTags,
+	sig:           sig({ '...': ArgProp.Forced })
 } as const;
 
 /** the devices withr opens for a scope, as `with_<device>` and `local_<device>` */

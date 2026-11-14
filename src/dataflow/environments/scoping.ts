@@ -6,10 +6,7 @@ import { guard } from '../../util/assert';
  * @useInstead {@link REnvironment.pushLocal}
  */
 export function pushLocalEnvironment({ level, current }: REnvironmentInformation): REnvironmentInformation {
-	return {
-		current: new Environment(current),
-		level:   level + 1
-	};
+	return { current: new Environment(current), level: level + 1 };
 }
 
 /**
@@ -18,10 +15,7 @@ export function pushLocalEnvironment({ level, current }: REnvironmentInformation
  */
 export function popLocalEnvironment({ current, level }: REnvironmentInformation): REnvironmentInformation {
 	guard(level > 0, 'cannot remove the global/root environment');
-	return {
-		current: current.parent,
-		level:   level - 1
-	};
+	return { current: current.parent, level: level - 1 };
 }
 
 /**

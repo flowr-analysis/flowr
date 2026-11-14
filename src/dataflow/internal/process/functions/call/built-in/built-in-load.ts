@@ -30,9 +30,7 @@ import { SourceRange } from '../../../../../../util/range';
 import type { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import type {
-	PotentiallyEmptyRArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, signatureParamNames, type EnvirResolution } from './built-in-envir-utils';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 

@@ -44,11 +44,7 @@ export function processFunctionArgument<OtherInfo>(
 	const argumentName = argument.name?.content;
 	let entryPoint = value?.entryPoint;
 	if(argumentName) {
-		graph.addVertex({
-			tag: VertexType.Use,
-			id:  argument.info.id,
-			cds: data.cds
-		}, data.ctx.env.cleanEnv);
+		graph.addVertex({ tag: VertexType.Use, id: argument.info.id, cds: data.cds }, data.ctx.env.cleanEnv);
 		entryPoint = argument.info.id;
 	}
 

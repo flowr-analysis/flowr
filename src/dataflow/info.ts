@@ -97,10 +97,7 @@ export function withCds(base: readonly ControlDependency[] | undefined, toAdd: r
  * This keeps undefined `when` values intact as undefined.
  */
 export function negateControlDependency(cd: ControlDependency): ControlDependency {
-	return {
-		...cd,
-		when: cd.when === undefined ? undefined : !cd.when,
-	};
+	return { ...cd, when: cd.when === undefined ? undefined : !cd.when };
 }
 
 /** Checks whether the given exit point type propagates calls (i.e., whether it aborts the current function execution). */

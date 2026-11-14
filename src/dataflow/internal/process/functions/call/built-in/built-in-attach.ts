@@ -65,11 +65,7 @@ export function processAttach<OtherInfo>(
 	for(const [varName, varDefs] of envirResolution?.envDef.envState.current.memory ?? []) {
 		for(const varDef of varDefs) {
 			const inDef = varDef as InGraphIdentifierDefinition;
-			injected.push({
-				...inDef,
-				name: varName,
-				type: ReferenceType.Variable,
-			});
+			injected.push({ ...inDef, name: varName, type: ReferenceType.Variable });
 			result.graph.addEdge(inDef.nodeId, rootId, EdgeType.Reads);
 		}
 	}

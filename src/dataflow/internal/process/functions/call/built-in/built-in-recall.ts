@@ -31,13 +31,7 @@ export function processRecall<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: RecallConfig,
 ): DataflowInformation {
-	const { information } = processKnownFunctionCall({
-		name,
-		args,
-		rootId,
-		data,
-		origin: BuiltInProcName.Recall
-	});
+	const { information } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Recall });
 
 	// If requested, treat Recall as an unknown side effect when a single argument is provided and it is not the numeric literal 0.
 	if(config?.unknownOnNonZeroArg) {

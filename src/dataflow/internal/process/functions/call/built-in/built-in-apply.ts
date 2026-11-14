@@ -177,10 +177,7 @@ export function processApply<OtherInfo>(
 		information.graph.addEdge(functionId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information = {
 			...information,
-			in: [
-				...information.in,
-				{ type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }
-			]
+			in: [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }]
 		};
 		const called = information.graph.getVertex(rootFnId);
 		if(DfgVertex.isFunctionDefinition(called)) {

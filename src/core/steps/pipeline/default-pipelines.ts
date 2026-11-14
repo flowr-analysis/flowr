@@ -1,7 +1,7 @@
 /**
  * Contains the default pipeline for working with flowR
  */
-import type { PipelineInput } from './pipeline';
+import type { Pipeline, PipelineInput } from './pipeline';
 import { createPipeline } from './pipeline';
 import { PARSE_WITH_R_SHELL_STEP } from '../all/core/00-parse';
 import { NORMALIZE } from '../all/core/10-normalize';
@@ -38,6 +38,10 @@ export const DEFAULT_PARSE_PIPELINE = createPipeline(PARSE_WITH_R_SHELL_STEP);
 export const TREE_SITTER_PARSE_PIPELINE = createPipeline(PARSE_WITH_TREE_SITTER_STEP);
 
 
+function executorFor<P extends Pipeline>(parser: KnownParser, rShell: P, treeSitter: Pipeline, inputs: Omit<PipelineInput<P>, 'parser'>): PipelineExecutor<P> {
+	return new PipelineExecutor((parser.name === ParserName.TreeSitter ? treeSitter : rShell) as P, { parser: parser as Parser<string>, ...inputs } as PipelineInput<P>);
+}
+
 export function createParsePipeline(parser: TreeSitterExecutor, inputs: Omit<PipelineInput<typeof DEFAULT_PARSE_PIPELINE>, 'parser'>): PipelineExecutor<typeof TREE_SITTER_PARSE_PIPELINE>;
 export function createParsePipeline(parser: RShell, inputs: Omit<PipelineInput<typeof DEFAULT_PARSE_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_PARSE_PIPELINE>;
 export function createParsePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_PARSE_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_PARSE_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_PARSE_PIPELINE>;
@@ -47,11 +51,7 @@ export function createParsePipeline(parser: KnownParser, inputs: Omit<PipelineIn
  * @see {@link createNormalizePipeline}, {@link createDataflowPipeline}, {@link createSlicePipeline}
  */
 export function createParsePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_PARSE_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_PARSE_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_PARSE_PIPELINE> {
-	const base = parser.name === ParserName.TreeSitter ? TREE_SITTER_PARSE_PIPELINE : DEFAULT_PARSE_PIPELINE;
-	return new PipelineExecutor(base as typeof DEFAULT_PARSE_PIPELINE, {
-		parser: parser as Parser<string>,
-		...inputs
-	});
+	return executorFor(parser, DEFAULT_PARSE_PIPELINE, TREE_SITTER_PARSE_PIPELINE, inputs);
 }
 
 
@@ -64,11 +64,7 @@ export function createSlicePipeline(parser: KnownParser, inputs: Omit<PipelineIn
  * @see {@link createParsePipeline}, {@link createNormalizePipeline}, {@link createDataflowPipeline}
  */
 export function createSlicePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_SLICING_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_SLICING_PIPELINE> {
-	const base = parser.name === ParserName.TreeSitter ? TREE_SITTER_SLICING_PIPELINE : DEFAULT_SLICING_PIPELINE;
-	return new PipelineExecutor(base as typeof DEFAULT_SLICING_PIPELINE, {
-		parser: parser as Parser<string>,
-		...inputs
-	});
+	return executorFor(parser, DEFAULT_SLICING_PIPELINE, TREE_SITTER_SLICING_PIPELINE, inputs);
 }
 
 
@@ -81,11 +77,7 @@ export function createNormalizePipeline(parser: KnownParser, inputs: Omit<Pipeli
  * @see {@link createParsePipeline}, {@link createDataflowPipeline}, {@link createSlicePipeline}
  */
 export function createNormalizePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_NORMALIZE_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_NORMALIZE_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_NORMALIZE_PIPELINE> {
-	const base = parser.name === ParserName.TreeSitter ? TREE_SITTER_NORMALIZE_PIPELINE : DEFAULT_NORMALIZE_PIPELINE;
-	return new PipelineExecutor(base as typeof DEFAULT_NORMALIZE_PIPELINE, {
-		parser: parser as Parser<string>,
-		...inputs
-	});
+	return executorFor(parser, DEFAULT_NORMALIZE_PIPELINE, TREE_SITTER_NORMALIZE_PIPELINE, inputs);
 }
 
 export function createDataflowPipeline(parser: TreeSitterExecutor, inputs: Omit<PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>, 'parser'>): PipelineExecutor<typeof TREE_SITTER_DATAFLOW_PIPELINE>;
@@ -97,9 +89,5 @@ export function createDataflowPipeline(parser: KnownParser, inputs: Omit<Pipelin
  * @see {@link createParsePipeline}, {@link createNormalizePipeline}, {@link createSlicePipeline}
  */
 export function createDataflowPipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_DATAFLOW_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_DATAFLOW_PIPELINE> {
-	const base = parser.name === ParserName.TreeSitter ? TREE_SITTER_DATAFLOW_PIPELINE : DEFAULT_DATAFLOW_PIPELINE;
-	return new PipelineExecutor(base as typeof DEFAULT_DATAFLOW_PIPELINE, {
-		parser: parser as Parser<string>,
-		...inputs
-	});
+	return executorFor(parser, DEFAULT_DATAFLOW_PIPELINE, TREE_SITTER_DATAFLOW_PIPELINE, inputs);
 }

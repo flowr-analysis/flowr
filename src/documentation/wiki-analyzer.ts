@@ -136,13 +136,10 @@ With the [files context](#Files_Context), you can also add virtual files to the 
 For this, have a look at the
 ${ctx.linkM(FlowrAnalyzer, 'addFile')} method.
 
-	${block({
-		type:    'NOTE',
-		content: `If you want to quickly try out the analyzer, you can use the following code snippet that analyzes a simple R expression:
+	${block('NOTE', `If you want to quickly try out the analyzer, you can use the following code snippet that analyzes a simple R expression:
 
 ${ctx.code(analyzerQuickExample, { dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true })}
-`
-	})}
+`)}
 
 To reset the analysis (e.g., to provide new requests) you can use ${ctx.linkM(FlowrAnalyzer, 'reset')}.
 If you need to pre-compute analysis results (e.g., to speed up future queries), you can use ${ctx.linkM(FlowrAnalyzer, 'runFull')}.
@@ -194,11 +191,8 @@ With the builder you can either provide a complete configuration or amend the de
 
 By default, the builder uses flowR's standard configuration obtained with ${ctx.linkO(FlowrConfig, 'default')}.
 
-${block({
-	type:    'NOTE',
-	content: `During the analysis with the ${ctx.link(FlowrAnalyzer)}, you can also access the configuration with
-		 the ${ctx.link(FlowrAnalyzerContext)}.`
-})}
+${block('NOTE', `During the analysis with the ${ctx.link(FlowrAnalyzer)}, you can also access the configuration with
+		 the ${ctx.link(FlowrAnalyzerContext)}.`)}
 
 ${section('Configuring the Engine', 3)}
 
@@ -235,16 +229,13 @@ Please note, that by passing \`false\` to the builder constructor, no default pl
 If you want to unregister specific plugins, you can use the ${ctx.linkM(FlowrAnalyzerBuilder, 'unregisterPlugins')} method.
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 If you directly access the API, please prefer creating the objects yourself by instantiating the respective classes instead of relying on the plugin registry.
 This avoids the indirection *and* potential issues with naming collisions in the registry.
 Moreover, this allows you to directly provide custom configuration to the plugin constructors in a readable fashion,
 *and* to re-use plugin instances.
 Instantiation by text is mostly for serialized communications (e.g., via a CLI or config format).
-`.trim()
-	})
+`.trim())
 }
 
 For more information on the different plugin types and how to create new plugins, please refer to the [Plugins](#Plugins) section below.
@@ -374,14 +365,11 @@ These sub-contexts are described in more detail below.
 
 For the general structure from an implementation perspective, please have a look at ${ctx.link(FlowrAnalyzerContext)}.
 ${
-	block({
-		type:    'TIP',
-		content: `
+	block('TIP', `
 If you need a context for testing or to create analyses with lower-level components, you can use
 either ${ctx.link(contextFromInput)} to create a context from input data (which lifts the old ${ctx.link(requestFromInput)}) or
 ${ctx.link(contextFromSources)} to create a context from source files (e.g., if you need a virtual file system).
-`.trim()
-	})
+`.trim())
 }
 
 If for whatever reason you need to reset the context during an analysis, you can use
@@ -406,13 +394,10 @@ ${ctx.linkM(FlowrAnalyzerFilesContext, 'consideredFilesList', { codeFont: true, 
 ${section('Loading Order Context', 3)}
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 Please be aware that the loading order is inherently tied to the files context (as it determines which files are available for ordering).
 Hence, the ${ctx.link(FlowrAnalyzerLoadingOrderContext)} is accessible (only) via the ${ctx.link(FlowrAnalyzerFilesContext)}.
-`.trim()
-	})
+`.trim())
 }
 
 Here is the structure of the ${ctx.link(FlowrAnalyzerLoadingOrderContext)} that provides access to the identified loading order of files:
@@ -492,14 +477,11 @@ writeable context (\`analyzer.context().gas.reset()\`). To bound a single call, 
 ${ctx.linkM(FlowrAnalyzerGasContext, 'scope', { codeFont: true, realNameWrapper: 'i' })}.
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 Gas is disabled for every feature by default, and with no gas plugins registered
 ${ctx.linkM(FlowrAnalyzerGasContext, 'checkGas', { codeFont: true, realNameWrapper: 'i' })} returns \`GasLevel.Normal\` without measuring anything.
 See the ${ctx.linkPage('wiki/Core', 'gas section of the Core wiki page', 'gas-resource-guard')} for the levels, the configuration, and how to write a gas plugin.
-`.trim()
-	})
+`.trim())
 }
 
 ${section('Incremental Analysis Context', 3)}

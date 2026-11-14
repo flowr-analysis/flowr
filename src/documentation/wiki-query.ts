@@ -1105,11 +1105,8 @@ ${codeBlock('r', exampleCode)}
 ${await showQuery(shell, exampleCode, [{ type: 'dataflow-lens' }], { showCode: false, ctx })}
 
 ${
-	block({
-		type:    'NOTE',
-		content: `This is a presentation aid, not a semantic one: the reduced graph is not a sound basis for slicing.
-Use the ${linkToQueryOfName('dataflow')} if you need the complete graph, or the ${linkToQueryOfName('dataflow-cluster')} if you want the graph partitioned instead of shrunk.`
-	})
+	block('NOTE', `This is a presentation aid, not a semantic one: the reduced graph is not a sound basis for slicing.
+Use the ${linkToQueryOfName('dataflow')} if you need the complete graph, or the ${linkToQueryOfName('dataflow-cluster')} if you want the graph partitioned instead of shrunk.`)
 }
 		`;
 	}
@@ -1148,12 +1145,9 @@ The \`parameters\` and \`requiredParameters\` properties additionally filter by 
 functions you only half-remember: \`{ package: '*', parameters: ['data', 'mapping'] }\` finds every known function taking both of these.
 
 ${
-	block({
-		type:    'NOTE',
-		content: `The results depend on which database shards are mounted; with none available the query reports that no database is loaded rather than failing.
+	block('NOTE', `The results depend on which database shards are mounted; with none available the query reports that no database is loaded rather than failing.
 See the ${ctx.linkPage('wiki/Signature Database')} page for the storage format, the configuration under ${ctx.linkConfig('solver.sigdb', true)}, and how to obtain further shards.
-To find out what a script _uses_, reach for the ${linkToQueryOfName('dependencies')}; to find out which versions it is compatible with, see the ${linkToQueryOfName('guess-dep-versions')}.`
-	})
+To find out what a script _uses_, reach for the ${linkToQueryOfName('dependencies')}; to find out which versions it is compatible with, see the ${linkToQueryOfName('guess-dep-versions')}.`)
 }
 		`;
 	}
@@ -1215,12 +1209,9 @@ and, where the project declares constraints, against \`declaredCombinations\` (w
 says how much the guess added).
 
 ${
-	block({
-		type:    'NOTE',
-		content: `This query needs the ${ctx.linkPage('wiki/Signature Database', 'signature database')}, and specifically a database carrying the _history_ of a package,
+	block('NOTE', `This query needs the ${ctx.linkPage('wiki/Signature Database', 'signature database')}, and specifically a database carrying the _history_ of a package,
 since bounding a version means comparing releases. Without one it returns no guesses and says so in its \`message\`.
-See the ${linkToQueryOfName('signature')} to inspect the signatures the guess is drawn from.`
-	})
+See the ${linkToQueryOfName('signature')} to inspect the signatures the guess is drawn from.`)
 }
 		`;
 	}
@@ -1268,10 +1259,7 @@ for(const { algorithm, similarity, a, b } of pairs) {
 }`)}
 
 ${
-	block({
-		type:    'NOTE',
-		content: `The ${ctx.linkPage('wiki/Linter', 'linter')} offers the same detection as its \`code-clones\` rule, which is not active by default. In the REPL, \`:query @code-clones gst winnowing <code>\` runs the query with the given algorithms.`
-	})
+	block('NOTE', `The ${ctx.linkPage('wiki/Linter', 'linter')} offers the same detection as its \`code-clones\` rule, which is not active by default. In the REPL, \`:query @code-clones gst winnowing <code>\` runs the query with the given algorithms.`)
 }
 `;
 	}
@@ -1299,11 +1287,8 @@ flowR states for it:
 ${await showQuery(shell, '', [{ type: 'function-info', name: 'get' }], { showCode: false, collapseResult: true, ctx })}
 
 ${
-	block({
-		type:    'NOTE',
-		content: `To find out what a script _uses_, reach for the ${linkToQueryOfName('dependencies')}; to inspect a specific
-package/version in the database directly, reach for the ${linkToQueryOfName('signature')}. In the REPL, \`:signature info <name>\` is a shorthand for this query.`
-	})
+	block('NOTE', `To find out what a script _uses_, reach for the ${linkToQueryOfName('dependencies')}; to inspect a specific
+package/version in the database directly, reach for the ${linkToQueryOfName('signature')}. In the REPL, \`:signature info <name>\` is a shorthand for this query.`)
 }
 		`;
 	}
@@ -1341,16 +1326,13 @@ Queries of the same type run together, and a failing query type is reported as a
 ${codeBlock('ts', 'const results = await analyzer.query([{ type: \'id-map\' }, { type: \'dataflow\' }]);\nconst graph = results.dataflow.graph;')}
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 There are many ways to query a dataflow graph created by flowR.
 For example, you can use the ${ctx.linkPage('wiki/Interface', '`request-query`', 'message-request-query')} message
 with a running flowR server, or the ${getReplCommand('query')} command in the flowR ${ctx.linkPage('wiki/Interface', 'REPL', '-using-the-repl')}.
 
 Also, check out the [${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for a complete example project using the query API.
-			`.trim()
-	})
+			`.trim())
 }
 
 ## The Query Format

@@ -146,10 +146,7 @@ you to decide how you want to traverse multiple files with a ${ctx.link('RProjec
 The ${ctx.link('RProject')} node cannot appear nested within other nodes, so you can safely assume that any child of a node is not an ${ctx.link('RProject')}.
 
 ${
-	block({
-		type:    'TIP',
-		content: 'When working with names and identifiers, consider using the utilities provided with the ' + ctx.link('Identifier', undefined, { type: 'variable' }) + ' object.',
-	})
+	block('TIP', 'When working with names and identifiers, consider using the utilities provided with the ' + ctx.link('Identifier', undefined, { type: 'variable' }) + ' object.')
 }
 
 ### Visitors

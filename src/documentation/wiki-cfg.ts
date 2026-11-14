@@ -140,13 +140,10 @@ The control flow graph is a view on the ${ctx.linkPage('wiki/Dataflow Graph', 'd
 similar to the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')}.
 
 ${
-	block({
-		type:    'TIP',
-		content: `If you want to investigate the Control Flow Graph,
+	block('TIP', `If you want to investigate the Control Flow Graph,
 you can use the ${getReplCommand('controlflow*')} command in the REPL (see the ${ctx.linkPage('wiki/Interface', 'Interface wiki page')} for more information).
 By default, this view does _not_ use basic blocks as, for example, R allows unconditional jumps to occur in spots where conventional languages would assume expressions (e.g., if-conditions).
-Yet, by using ${getReplCommand('controlflowbb*')} you can inspect the CFG with basic blocks (although you have to keep in mind that now, there can be a value flow between basic blocks)`
-	})
+Yet, by using ${getReplCommand('controlflowbb*')} you can inspect the CFG with basic blocks (although you have to keep in mind that now, there can be a value flow between basic blocks)`)
 }
 
 For readability, we structure this wiki page into various segments:
@@ -163,11 +160,8 @@ For readability, we structure this wiki page into various segments:
 	- [Working With Exit Points](#cfg-exit-points)
 
 ${
-	block({
-		type:    'TIP',
-		content: `FlowR provides you with various helper objects to work with the CFG, such as ${ctx.link('CfgEdge', undefined, { type: 'variable' })} and ${ctx.link('CfgVertex', undefined, { type: 'variable' })}, 
-		which you can use to easily access the properties of the CFG and its vertices and edges.`
-	})
+	block('TIP', `FlowR provides you with various helper objects to work with the CFG, such as ${ctx.link('CfgEdge', undefined, { type: 'variable' })} and ${ctx.link('CfgVertex', undefined, { type: 'variable' })}, 
+		which you can use to easily access the properties of the CFG and its vertices and edges.`)
 }
 
 ${section('Initial Overview', 2, 'cfg-overview')}
@@ -180,10 +174,7 @@ The corresponding CFG is a directed, labeled graph with two kinds of edges: flow
 
 ${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart LR\n', ctx })}
 
-${block({
-	type:    'IMPORTANT',
-	content: 'Edges are in flow order: an edge from `a` to `b` means that `b` is evaluated after `a`. Use `outgoingEdges` (or `successors`) to ask what may run next and `ingoingEdges` (or `predecessors`) to ask what ran before. The [visitors](#cfg-working) can walk either way.'
-})}
+${block('IMPORTANT', 'Edges are in flow order: an edge from `a` to `b` means that `b` is evaluated after `a`. Use `outgoingEdges` (or `successors`) to ask what may run next and `ingoingEdges` (or `predecessors`) to ask what ran before. The [visitors](#cfg-working) can walk either way.')}
 
 Every vertex of the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} is a vertex here as well, carrying the same id
 and hence linking back to the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}.
@@ -256,14 +247,11 @@ point at which the construct is left. That is why there are no separate marker v
 In mermaid visualizations, we use rectangles for statements and rounded rectangles for expressions.
 Blocks are visualized as boxes around the contained vertices.
 
-${block({
-	type:    'NOTE',
-	content: `
+${block('NOTE', `
 	Every CFG vertex has a ${ctx.link('NodeId')} that links it to the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} (although basic blocks will find no counterpart as they are a structuring element of the CFG).
 	Additionally, it may provide information on the called functions (in case that the current element is a function call).
 	Additionally, a function definition names the vertices of its body as children, which is the only way into that region.
-		`.trim()
-})}
+		`.trim())}
 
 ${section('CFG Edges', 3, 'cfg-structure-edges')}
 
@@ -512,10 +500,7 @@ The ${ctx.link(SemanticCfgGuidedVisitor)} class is flowR's most advanced visitor
 The main idea is simple, it provides special handlers for assignments, conditionals, and other R semantics but still follows
 the structure of the CFG.
 
-${block({
-	type:    'NOTE',
-	content: `This visitor is still in the design phase so please open up a [new issue](${NewIssueUrl}) if you have any suggestions or find any bugs.`
-})}
+${block('NOTE', `This visitor is still in the design phase so please open up a [new issue](${NewIssueUrl}) if you have any suggestions or find any bugs.`)}
 
 To explore what it is capable of, let's create a visitor that prints all values that are used in assignments:
 
@@ -573,10 +558,7 @@ point at which the statement is left, whichever branch ran.
 Hence, the vertex of an expression names all of its exits, which is what keeps the graph a hammock graph without
 any auxiliary vertices.
 
-${block({
-	type:    'WARNING',
-	content: 'Using basic blocks, this works just the same. However, please keep in mind that the vertex a control statement joins on does not have to be part of the same basic block as the branches leading to it.'
-})}
+${block('WARNING', 'Using basic blocks, this works just the same. However, please keep in mind that the vertex a control statement joins on does not have to be part of the same basic block as the branches leading to it.')}
 
 `;
 	}

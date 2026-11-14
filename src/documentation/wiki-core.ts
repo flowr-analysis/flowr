@@ -239,9 +239,7 @@ If you think parts of the wiki are missing, wrong, or outdated, please do not he
 In case you are new and want to develop for flowR, please check out the relevant ${ctx.linkPage('wiki/Setup', 'Setup', '-developing-for-flowr')} wiki page
 and the [Contributing Guidelines](${RemoteFlowrFilePathBaseRef}.github/CONTRIBUTING.md).
 
-${block({
-	type:    'NOTE',
-	content: `
+${block('NOTE', `
 Essentially every step we explain here can be explored directly from flowR's REPL in an interactive fashion (see the ${ctx.linkPage('wiki/Interface', 'Interface', 'using-the-repl')} wiki page).
 We recommend to use commands like ${getReplCommand('parse')} or ${getReplCommand('dataflow*')} to explore the output of flowR using your own samples.
 As a quickstart you may use:
@@ -253,8 +251,7 @@ ${await documentReplSession(shell, [{
 	
 If you are brave (or desperate) enough, you can also try to use the ${getCliLongOptionOf('flowr', 'verbose')} option to be dumped with information about flowR's internals (please, never use this for benchmarking).
 See the ${ctx.linkPage('wiki/FAQ', 'FAQ')} (*How to get flowR to talk?*) for more information.
-`
-})}
+`)}
 	
 * [Creating and Using a flowR Analyzer Instance](#creating-and-using-a-flowr-analyzer-instance)
 * [Pipelines and their Execution](#pipelines-and-their-execution)
@@ -301,13 +298,10 @@ on a given input. In general, these pipeline steps are analysis agnostic and may
 the ${ctx.link('DEFAULT_DATAFLOW_PIPELINE')} and the ${ctx.link('TREE_SITTER_DATAFLOW_PIPELINE')} adequately cover the most common analysis steps 
 (differentiated only by the ${ctx.linkPage('wiki/Engines', 'Engine')} used).
 
-${block({
-	type:    'TIP',
-	content: `
+${block('TIP', `
 	You can hover over most links within these wiki pages to get access to the tsdoc comment of the respective element. 
 	The links should direct you to the up-to-date implementation.
-`
-})}
+`)}
 	
 Using the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')} you can request a dataflow analysis of a sample piece of R code like the following:
 
@@ -345,14 +339,11 @@ As the types may seem to be somewhat confusing or over-complicated, we recommend
 the ${ctx.link('PARSE_WITH_R_SHELL_STEP')} or the ${ctx.link('STATIC_DATAFLOW')} step.
 The pipeline executor should do a good job of scheduling these steps (usually using a topological sort), and inferring the required inputs in the type system (have a look at the ${ctx.link(createPipeline)} function if you want to know more).
 
-${block({
-	type:    'NOTE',
-	content: `
+${block('NOTE', `
 Under the hood there is a step-subtype called a decoration. Such a step can be added to a pipeline to decorate the output of another one (e.g., making it more precise, re-adding debug info, ...).
 To mark a step as a decoration, you can use the \`decorates\` field in the ${ctx.link('IPipelineStepOrder')} interface.
 However, as such steps are currently not relevant for any of flowR's core analyses we will not go into detail here. It suffices to know how "real" steps work.
-`
-})}
+`)}
 	
 ## How flowR Produces Dataflow Graphs
 
@@ -392,18 +383,13 @@ ${await documentReplSession(shell, [{
 }
 ], { openOutput: false })}
 	
-${block({
-	type:    'TIP',
-	content: `
+${block('TIP', `
 	All of these commands accept file paths as well, so you can write longer R code within a file, and then pass 
-	the file path prefixed with \`${fileProtocol}\` (e.g., \`${fileProtocol}test/testfiles/example.R\`) to the commands.`
-})}
+	the file path prefixed with \`${fileProtocol}\` (e.g., \`${fileProtocol}test/testfiles/example.R\`) to the commands.`)}
 
 Especially when you are just starting with flowR, we recommend using the REPL to explore the output of the different steps.
 
-${block({
-	type:    'NOTE',
-	content: 'Maybe you are left with the question: What is tree-sitter doing differently? Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
+${block('NOTE', 'Maybe you are left with the question: What is tree-sitter doing differently? Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
 
 Essentially not much (from a user perspective, it does essentially everything and all differently under the hood)! Have a look at the ${ctx.linkPage('wiki/Engines', 'Engines')} wiki page for more information on the differences between the engines.
 Below you can see the Repl commands for the tree-sitter engine (using ${getCliLongOptionOf('flowr', 'default-engine')} to set the engine to tree-sitter):
@@ -423,7 +409,7 @@ ${await (async() => {
 	}], { openOutput: false, args: '--default-engine tree-sitter' });
 }
 )()}
-`) })}
+`))}
 
 ### Parsing
 

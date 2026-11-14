@@ -24,16 +24,10 @@ ${content}
 ${prefixInit}</details>`;
 }
 
-export interface BlockOptions {
-	readonly type:    'NOTE' | 'WARNING' | 'TIP' | 'IMPORTANT';
-	readonly content: string;
-}
-
 /**
  * A callout block of the given type, as GitHub renders them.
- * @param options - the block's type and content
  */
-export function block({ type, content }: BlockOptions): string {
+export function block(type: 'NOTE' | 'WARNING' | 'TIP' | 'IMPORTANT', content: string): string {
 	return `
 > [!${type}]
 ${prefixLines(content, '> ')}

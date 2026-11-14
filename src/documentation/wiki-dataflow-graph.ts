@@ -15,7 +15,7 @@ import { getTypesFromFolder, printHierarchy } from './doc-util/doc-types';
 import { block, details, section } from './doc-util/doc-structure';
 import { codeBlock, jsonWithLimit } from './doc-util/doc-code';
 import path from 'path';
-import { lastJoin, prefixLines } from './doc-util/doc-general';
+import { prefixLines } from './doc-util/doc-general';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ControlFlowGraph } from '../control-flow/control-flow-graph';
 import { Identifier, ReferenceType } from '../dataflow/environments/identifier';
@@ -48,7 +48,7 @@ import { Resolve } from '../dataflow/environments/resolve-helper';
 import { MatchArgs } from '../dataflow/graph/match-args';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { enumMembers } from '../util/objects';
-import { compareByCodeUnit } from '../util/text/strings';
+import { compareByCodeUnit, joinWithLast } from '../util/text/strings';
 
 async function subExplanation(parser: KnownParser, ctx: GeneralDocContext, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);
@@ -130,14 +130,11 @@ ${
 }
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 The value is not stored in the vertex itself, but in the normalized AST.
 To access the value, you can use the \`id\` of the vertex to access the respective node in the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}
 and ask for the value associated with it.
-				`
-	})
+				`)
 }
 
 Please be aware that such nodes may be the result from language semantics as well, and not just from constants directly in the source.
@@ -167,16 +164,13 @@ ${
 }
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 The name of the symbol is not actually part of what we store in the dataflow graph,
 as we have it within the normalized AST.
 To access the name, you can use the \`id\` of the vertex:
 
 ${codeBlock('ts', 'const name = RNode.lexeme(graph.idMap?.get(id));')}
-				`
-	})
+				`)
 }
 
 Most often, you will see the _use_ vertex whenever a variable is read.
@@ -215,14 +209,11 @@ ${
 		await printDfGraphForCode(parser, 'f <- function() x <<- 2\nx <- 2\nif(u) f()\nprint(x)', { mark: new Set([16, '16->1', '16->7']), codeOpen: true, ctx }))
 }
 
-${block({
-	type:    'IMPORTANT',
-	content: `
+${block('IMPORTANT', `
 	If you want to obtain the locations where a variable is defined, or read, or re-defined, refrain from tracking these details manually in the dataflow graph
 	as there are some edge-cases that require special attention.
 	In general, the ${ctx.link(Dataflow.origin)} (which is also available as ${ctx.linkO(Dataflow, 'origin')}) function explained below in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')} will help you to get the information you need.
-	`
-})}
+	`)}
 
 `,
 		code:             'x',
@@ -286,13 +277,13 @@ This is hard to read in this form, as the \`type\` of these references is a bit-
 ${enumMembers(ReferenceType).map(([name, value]) => `| ${value} | ${name} |`).join('\n')}
 
 In other words, we classify the references as ${
-			lastJoin(callVert.args.map(a => {
+			joinWithLast(callVert.args.map(a => {
 				if(a === EmptyArgument) {
 					return `the (special) empty argument type (\`${EmptyArgument}\`)`;
 				} else {
 					return inverseMapReferenceTypes[a.type];
 				}
-			}), ', ', ', and ')
+			}), { joinTwo: ', and ' })
 			}.
 For more information on the types of references, please consult the implementation.
 
@@ -302,9 +293,7 @@ ${printHierarchy({ program: identifierType.program, info: identifierType.info, r
 }
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 But how do you know which definitions are actually called by the function?
 
 So first of all, some frontends of _flowR_ (like the ${getReplCommand('slicer')} and ${getReplCommand('query')} with the ${ctx.linkPage('wiki/Query API', 'Query API')}) already provide you with this information.
@@ -419,8 +408,7 @@ Similarly, trying to resolve the name with ${ctx.link(Resolve.byNameAndType)}\` 
 
 
 Similar to finding the definitions read by a variable use, please use the ${ctx.link(Dataflow.callTargetsOf)} function to find all possible definitions of a function call,
-as explained in the ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')} section.`
-	})
+as explained in the ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')} section.`)
 }
 
 Function calls are the most complicated mechanism in R as essentially everything is a function call.
@@ -433,9 +421,7 @@ ${details('Example: Anonymous Function Call (given directly)', await printDfGrap
 
 ${details('Example: Anonymous Function Call (given indirectly)', await printDfGraphForCode(parser, 'foo <- function() return(function() 3)\nfoo()()', { mark: new Set([12, '12->4']), ctx }))}
 
-${block({
-	type:    'NOTE',
-	content: `Now you might be asking yourself how to differentiate anonymous and named functions and what you have to keep in mind when working with them?
+${block('NOTE', `Now you might be asking yourself how to differentiate anonymous and named functions and what you have to keep in mind when working with them?
 
 Unnamed functions have an array of signatures which you can use to identify them. 
 But in short: the \`origin\` attribute of the ${ctx.link('DataflowGraphVertexFunctionCall')} is \`${BuiltInProcName.Unnamed}\`.
@@ -445,8 +431,7 @@ This name _always_ starts with \`${UnnamedFunctionCallPrefix}\`.
 To identify these calls please do not rely on the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}. An expression like \`1 + 1\` will be correctly
 identified as a syntactical binary operation. Yet, from a dataflow/semantic perspective this is equivalent to \`\` \`+\`(1, 1) \`\` (which is a named function call and marked as such in the dataflow graph).
 To know which function is called, please rely on the ${linkEdgeName(EdgeType.Calls)} edge.
-	`
-})}
+	`)}
 
 Another interesting case is a function with **side effects**, most prominently with the super-assignment \`<<-\`.
 In this case, you may encounter the ${linkEdgeName(EdgeType.SideEffectOnCall)} as exemplified below.
@@ -533,9 +518,7 @@ Whenever we visualize a function definition, we use a dedicated node to represen
 and a subgraph (usually with the name \`"function <id>"\`) to encompass the body of the function (they are linked with a dotted line).
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 You may ask yourself: How can I know which vertices are part of the function body? how do i know the parameters?
 All vertices that are part of the graph are present in the \`graph\` property of the function definition &mdash; it contains a set of all ids of the contained vertices: 
 the actual dataflow graph is flat, and you can query all root vertices (i.e., those not part of any function definition) using 
@@ -592,8 +575,7 @@ ${ast}
 	`;
 	})()
 )}
-				`
-	})
+				`)
 }
 
 Last but not least, please keep in mind that R offers another way of writing anonymous functions (using the backslash): 
@@ -628,9 +610,7 @@ async function getEdgesExplanations(parser: KnownParser, ctx: GeneralDocContext)
 Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) reads whatever is defined by the target vertex (usually a [variable definition](#variable-definition-vertex)).
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 A ${linkEdgeName(EdgeType.Reads)} edge is not a transitive closure and only links the "directly read" definition(s).
 Our abstract domains resolving transitive ${linkEdgeName(EdgeType.Reads)} edges (and for that matter, following ${linkEdgeName(EdgeType.Returns)} as well)
 are currently tailored to what we need in _flowR_. Hence, we offer a function like ${ctx.link(Dataflow.callTargetsOf)},
@@ -642,8 +622,7 @@ ${details('Example: Multi-Level Reads', await printDfGraphForCode(parser,  'x <-
 Similarly, ${linkEdgeName(EdgeType.Reads)} can be cyclic, for example in the context of loops:
 
 ${details('Example: Cyclic Reads', await printDfGraphForCode(parser, 'for(i in v) x <- x + 1', { mark: new Set(['3->2']), ctx }))}
-				`
-	})
+				`)
 }
 
 Reads edges may point to built-in definitions as well, to signal that something relates to a built-in element of flowR.
@@ -731,15 +710,12 @@ ${details('Example: Tricky Returns',
 )}
 <br/>
 
-${block({
-	type:    'NOTE',
-	content: `You might find it an inconvenience that there is no ${linkEdgeName(EdgeType.Returns)} edge for _every_ function call. 
+${block('NOTE', `You might find it an inconvenience that there is no ${linkEdgeName(EdgeType.Returns)} edge for _every_ function call. 
 If there is particular function for which you think flowR should be able to detect the return, please open a [new issue](${NewIssueUrl}).
 Yet the problem of flowR not tracking returns for functions that create new/transform existing values is a fundamental design decision &mdash; if this irritates you ~~you may be eligible for compensation~~, you may be interested in an
 alternative with the ${ctx.linkPage('wiki/Control Flow Graph', 'Control Flow Graph', 'cfg-exit-points')} which not just tracks all possible execution orders of the program,
 but also the exit points of _all_ function calls. 
-`
-})}
+`)}
 		`,
 		code:             'foo <- function() x\nfoo()',
 		expectedSubgraph: emptyGraph().returns('2@foo', '1@x').returns('1@<-', '1@foo').argument('1@<-', '1@foo')
@@ -812,9 +788,7 @@ The exception to this is the [function definition](#function-definition-vertex) 
 Marks cases in which R's non-standard evaluation mechanisms cause the default semantics to deviate (see the case below for multiple vertices)
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 What to do if you encounter a vertex marked with this edge? 
 
 This depends on your analysis. To handle many real-world sources correctly you are probably fine with just ignoring it.
@@ -830,8 +804,7 @@ Three helpers decide what such a mark means once the graph is complete:
 ${ctx.link({ name: 'Quoted' }, undefined, { type: 'variable' })} settles what a capture reaches when it is handed to \`eval\` (see ${ctx.linkO({ ...Quoted, name: 'Quoted' }, 'finalize')}),
 ${ctx.link({ name: 'Nse' }, undefined, { type: 'variable' })} models the escapes a quoting function offers (rlang's \`!!\` and \`bquote\`'s \`.(x)\`), and
 ${ctx.link({ name: 'Deferred' }, undefined, { type: 'variable' })} links an expression R evaluates at a moment we cannot pin down, as \`delayedAssign\` binds one.
-				`
-	})
+				`)
 }
 `,
 		code:             'quote(x)',

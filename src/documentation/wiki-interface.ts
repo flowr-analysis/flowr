@@ -37,12 +37,9 @@ Additionally, the server is not well guarded against attacks (e.g., you can theo
 Every message has to be given in a single line (i.e., without a newline in-between) and end with a newline character. Nevertheless, we will pretty-print example given in the following segments for the ease of reading.
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 The default ${getCliLongOptionOf('flowr', 'server', false)} uses a simple [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)
-connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the ${getCliLongOptionOf('flowr', 'ws', false)} flag (i.e., ${multipleCliOptions('flowr', 'server', 'ws')}) when starting _flowR_ from the command line.`
-	})
+connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the ${getCliLongOptionOf('flowr', 'ws', false)} flag (i.e., ${multipleCliOptions('flowr', 'server', 'ws')}) when starting _flowR_ from the command line.`)
 }
 
 ${await printServerMessages(parser)}
@@ -136,17 +133,14 @@ ${printReplHelpAsMarkdownTable()}
 </details>
 
 ${
-	block({
-		type:    'TIP',
-		content: `
+	block('TIP', `
 As indicated by the examples before, all REPL commands that operate on code keep track of the state.
 Hence, if you run a command like ${getReplCommand('dataflow*')} without providing R code,
 the REPL will re-use the R code provided in a previous command.
 Likewise, doing this will benefit from incrementality!
 If you request the dataflow graph with \`:df* x <- 2 * y\` and then want to see the parsed AST with \`:parse\`,
 the REPL will re-use previously obtained information and not re-parse the code again.
-		`
-	})
+		`)
 }
 
 Generally, many commands offer shortcut versions in the REPL. Many queries, for example, offer a shortened format (see the example below).

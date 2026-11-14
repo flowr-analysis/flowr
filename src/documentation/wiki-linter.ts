@@ -505,10 +505,7 @@ ${res}`;
 
 ${section('Linting Rules', 2, 'linting-rules')}
 
-${block({
-	type:    'NOTE',
-	content: `If you want to add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.`
-})}
+${block('NOTE', `If you want to add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.`)}
 
 The following linting rules are available, grouped by the kind of issue they find.
 Badges link to the [tags](#tags), steps of \`R CMD check\` to the [conformance page](${ConformancePage}).

@@ -78,12 +78,9 @@ The ${ctx.link(RShell)} class allows interfacing with the \`R\`&nbsp;ecosystem i
 Please have a look at ${ctx.linkPage('wiki/Engines', 'flowR\'s Engines')} for more information on alternatives (for example, the ${ctx.link(TreeSitterExecutor)}).
 
 ${
-	block({
-		type:    'IMPORTANT',
-		content: `
+	block('IMPORTANT', `
 Each ${ctx.link(RShell)} controls a new instance of the R&nbsp;interpreter, 
-make sure to call ${codeInline(ctx.linkM(RShell, 'close', { codeFont: false, realNameWrapper: 'i' }) + '()')} when you are done.`
-	})
+make sure to call ${codeInline(ctx.linkM(RShell, 'close', { codeFont: false, realNameWrapper: 'i' }) + '()')} when you are done.`)
 }
 
 You can start a new "session" by constructing a new object with ${codeInline('new ' + ctx.link(RShell, { codeFont: false }) + '()')}.

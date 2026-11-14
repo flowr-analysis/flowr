@@ -121,9 +121,7 @@ This folder contains three special and important elements:
 - \`_helper/\` folder which contains helper functions to be used by other tests.
 - \`test-summary.ts\` which may produce a summary of the covered capabilities.
 
-${block({
-	type:    'WARNING',
-	content: `
+${block('WARNING', `
 We name all test files using the \`.test.ts\` suffix and try to run them in parallel.
 Whenever this is impossible (e.g., when using ${ctx.link('withShell')}), pass \`{ concurrent: false }\` to the
 \`describe\` to disable parallel execution for the respective test (otherwise, such tests are flaky):
@@ -131,8 +129,7 @@ Whenever this is impossible (e.g., when using ${ctx.link('withShell')}), pass \`
 ${codeBlock('typescript', 'describe(\'my suite\', { concurrent: false }, withShell(shell => { /* ... */ }));')}
 
 Vitest deprecated the \`describe.sequential\` form in favour of that option, so please do not reintroduce it.
-`
-})}
+`)}
 
 <a id='test-labels'></a>
 #### 🏷️ Test Labels

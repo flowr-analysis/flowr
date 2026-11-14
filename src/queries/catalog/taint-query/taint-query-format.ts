@@ -8,8 +8,7 @@ import { predefinedTaintAnalyses } from '../../../taint-analysis/predefined/pred
 import { Bottom, BottomSymbol } from '../../../abstract-interpretation/domains/lattice';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
-import type { CommandCompletions } from '../../../cli/repl/completion';
-import { fileProtocol } from '../../../r-bridge/retriever';
+import { type CommandCompletions, completePrefixedList } from '../../../cli/repl/completion';
 import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
 import { log } from '../../../util/log';
 
@@ -59,34 +58,7 @@ export interface TaintQueryResult<Analyses extends string[]> extends BaseQueryRe
 const prefix = 'definitions:';
 
 function taintQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
-	const prefixNotPresent = line.length == 0 || (line.length == 1 && line[0].length < prefix.length);
-	const notFinished = line.length == 1 && line[0].startsWith(prefix) && !startingNewArg;
-	const endOfOptions = line.length == 1 && startingNewArg || line.length == 2;
-
-	if(prefixNotPresent) {
-		return { completions: [`${prefix}`] };
-	} else if(endOfOptions) {
-		return { completions: [fileProtocol] };
-	} else if(notFinished) {
-		const withoutPrefix = line[0].slice(prefix.length);
-		const used = withoutPrefix.split(',').map(r => r.trim());
-		const all = Object.keys(predefinedTaintAnalyses);
-		const unused = all.filter(r => !used.includes(r));
-		const last = used[used.length - 1];
-		const lastUnfinished = !all.includes(last);
-
-		if(lastUnfinished) {
-			// Return all strings that have not been added yet
-			return { completions: unused, argumentPart: last };
-		} else if(unused.length > 0) {
-			// Add a comma, if the current last string is complete
-			return { completions: [','], argumentPart: '' };
-		} else {
-			// All strings are used, complete with a space
-			return { completions: [' '], argumentPart: '' };
-		}
-	}
-	return { completions: [] };
+	return completePrefixedList(line, startingNewArg, prefix, Object.keys(predefinedTaintAnalyses));
 }
 
 function defsInInput(defsPart: readonly string[]): { valid: AnyPredefinedTaintAnalysisName[], invalid: string[] } {

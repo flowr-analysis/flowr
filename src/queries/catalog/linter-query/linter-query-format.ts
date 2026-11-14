@@ -8,7 +8,7 @@ import { type LintingResultsError, type ConfiguredLintingRule, LintingPrettyPrin
 import { bold, italic, ColorEffect, Colors, FontStyles, type OutputFormatter } from '../../../util/text/ansi';
 import type { FlowrConfig } from '../../../config';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { CommandCompletions } from '../../../cli/repl/completion';
+import { type CommandCompletions, completeCommaList } from '../../../cli/repl/completion';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { getGuardIssueUrl, isNotUndefined } from '../../../util/assert';
 import { type LintResultsByRule, LinterOutputFormat, formatLints } from '../../../linter/linter-output';
@@ -160,22 +160,7 @@ function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, 
 		const wanted = current.slice(formatPrefix.length);
 		return { completions: Object.values(LinterOutputFormat).filter(f => f !== wanted), argumentPart: wanted };
 	} else if(current.startsWith(rulesPrefix)) {
-		const usedRules = current.slice(rulesPrefix.length).split(',').map(r => r.trim());
-		const allRules = Object.keys(LintingRules);
-		const unusedRules = allRules.filter(r => !usedRules.includes(r));
-		const lastRule = usedRules[usedRules.length - 1];
-		const lastRuleIsUnfinished = !allRules.includes(lastRule);
-
-		if(lastRuleIsUnfinished) {
-			// Return all rules that have not been added yet
-			return { completions: unusedRules, argumentPart: lastRule };
-		} else if(unusedRules.length > 0) {
-			// Add a comma, if the current last rule is complete
-			return { completions: [','], argumentPart: '' };
-		} else {
-			// All rules are used, complete with a space
-			return { completions: [' '], argumentPart: '' };
-		}
+		return completeCommaList(current.slice(rulesPrefix.length), Object.keys(LintingRules));
 	}
 	/* both are optional and may come in any order, so offer whatever is not given yet */
 	const given = startingNewArg ? line : line.slice(0, -1);

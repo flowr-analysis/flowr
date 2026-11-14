@@ -7,8 +7,7 @@ import { FileRole } from '../../../project/context/flowr-file';
 import { jsonReplacer } from '../../../util/json';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import type { CommandCompletions } from '../../../cli/repl/completion';
-import { fileProtocol } from '../../../r-bridge/retriever';
+import { type CommandCompletions, completePrefixedList } from '../../../cli/repl/completion';
 import { metaSince } from '../../query-meta';
 
 /**
@@ -124,31 +123,7 @@ function filesQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 }
 
 function filesQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
-	const rolesPrefixNotPresent = line.length == 0 || (line.length == 1 && line[0].length < rolePrefix.length);
-	const rolesNotFinished = line.length == 1 && line[0].startsWith(rolePrefix) && !startingNewArg;
-	const endOfRoles = line.length == 1 && startingNewArg || line.length == 2;
-
-	if(rolesPrefixNotPresent) {
-		return { completions: [`${rolePrefix}`] };
-	} else if(endOfRoles) {
-		return { completions: [fileProtocol] };
-	} else if(rolesNotFinished) {
-		const rolesWithoutPrefix = line[0].slice(rolePrefix.length);
-		const usedRoles = rolesWithoutPrefix.split(',').map(r => r.trim());
-		const allRoles = Object.values(FileRole);
-		const unusedRoles = allRoles.filter(r => !usedRoles.includes(r));
-		const lastRole = usedRoles[usedRoles.length - 1];
-		const lastRoleIsUnfinished = !allRoles.includes(lastRole as FileRole);
-
-		if(lastRoleIsUnfinished) {
-			return { completions: unusedRoles, argumentPart: lastRole };
-		} else if(unusedRoles.length > 0) {
-			return { completions: [','], argumentPart: '' };
-		} else {
-			return { completions: [' '], argumentPart: '' };
-		}
-	}
-	return { completions: [] };
+	return completePrefixedList(line, startingNewArg, rolePrefix, Object.values(FileRole));
 }
 
 function guessProto(obj: object): string | undefined {

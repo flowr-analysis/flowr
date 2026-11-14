@@ -47,13 +47,18 @@ ${verbs.map(([verb, words]) => `| \`${verb}\` | ${words.label} | ${words.descrip
 A member says which entries of a keyed family the call is about: a constant list (\`print\` reads \`digits\`, \`scipen\`, and others), the names of the arguments (\`Sys.setenv(A = "1")\`), the unnamed arguments, or the argument of a parameter (\`Sys.getenv("HOME")\`).
 For an instance family, the member \`every\` stands for every open instance, as \`dev.cur()\` reports.
 A condition is \`no-arguments\`, \`query\` (only unnamed strings, as in \`par("mar")\`), a logical flag (\`add = TRUE\`), an argument for a formal with given values (\`type = "message"\`), or arguments beyond the leading formals (a kind for \`set.seed\`).
-What the arguments do not decide, as a flag held in a variable, makes the effect a maybe one.
+What the arguments do not decide, as a flag held in a variable, makes the effect a maybe one, and a forwarded \`...\` may give any argument, so it leaves open what it could give.
 Tags imply more effects (see ${ctx.link('withImpliedAmbient')}): a call tagged as reading or writing a file accesses the files its resource arguments name, an appending write (an \`append\` formal set to \`TRUE\`) reads them first, and a printing call adds to the output sink.
 
 To declare a new function, add its effects to its \`ambient\` field. To add a family, give it an ${ctx.link('AmbientPart')}, a row in ${ctx.link('AmbientFamilyInfo')}, and the pseudo variable it lives in, in the table of families of ${ctx.linkFile('applyAmbientEffects')}.
 ${ctx.link('ambientSummaryOf')} turns the declaration back into words, which is how these declarations read:
 
 ${examples.map(name => `- \`${name}\`: ${summaryOf(stated, name)}`).join('\n')}
+
+Next to its words, every access of the summary carries its conditions as data (\`holds\`) and how the call names its entries (\`names\`), so a tool evaluates them rather than parsing the words.
+${ctx.link('AmbientContract')} does so for a call: ${ctx.link('AmbientContract:::ofCall')} gives one contract per definition the call may reach (\`maps::map\` draws, \`purrr::map\` does not), with the effects the arguments rule out dropped, the conditions they decide removed, the entries they name resolved, and the ids of the argument nodes each decision rests on.
+\`map(add = TRUE)\` adds to the plot and starts no new one, as does \`map(add = a)\` after \`a <- TRUE\`, while \`map(...)\` in a function forwarding its arguments may do either.
+${ctx.link('AmbientContract:::narrow')} does the same for effects and arguments at hand, without an analysis only from what is written.
 
 #### Tracking Ambient State
 

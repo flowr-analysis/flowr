@@ -1,6 +1,6 @@
 import { blank, button, el } from '../page-lib/dom';
 import { argsOf, norm, shortOf, wordsOf } from './query';
-import { db, Owner, type AmbientFamily, type Entry, type Guards, type Package, type RawAnswers } from './database';
+import { db, kindOf, Owner, type Entry, type Guards, type Package, type RawAnswers, type Stated } from './database';
 import { contractFormals, spokenOf } from './contract-formals';
 import { ExportFlag } from './export-flags';
 import { aboutFlagNamed, aboutOf, Flags, Kinds, Origins } from './about';
@@ -143,8 +143,12 @@ export class Hits {
 		const own = entry.statedFor(chosen?.pkg.name);
 		const guards = chosen === undefined ? undefined : entry.guardsIn(chosen.pkg.name);
 		const known = entry.kinds;
-		for(const kind of [...known.filter(k => k !== 'builtin'), ...known.filter(k => k === 'builtin')]) {
-			head.append(titled(el('span', kind === 'builtin' ? 'kindtag flowr' : 'kindtag', Kinds[kind]?.label ?? kind), Kinds[kind]?.about));
+		for(const tagged of [...known.filter(k => k !== 'builtin'), ...known.filter(k => k === 'builtin')]) {
+			const [kind, only] = kindOf(tagged);
+			const tag = titled(el('span', kind === 'builtin' ? 'kindtag flowr' : 'kindtag', Kinds[kind]?.label ?? kind), (Kinds[kind]?.about ?? '') + (only === undefined ? '' : ', only the definition in ' + only));
+			/* a kind of one package's definition carries that package, `map` draws in maps and not in purrr */
+			tag.append(...only === undefined ? [] : [el('span', 'crumb', only)]);
+			head.append(tag);
 			const words = short(wordsOf(own?.props ?? ''));
 			if(kind === 'builtin' && words.length > 0 && !own) {
 				head.append(titled(el('span', 'kindtag props', '+' + words.length), 'flowR states ' + words.join(', ') + ' about this call; open the entry to see which package for'));
@@ -178,22 +182,22 @@ export class Hits {
 		head.append(list);
 		row.append(head);
 		const formals = guards === undefined ? [] : contractFormals(formalsOf(args), formalsOf(declared ?? ''), guards);
-		const ambient = entry.ambientIn(chosen?.pkg.name);
+		const ambient = entry.ambientByDefinition;
+		/* several definitions, or one of another package than the one shown, each say which package they are for */
+		const crumbs = ambient.length > 1 || (ambient.length === 1 && ambient[0].pkg !== chosen?.pkg.name);
 		/* the card names what the contract and the global state are about in one line, the opened view says what holds and what is done */
 		if(guards !== undefined || ambient.length > 0) {
-			row.append(teaser(name, guards, formals, ambient));
+			row.append(teaser(name, guards, formals, ambient, crumbs));
 		}
 		/* how it takes part in S3 dispatch is for the opened view, the card stays one line or two */
 		const open = opens(row, () => {
 			const contracted = guards === undefined ? undefined : contract(name, guards, formals, chosen);
 			const detail = this.owners(entry, contracted, s3Line(entry), chosen?.pkg.name);
-			if(ambient.length > 0) {
-				const block = ambientBlock(name, ambient, (entry.statedFor(chosen?.pkg.name)?.pkg ?? '') + '::' + name);
-				if(contracted === undefined) {
-					detail.prepend(block);
-				} else {
-					contracted.after(block);
-				}
+			const blocks = ambient.map(definition => ambientBlock(name, definition, crumbs));
+			if(contracted === undefined) {
+				detail.prepend(...blocks);
+			} else {
+				contracted.after(...blocks);
 			}
 			return detail;
 		});
@@ -373,7 +377,7 @@ export class Hits {
  * One line within the row: the formals the contract speaks of, where it comes from, and the parts of the global state a call
  * touches, each with what is said of it on hover; the row opens the rest.
  */
-function teaser(name: string, guards: Guards | undefined, formals: readonly string[], ambient: readonly AmbientFamily[]): HTMLElement {
+function teaser(name: string, guards: Guards | undefined, formals: readonly string[], ambient: readonly Stated[], crumbs: boolean): HTMLElement {
 	const box = el('div', 'teaser');
 	const line = el('div');
 	if(guards !== undefined) {
@@ -385,16 +389,18 @@ function teaser(name: string, guards: Guards | undefined, formals: readonly stri
 				? [titled(el('code', 'result null', '\u2192 NULL'), 'a call that returns normally always returns NULL')]
 				: [titled(el('code', 'result', 'result'), 'what holds of the value a call returns normally')]));
 	}
-	if(ambient.length > 0) {
+	ambient.forEach(({ pkg, ambient: families }, at) => {
 		const words = db.ambientWords.families;
-		line.append(...guards === undefined ? [] : [el('span', 'sep', '\u00b7')], el('span', 'label', 'ambient'), ...ambient.map(([family, accesses]) => {
-			const [label = family, description = ''] = words[family] ?? [];
-			const done = uniqueArray(accesses.map(([, , verb]) => verb));
-			/* what changes the state stands out from what only looks at it */
-			const changes = accesses.some(([, access]) => !Looks.has(access));
-			return titled(el('span', changes ? 'fam changes' : 'fam', label), `${description}${description === '' ? '' : ': '}${done.join(', ')}`);
-		}));
-	}
+		line.append(...guards === undefined && at === 0 ? [] : [el('span', 'sep', '\u00b7')], el('span', 'label', 'ambient'),
+			...crumbs ? [titled(el('span', 'crumb', pkg || 'flowR'), 'what ' + (pkg === '' ? '' : pkg + '::') + name + ' does to the global state')] : [],
+			...families.map(([family, accesses]) => {
+				const [label = family, description = ''] = words[family] ?? [];
+				const done = uniqueArray(accesses.map(([, , verb]) => verb));
+				/* what changes the state stands out from what only looks at it */
+				const changes = accesses.some(([, access]) => !Looks.has(access));
+				return titled(el('span', changes ? 'fam changes' : 'fam', label), `${description}${description === '' ? '' : ': '}${done.join(', ')}`);
+			}));
+	});
 	box.append(line);
 	markClipped(line);
 	return box;
@@ -474,8 +480,9 @@ const Looks: ReadonlySet<string> = new Set(['reads']);
  * What a call does to the global state, a line per part: `graphics device  starts a new plot · reads graphics parameters`.
  * An access stated under conditions or for some entries reads as its label alone if it is also stated always and for all.
  */
-function ambientBlock(name: string, families: readonly AmbientFamily[], key: string): HTMLElement {
+function ambientBlock(name: string, { pkg, ambient: families }: Stated, crumbs: boolean): HTMLElement {
 	const { families: words, verbs } = db.ambientWords;
+	const key = pkg + '::' + name;
 	const box = el('div', 'ambient');
 	families.forEach(([family, accesses], at) => {
 		const [label = family, description = ''] = words[family] ?? [];
@@ -497,7 +504,9 @@ function ambientBlock(name: string, families: readonly AmbientFamily[], key: str
 				...details.length === 0 ? [] : [el('span', 'when', ' (' + details.join('; ') + ')')]);
 		});
 		const line = el('div', 'aline');
-		line.append(at === 0 ? el('span', 'label', 'ambient') : el('span'), titled(el('span', 'fam', label), description), said);
+		const lead = at > 0 ? el('span') : el('span', 'label', 'ambient');
+		lead.append(...at === 0 && crumbs ? [' ', titled(el('span', 'crumb', pkg || 'flowR'), 'what ' + key + ' does to the global state')] : []);
+		line.append(lead, titled(el('span', 'fam', label), description), said);
 		if(at === 0) {
 			/* only shown once the row is open, see the page's styles */
 			said.append(asJson(box, 'ambient', key, 'the ambient summary flowR states for ' + key));

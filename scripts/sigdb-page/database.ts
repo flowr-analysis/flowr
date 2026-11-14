@@ -130,6 +130,12 @@ export class Package {
 	}
 }
 
+/** a kind as the index states it, `visualize@maps` for the definition of one package only */
+export function kindOf(kind: string): readonly [kind: string, pkg: string | undefined] {
+	const at = kind.indexOf('@');
+	return at < 0 ? [kind, undefined] : [kind.slice(0, at), kind.slice(at + 1)];
+}
+
 /** what flowR states about a name in one package */
 export interface Stated {
 	readonly pkg:     string;
@@ -223,14 +229,14 @@ export class Entry {
 		return this.owners.some(owner => owner.has(flag));
 	}
 
-	/** what flowR states for `pkg`, else for base, else for anything */
+	/** what flowR states for `pkg`, else for base; never what it states for another package, as `maps::map` draws and `purrr::map` does not */
 	statedFor(pkg: string | undefined): Stated | undefined {
-		return this.stated.find(entry => entry.pkg === pkg) ?? this.stated.find(entry => entry.pkg === 'base') ?? this.stated[0];
+		return this.stated.find(entry => entry.pkg === pkg) ?? this.stated.find(entry => entry.pkg === 'base');
 	}
 
-	/** what a call of it in `pkg` does to the global state, empty if nothing */
-	ambientIn(pkg: string | undefined): readonly AmbientFamily[] {
-		return this.statedFor(pkg)?.ambient ?? [];
+	/** what each definition flowR states does to the global state, the definitions doing nothing to it left out */
+	get ambientByDefinition(): readonly Stated[] {
+		return this.stated.filter(entry => entry.ambient.length > 0);
 	}
 
 	/** the S3 methods the database knows for the name, each the entry of a method whose generic it is, empty if it is no generic */
@@ -284,7 +290,7 @@ export class Entry {
 			case FilterKind.Package: return this.owners.some(owner => owner.pkg.archived);
 			case FilterKind.Prop:    return this.stated.some(entry => wordsOf(entry.props).includes(key));
 			case FilterKind.Arg:     return this.stated.some(entry => argsOf(entry.args).some(([, roles]) => roles.includes(key)));
-			case FilterKind.Kind:    return this.kinds.includes(key);
+			case FilterKind.Kind:    return this.kinds.some(kind => kindOf(kind)[0] === key);
 			case FilterKind.Flag:    return this.flagged(key as ExportFlag);
 			case FilterKind.Contract: return this.contracted;
 			case FilterKind.Ambient: return this.stated.some(entry => key === 'any'

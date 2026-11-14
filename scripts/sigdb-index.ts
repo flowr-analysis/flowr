@@ -316,8 +316,8 @@ function statedWithRealPackages(baseNames: ReadonlySet<BrandedNamespace>, topics
  * What flowR's own dependency query says a name does. A few hundred entries, and the only part of this
  * index that comes from flowR's configuration rather than from the database.
  */
-function builtInKinds(): Map<string, string[]> {
-	const categories: Record<string, readonly { name: string }[]> = {
+export function builtInKinds(): Map<string, string[]> {
+	const categories: Record<string, readonly { name: string, package?: string }[]> = {
 		library:     LibraryFunctions,
 		source:      SourceFunctions,
 		read:        computeReadFunctions(DefaultBuiltinConfig),
@@ -342,8 +342,10 @@ function builtInKinds(): Map<string, string[]> {
 			   built-in definition: `read_csv` is readr's, and flowR still recognizes the call */
 			const known = kinds.get(fn.name) ?? ['builtin'];
 			kinds.set(fn.name, known);
-			if(!known.includes(kind)) {
-				known.push(kind);
+			/* a kind of one package's definition only (`map` draws in maps, not in purrr) says so, as `visualize@maps` */
+			const tag = fn.package === undefined ? kind : `${kind}@${fn.package}`;
+			if(!known.includes(kind) && !known.includes(tag)) {
+				known.push(tag);
 			}
 		}
 	}

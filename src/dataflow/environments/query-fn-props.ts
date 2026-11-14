@@ -3,6 +3,7 @@
  * @lintIgnore use-instead
  */
 import { compareByCodeUnit } from '../../util/text/strings';
+import { isNotUndefined } from '../../util/assert';
 import { type ArgProps, type BuiltInFnInfo, CallProp, fnInfoFromSignature, type FnSig, PropagatedProps, type PropSelector, type SemanticCallTags, type StatedProps, CallProps } from './built-in-props';
 import { FunctionSemantics } from '../fn/function-semantics';
 import type { BuiltIns } from './built-in';
@@ -507,6 +508,13 @@ export class BuiltInIndex {
 		}
 		/* the maps settled name and namespace, what is left is `::` asking for a name only `:::` states */
 		return Identifier.accessesInternal(found.name) !== true || Identifier.accessesInternal(name) === true ? found : undefined;
+	}
+
+	/** Every entry of the bare `name`, one per package defining it (`maps::map` and `purrr::map`), else the one naming no package. */
+	public definitionsOf(name: BrandedIdentifier): readonly BuiltInEntry[] {
+		const qualified = [...this.byNamespace.values()].map(names => names.get(name)).filter(isNotUndefined);
+		const plain = this.byName.get(name);
+		return qualified.length > 0 ? qualified : plain === undefined ? [] : [plain];
 	}
 
 	/** The {@link CallProp} bits of `name`, `undefined` when no built-in of that name states any. */

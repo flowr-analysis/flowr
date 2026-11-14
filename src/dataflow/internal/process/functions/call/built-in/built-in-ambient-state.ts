@@ -1,4 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import type { ResolveInfo } from '../../../../../eval/resolve/alias-tracking';
 import { type ControlDependency, DataflowInformation, type ExitPoint, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -38,7 +39,7 @@ import { RIfThenElse } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes
 import { uniqueArray, uniqueArrayMerge } from '../../../../../../util/collections/arrays';
 import { AmbientAccess } from '../../../../../graph/ambient-access';
 import { type AmbientFamily, AmbientStateName, GraphicsDevices, MessageSinks, OutputSinks, KeyedAccumulators, KeyedState, PlainPackageName, UnknownKey } from '../../../../../environments/ambient-state-name';
-import { flagValue, keysOf, keyedWrites, stringValuesOf } from './built-in-ambient-keys';
+import { flagValue, forwardsDots, keysOf, keyedWrites, stringValuesOf } from './built-in-ambient-keys';
 import { Ternary, TernaryLogic } from '../../../../../../util/logic';
 import { OperatorUsedAs } from '../../../../../environments/default-builtin-config/base-operators';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
@@ -423,25 +424,60 @@ function changes(effect: AmbientEffect): boolean {
 	return effect.access !== AmbientVerb.Reads && effect.access !== AmbientVerb.Builds;
 }
 
-/** Whether the `condition` holds for the arguments `args`, what values are known decided with `data`. */
-export function holds<OtherInfo>(condition: AmbientCondition, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data?: DataflowProcessorInformation<OtherInfo & ParentInformation>): Ternary {
+/** What the arguments decide of an {@link AmbientCondition}: whether it holds, and the argument nodes that decided it. */
+export interface ConditionDecision {
+	readonly holds:     Ternary
+	readonly decidedBy: readonly NodeId[]
+}
+
+/** What to decide a condition against: the state of a processor, or the {@link ResolveInfo} of a finished analysis. */
+export type DecidedAgainst<OtherInfo> = DataflowProcessorInformation<OtherInfo & ParentInformation> | ResolveInfo;
+
+function isProcessorInfo<OtherInfo>(data: DecidedAgainst<OtherInfo> | undefined): data is DataflowProcessorInformation<OtherInfo & ParentInformation> {
+	return data !== undefined && 'completeAst' in data;
+}
+
+/** Whether the `condition` holds for the arguments `args`, what values are known decided with `data`, see {@link decide}. */
+export function holds<OtherInfo>(condition: AmbientCondition, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data?: DecidedAgainst<OtherInfo>): Ternary {
+	return decide(condition, args, data).holds;
+}
+
+/**
+ * Whether the `condition` holds for the arguments `args`, what values are known decided with `data`, and the argument nodes that decided it.
+ * A forwarded `...` may hold any argument, so what it could give leaves a condition open.
+ */
+export function decide<OtherInfo>(condition: AmbientCondition, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data?: DecidedAgainst<OtherInfo>): ConditionDecision {
+	const dots = args.some(forwardsDots);
+	const given = args.filter((a): a is RArgument<OtherInfo & ParentInformation> => a !== EmptyArgument && !forwardsDots(a));
+	const all = { decidedBy: args.flatMap(a => a === EmptyArgument ? [] : [a.info.id]) };
+	const open = (known: Ternary, never = Ternary.Never) => dots && known === never ? Ternary.Maybe : known;
 	if(condition === 'no-arguments') {
-		return args.length === 0 ? Ternary.Always : Ternary.Never;
+		return { holds: given.length > 0 ? Ternary.Never : dots ? Ternary.Maybe : Ternary.Always, ...all };
 	} else if(condition === 'query') {
-		return isQuery(args) ? Ternary.Always : Ternary.Never;
+		return { holds: open(isQuery(given) ? Ternary.Always : Ternary.Never, Ternary.Always), ...all };
 	} else if('flag' in condition) {
-		const flag = args.find(a => a !== EmptyArgument && a.name !== undefined && Identifier.getName(a.name.content) === condition.flag);
-		return flag === undefined || flag === EmptyArgument ? Ternary.Never : RLogical.is(flag.value) ? flag.value.content ? Ternary.Always : Ternary.Never : data === undefined ? Ternary.Maybe : flagValue(flag.value, data);
-	} else if('calls' in condition) {
-		return argumentCalls(MatchArgs.toNames(args, condition.formals).get(condition.arg), condition.calls, data);
+		const flag = given.find(a => a.name !== undefined && Identifier.getName(a.name.content) === condition.flag);
+		if(flag === undefined) {
+			return { holds: open(Ternary.Never), decidedBy: [] };
+		}
+		return { holds: RLogical.is(flag.value) ? flag.value.content ? Ternary.Always : Ternary.Never : data === undefined ? Ternary.Maybe : flagValue(flag.value, data), decidedBy: [flag.info.id] };
 	} else if('arg' in condition) {
-		return argumentIs(MatchArgs.toNames(args, condition.formals).get(condition.arg), condition.is, data);
+		const arg = MatchArgs.toNames(args, condition.formals).get(condition.arg);
+		if(arg !== undefined && forwardsDots(arg)) {
+			return { holds: Ternary.Maybe, decidedBy: [arg.info.id] };
+		}
+		const known = 'calls' in condition ? argumentCalls(arg, condition.calls, data) : argumentIs(arg, condition.is, data);
+		return { holds: arg === undefined && dots ? Ternary.Maybe : known, decidedBy: arg === undefined ? [] : [arg.info.id] };
 	}
-	return args.some((a, i) => a !== EmptyArgument && (a.name === undefined ? i >= condition.besides.length : !condition.besides.includes(Identifier.getName(a.name.content)))) ? Ternary.Always : Ternary.Never;
+	const besides = given.some(a => {
+		const at = args.indexOf(a);
+		return a.name === undefined ? at >= condition.besides.length : !condition.besides.includes(Identifier.getName(a.name.content));
+	});
+	return { holds: besides ? Ternary.Always : open(Ternary.Never), ...all };
 }
 
 /** Whether the argument is one of the strings `is`, `null` standing for a missing or `NULL` argument. */
-function argumentIs<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation> | undefined, is: readonly (string | null)[], data: DataflowProcessorInformation<OtherInfo & ParentInformation> | undefined): Ternary {
+function argumentIs<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation> | undefined, is: readonly (string | null)[], data: DecidedAgainst<OtherInfo> | undefined): Ternary {
 	const value = RArgument.valueOf(arg);
 	if(value === undefined || (RSymbol.is(value) && value.content === RNull)) {
 		return is.includes(null) ? Ternary.Always : Ternary.Never;
@@ -457,12 +493,13 @@ function argumentIs<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation> | u
 	return known.every(Boolean) ? Ternary.Always : known.some(Boolean) ? Ternary.Maybe : Ternary.Never;
 }
 
-/** Whether the argument is a call of one of the functions `calls`, or a variable bound to one. */
-function argumentCalls<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation> | undefined, calls: readonly BrandedIdentifier[], data: DataflowProcessorInformation<OtherInfo & ParentInformation> | undefined): Ternary {
+/** Whether the argument is a call of one of the functions `calls`, or a variable bound to one (which only a processor tracks, after it a variable is left open). */
+function argumentCalls<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation> | undefined, calls: readonly BrandedIdentifier[], data: DecidedAgainst<OtherInfo> | undefined): Ternary {
 	if(arg === undefined) {
 		return Ternary.Never;
 	}
-	const values = data === undefined ? [RArgument.valueOf(arg)].filter(isNotUndefined) : boundValues(arg.info.id, data);
+	const direct = RArgument.valueOf(arg);
+	const values = isProcessorInfo(data) ? boundValues(arg.info.id, data) : RSymbol.is(direct) ? [] : [direct].filter(isNotUndefined);
 	const known = values.map(v => RFunctionCall.isNamed(v, new Set(calls)));
 	return known.length === 0 ? Ternary.Maybe : known.every(Boolean) ? Ternary.Always : known.some(Boolean) ? Ternary.Maybe : Ternary.Never;
 }

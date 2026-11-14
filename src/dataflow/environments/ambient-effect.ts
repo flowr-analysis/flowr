@@ -261,6 +261,10 @@ export interface AmbientAccessSummary {
 	readonly members: readonly string[]
 	/** when the access happens, all of them have to hold, empty if it always does */
 	readonly when:    readonly string[]
+	/** the conditions {@link AmbientAccessSummary#when} words, to evaluate for a call instead of parsing the words, see {@link AmbientContract} */
+	readonly holds?:  { readonly when?: AmbientCondition, readonly unless?: AmbientCondition }
+	/** how the call names the entries {@link AmbientAccessSummary#members} words, to resolve for a call, absent for all of the part or the active instance */
+	readonly names?:  readonly (AmbientKeys | 'every')[]
 }
 
 /** The accesses of a built-in to one part of the global state and the parts belonging to it, see {@link ambientSummaryOf}. */
@@ -285,7 +289,8 @@ function memberWords(effect: AmbientEffect): readonly string[] {
 	}
 }
 
-function conditionWords(condition: AmbientCondition): string {
+/** The words for a condition, `add is TRUE`, as {@link AmbientAccessSummary#when} shows it. */
+export function conditionWords(condition: AmbientCondition): string {
 	if(condition === 'no-arguments') {
 		return 'it has no arguments';
 	} else if(condition === 'query') {
@@ -305,18 +310,27 @@ function conditionWords(condition: AmbientCondition): string {
  * and by verb, with the entries each access names: `graphics device: opens device, reads plot, adds to plot`.
  */
 export function ambientSummaryOf(config: BuiltInFnInfo | undefined): readonly AmbientFamilySummary[] {
+	return summaryOfEffects(withImpliedAmbient(config)?.ambient);
+}
+
+/** The {@link AmbientEffect}s grouped as {@link ambientSummaryOf} does, with no implied ones added. */
+export function summaryOfEffects(effects: AmbientEffects | undefined): readonly AmbientFamilySummary[] {
 	type Access = { -readonly [K in keyof AmbientAccessSummary]: AmbientAccessSummary[K] };
 	const families = new Map<AmbientFamilyName, Map<string, Access>>();
-	for(const effect of Ambient.list(withImpliedAmbient(config)?.ambient)) {
+	for(const effect of Ambient.list(effects)) {
 		const words = AmbientFamilyInfo[effect.family];
 		const family = words.of ?? effect.family;
 		const accesses = families.get(family) ?? new Map<string, Access>();
 		families.set(family, accesses);
 		const when = [...effect.when === undefined ? [] : [`if ${conditionWords(effect.when)}`], ...effect.unless === undefined ? [] : [`unless ${conditionWords(effect.unless)}`]];
 		const key = `${effect.family} ${effect.access} ${when.join()}`;
-		const known = accesses.get(key) ?? { part: effect.family, access: effect.access, label: `${words.verbs?.[effect.access] ?? AmbientVerbInfo[effect.access].label} ${words.noun}`, members: [], when };
+		const holds = effect.when === undefined && effect.unless === undefined ? {} : { holds: { ...effect.when === undefined ? {} : { when: effect.when }, ...effect.unless === undefined ? {} : { unless: effect.unless } } };
+		const known = accesses.get(key) ?? { part: effect.family, access: effect.access, label: `${words.verbs?.[effect.access] ?? AmbientVerbInfo[effect.access].label} ${words.noun}`, members: [], when, ...holds };
 		accesses.set(key, known);
 		known.members = uniqueArrayMerge(known.members, memberWords(effect));
+		if(effect.member !== undefined) {
+			known.names = [...known.names ?? [], effect.member];
+		}
 	}
 	return [...families].map(([family, accesses]) => ({ family, label: AmbientFamilyInfo[family].label, accesses: [...accesses.values()] }));
 }

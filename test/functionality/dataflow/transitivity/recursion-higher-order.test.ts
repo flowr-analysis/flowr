@@ -64,7 +64,7 @@ describe('Transitivity through recursion and higher-order calls, checked against
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'a function applied twice by a composed closure', code: 'k <- 5\nj <- 2\nh <- function(x) x + k\nhh <- function(x) x + j\napply_twice <- function(f, x) f(f(x))\ncompose <- function(g) function(x) apply_twice(g, x)\nprint(compose(h)(1))', dropped: 'j <- 2' },
 			{ name: 'a function handed down four calls', code: 'k <- 5\nh <- function(x) x + k\nap1 <- function(f1, x) f1(x)\nap2 <- function(f2, x) ap1(f2, x)\nap3 <- function(f3, x) ap2(f3, x)\nap4 <- function(f4, x) ap3(f4, x)\nprint(ap4(h, 1))' },
-			{ name: 'a side effect of a function handed down through eighty calls of parameters', code: `n <- 0\nh <- function(x) { n <<- x; x }\nl1 <- function(f, x) f(x)\n${handedDown(80)}\nprint(n)` },
+			{ name: 'a side effect of a function handed down through eighty calls of parameters', code: `n <- 0\nh <- function(x) { n <<- x; x }\nl1 <- function(f, x) f(x)\n${handedDown(80)}\nprint(n)`, alone: true },
 			{ name: 'a side effect of a function handed down through six calls of parameters', code: 'n <- 0\nh <- function(x) { n <<- x; x }\nl1 <- function(f, x) f(x)\nl2 <- function(g2, f, x) g2(f, x)\nl3 <- function(g3, g2, f, x) g3(g2, f, x)\nl4 <- function(g4, g3, g2, f, x) g4(g3, g2, f, x)\nl5 <- function(g5, g4, g3, g2, f, x) g5(g4, g3, g2, f, x)\nl6 <- function(g6, g5, g4, g3, g2, f, x) g6(g5, g4, g3, g2, f, x)\ninvisible(l6(l5, l4, l3, l2, l1, h, 1))\nprint(n)' }
 		];
 		for(const c of cases) {

@@ -47,13 +47,7 @@ export const MatchArgs = {
 	},
 	/** Binds a call's graph `args` against the formals, reading nothing from the graph, so it also serves a function whose parameters are not in the AST at all. */
 	toSpec<Targets extends NodeId | BrandedIdentifier = string>(this: void, args: readonly FunctionArgument[], params: Record<BrandedIdentifier, Targets> | readonly SigParameter[]): Map<Targets, NodeId[]> {
-		let spec = params as Record<BrandedIdentifier, Targets>;
-		if(Array.isArray(params)) {
-			spec = {};
-			for(const p of params as readonly SigParameter[]) {
-				spec[p.name] = p.name as Targets;
-			}
-		}
+		const spec = Array.isArray(params) ? Object.fromEntries((params as readonly SigParameter[]).map(p => [p.name, p.name as Targets])) : params as Record<BrandedIdentifier, Targets>;
 		const paramNames = Object.keys(spec);
 		const matched = matchArgumentsToParameters(graphArgumentNames(args), paramNames);
 		const maps = new Map<Targets, NodeId[]>();
@@ -157,13 +151,9 @@ function formalsOf<Info extends ParentInformation>(this: void, call: RFunctionCa
 	if(origins === undefined) {
 		return undefined;
 	}
-	for(const origin of origins) {
-		if(origin.type === OriginType.FunctionCallOrigin && !NodeId.isBuiltIn(origin.id)) {
-			const definition = graph.idMap?.get(origin.id);
-			if(RFunctionDefinition.is(definition)) {
-				return definition.parameters.map(p => p.special ? DotsParameterName : p.name.content);
-			}
-		}
+	const definition = origins.values().map(o => o.type === OriginType.FunctionCallOrigin && !NodeId.isBuiltIn(o.id) ? graph.idMap?.get(o.id) : undefined).find(RFunctionDefinition.is);
+	if(definition !== undefined) {
+		return definition.parameters.map(p => p.special ? DotsParameterName : p.name.content);
 	}
 	let db: SignatureDb | undefined;
 	let stated: BuiltInLookup | undefined;

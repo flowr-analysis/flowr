@@ -1,6 +1,5 @@
 import path from 'path';
-import type { SyntaxNode } from 'web-tree-sitter';
-import { prettyPrint, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -13,8 +12,8 @@ import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
-import { projectNodes } from './cmd-check-util';
-import { type FileResult, fileFindings, onPackageFiles } from './file-checks';
+import { firstErrorRow, projectNodes } from './cmd-check-util';
+import { type FileResult, fileFindings, onPackageFiles, KindInFile } from './file-checks';
 import type { PackageFiles } from './package-files';
 
 /** what is wrong with a package file, named after the `R CMD check` finding it corresponds to */
@@ -181,20 +180,6 @@ function checkCitationLocations(files: PackageFiles, report: Report): void {
 	}
 }
 
-/** the first node of a syntax tree the parser could not make sense of */
-function firstError(node: SyntaxNode): SyntaxNode | undefined {
-	if(node.isError || node.isMissing) {
-		return node;
-	}
-	for(const child of node.children) {
-		const found = firstError(child);
-		if(found !== undefined) {
-			return found;
-		}
-	}
-	return undefined;
-}
-
 /** Checks `inst/CITATION` (`tools:::.check_citation`) and returns the number of files read (0 or 1). */
 function checkCitationFile(files: PackageFiles, data: ReadonlyFlowrAnalysisProvider, config: PackageMetafilesConfig, report: Report): number {
 	const rel = 'inst/CITATION';
@@ -203,10 +188,10 @@ function checkCitationFile(files: PackageFiles, data: ReadonlyFlowrAnalysisProvi
 		return 0;
 	}
 	const tree = data.parseStandalone(text);
-	const error = tree.rootNode.hasError ? firstError(tree.rootNode) : undefined;
-	if(error !== undefined) {
+	const errorRow = firstErrorRow(tree.rootNode);
+	if(errorRow !== undefined) {
 		if(config.citation) {
-			report('citation-syntax', rel, error.startPosition.row + 1, `Invalid citation information in '${rel}': unexpected code at line ${error.startPosition.row + 1}`);
+			report('citation-syntax', rel, errorRow + 1, `Invalid citation information in '${rel}': unexpected code at line ${errorRow + 1}`);
 		}
 		return 1;
 	}
@@ -316,11 +301,8 @@ export const PACKAGE_METAFILES = {
 		}
 		return { results, '.meta': { checkedFiles: checked } };
 	}),
-	prettyPrint: prettyPrint(
-		result => `${result.kind} in ${result.file} at ${SourceLocation.format(result.loc)}`,
-		result => `${result.message} (at ${SourceLocation.format(result.loc)})`
-	),
-	info: {
+	prettyPrint: KindInFile,
+	info:        {
 		name:          'Package Metafiles',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,

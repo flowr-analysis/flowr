@@ -1,4 +1,5 @@
 import path from 'path';
+import type { SyntaxNode } from 'web-tree-sitter';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
@@ -72,7 +73,7 @@ export function packageInfo(ctx: ReadOnlyFlowrAnalyzerContext): PackageInfo {
 
 /** The name a function definition is bound to by a plain assignment (`f <- function() ...`). */
 export function boundName(def: RNode<ParentInformation>, idMap: AstIdMap): string | undefined {
-	const parent = def.info.parent === undefined ? undefined : idMap.get(def.info.parent);
+	const parent = RNode.directParent(def, idMap);
 	if(!RBinaryOp.is(parent) || parent.rhs !== def || !['<-', '=', '<<-'].includes(parent.operator) || !RSymbol.is(parent.lhs) && !RString.is(parent.lhs)) {
 		return undefined;
 	}
@@ -118,6 +119,21 @@ export function isWithin(id: NodeId, def: NodeId, idMap: AstIdMap): boolean {
 /** The packages `R CMD check` takes as declared without a DESCRIPTION entry: the base packages but `methods` and `stats4`. */
 export function isStandardPackage(pkg: BrandedNamespace): boolean {
 	return isBaseRPackage(pkg) && pkg !== 'methods' && pkg !== 'stats4';
+}
+
+/** The row of the first error node of a tree-sitter tree, `undefined` if it parsed or no node is to blame. */
+export function firstErrorRow(root: SyntaxNode): number | undefined {
+	if(!root.hasError) {
+		return undefined;
+	}
+	const stack = [root];
+	for(let node = stack.pop(); node !== undefined; node = stack.pop()) {
+		if(node.isError || node.isMissing) {
+			return node.startPosition.row;
+		}
+		stack.push(...node.children.toReversed());
+	}
+	return undefined;
 }
 
 /** The pretty printers of a rule: `query` describes a result, the full one is its message and location. */

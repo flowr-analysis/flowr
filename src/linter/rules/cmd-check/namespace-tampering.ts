@@ -12,7 +12,7 @@ import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import { NodeValue } from '../../../dataflow/eval/resolve/node-value';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 import type { AstIdMap, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import { builtInOf, callsBuiltIn } from '../../linter-util';
@@ -86,7 +86,7 @@ function namespaceOfVariable(node: RSymbol<ParentInformation>, info: ResolveInfo
 	const answers = new Set<string | undefined>();
 	for(const def of Dataflow.targetsOf(graph, node.info.id, EdgeType.Reads)) {
 		const target = idMap.get(def);
-		const assignment = target?.info.parent === undefined ? undefined : idMap.get(target.info.parent);
+		const assignment = target === undefined ? undefined : RNode.directParent(target, idMap);
 		const value = RBinaryOp.is(assignment) ? (assignment.lhs === target ? assignment.rhs : assignment.rhs === target ? assignment.lhs : undefined) : undefined;
 		answers.add(value === undefined ? undefined : namespaceOf(value, info, own, depth + 1));
 	}
@@ -95,8 +95,8 @@ function namespaceOfVariable(node: RSymbol<ParentInformation>, info: ResolveInfo
 
 /** whether the call is the one a `.Internal` call is handed, which is reported with the `.Internal` */
 function isInternalArgument(node: RNode<ParentInformation>, idMap: AstIdMap, graph: DataflowGraph): boolean {
-	const arg = node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
-	const call = arg?.info.parent === undefined ? undefined : idMap.get(arg.info.parent);
+	const arg = RNode.directParent(node, idMap);
+	const call = arg === undefined ? undefined : RNode.directParent(arg, idMap);
 	return call !== undefined && callsBuiltIn(graph, call.info.id, '.Internal');
 }
 

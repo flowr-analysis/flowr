@@ -99,7 +99,7 @@ function formatFormals(name: BrandedIdentifier, formals: readonly BrandedIdentif
 
 /** the node naming the function a definition is bound to, the definition itself when it is anonymous */
 function nameNodeOf(def: RFunctionDefinition<ParentInformation>, idMap: AstIdMap): RNode<ParentInformation> {
-	const parent = def.info.parent === undefined ? undefined : idMap.get(def.info.parent);
+	const parent = RNode.directParent(def, idMap);
 	return parent !== undefined && RBinaryOp.is(parent) && parent.rhs === def ? parent.lhs : def;
 }
 

@@ -7,6 +7,7 @@ import { SourceLocation } from '../../../util/range';
 import { type FileResult, fileFindings, firstLine, onPackageFiles } from './file-checks';
 import { FileRole } from '../../../project/context/flowr-file';
 import type { PackageFiles } from './package-files';
+import { escapeRegex } from '../../../util/text/strings';
 
 /** The `R CMD check` checks (by the title it logs them under) this rule ports. */
 export type CompiledCodeKind =
@@ -147,7 +148,6 @@ function stripC(text: string, strings: boolean): string {
 	return text.replace(CSyntax, m => m.startsWith('/') || strings ? blank(m) : m);
 }
 
-const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const alt = (names: readonly string[]) => names.length === 0 ? '(?!)' : `(?:${names.map(escapeRegex).join('|')})`;
 const category = (symbol: string) => Categories.find(([p]) => p.test(symbol))?.[1] ?? 'writes to stdout/stderr instead of to the console';
 

@@ -16,10 +16,10 @@ import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import { printer, type CmdCheckResult, type PackageInfo, isStandardPackage, projectNodes } from './cmd-check-util';
+import { printer, type CmdCheckResult, type PackageInfo, isStandardPackage, projectNodes, firstErrorRow } from './cmd-check-util';
 import type { PackageFiles } from './package-files';
 import { onPackageFiles } from './file-checks';
 import { packageCode } from './package-code';
@@ -108,7 +108,7 @@ function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly Bran
 		}
 		if(RFunctionCall.isNamed(node)) {
 			const fn = Identifier.getName(node.functionName.content);
-			const parentNode = node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
+			const parentNode = RNode.directParent(node, idMap);
 			if(RExpressionList.is(parentNode) && parentNode.info.parent === undefined) {
 				topLevelCalls.push(fn);
 			}
@@ -126,7 +126,7 @@ function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly Bran
 		if(!RBinaryOp.is(node) || !['<-', '=', '->', '<<-'].includes(node.operator)) {
 			continue;
 		}
-		const parent = node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
+		const parent = RNode.directParent(node, idMap);
 		if(parent !== undefined && !(RExpressionList.is(parent) && parent.info.parent === undefined)) {
 			continue;
 		}
@@ -192,18 +192,8 @@ function lineOf(text: string | undefined, name: BrandedIdentifier | BrandedNames
 /** the first row with a syntax error, `undefined` if the code parses */
 function syntaxErrorRow(code: string, data: ReadonlyFlowrAnalysisProvider): number | undefined {
 	try {
-		const tree = data.parseStandalone(code);
-		if(!tree.rootNode.hasError) {
-			return undefined;
-		}
-		const stack = [tree.rootNode];
-		for(let node = stack.pop(); node !== undefined; node = stack.pop()) {
-			if(node.isError || node.isMissing) {
-				return node.startPosition.row;
-			}
-			stack.push(...node.children.toReversed());
-		}
-		return 0;
+		const root = data.parseStandalone(code).rootNode;
+		return root.hasError ? firstErrorRow(root) ?? 0 : undefined;
 	} catch{
 		return undefined;
 	}

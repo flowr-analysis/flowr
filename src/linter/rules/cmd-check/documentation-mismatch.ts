@@ -1,7 +1,7 @@
 import { escapeRegex } from '../../../util/text/strings';
 import { scanRCode, splitRCodeArgs } from '../../../util/text/args';
 import { contentOf } from '../../../dataflow/eval/values/string/string-constants';
-import { prettyPrint, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -22,6 +22,7 @@ import { type BrandedIdentifier, Identifier } from '../../../dataflow/environmen
 import path from 'path';
 import { rootDescriptionFile } from './package-files';
 import { type CmdCheckResult, formalNames, packageInfo, topLevelDefinitions } from './cmd-check-util';
+import { MessageAtLocation } from './file-checks';
 
 /** The sub-check of `R CMD check` a finding belongs to. */
 export type DocumentationMismatchKind =
@@ -311,10 +312,8 @@ export const DOCUMENTATION_MISMATCH = {
 		}
 		return { results, '.meta': { consideredObjects, consideredPages: pages.length } };
 	},
-	prettyPrint: prettyPrint(
-		result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	),
-	info: {
+	prettyPrint: MessageAtLocation,
+	info:        {
 		name:          'Documentation Mismatch',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Documentation, LintingRuleTag.Bug],
 		certainty:     LintingRuleCertainty.BestEffort,

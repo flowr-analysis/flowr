@@ -105,7 +105,7 @@ function framesFor(node: RNodeWithParent, idMap: AstIdMap, dfg: DataflowGraph): 
 	for(const ancestor of RNode.iterateParents(node, idMap)) {
 		const op = operatorOf(ancestor);
 		if(RFunctionCall.is(ancestor) || RBinaryOp.is(ancestor) || RPipe.is(ancestor)) {
-			const around = ancestor.info.parent === undefined ? undefined : idMap.get(ancestor.info.parent);
+			const around = RNode.directParent(ancestor, idMap);
 			const outer = RArgument.is(around) ? idMap.get(around.info.parent as NodeId) : around;
 			/* the other quoted operands are written in the same data mask (`y = mpg` next to `x = wt` in `aes`), and name columns, not data */
 			const level = operandsOf(ancestor).filter(operand => operand !== child && !RNode.iterateParents(child, idMap).some(p => p === operand) && !dfg.isQuoted(operand.info.id));

@@ -11,7 +11,7 @@ import { graph2quads, type QuadSerializationConfiguration } from '../util/quads'
 import { ControlFlow } from '../dataflow/internal/control-flow';
 import type { MergeableRecord } from '../util/objects';
 import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
-import { assertUnreachable, guard } from '../util/assert';
+import { guard } from '../util/assert';
 import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { uniqueArray } from '../util/collections/arrays';
@@ -73,6 +73,8 @@ export type CfgBasicBlockVertex = [CfgVertexType.Block, ...a: unknown[]] & [type
  * Please use the helper object (e.g. {@link CfgVertex#getType|getType()}) to work with vertices instead of directly accessing the properties.
  */
 export type CfgVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlockVertex;
+
+const VertexTypeNames: Readonly<Record<CfgVertexType, string>> = { [CfgVertexType.Statement]: 'statement', [CfgVertexType.Expression]: 'expression', [CfgVertexType.Block]: 'block' };
 
 /**
  * Helper object for {@link CfgVertex} - a vertex in the {@link ControlFlowGraph}.
@@ -154,16 +156,7 @@ export const CfgVertex = {
 	 * @see {@link CfgVertex#getType|getType()} - for a way to get the type of a vertex and convert it to a string
 	 */
 	typeToString(this: void, type: CfgVertexType): string {
-		switch(type) {
-			case CfgVertexType.Statement:
-				return 'statement';
-			case CfgVertexType.Expression:
-				return 'expression';
-			case CfgVertexType.Block:
-				return 'block';
-			default:
-				assertUnreachable(type);
-		}
+		return VertexTypeNames[type];
 	},
 	/**
 	 * Get the id of the given vertex, which directly relates to the AST node, e.g. `CfgVertex.getId(CfgVertex.makeExpression('node-1'))` gives `'node-1'`.
@@ -206,17 +199,11 @@ export const CfgVertex = {
 	},
 	/** The functions a call may dispatch to, see {@link collectCallTargets} for how these are resolved. */
 	getCallTargets(this: void, vertex: CfgVertex | undefined): Set<NodeId> | undefined {
-		if(vertex === undefined || vertex[0] === CfgVertexType.Block) {
-			return undefined;
-		}
-		return (vertex)[3];
+		return vertex === undefined || vertex[0] === CfgVertexType.Block ? undefined : vertex[3];
 	},
 	/** Get the children of a statement or expression vertex, i.e., the child nodes attached to this one. */
 	getChildren(this: void, vertex: CfgVertex | undefined): NodeId[] | undefined {
-		if(vertex === undefined || vertex[0] === CfgVertexType.Block) {
-			return undefined;
-		}
-		return (vertex)[2];
+		return vertex === undefined || vertex[0] === CfgVertexType.Block ? undefined : vertex[2];
 	}
 } as const;
 
@@ -575,23 +562,17 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	addVertex(vertex: Vertex, rootVertex = true): this {
 		this.materialize();
 		const vid = CfgVertex.getId(vertex);
-
 		if(CfgVertex.isBlock(vertex)) {
 			this._mayBB = true;
-			const elems = CfgVertex.getBasicBlockElements(vertex);
-			if(elems.some(e => {
-				const eid = CfgVertex.getId(e);
-				return this.bbChildren.has(eid) || this.roots.has(eid);
-			})) {
+			const elems = CfgVertex.getBasicBlockElements(vertex).map(CfgVertex.getId);
+			if(elems.some(eid => this.bbChildren.has(eid) || this.roots.has(eid))) {
 				throw new Error(`Vertex ${vid} contains vertices that are already part of the graph`);
 			}
-			for(const elem of elems) {
-				this.bbChildren.set(CfgVertex.getId(elem), vid);
+			for(const eid of elems) {
+				this.bbChildren.set(eid, vid);
 			}
 		}
-
 		this.vtxInfos.set(vid, vertex);
-
 		if(rootVertex) {
 			this.roots.add(vid);
 		}
@@ -624,17 +605,11 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	}
 
 	outgoingEdges(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
-		if(this.isView) {
-			return controlFlowEdges((this.dfg as DataflowGraph).outgoingEdges(node));
-		}
-		return this.edgeInfos.get(node);
+		return this.isView ? controlFlowEdges((this.dfg as DataflowGraph).outgoingEdges(node)) : this.edgeInfos.get(node);
 	}
 
 	ingoingEdges(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
-		if(this.isView) {
-			return controlFlowEdges((this.dfg as DataflowGraph).ingoingEdges(node));
-		}
-		return this.reverse().get(node);
+		return this.isView ? controlFlowEdges((this.dfg as DataflowGraph).ingoingEdges(node)) : this.reverse().get(node);
 	}
 
 	/** @see {@link ReadOnlyControlFlowGraph#edgesFrom|edgesFrom()} */
@@ -650,53 +625,31 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	rootIds(): ReadonlySet<NodeId> {
 		if(this.isView) {
 			const dfg = this.dfg as DataflowGraph;
-			if(this.rootCache === undefined) {
-				this.rootCache = new Set<NodeId>();
-				for(const id of dfg.rootIds()) {
-					if(isControlFlowVertex(dfg, id)) {
-						this.rootCache.add(id);
-					}
-				}
-			}
-			return this.rootCache;
+			return this.rootCache ??= new Set(dfg.rootIds().values().filter(id => isControlFlowVertex(dfg, id)));
 		}
 		return this.roots;
 	}
 
 	vertices(includeBasicBlockElements = true): ReadonlyMap<NodeId, CfgVertex> {
 		this.materialize();
-		if(includeBasicBlockElements) {
-			const all = new Map<NodeId, CfgVertex>(this.vtxInfos);
-			for(const [id, block] of this.bbChildren.entries()) {
-				const blockVertex = all.get(block);
-				if(blockVertex === undefined || !CfgVertex.isBlock(blockVertex)) {
-					continue;
-				}
-				const elems = CfgVertex.getBasicBlockElements(blockVertex);
-				const elem = elems.find(e => CfgVertex.getId(e) === id);
-				if(elem !== undefined) {
-					all.set(id, elem);
-				}
-			}
-			return all;
-		} else {
+		if(!includeBasicBlockElements) {
 			return this.vtxInfos;
 		}
+		const all = new Map<NodeId, CfgVertex>(this.vtxInfos);
+		for(const [id, block] of this.bbChildren.entries()) {
+			const blockVertex = all.get(block);
+			const elem = CfgVertex.isBlock(blockVertex) ? CfgVertex.getBasicBlockElements(blockVertex).find(e => CfgVertex.getId(e) === id) : undefined;
+			if(elem !== undefined) {
+				all.set(id, elem);
+			}
+		}
+		return all;
 	}
 
 	getBasicBlock(elemId: NodeId): CfgBasicBlockVertex | undefined {
-		if(this.isView) {
-			return undefined;
-		}
-		const block = this.bbChildren.get(elemId);
-		if(block === undefined) {
-			return undefined;
-		}
-		const blockVertex = this.vtxInfos.get(block);
-		if(blockVertex === undefined || !CfgVertex.isBlock(blockVertex)) {
-			return undefined;
-		}
-		return blockVertex;
+		const block = this.isView ? undefined : this.bbChildren.get(elemId);
+		const blockVertex = block === undefined ? undefined : this.vtxInfos.get(block);
+		return CfgVertex.isBlock(blockVertex) ? blockVertex : undefined;
 	}
 
 	edges(): ReadonlyMap<NodeId, ReadonlyMap<NodeId, CfgEdge>> {
@@ -764,38 +717,15 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 		}
 		/* the construct starts at the one vertex within it that nothing inside it leads to */
 		const within = RNode.collectAllIds(node);
-		let entry: NodeId | undefined = undefined;
-		for(const candidate of within) {
-			if(!this.hasVertex(candidate)) {
-				continue;
-			}
-			let reachedFromWithin = false;
-			for(const previous of this.predecessors(candidate)) {
-				if(within.has(previous)) {
-					reachedFromWithin = true;
-					break;
-				}
-			}
-			if(!reachedFromWithin) {
-				entry = candidate;
-				break;
-			}
-		}
-		return entry;
+		return within.values().find(candidate => this.hasVertex(candidate) && !Array.from(this.predecessors(candidate)).some(previous => within.has(previous)));
 	}
 
 	successors(id: NodeId): Iterable<NodeId> {
-		if(this.isView) {
-			return controlFlowNeighbors((this.dfg as DataflowGraph).outgoingEdges(id));
-		}
-		return this.edgeInfos.get(id)?.keys() ?? NoNeighbors;
+		return this.isView ? controlFlowNeighbors((this.dfg as DataflowGraph).outgoingEdges(id)) : this.edgeInfos.get(id)?.keys() ?? NoNeighbors;
 	}
 
 	predecessors(id: NodeId): Iterable<NodeId> {
-		if(this.isView) {
-			return controlFlowNeighbors((this.dfg as DataflowGraph).ingoingEdges(id));
-		}
-		return this.reverse().get(id)?.keys() ?? NoNeighbors;
+		return this.isView ? controlFlowNeighbors((this.dfg as DataflowGraph).ingoingEdges(id)) : this.reverse().get(id)?.keys() ?? NoNeighbors;
 	}
 
 	/**
@@ -834,37 +764,22 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	 */
 	removeEdge(from: NodeId, to: NodeId): this {
 		this.materialize();
-		const edgesFrom = this.edgeInfos.get(from);
-		if(edgesFrom) {
-			edgesFrom.delete(to);
-			if(edgesFrom.size === 0) {
-				this.edgeInfos.delete(from);
-			}
-		}
-		const edgesTo = this.revEdgeInfos?.get(to);
-		if(edgesTo) {
-			edgesTo.delete(from);
-			if(edgesTo.size === 0) {
-				this.revEdgeInfos?.delete(to);
-			}
+		deleteNestedEdge(this.edgeInfos, from, to);
+		if(this.revEdgeInfos) {
+			deleteNestedEdge(this.revEdgeInfos, to, from);
 		}
 		return this;
 	}
 
 	/** merges b into a */
-	mergeTwoBasicBlocks(
-		a: NodeId,
-		b: NodeId
-	): this {
+	mergeTwoBasicBlocks(a: NodeId, b: NodeId): this {
 		this.materialize();
 		const aVertex = this.getVertex(a);
 		const bVertex = this.getVertex(b);
-		if(!aVertex || !bVertex || !CfgVertex.isBlock(aVertex) || !CfgVertex.isBlock(bVertex)) {
+		if(!CfgVertex.isBlock(aVertex) || !CfgVertex.isBlock(bVertex)) {
 			return this;
 		}
-
 		const bElems = CfgVertex.getBasicBlockElements(bVertex);
-
 		CfgVertex.setBasicBlockElements(aVertex, [...CfgVertex.getBasicBlockElements(aVertex), ...bElems]);
 		// update cache
 		for(const elem of bElems) {
@@ -873,11 +788,8 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 
 		// drop all edges from a to b
 		this.removeEdge(a, b);
-
 		const bOutgoing = this.outgoingEdges(b);
-
 		this.removeVertex(b);
-
 		// reroute all edge from b to a
 		for(const [to, edge] of bOutgoing ?? []) {
 			this.addEdge(a, to, edge);
@@ -930,10 +842,19 @@ function isControlFlowVertex(dfg: DataflowGraph, id: NodeId): boolean {
 /** Records `to -> edge` under `from` in a nested edge map, creating the inner map on first use. */
 function setNestedEdge(map: Map<NodeId, Map<NodeId, CfgEdge>>, from: NodeId, to: NodeId, edge: CfgEdge): void {
 	const existing = map.get(from);
-	if(existing === undefined) {
-		map.set(from, new Map([[to, edge]]));
-	} else {
+	if(existing) {
 		existing.set(to, edge);
+	} else {
+		map.set(from, new Map([[to, edge]]));
+	}
+}
+
+/** Drops `to` under `from` in a nested edge map, and `from` with it once it has no edge left. */
+function deleteNestedEdge(map: Map<NodeId, Map<NodeId, CfgEdge>>, from: NodeId, to: NodeId): void {
+	const edges = map.get(from);
+	edges?.delete(to);
+	if(edges?.size === 0) {
+		map.delete(from);
 	}
 }
 
@@ -952,16 +873,7 @@ function controlFlowEdges(edges: ReadonlyMap<NodeId, DfEdge> | undefined): Reado
 
 /** The ids among the given edges that the control flow actually connects. */
 function controlFlowNeighbors(edges: ReadonlyMap<NodeId, DfEdge> | undefined): readonly NodeId[] {
-	if(edges === undefined) {
-		return NoNeighbors;
-	}
-	const result: NodeId[] = [];
-	for(const [id, edge] of edges) {
-		if(DfEdge.includesType(edge, ControlFlowEdgeTypes)) {
-			result.push(id);
-		}
-	}
-	return result;
+	return edges === undefined ? NoNeighbors : [...edges.entries().filter(([, edge]) => DfEdge.includesType(edge, ControlFlowEdgeTypes)).map(([id]) => id)];
 }
 
 /** Where a function body begins, which is the only way into that region. */
@@ -1016,11 +928,6 @@ function collectCallTargets(dfg: DataflowGraph, id: NodeId): Set<NodeId> | undef
 }
 
 /**
- * The control flow of the program the given dataflow analysis describes.
- * @see {@link ControlFlowGraph} - for the projection this is built on
- */
-
-/**
  * The control flow of a whole analysis: the graph of what may run after what, along with the exit points
  * (`return`s, `break`s and `next`es) the traversal collected on the way.
  * @param dataflow - the analysis to read the AST and the resolved calls from
@@ -1030,25 +937,12 @@ export function extractCfg(dataflow: DataflowInformation): ControlFlowInformatio
 	const breaks: NodeId[] = [];
 	const nexts: NodeId[] = [];
 	const exitPoints: NodeId[] = [];
+	const jumps: Partial<Record<ExitPointType, NodeId[]>> = { [ExitPointType.Return]: returns, [ExitPointType.Break]: breaks, [ExitPointType.Next]: nexts };
 	for(const exit of dataflow.exitPoints) {
-		switch(exit.type) {
-			case ExitPointType.Return:
-				returns.push(exit.nodeId);
-				break;
-			case ExitPointType.Break:
-				breaks.push(exit.nodeId);
-				break;
-			case ExitPointType.Next:
-				nexts.push(exit.nodeId);
-				break;
-			default:
-				exitPoints.push(exit.nodeId);
-				break;
-		}
+		(jumps[exit.type] ?? exitPoints).push(exit.nodeId);
 	}
 	if(dataflow.cfgExit !== undefined) {
-		exitPoints.length = 0;
-		exitPoints.push(dataflow.cfgExit);
+		exitPoints.splice(0, exitPoints.length, dataflow.cfgExit);
 	} else {
 		/* this is the whole program, so a jump still unclaimed here is one no function or loop encloses: it leaves
 		   the program, whether with a value as a top-level `return` does or with an error as `break` does */

@@ -30,6 +30,7 @@ import { prefixLines } from './doc-util/doc-general';
 import { codeBlock } from './doc-util/doc-code';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { enumMembers } from '../util/objects';
+import type { KnownParser } from '../r-bridge/parser';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -124,7 +125,18 @@ class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 	}
 }
 
-/** https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph */
+/** the numbers collected (or a visitor collects) on the cfg of `x - 1 + 2L * 3`, as a markdown list */
+async function collectedNumbers(parser: KnownParser, collect: (cfg: Awaited<ReturnType<typeof getCfg>>) => RNumberValue[] | { start(): void, getNumbers(): RNumberValue[] }): Promise<string> {
+	const collected = collect(await getCfg(parser, 'x - 1 + 2L * 3'));
+	if(!Array.isArray(collected)) {
+		collected.start();
+	}
+	return (Array.isArray(collected) ? collected : collected.getNumbers()).map(n => '\n- `' + JSON.stringify(n) + '`').join('');
+}
+
+/**
+ * https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph
+ */
 export class WikiCfg extends DocMaker<'wiki/Control Flow Graph.md'> {
 	constructor() {
 		super('wiki/Control Flow Graph.md', module.filename, 'control flow graph');
@@ -393,11 +405,7 @@ ${ctx.code(sampleCollectNumbers)}
 
 Calling it with the CFG and AST of the expression \`x - 1 + 2L * 3\` yields the following elements (in this order):
 
-${await (async() => {
-	const res = await getCfg(shell, 'x - 1 + 2L * 3');
-	const collected = sampleCollectNumbers(res.info, res.ast);
-	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
-})()}
+${await collectedNumbers(shell, res => sampleCollectNumbers(res.info, res.ast))}
 
 A more useful appearance of these visitors occurs with ${ctx.link(happensBefore)} which uses the CFG to determine whether the execution
 of one vertex always, maybe, or never happens before another vertex (see the corresponding ${linkToQueryOfName('happens-before', 'query documentation')} for more information).
@@ -447,13 +455,7 @@ ${ctx.code(CollectNumbersVisitor)}
 Instead of directly calling ${ctx.link(visitCfgInOrder)} we pass the \`forward\` visiting order to the constructor of the visitor.
 Executing it with the CFG and AST of the expression \`x - 1 + 2L * 3\`, causes the following numbers to be collected:
 
-${await (async() => {
-	const res = await getCfg(shell, 'x - 1 + 2L * 3');
-	const visitor = new CollectNumbersVisitor(res.info, res.ast);
-	visitor.start();
-	const collected = visitor.getNumbers();
-	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
-})()}
+${await collectedNumbers(shell, res => new CollectNumbersVisitor(res.info, res.ast))}
 
 
 ${section('Syntax-Aware CFG Visitor', 4, 'cfg-traversal-syntax')}
@@ -466,13 +468,7 @@ ${ctx.code(CollectNumbersSyntaxVisitor)}
 
 And again, executing it with the CFG and AST of the expression \`x - 1 + 2L * 3\`, causes the following numbers to be collected:
 
-${await (async() => {
-	const res = await getCfg(shell, 'x - 1 + 2L * 3');
-	const visitor = new CollectNumbersSyntaxVisitor(res.info, res.ast);
-	visitor.start();
-	const collected = visitor.getNumbers();
-	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
-})()}
+${await collectedNumbers(shell, res => new CollectNumbersSyntaxVisitor(res.info, res.ast))}
 
 ${section('Dataflow-Aware CFG Visitor', 4, 'cfg-traversal-dfg')}
 
@@ -486,13 +482,7 @@ ${ctx.code(CollectNumbersDataflowVisitor)}
 
 Again, executing it with the CFG and Dataflow of the expression \`x - 1 + 2L * 3\`, causes the following numbers to be collected:
 
-${await (async() => {
-	const res = await getCfg(shell, 'x - 1 + 2L * 3');
-	const visitor = new CollectNumbersDataflowVisitor(cfgVisitorConfig({ controlFlow: res.info, defaultVisitingOrder: 'forward' }));
-	visitor.start();
-	const collected = visitor.getNumbers();
-	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
-})()}
+${await collectedNumbers(shell, res => new CollectNumbersDataflowVisitor(cfgVisitorConfig({ controlFlow: res.info, defaultVisitingOrder: 'forward' })))}
 
 ${section('Semantic CFG Visitor', 4, 'cfg-traversal-semantic')}
 

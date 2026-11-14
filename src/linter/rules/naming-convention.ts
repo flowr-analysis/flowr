@@ -103,8 +103,7 @@ export function detectCasing(identifier: BrandedIdentifier, ignorePrefix?:  stri
 /** Determines the most used casing convention in the given list of symbols. */
 export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[]): CasingConvention {
 	/* on a tie, the casing counted last wins */
-	return Map.groupBy(symbols, s => s.detectedCasing).entries()
-		.reduce<[CasingConvention, number]>((best, [casing, { length }]) => length >= best[1] ? [casing, length] : best, [CasingConvention.Unknown, 0])[0];
+	return [...Map.groupBy(symbols, s => s.detectedCasing)].reduce<[CasingConvention, number]>((best, [casing, { length }]) => length >= best[1] ? [casing, length] : best, [CasingConvention.Unknown, 0])[0];
 }
 
 /** Attempts to fix the casing of the given identifier to match the provided convention. */

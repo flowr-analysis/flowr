@@ -112,8 +112,7 @@ export function formalNames(def: RFunctionDefinition<ParentInformation>): Brande
 
 /** Whether the node with the given id is (nested) within the given definition. */
 export function isWithin(id: NodeId, def: NodeId, idMap: AstIdMap): boolean {
-	const node = idMap.get(id);
-	return node?.info.id === def || RNode.iterateParents(node, idMap).some(p => p.info.id === def);
+	return RNode.findEnclosing(id, idMap, n => n.info.id === def) !== undefined;
 }
 
 /** The packages `R CMD check` takes as declared without a DESCRIPTION entry: the base packages but `methods` and `stats4`. */

@@ -191,10 +191,7 @@ export const DEPENDENCY_DECLARATION = {
 		const declared = new Set<BrandedNamespace>([...dependsSuggests, ...imports]);
 		const used = new Set<BrandedNamespace>();
 		const ignoreWithin = new Set(config.ignoreWithin);
-		const ignored = (id: NodeId): boolean => {
-			const node = idMap.get(id);
-			return RFunctionCall.isNamed(node, ignoreWithin) || RNode.iterateParents(node, idMap).some(p => RFunctionCall.isNamed(p, ignoreWithin));
-		};
+		const ignored = (id: NodeId): boolean => RNode.findEnclosing(id, idMap, n => RFunctionCall.isNamed(n, ignoreWithin)) !== undefined;
 		const add = (id: NodeId, kind: DependencyDeclarationKind, name: BrandedNamespace, message: string, certain = true) => {
 			results.push({ ...at(idMap.get(id), certain), involvedId: id, kind, package: name, message });
 		};

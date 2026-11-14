@@ -5,12 +5,27 @@ import { type SummarizedMeasurement, summarizeMeasurement } from '../../../util/
 import { guard, isNotUndefined } from '../../../util/assert';
 import {
 	type BenchmarkMemoryMeasurement,
+	type SlicerStatsDataflow,
+	type SlicerStatsInput,
 	AdditionalSlicerMeasurements,
 	CommonSlicerMeasurements,
 	PerSliceMeasurements
 } from '../../stats/stats';
 import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
 import { arraySum } from '../../../util/collections/arrays';
+
+/** The keys `keys` of `T`, which have to be all of them. */
+function allKeys<T>(): <const K extends readonly (keyof T)[]>(keys: [keyof T] extends [K[number]] ? K : never) => K {
+	return keys => keys;
+}
+const InputKeys = allKeys<SlicerStatsInput>()(['numberOfLines', 'numberOfNonEmptyLines', 'numberOfCharacters', 'numberOfCharactersNoComments', 'numberOfNonWhitespaceCharacters',
+	'numberOfNonWhitespaceCharactersNoComments', 'numberOfRTokens', 'numberOfRTokensNoComments', 'numberOfNormalizedTokens', 'numberOfNormalizedTokensNoComments']);
+const DataflowKeys = allKeys<SlicerStatsDataflow>()(['numberOfNodes', 'numberOfFunctionDefinitions', 'numberOfCalls', 'numberOfEdges', 'numberOfControlFlowEdges', 'sizeOfObject']);
+
+/** Each of the fields `keys` of the objects `of` summarized by `summarize`. */
+function summarizeFields<O, K extends keyof O, R>(of: readonly O[], keys: readonly K[], summarize: (values: O[K][]) => R): Record<K, R> {
+	return Object.fromEntries(keys.map(k => [k, summarize(of.map(o => o[k]))])) as Record<K, R>;
+}
 
 /** This big function summarizes multiple summarized stats into one ultimate stat. */
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
@@ -71,27 +86,9 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		timesHitThreshold:            sum(p => p.timesHitThreshold),
 		reduction:                    summarizeSummarizedReductions(perSlice.map(p => p.reduction)),
 		reductionNoFluff:             summarizeSummarizedReductions(perSlice.map(p => p.reductionNoFluff)),
-		input:                        {
-			numberOfLines:                             summarizeMeasurement(inputs.map(i => i.numberOfLines)),
-			numberOfNonEmptyLines:                     summarizeMeasurement(inputs.map(i => i.numberOfNonEmptyLines)),
-			numberOfCharacters:                        summarizeMeasurement(inputs.map(i => i.numberOfCharacters)),
-			numberOfCharactersNoComments:              summarizeMeasurement(inputs.map(i => i.numberOfCharactersNoComments)),
-			numberOfNonWhitespaceCharacters:           summarizeMeasurement(inputs.map(i => i.numberOfNonWhitespaceCharacters)),
-			numberOfNonWhitespaceCharactersNoComments: summarizeMeasurement(inputs.map(i => i.numberOfNonWhitespaceCharactersNoComments)),
-			numberOfRTokens:                           summarizeMeasurement(inputs.map(i => i.numberOfRTokens)),
-			numberOfRTokensNoComments:                 summarizeMeasurement(inputs.map(i => i.numberOfRTokensNoComments)),
-			numberOfNormalizedTokens:                  summarizeMeasurement(inputs.map(i => i.numberOfNormalizedTokens)),
-			numberOfNormalizedTokensNoComments:        summarizeMeasurement(inputs.map(i => i.numberOfNormalizedTokensNoComments))
-		},
-		dataflow: {
-			numberOfNodes:               summarizeMeasurement(dataflows.map(d => d.numberOfNodes)),
-			numberOfFunctionDefinitions: summarizeMeasurement(dataflows.map(d => d.numberOfFunctionDefinitions)),
-			numberOfCalls:               summarizeMeasurement(dataflows.map(d => d.numberOfCalls)),
-			numberOfEdges:               summarizeMeasurement(dataflows.map(d => d.numberOfEdges)),
-			numberOfControlFlowEdges:    summarizeMeasurement(dataflows.map(d => d.numberOfControlFlowEdges ?? 0)),
-			sizeOfObject:                summarizeMeasurement(dataflows.map(d => d.sizeOfObject)),
-		},
-		controlFlow: stats.some(s => s.controlFlow !== undefined) ? {
+		input:                        summarizeFields(inputs, InputKeys, summarizeMeasurement),
+		dataflow:                     summarizeFields(dataflows.map(d => ({ ...d, numberOfControlFlowEdges: d.numberOfControlFlowEdges ?? 0 })), DataflowKeys, summarizeMeasurement),
+		controlFlow:                  stats.some(s => s.controlFlow !== undefined) ? {
 			numberOfVertices: summarizeMeasurement(stats.map(s => s.controlFlow?.numberOfVertices).filter(isNotUndefined)),
 			numberOfEdges:    summarizeMeasurement(stats.map(s => s.controlFlow?.numberOfEdges).filter(isNotUndefined)),
 			sizeOfObject:     summarizeMeasurement(stats.map(s => s.controlFlow?.sizeOfObject).filter(isNotUndefined))
@@ -171,27 +168,9 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 		totalPerSliceTimePer100Lines: summarizeSummarizedMeasurement(stats.map(s => s.totalPerSliceTimePer100Lines).filter(isNotUndefined)),
 		reduction:                    summarizeSummarizedReductions(stats.map(s => s.reduction)),
 		reductionNoFluff:             summarizeSummarizedReductions(stats.map(s => s.reductionNoFluff)),
-		input:                        {
-			numberOfLines:                             summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfLines)),
-			numberOfNonEmptyLines:                     summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonEmptyLines)),
-			numberOfCharacters:                        summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfCharacters)),
-			numberOfCharactersNoComments:              summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfCharactersNoComments)),
-			numberOfNonWhitespaceCharacters:           summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonWhitespaceCharacters)),
-			numberOfNonWhitespaceCharactersNoComments: summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonWhitespaceCharactersNoComments)),
-			numberOfRTokens:                           summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfRTokens)),
-			numberOfRTokensNoComments:                 summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfRTokensNoComments)),
-			numberOfNormalizedTokens:                  summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNormalizedTokens)),
-			numberOfNormalizedTokensNoComments:        summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNormalizedTokensNoComments))
-		},
-		dataflow: {
-			numberOfNodes:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfNodes)),
-			numberOfFunctionDefinitions: summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfFunctionDefinitions)),
-			numberOfCalls:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfCalls)),
-			numberOfEdges:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfEdges)),
-			numberOfControlFlowEdges:    summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfControlFlowEdges)),
-			sizeOfObject:                summarizeSummarizedMeasurement(stats.map(s => s.dataflow.sizeOfObject)),
-		},
-		controlFlow: stats.some(s => s.controlFlow !== undefined) ? {
+		input:                        summarizeFields(stats.map(s => s.input), InputKeys, summarizeSummarizedMeasurement),
+		dataflow:                     summarizeFields(stats.map(s => s.dataflow), DataflowKeys, summarizeSummarizedMeasurement),
+		controlFlow:                  stats.some(s => s.controlFlow !== undefined) ? {
 			numberOfVertices: summarizeSummarizedMeasurement(stats.map(s => s.controlFlow?.numberOfVertices).filter(isNotUndefined)),
 			numberOfEdges:    summarizeSummarizedMeasurement(stats.map(s => s.controlFlow?.numberOfEdges).filter(isNotUndefined)),
 			sizeOfObject:     summarizeSummarizedMeasurement(stats.map(s => s.controlFlow?.sizeOfObject).filter(isNotUndefined))

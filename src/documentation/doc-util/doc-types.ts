@@ -596,20 +596,11 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
 	if(name.includes('::')) {
 		[container, name] = name.split(/:::?/);
 	}
-	let node = hierarchy.filter(e =>  fuzzy ? fuzzyCompare(e.name, name) : e.name === name);
+	let node = hierarchy.filter(e => (fuzzy ? fuzzyCompare(e.name, name) : e.name === name)
+		&& (!container || (fuzzy ? e.extends.some(n => fuzzyCompare(n, container)) : e.extends.includes(container)))
+		&& (!type || e.kind === type));
 	if(node.length === 0) {
 		return undefined;
-	} else if(container) {
-		node = node.filter(n => fuzzy ? n.extends.some(n => fuzzyCompare(n, container)) : n.extends.includes(container));
-		if(node.length === 0) {
-			return undefined;
-		}
-	}
-	if(type) {
-		node = node.filter(n => n.kind === type);
-		if(node.length === 0) {
-			return undefined;
-		}
 	}
 	if(!container) {
 		/* a bare name means the declaration itself, not a member that happens to share it (like the `Dataflow` gas key of `GasFeatureKey`) */
@@ -635,16 +626,12 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 		console.error(`Could not find node ${name} when resolving short link!`);
 		return '';
 	}
-	const [, mainName, node] = res;
-	let pkg = res[0];
-	if(name.includes(':::')) {
-		pkg = undefined;
-	}
+	const [container, mainName, node] = res;
+	const pkg = name.includes(':::') ? undefined : container;
+	const label = pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName;
 	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/<\/?p\/?>/g, ' ').replace(/"/g, '\'') ?? '';
 	return `<a href="${getTypePathLink(node)}">${codeStyle ? '<code>' : ''}${
-		(node.comments?.length ?? 0) > 0 ?
-			textWithTooltip(pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) :
-			pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName
+		(node.comments?.length ?? 0) > 0 ? textWithTooltip(label, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) : label
 	}${codeStyle ? '</code>' : ''}</a>`;
 }
 

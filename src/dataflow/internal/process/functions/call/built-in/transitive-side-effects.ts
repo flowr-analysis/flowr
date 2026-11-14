@@ -1,3 +1,4 @@
+import { isNotUndefined } from '../../../../../../util/assert';
 import { type DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
@@ -724,15 +725,11 @@ function propagateTransitivePackages(graph: DataflowGraph, environment: REnviron
 			}
 		}
 	}
-	let grew = false;
+	const before = environment;
 	for(const [pack, { definedAt, cds }] of reachable) {
-		const next = attachLibrary(pack, ctx.deps.getDependency(pack), environment, ctx, {}, definedAt, cds);
-		if(next !== environment) {
-			environment = next;
-			grew = true;
-		}
+		environment = attachLibrary(pack, ctx.deps.getDependency(pack), environment, ctx, {}, definedAt, cds);
 	}
-	return { environment, grew };
+	return { environment, grew: environment !== before };
 }
 
 type NamedDefinition = NamedInGraphIdentifierDefinition<BrandedIdentifier>;
@@ -1007,9 +1004,7 @@ export function ambientAccessOf(this: void, from: AmbientSource, scope: AmbientS
 		}
 		accesses.push(accessOfCall(graph, id, environment));
 		if(opts?.includeCallees !== false) {
-			for(const callee of Dataflow.calleeIdsOf(graph, id)) {
-				callees.add(callee);
-			}
+			Dataflow.calleeIdsOf(graph, id).forEach(callee => callees.add(callee));
 		}
 		/* what the call evaluates that the code does not write (`eval(parse(text = s))`, `eval(call("f"))`, `do.call(name)`) is part of it */
 		for(const made of Dataflow.targetsOf(graph, id, EdgeType.Calls | EdgeType.Returns | EdgeType.Argument)) {
@@ -1021,12 +1016,7 @@ export function ambientAccessOf(this: void, from: AmbientSource, scope: AmbientS
 	}
 	if(callees.size > 0) {
 		const functions = opts?.functions ?? ambientAccessOfFunctions(from);
-		for(const callee of callees) {
-			const access = functions.get(callee);
-			if(access !== undefined) {
-				accesses.push(access);
-			}
-		}
+		accesses.push(...callees.values().map(callee => functions.get(callee)).filter(isNotUndefined));
 	}
 	return Monoid.fold(AmbientAccess.monoid, accesses);
 }

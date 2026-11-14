@@ -52,11 +52,8 @@ export interface EnvirResolution<OtherInfo> {
 }
 
 function resolveDefsToEnvirResolution<OtherInfo>(defs: readonly IdentifierDefinition[] | undefined, nodeId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirArgRouting<OtherInfo> {
-	if(!defs || defs.length === 0) {
-		return undefined;
-	}
-	const inDefs = defs as readonly InGraphIdentifierDefinition[];
-	if(!inDefs.every(hasEnvState)) {
+	const inDefs = defs as readonly (InGraphIdentifierDefinition & { envState: REnvironmentInformation })[] | undefined;
+	if(!inDefs?.length || !inDefs.every(hasEnvState)) {
 		return undefined;
 	}
 	const stack = stackKindOf(inDefs[0].envState);
@@ -204,15 +201,7 @@ function stackEnvirResolution<OtherInfo>(envState: REnvironmentInformation, node
 export const EnvirPositionFormals: readonly BrandedIdentifier[] = ['pos', 'where'];
 
 function envirArgOf<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], bound: BoundFormals<OtherInfo> | undefined, formal: BrandedIdentifier): PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined {
-	if(bound !== undefined) {
-		return bound.get(formal);
-	}
-	for(const arg of args) {
-		if(arg !== EmptyArgument && arg.name !== undefined && findByPrefixIfUnique(arg.name.content, [formal]) === formal) {
-			return arg;
-		}
-	}
-	return undefined;
+	return bound !== undefined ? bound.get(formal) : args.find(arg => arg !== EmptyArgument && arg.name !== undefined && findByPrefixIfUnique(arg.name.content, [formal]) === formal);
 }
 
 type BoundFormals<OtherInfo> = ReadonlyMap<BrandedIdentifier, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>>;
@@ -252,10 +241,7 @@ export function resolveFirstEnvirArg<OtherInfo>(args: readonly PotentiallyEmptyR
 	const bound = bindFormals(args, sig);
 	for(const formal of formals) {
 		const arg = envirArgOf(args, bound, formal);
-		if(arg === undefined) {
-			continue;
-		}
-		const resolution = resolveEnvirOrPosition(arg, formal, data);
+		const resolution = arg === undefined ? undefined : resolveEnvirOrPosition(arg, formal, data);
 		if(resolution !== undefined) {
 			return resolution;
 		}
@@ -285,11 +271,7 @@ function enclosingFrameHolders(name: Identifier, environment: REnvironmentInform
 }
 
 function writtenDefinitionsOf(result: DataflowInformation, definedAt?: NodeId): readonly NamedInGraphIdentifierDefinition[] {
-	return result.out.filter(
-		(d): d is NamedInGraphIdentifierDefinition =>
-			d.name !== undefined && 'definedAt' in d &&
-			(definedAt === undefined || d.definedAt === definedAt)
-	);
+	return result.out.filter((d): d is NamedInGraphIdentifierDefinition => d.name !== undefined && 'definedAt' in d && (definedAt === undefined || d.definedAt === definedAt));
 }
 
 function holdersOf(environment: REnvironmentInformation, envDef: EnvHolderDefinition): readonly (EnvHolderDefinition)[] {
@@ -309,7 +291,6 @@ function holdersOf(environment: REnvironmentInformation, envDef: EnvHolderDefini
 
 function routeWrittenToCustomEnv(result: DataflowInformation, envDef: EnvHolderDefinition, newDefAt: NodeId, callerEnvironment: REnvironmentInformation, definedAt?: NodeId): DataflowInformation {
 	const written = writtenDefinitionsOf(result, definedAt);
-
 	let newEnvState = envDef.envState;
 	/* the frame of the function itself (`e <- environment()`) is where the write binds anyway */
 	const ownFrame = envDef.envState.current.closure !== undefined && envDef.envState.current.closure === callerEnvironment.current.closure;
@@ -318,7 +299,6 @@ function routeWrittenToCustomEnv(result: DataflowInformation, envDef: EnvHolderD
 	for(const w of written) {
 		newEnvState = REnvironment.define(w, false, newEnvState);
 	}
-
 	const current = result.environment.current.removeAll(namesToRemove);
 	/* what the caller bound before stays bound, `v <- 3; assign("v", 4, envir = e)` keeps `v` at 3 */
 	for(const { name } of namesToRemove) {
@@ -327,8 +307,7 @@ function routeWrittenToCustomEnv(result: DataflowInformation, envDef: EnvHolderD
 			current.writableMemory.set(Identifier.getName(name), before);
 		}
 	}
-	const stripped = { current, level: result.environment.level };
-	return { ...result, environment: rebindHolders(stripped, envDef, newEnvState, newDefAt) };
+	return { ...result, environment: rebindHolders({ current, level: result.environment.level }, envDef, newEnvState, newDefAt) };
 }
 
 /** The calls that look up bindings in an environment they are given, or write into it, see {@link readEnvironmentContents}. */
@@ -427,9 +406,8 @@ export function addEnvironmentWrites(writes: readonly IdentifierDefinition[], ca
 
 /** Routes writes into a real stack env's frame chain, the same way `<<-` reaches an outer scope. */
 export function routeWrittenToStackEnv(result: DataflowInformation, into: REnvironmentInformation, rootId: NodeId, definedAt?: NodeId): DataflowInformation {
-	const written = writtenDefinitionsOf(result, definedAt);
 	let environment = into;
-	for(const w of written) {
+	for(const w of writtenDefinitionsOf(result, definedAt)) {
 		environment = REnvironment.define(w, true, environment);
 		result.graph.addEdge(w.nodeId, rootId, EdgeType.Reads);
 	}
@@ -438,12 +416,8 @@ export function routeWrittenToStackEnv(result: DataflowInformation, into: REnvir
 
 /** Routes writes under a resolved `envir=` to the real stack frame or a tracked custom env, and adds the `Reads` edge from `rootId` to the envir argument. */
 export function routeWrittenToEnvir<OtherInfo>(result: DataflowInformation, resolution: EnvirResolution<OtherInfo>, rootId: NodeId, callerEnvironment: REnvironmentInformation, definedAt?: NodeId): DataflowInformation {
-	let routed: DataflowInformation;
-	if(resolution.stack !== undefined) {
-		routed = resolution.stack === 'base' ? result : routeWrittenToStackEnv(result, callerEnvironment, rootId, definedAt);
-	} else {
-		routed = routeWrittenToCustomEnv(result, resolution.envDef, rootId, callerEnvironment, definedAt);
-	}
+	const routed = resolution.stack === undefined ? routeWrittenToCustomEnv(result, resolution.envDef, rootId, callerEnvironment, definedAt)
+		: resolution.stack === 'base' ? result : routeWrittenToStackEnv(result, callerEnvironment, rootId, definedAt);
 	routed.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
 	return routed;
 }

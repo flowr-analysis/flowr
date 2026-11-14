@@ -157,13 +157,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		if(!isSigDbEnabled(this.ctx.config)) {
 			return [];
 		}
-		const out = new Set<BrandedNamespace>();
-		for(const p of this.plugins) {
-			for(const pkg of p.packagesExporting(name)) {
-				out.add(pkg);
-			}
-		}
-		return [...out];
+		return uniqueArray(this.plugins.flatMap(p => [...p.packagesExporting(name)]));
 	}
 
 	public signatures(): SignatureDb {
@@ -185,15 +179,13 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		const name = Identifier.getName(id);
 		const ver = version ?? this.getDependency(pkg)?.resolvedVersion;
 		for(const src of this.signatureSources()) {
-			if(!src.has(pkg)) {
-				continue; // avoids touching a package this source lacks
-			}
-			// decode only the one function (not the whole package), falling back to the source's latest version
-			const fn = src.functionByName(pkg, name, ver) ?? src.functionByName(pkg, name);
+			/* decode only the one function (not the whole package), falling back to the source's latest version */
+			const fn = src.has(pkg) ? src.functionByName(pkg, name, ver) ?? src.functionByName(pkg, name) : undefined;
 			if(fn) {
 				return fn;
 			}
 		}
+
 		return undefined;
 	}
 
@@ -272,9 +264,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	public getDependency(name: BrandedNamespace, version?: string | Range): Package | undefined {
-		if(!this.staticsLoaded) {
-			this.resolveStaticDependencies();
-		}
+		this.ensureStaticsLoaded();
 		if(version !== undefined) {
 			return this.resolvePinnedDependency(name, typeof version === 'string' ? RRange.parse('=' + version) : version);
 		}
@@ -327,9 +317,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	public getDependencies(): Package[] {
-		if(!this.staticsLoaded) {
-			this.resolveStaticDependencies();
-		}
+		this.ensureStaticsLoaded();
 		return Array.from(this.dependencies.values());
 	}
 

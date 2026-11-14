@@ -1,15 +1,4 @@
-import {
-	type FlowrGasConfig,
-	type GasFeatureOverride,
-	type GasHeapStatistics,
-	GasLevel,
-	type GasOverrides,
-	type GasThresholdPair,
-	type GasThresholdSpec,
-	type DataflowBudget,
-	DataflowBudgetTracker,
-	isBoundedBudget
-} from '../../gas';
+import { type FlowrGasConfig, type GasFeatureOverride, type GasHeapStatistics, GasLevel, type GasOverrides, type GasThresholdPair, type GasThresholdSpec, type DataflowBudget, DataflowBudgetTracker, isBoundedBudget } from '../../gas';
 import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import { DefaultCountedCheckEvery } from '../../config';
@@ -66,15 +55,8 @@ function isPair(v: number | Partial<GasThresholdPair> | undefined): v is Partial
 /** feature entry, then `default`, then the shared pair */
 function configuredBound(spec: GasThresholdSpec | undefined, feature: string, bound: Bound): number | undefined {
 	const own = spec?.[feature];
-	if(isPair(own) && own[bound] !== undefined) {
-		return own[bound];
-	}
-	const fallback = spec?.default?.[bound];
-	if(fallback !== undefined) {
-		return fallback;
-	}
 	const shared = spec?.[bound];
-	return typeof shared === 'number' ? shared : undefined;
+	return (isPair(own) ? own[bound] : undefined) ?? spec?.default?.[bound] ?? (typeof shared === 'number' ? shared : undefined);
 }
 
 /** a bare number is an elapsed-time bound in ms */
@@ -290,14 +272,12 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 		if(stats === undefined || stats.heap_size_limit <= 0) {
 			return GasLevel.Normal;
 		}
-		const ratio = (stats.used_heap_size / stats.heap_size_limit) * factor;
-		if(ratio >= this.bound(scope, key, 'memory', 'critical'))    {
-			return GasLevel.Critical;
-		}
-		if(ratio >= this.bound(scope, key, 'memory', 'problematic')) {
-			return GasLevel.Problematic;
-		}
-		return GasLevel.Normal;
+		return this.levelAt((stats.used_heap_size / stats.heap_size_limit) * factor, scope, key, 'memory');
+	}
+
+	private levelAt(value: number, scope: GasScope, key: string, dim: Dimension): GasLevel {
+		return value >= this.bound(scope, key, dim, 'critical') ? GasLevel.Critical
+			: value >= this.bound(scope, key, dim, 'problematic') ? GasLevel.Problematic : GasLevel.Normal;
 	}
 
 	private static maxLevel(a: GasLevel, b: GasLevel): GasLevel {
@@ -305,14 +285,7 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 	}
 
 	private timeLevel(factor: number, key: string, scope: GasScope): GasLevel {
-		const elapsed = (Date.now() - scope.startTime) * factor;
-		if(elapsed >= this.bound(scope, key, 'timeMs', 'critical'))    {
-			return GasLevel.Critical;
-		}
-		if(elapsed >= this.bound(scope, key, 'timeMs', 'problematic')) {
-			return GasLevel.Problematic;
-		}
-		return GasLevel.Normal;
+		return this.levelAt((Date.now() - scope.startTime) * factor, scope, key, 'timeMs');
 	}
 
 	public checkGas(key: string): GasLevel {
@@ -339,9 +312,7 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 			return Number.isFinite(bound) ? Math.max(1, Math.floor(bound / factor)) : 0;
 		};
 		const budget: DataflowBudget = { steps: cap('steps'), vertices: cap('vertices'), timeMs: cap('timeMs') };
-		return isBoundedBudget(budget)
-			? new DataflowBudgetTracker(budget, scope.startTime, this.checkEvery())
-			: undefined;
+		return isBoundedBudget(budget) ? new DataflowBudgetTracker(budget, scope.startTime, this.checkEvery()) : undefined;
 	}
 
 	private levelFor(key: string, scope: GasScope): GasLevel {
@@ -349,27 +320,21 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 		if(!factor && this.plugins.length === 0) {
 			return GasLevel.Normal;
 		}
-
 		let level = GasLevel.Normal;
-
 		if(factor) {
 			level = FlowrAnalyzerGasContext.maxLevel(level, this.memoryLevel(factor, key, scope));
 			if(level < GasLevel.Critical) {
 				level = FlowrAnalyzerGasContext.maxLevel(level, this.timeLevel(factor, key, scope));
 			}
 		}
-
 		for(const plugin of this.plugins) {
 			if(level >= GasLevel.Critical) {
 				break;
 			}
-			const override = plugin.processor(this.ctx, key);
-			if(override !== undefined) {
-				level = FlowrAnalyzerGasContext.maxLevel(level, override);
-			}
+			level = FlowrAnalyzerGasContext.maxLevel(level, plugin.processor(this.ctx, key) ?? GasLevel.Normal);
 		}
-
 		if(level > GasLevel.Normal) {
+
 			FlowrAnalyzerGasContext.markDegraded(scope);
 		}
 		return level;

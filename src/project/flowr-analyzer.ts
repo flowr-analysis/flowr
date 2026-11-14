@@ -3,8 +3,7 @@ import type { DeepPartial } from 'ts-essentials';
 import { type KnownParser, type KnownParserInformation, ParserName } from '../r-bridge/parser';
 import { executeQueries, Query, type Queries, type QueryArgumentsWithType, type QueryResults, type SingleQueryResult, type SupportedQueryTypes } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { decorateAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type NormalizedAst, decorateAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
 import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
@@ -13,8 +12,7 @@ import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-build
 import { type GetSearchElements, runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
-import type { RParseRequest, RParseRequestFromFile } from '../r-bridge/retriever';
-import { isParseRequest, fileProtocol, requestFromInput } from '../r-bridge/retriever';
+import { type RParseRequest, type RParseRequestFromFile, isParseRequest, fileProtocol, requestFromInput } from '../r-bridge/retriever';
 import { isFilePath } from '../util/files';
 import type { FlowrFileProvider } from './context/flowr-file';
 import type { Tree } from 'web-tree-sitter';
@@ -251,8 +249,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public parserInformation(): KnownParserInformation {
-		this.parserInfo ??= this.parser.information(this);
-		return this.parserInfo;
+		return this.parserInfo ??= this.parser.information(this);
 	}
 
 	public inspectContext(): ReadOnlyFlowrAnalyzerContext {
@@ -286,17 +283,11 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree {
 		const request = isParseRequest(data) ? data : requestFromInput(data);
-		if(this.parser.name === ParserName.TreeSitter) {
-			return this.parser.parse(request, this.ctx);
-		} else {
-			const ts = new TreeSitterExecutor();
-			return ts.parse(request, this.ctx);
-		}
+		return this.parser.name === ParserName.TreeSitter ? this.parser.parse(request, this.ctx) : new TreeSitterExecutor().parse(request, this.ctx);
 	}
 
 	public normalizeStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): NormalizedAst {
-		const parse = this.parseStandalone(data);
-		return decorateAst(normalizeTreeSitterTreeToAst([{ parsed: parse, filePath: undefined }], true), {});
+		return decorateAst(normalizeTreeSitterTreeToAst([{ parsed: this.parseStandalone(data), filePath: undefined }], true), {});
 	}
 
 	public addRequest(...request: (RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string)[]): this {
@@ -347,7 +338,6 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public async runFull(force?: boolean, options?: FlowrAnalysisOptions): Promise<void> {
 		await this.ctx.gas.withGas(options?.gas, () => this.dataflow(force));
-		return;
 	}
 
 	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation> {
@@ -376,9 +366,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.ctx.gas.withGas(options?.gas, () => Array.isArray(query) ? executeQueries({ analyzer: this }, query as Queries) : Query.one({ analyzer: this }, query as Query));
 	}
 
-	public async runSearch<
-		Search extends FlowrSearchLike
-	>(search: Search, options?: FlowrAnalysisOptions): Promise<GetSearchElements<SearchOutput<Search>>> {
+	public async runSearch<Search extends FlowrSearchLike>(search: Search, options?: FlowrAnalysisOptions): Promise<GetSearchElements<SearchOutput<Search>>> {
+
 		return this.ctx.gas.withGas(options?.gas, () => runSearch(search, this));
 	}
 

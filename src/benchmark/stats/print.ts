@@ -2,7 +2,7 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SummarizedSlicerStats}).
  * @module
  */
-import type { ElapsedTime, PerSliceMeasurements } from './stats';
+import type { ElapsedTime, PerSliceMeasurements, SlicerStatsDataflow, SlicerStatsInput } from './stats';
 import type { Reduction, SummarizedPerSliceStats, SummarizedSlicerStats, UltimateSlicerStats } from '../summarizer/data';
 import { guard } from '../../util/assert';
 import type { SummarizedMeasurement } from '../../util/summarizer';
@@ -71,6 +71,28 @@ function formatSummarizedMeasure(measure: SummarizedMeasurement | undefined, fmt
 		return '??';
 	}
 	return `${fmt(measure.min)} - ${fmt(measure.max)} (median: ${fmt(measure.median)}, mean: ${fmt(measure.mean)}, std: ${fmt(measure.std)})`;
+}
+
+function inputAndDataflow2String<T>(input: SlicerStatsInput<T>, dataflow: SlicerStatsDataflow<T>, fmt: (value: T) => string, bytes: (value: T) => string): string {
+	return `Input:
+  Number of lines:                     ${fmt(input.numberOfLines)}
+  Number of non empty lines:           ${fmt(input.numberOfNonEmptyLines)}
+  Number of characters:                ${fmt(input.numberOfCharacters)}
+  Number of characters (w/o comments): ${fmt(input.numberOfCharactersNoComments)}
+  Number of non whitespace characters: ${fmt(input.numberOfNonWhitespaceCharacters)}
+  Number of n. w. c. (w/o comments):   ${fmt(input.numberOfNonWhitespaceCharactersNoComments)}
+  Number of tokens:                    ${fmt(input.numberOfRTokens)}
+  Number of tokens (w/o comments):     ${fmt(input.numberOfRTokensNoComments)}
+  Normalized R tokens:                 ${fmt(input.numberOfNormalizedTokens)}
+  Normalized R tokens (w/o comments):  ${fmt(input.numberOfNormalizedTokensNoComments)}
+
+Dataflow:
+  Number of nodes:               ${fmt(dataflow.numberOfNodes)}
+  Number of edges:               ${fmt(dataflow.numberOfEdges)}
+  Number of control flow edges:  ${fmt(dataflow.numberOfControlFlowEdges)}
+  Number of calls:               ${fmt(dataflow.numberOfCalls)}
+  Number of function defs:       ${fmt(dataflow.numberOfFunctionDefinitions)}
+  Size of graph:                 ${bytes(dataflow.sizeOfObject)}`;
 }
 
 function printSummarizedMeasurements(stats: SummarizedPerSliceStats, key: PerSliceMeasurements): string {
@@ -166,25 +188,7 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
 Shell close:                         ${print(stats.commonMeasurements, 'close R session')}
 Total:                               ${print(stats.commonMeasurements, 'total')}
 
-Input:
-  Number of lines:                     ${pad(stats.input.numberOfLines)}
-  Number of non empty lines:           ${pad(stats.input.numberOfNonEmptyLines)}
-  Number of characters:                ${pad(stats.input.numberOfCharacters)}
-  Number of characters (w/o comments): ${pad(stats.input.numberOfCharactersNoComments)}
-  Number of non whitespace characters: ${pad(stats.input.numberOfNonWhitespaceCharacters)}
-  Number of n. w. c. (w/o comments):   ${pad(stats.input.numberOfNonWhitespaceCharactersNoComments)}
-  Number of tokens:                    ${pad(stats.input.numberOfRTokens)}
-  Number of tokens (w/o comments):     ${pad(stats.input.numberOfRTokensNoComments)}
-  Normalized R tokens:                 ${pad(stats.input.numberOfNormalizedTokens)}
-  Normalized R tokens (w/o comments):  ${pad(stats.input.numberOfNormalizedTokensNoComments)}
-
-Dataflow:
-  Number of nodes:               ${pad(stats.dataflow.numberOfNodes)}
-  Number of edges:               ${pad(stats.dataflow.numberOfEdges)}
-  Number of control flow edges:  ${pad(stats.dataflow.numberOfControlFlowEdges)}
-  Number of calls:               ${pad(stats.dataflow.numberOfCalls)}
-  Number of function defs:       ${pad(stats.dataflow.numberOfFunctionDefinitions)}
-  Size of graph:                 ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`;
+${inputAndDataflow2String(stats.input, stats.dataflow, pad, convertNumberToNiceBytes)}`;
 
 	if(stats.dataFrameShape !== undefined) {
 		result += `
@@ -300,25 +304,7 @@ ${reduction2String('Reductions without comments and empty lines', stats.reductio
 Shell close:                        ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('close R session'))}
 Total:                              ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('total'))}
 
-Input:
-  Number of lines:                     ${formatSummarizedMeasure(stats.input.numberOfLines)}
-  Number of non empty lines:           ${formatSummarizedMeasure(stats.input.numberOfNonEmptyLines)}
-  Number of characters:                ${formatSummarizedMeasure(stats.input.numberOfCharacters)}
-  Number of characters (w/o comments): ${formatSummarizedMeasure(stats.input.numberOfCharactersNoComments)}
-  Number of non whitespace characters: ${formatSummarizedMeasure(stats.input.numberOfNonWhitespaceCharacters)}
-  Number of n. w. c. (w/o comments):   ${formatSummarizedMeasure(stats.input.numberOfNonWhitespaceCharactersNoComments)}
-  Number of tokens:                    ${formatSummarizedMeasure(stats.input.numberOfRTokens)}
-  Number of tokens (w/o comments):     ${formatSummarizedMeasure(stats.input.numberOfRTokensNoComments)}
-  Normalized R tokens:                 ${formatSummarizedMeasure(stats.input.numberOfNormalizedTokens)}
-  Normalized R tokens (w/o comments):  ${formatSummarizedMeasure(stats.input.numberOfNormalizedTokensNoComments)}
-
-Dataflow:
-  Number of nodes:               ${formatSummarizedMeasure(stats.dataflow.numberOfNodes)}
-  Number of edges:               ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
-  Number of control flow edges:  ${formatSummarizedMeasure(stats.dataflow.numberOfControlFlowEdges)}
-  Number of calls:               ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
-  Number of function defs:       ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
-  Size of graph:                 ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}`;
+${inputAndDataflow2String(stats.input, stats.dataflow, m => formatSummarizedMeasure(m), m => formatSummarizedMeasure(m, convertNumberToNiceBytes))}`;
 
 	if(stats.dataFrameShape !== undefined) {
 		result += `

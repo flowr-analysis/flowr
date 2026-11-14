@@ -394,21 +394,18 @@ ${block('NOTE', 'Maybe you are left with the question: What is tree-sitter doing
 Essentially not much (from a user perspective, it does essentially everything and all differently under the hood)! Have a look at the ${ctx.linkPage('wiki/Engines', 'Engines')} wiki page for more information on the differences between the engines.
 Below you can see the Repl commands for the tree-sitter engine (using ${getCliLongOptionOf('flowr', 'default-engine')} to set the engine to tree-sitter):
 
-${await (async() => {
-	return await documentReplSession(treeSitter, [{
-		command:     `:parse "${sampleCode}"`,
-		description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${ctx.link(TreeSitterExecutor)}. See the ${ctx.linkPage('wiki/Engines', 'Engines')} wiki page for more information on the differences between the engines.`
-	},
-	{
-		command:     `:normalize* "${sampleCode}"`,
-		description: `Following the link output should show the following:\n${await printNormalizedAstForCode(treeSitter, sampleCode, { showCode: false })}`
-	},
-	{
-		command:     `:dataflow* "${sampleCode}"`,
-		description: `Following the link output should show the following:\n${await printDfGraphForCode(treeSitter, sampleCode, { showCode: false })}`
-	}], { openOutput: false, args: '--default-engine tree-sitter' });
-}
-)()}
+${await documentReplSession(treeSitter, [{
+	command:     `:parse "${sampleCode}"`,
+	description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${ctx.link(TreeSitterExecutor)}. See the ${ctx.linkPage('wiki/Engines', 'Engines')} wiki page for more information on the differences between the engines.`
+},
+{
+	command:     `:normalize* "${sampleCode}"`,
+	description: `Following the link output should show the following:\n${await printNormalizedAstForCode(treeSitter, sampleCode, { showCode: false })}`
+},
+{
+	command:     `:dataflow* "${sampleCode}"`,
+	description: `Following the link output should show the following:\n${await printDfGraphForCode(treeSitter, sampleCode, { showCode: false })}`
+}], { openOutput: false, args: '--default-engine tree-sitter' })}
 `))}
 
 ### Parsing

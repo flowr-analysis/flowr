@@ -505,7 +505,7 @@ function argumentCalls<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation> 
 }
 
 /** Whether the effect happens for the arguments `args`, see {@link AmbientEffect#when}. */
-function applies<OtherInfo>(effect: AmbientEffect, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data?: DataflowProcessorInformation<OtherInfo & ParentInformation>): Ternary {
+export function applies<OtherInfo>(effect: AmbientEffect, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data?: DecidedAgainst<OtherInfo>): Ternary {
 	return TernaryLogic.and(effect.when === undefined ? Ternary.Always : holds(effect.when, args, data), effect.unless === undefined ? Ternary.Always : TernaryLogic.negate(holds(effect.unless, args, data)));
 }
 

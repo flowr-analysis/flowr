@@ -1,9 +1,9 @@
 import { Ambient, type AmbientCondition, type AmbientEffect, type AmbientEffects, type AmbientFamilySummary, type AmbientWording, summaryOfEffects, withImpliedAmbient } from './ambient-effect';
 import { type BrandedIdentifier, Identifier } from './identifier';
 import type { BuiltInFnInfo } from './built-in-props';
-import { decide, type ConditionDecision, type DecidedAgainst } from '../internal/process/functions/call/built-in/built-in-ambient-state';
+import { applies, decide, type ConditionDecision, type DecidedAgainst } from '../internal/process/functions/call/built-in/built-in-ambient-state';
 import { keyArgumentsOf, keysOf } from '../internal/process/functions/call/built-in/built-in-ambient-keys';
-import { Ternary, TernaryLogic } from '../../util/logic';
+import { Ternary } from '../../util/logic';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -79,11 +79,6 @@ function decisionsOf<OtherInfo>(effect: AmbientEffect, lists: readonly (readonly
 	return { ...when === undefined ? {} : { when: of(when) }, ...unless === undefined ? {} : { unless: of(unless) } };
 }
 
-/** Whether the effect happens for the conditions decided. */
-function happensFor({ when, unless }: AmbientDecisions): Ternary {
-	return TernaryLogic.and(when?.holds ?? Ternary.Always, TernaryLogic.negate(unless?.holds ?? Ternary.Never));
-}
-
 /**
  * The ambient contracts of functions: what a call does to the global state, with the conditions of {@link AmbientEffect#when} and
  * {@link AmbientEffect#unless} as data to evaluate rather than words to parse, and narrowed to what the arguments of one call decide.
@@ -127,7 +122,7 @@ export const AmbientContract = {
 		const kept: CallAmbientEffect[] = [];
 		const ruledOut: { effect: AmbientEffect, decisions: AmbientDecisions, decidedBy: readonly NodeId[] }[] = [];
 		for(const effect of Ambient.list(effects)) {
-			const each = lists.map(args => happensFor(decisionsOf(effect, [args], against)));
+			const each = lists.map(args => applies(effect, args, against));
 			const happens = each.reduce((a, b) => a === b ? a : Ternary.Maybe);
 			const decisions = decisionsOf(effect, lists, against);
 			const decidedBy = uniqueArray([...decisions.when?.decidedBy ?? [], ...decisions.unless?.decidedBy ?? []]);

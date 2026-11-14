@@ -52,17 +52,24 @@ function strToLink(str: string): string {
 	}
 	return `[${str}](#${Mermaid.escapeId(str)})`;
 }
-/** Supported pattern: `Name@link` */
-export function collapsibleToc(content: Record<string, Record<string, Record<string, undefined> | undefined> | undefined>): string {
+/** a level of a {@link collapsibleToc}, a list of names standing for names without children */
+type TocLevel<Children> = readonly string[] | Readonly<Record<string, Children | undefined>>;
+
+function tocEntries<Children>(level: TocLevel<Children>): [string, Children | undefined][] {
+	return Array.isArray(level) ? level.map(name => [name, undefined]) : Object.entries(level as Readonly<Record<string, Children | undefined>>);
+}
+
+/**
+ * Supported pattern: `Name@link`
+ */
+export function collapsibleToc(content: TocLevel<TocLevel<TocLevel<never>>>): string {
 	let output = '';
-	for(const [section, subsections] of Object.entries(content)) {
+	for(const [section, subsections] of tocEntries(content)) {
 		output += `- ${strToLink(section)}\n`;
-		if(subsections) {
-			for(const [subsection, items] of Object.entries(subsections)) {
-				output += `  - ${strToLink(subsection)}  \n`;
-				if(items) {
-					output += `    ${joinWithLast(Object.keys(items).map(strToLink))}\n`;
-				}
+		for(const [subsection, items] of subsections ? tocEntries(subsections) : []) {
+			output += `  - ${strToLink(subsection)}  \n`;
+			if(items) {
+				output += `    ${joinWithLast(tocEntries(items).map(([name]) => strToLink(name)))}\n`;
 			}
 		}
 	}

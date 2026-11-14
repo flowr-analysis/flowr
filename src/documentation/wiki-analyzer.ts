@@ -68,35 +68,19 @@ export class WikiAnalyzer extends DocMaker<'wiki/Analyzer.md'> {
 	}
 
 	public text({ ctx }: DocMakerArgs): string {
+		const builderMethods = (pick: (name: string) => boolean) => Object.getOwnPropertyNames(FlowrAnalyzerBuilder.prototype).filter(pick).sort()
+			.map(key => `- ${ctx.link(`${FlowrAnalyzerBuilder.name}::${key}`)}\\\n${ctx.doc(`${FlowrAnalyzerBuilder.name}::${key}`)}`).join('\n');
 		return `
 ${
 	collapsibleToc({
-		'Overview':              { 'Overview of the Analyzer': undefined, 'Conducting Analyses': undefined },
-		'Builder Configuration': {
-			'Configuring flowR':      undefined,
-			'Configuring the Engine': undefined,
-			'Configuring Plugins':    undefined,
-			'Builder Reference':      undefined
+		'Overview':              ['Overview of the Analyzer', 'Conducting Analyses'],
+		'Builder Configuration': ['Configuring flowR', 'Configuring the Engine', 'Configuring Plugins', 'Builder Reference'],
+		'Plugins':               {
+			'Plugin Types':            ['Dependency Identification', 'Project Discovery', 'File Loading', 'Loading Order'],
+			'How to add a new plugin': undefined
 		},
-		'Plugins': {
-			'Plugin Types': {
-				'Dependency Identification': undefined,
-				'Project Discovery':         undefined,
-				'File Loading':              undefined,
-				'Loading Order':             undefined
-			},
-			'How to add a new plugin': undefined,
-		},
-		'Context Information': {
-			'Files Context':                undefined,
-			'Loading Order Context':        undefined,
-			'Dependencies Context':         undefined,
-			'Environment Context':          undefined,
-			'Meta Context':                 undefined,
-			'Gas Context':                  undefined,
-			'Incremental Analysis Context': undefined,
-		},
-		'Caching': undefined
+		'Context Information': ['Files Context', 'Loading Order Context', 'Dependencies Context', 'Environment Context', 'Meta Context', 'Gas Context', 'Incremental Analysis Context'],
+		'Caching':             undefined
 	})
 }
 
@@ -244,19 +228,11 @@ ${section('Builder Reference', 3)}
 
 The builder provides a plethora of methods to configure the resulting analyzer instance:
 
-${
-	Object.getOwnPropertyNames(FlowrAnalyzerBuilder.prototype).filter(c => c !== 'constructor' && !c.startsWith('build')).sort().map(
-		key => `- ${ctx.link(`${FlowrAnalyzerBuilder.name}::${key}`)}\\\n${ctx.doc(`${FlowrAnalyzerBuilder.name}::${key}`)}`
-	).join('\n')
-}
+${builderMethods(c => c !== 'constructor' && !c.startsWith('build'))}
 
 To build the analyzer after you have configured the builder, you can use one of the following:
 
-${
-	Object.getOwnPropertyNames(FlowrAnalyzerBuilder.prototype).filter(c => c.startsWith('build')).sort().map(
-		key => `- ${ctx.link(`${FlowrAnalyzerBuilder.name}::${key}`)}\\\n${ctx.doc(`${FlowrAnalyzerBuilder.name}::${key}`)}`
-	).join('\n')
-}
+${builderMethods(c => c.startsWith('build'))}
 
 ${section('Plugins', 2)}
 

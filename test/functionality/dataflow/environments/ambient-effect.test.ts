@@ -1,5 +1,5 @@
 import { assert, describe, test } from 'vitest';
-import { AmbientFamilyInfo, AmbientPart, AmbientVerb, AmbientVerbInfo, ambientSummaryOf, declaresAmbient } from '../../../../src/dataflow/environments/ambient-effect';
+import { AmbientFamilyInfo, AmbientPart, AmbientVerb, AmbientVerbInfo, AmbientWording, ambientSummaryOf, declaresAmbient } from '../../../../src/dataflow/environments/ambient-effect';
 import { KeyedState } from '../../../../src/dataflow/environments/ambient-state-name';
 import { statedSignatures } from '../../../../src/dataflow/environments/default-builtin-config';
 import { CallProp, CallProps } from '../../../../src/dataflow/environments/built-in-props';
@@ -11,8 +11,10 @@ describe('Ambient effects of the built-ins', () => {
 	const stated = statedSignatures();
 	/** the accesses of `name` as `family: label [members] (when)` */
 	function summary(name: BrandedIdentifier): string[] {
-		return (stated.get(name)?.[0]?.ambient ?? []).flatMap(f => f.accesses.map(a =>
-			`${f.label}: ${a.label}${a.members.length > 0 ? ` [${a.members.join(', ')}]` : ''}${a.when.length > 0 ? ` (${a.when.join(', ')})` : ''}`));
+		return (stated.get(name)?.[0]?.ambient ?? []).flatMap(f => f.accesses.map(a => {
+			const [members, when] = [AmbientWording.members(a), AmbientWording.conditions(a)];
+			return `${AmbientWording.family(f.family)}: ${AmbientWording.access(a)}${members.length > 0 ? ` [${members.join(', ')}]` : ''}${when.length > 0 ? ` (${when.join(', ')})` : ''}`;
+		}));
 	}
 	function check(name: BrandedIdentifier, expected: readonly string[]) {
 		test(name, () => {

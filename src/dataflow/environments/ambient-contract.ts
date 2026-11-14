@@ -1,8 +1,8 @@
-import { Ambient, type AmbientCondition, type AmbientEffect, type AmbientEffects, type AmbientFamilySummary, conditionWords, summaryOfEffects, withImpliedAmbient } from './ambient-effect';
+import { Ambient, type AmbientCondition, type AmbientEffect, type AmbientEffects, type AmbientFamilySummary, type AmbientWording, summaryOfEffects, withImpliedAmbient } from './ambient-effect';
 import { type BrandedIdentifier, Identifier } from './identifier';
 import type { BuiltInFnInfo } from './built-in-props';
 import { decide, type ConditionDecision, type DecidedAgainst } from '../internal/process/functions/call/built-in/built-in-ambient-state';
-import { keysOf } from '../internal/process/functions/call/built-in/built-in-ambient-keys';
+import { keyArgumentsOf, keysOf } from '../internal/process/functions/call/built-in/built-in-ambient-keys';
 import { Ternary, TernaryLogic } from '../../util/logic';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -23,16 +23,31 @@ export interface CallAmbientEffect {
 	readonly happens:   Ternary.Always | Ternary.Maybe
 	/** the entries the arguments name, where the effect names entries by them (`library(dplyr)` names `dplyr`), see {@link AmbientEffect#member} */
 	readonly keys?:     readonly BrandedIdentifier[]
-	/** the argument nodes the conditions were decided on */
+	/** the argument nodes naming {@link CallAmbientEffect#keys} */
+	readonly namedBy?:  readonly NodeId[]
+	/** per condition of the effect as declared, what the arguments decide of it */
+	readonly decisions: AmbientDecisions
+	/** the argument nodes the conditions were decided on, those of all {@link CallAmbientEffect#decisions} */
 	readonly decidedBy: readonly NodeId[]
+}
+
+/** What the arguments of a call decide of one {@link AmbientCondition}: whether it holds and the argument nodes that decided it. */
+export interface AmbientDecision extends ConditionDecision {
+	readonly condition: AmbientCondition
+}
+
+/** The {@link AmbientDecision}s of the conditions {@link AmbientEffect#when} and {@link AmbientEffect#unless} of an effect, absent where it has none. */
+export interface AmbientDecisions {
+	readonly when?:   AmbientDecision
+	readonly unless?: AmbientDecision
 }
 
 /** The {@link AmbientEffect}s of one call, narrowed to what its arguments say, see {@link AmbientContract.narrow}. */
 export interface NarrowedAmbient {
 	readonly effects:  readonly CallAmbientEffect[]
 	/** the effects the arguments rule out, with the argument nodes that rule them out */
-	readonly ruledOut: readonly { readonly effect: AmbientEffect, readonly decidedBy: readonly NodeId[] }[]
-	/** the {@link NarrowedAmbient#effects} in the words of {@link AmbientFamilySummary}, the conditions left open still in them */
+	readonly ruledOut: readonly { readonly effect: AmbientEffect, readonly decisions: AmbientDecisions, readonly decidedBy: readonly NodeId[] }[]
+	/** the {@link NarrowedAmbient#effects} grouped as {@link AmbientFamilySummary}, the conditions left open still in them, see {@link AmbientWording} for their words */
 	readonly summary:  readonly AmbientFamilySummary[]
 }
 
@@ -48,17 +63,25 @@ export interface CallAmbientContract extends NarrowedAmbient {
 	readonly through:    readonly NodeId[]
 }
 
-function narrowEffect<OtherInfo>(effect: AmbientEffect, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], against: DecidedAgainst<OtherInfo> | undefined): { readonly happens: Ternary, readonly effect: AmbientEffect, readonly decidedBy: readonly NodeId[] } {
-	const when: ConditionDecision = effect.when === undefined ? { holds: Ternary.Always, decidedBy: [] } : decide(effect.when, args, against);
-	const unless: ConditionDecision = effect.unless === undefined ? { holds: Ternary.Never, decidedBy: [] } : decide(effect.unless, args, against);
-	const happens = TernaryLogic.and(when.holds, TernaryLogic.negate(unless.holds));
-	const { when: holdsIf, unless: holdsUnless, ...rest } = effect;
-	const narrowed: AmbientEffect = {
-		...rest,
-		...holdsIf !== undefined && when.holds !== Ternary.Always ? { when: holdsIf } : {},
-		...holdsUnless !== undefined && unless.holds !== Ternary.Never ? { unless: holdsUnless } : {}
+/** The decisions of several argument lists joined: a condition holds surely, or surely not, only if it does so for every list. */
+function joined(condition: AmbientCondition | undefined, decisions: readonly ConditionDecision[]): AmbientDecision | undefined {
+	return condition === undefined ? undefined : {
+		condition,
+		holds:     decisions.map(d => d.holds).reduce((a, b) => a === b ? a : Ternary.Maybe),
+		decidedBy: uniqueArray(decisions.flatMap(d => d.decidedBy))
 	};
-	return { happens, effect: narrowed, decidedBy: uniqueArray([...when.decidedBy, ...unless.decidedBy]) };
+}
+
+/** What each of the argument lists `lists` decides of the conditions of `effect`, see {@link AmbientContract.narrowAcross}. */
+function decisionsOf<OtherInfo>(effect: AmbientEffect, lists: readonly (readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[])[], against: DecidedAgainst<OtherInfo> | undefined): AmbientDecisions {
+	const { when, unless } = effect;
+	const of = (condition: AmbientCondition | undefined) => joined(condition, condition === undefined ? [] : lists.map(args => decide(condition, args, against)));
+	return { ...when === undefined ? {} : { when: of(when) }, ...unless === undefined ? {} : { unless: of(unless) } };
+}
+
+/** Whether the effect happens for the conditions decided. */
+function happensFor({ when, unless }: AmbientDecisions): Ternary {
+	return TernaryLogic.and(when?.holds ?? Ternary.Always, TernaryLogic.negate(unless?.holds ?? Ternary.Never));
 }
 
 /**
@@ -76,10 +99,6 @@ function narrowEffect<OtherInfo>(effect: AmbientEffect, args: readonly Potential
  */
 export const AmbientContract = {
 	name: 'AmbientContract',
-	/** The words for a condition, `add is TRUE`, as {@link AmbientFamilySummary} shows it. */
-	words(this: void, condition: AmbientCondition): string {
-		return conditionWords(condition);
-	},
 	/**
 	 * Whether the condition holds for the arguments `args` of a call, with the argument nodes deciding it.
 	 * Without `against`, only what is written decides (`add = TRUE`); with it, the values the analysis resolves do (`add = a` with `a <- TRUE`).
@@ -106,25 +125,29 @@ export const AmbientContract = {
 	 */
 	narrowAcross<OtherInfo>(this: void, effects: AmbientEffects | undefined, lists: readonly (readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[])[], against?: DecidedAgainst<OtherInfo>): NarrowedAmbient {
 		const kept: CallAmbientEffect[] = [];
-		const ruledOut: { effect: AmbientEffect, decidedBy: readonly NodeId[] }[] = [];
+		const ruledOut: { effect: AmbientEffect, decisions: AmbientDecisions, decidedBy: readonly NodeId[] }[] = [];
 		for(const effect of Ambient.list(effects)) {
-			const each = lists.map(args => narrowEffect(effect, args, against));
-			const happens = each.map(e => e.happens).reduce((a, b) => a === b ? a : Ternary.Maybe);
-			const decidedBy = uniqueArray(each.flatMap(e => e.decidedBy));
+			const each = lists.map(args => happensFor(decisionsOf(effect, [args], against)));
+			const happens = each.reduce((a, b) => a === b ? a : Ternary.Maybe);
+			const decisions = decisionsOf(effect, lists, against);
+			const decidedBy = uniqueArray([...decisions.when?.decidedBy ?? [], ...decisions.unless?.decidedBy ?? []]);
 			if(happens === Ternary.Never) {
-				ruledOut.push({ effect, decidedBy });
+				ruledOut.push({ effect, decisions, decidedBy });
 				continue;
 			}
 			const { when, unless, ...rest } = effect;
 			const narrowed: AmbientEffect = {
 				...rest,
-				...when !== undefined && each.some(e => e.effect.when !== undefined) ? { when } : {},
-				...unless !== undefined && each.some(e => e.effect.unless !== undefined) ? { unless } : {}
+				...when !== undefined && decisions.when?.holds !== Ternary.Always ? { when } : {},
+				...unless !== undefined && decisions.unless?.holds !== Ternary.Never ? { unless } : {}
 			};
 			const member = effect.member;
-			const keys = against === undefined || member === undefined || member === 'every' ? undefined
-				: uniqueArray(lists.flatMap((args, i) => each[i].happens === Ternary.Never ? [] : keysOf(member, args, against)));
-			kept.push({ effect: narrowed, happens, decidedBy, ...keys === undefined ? {} : { keys } });
+			const naming = lists.filter((_, i) => each[i] !== Ternary.Never);
+			const named = against === undefined || member === undefined || member === 'every' ? undefined : {
+				keys:    uniqueArray(naming.flatMap(args => keysOf(member, args, against))),
+				namedBy: uniqueArray(naming.flatMap(args => keyArgumentsOf(member, args)))
+			};
+			kept.push({ effect: narrowed, happens: happens, decisions, decidedBy, ...named });
 		}
 		return { effects: kept, ruledOut, summary: summaryOfEffects(kept.map(e => e.effect)) };
 	},

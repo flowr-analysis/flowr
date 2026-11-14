@@ -2,14 +2,17 @@ import type { GeneralDocContext } from '../../wiki-mk/doc-context';
 import type { KnownParser } from '../../../r-bridge/parser';
 import { printDfGraphForCode } from '../../doc-util/doc-dfg';
 import { codeBlock } from '../../doc-util/doc-code';
-import { AmbientFamilyInfo, AmbientVerbInfo, type AmbientFamilyName, type AmbientVerb } from '../../../dataflow/environments/ambient-effect';
+import { AmbientFamilyInfo, AmbientVerbInfo, AmbientWording, type AmbientFamilyName, type AmbientVerb } from '../../../dataflow/environments/ambient-effect';
 import { statedSignatureOf, statedSignatures } from '../../../dataflow/environments/default-builtin-config';
 import type { BrandedIdentifier } from '../../../dataflow/environments/identifier';
 
 /** a function's ambient accesses as a list, generated from its declaration */
 function summaryOf(stated: ReturnType<typeof statedSignatures>, name: BrandedIdentifier): string {
 	const families = statedSignatureOf(stated, name)?.ambient ?? [];
-	return families.map(f => `${f.label}: ${f.accesses.map(a => `${a.label}${a.members.length > 0 ? ` (${a.members.join(', ')})` : ''}${a.when.length > 0 ? ` ${a.when.join(', ')}` : ''}`).join('; ')}`).join(' / ');
+	return families.map(f => `${AmbientWording.family(f.family)}: ${f.accesses.map(a => {
+		const [members, when] = [AmbientWording.members(a), AmbientWording.conditions(a)];
+		return `${AmbientWording.access(a)}${members.length > 0 ? ` (${members.join(', ')})` : ''}${when.length > 0 ? ` ${when.join(', ')}` : ''}`;
+	}).join('; ')}`).join(' / ');
 }
 
 /** The wiki section on how ambient state is declared in the built-in configuration and tracked in the dataflow graph. */
@@ -51,12 +54,12 @@ What the arguments do not decide, as a flag held in a variable, makes the effect
 Tags imply more effects (see ${ctx.link('withImpliedAmbient')}): a call tagged as reading or writing a file accesses the files its resource arguments name, an appending write (an \`append\` formal set to \`TRUE\`) reads them first, and a printing call adds to the output sink.
 
 To declare a new function, add its effects to its \`ambient\` field. To add a family, give it an ${ctx.link('AmbientPart')}, a row in ${ctx.link('AmbientFamilyInfo')}, and the pseudo variable it lives in, in the table of families of ${ctx.linkFile('applyAmbientEffects')}.
-${ctx.link('ambientSummaryOf')} turns the declaration back into words, which is how these declarations read:
+${ctx.link('ambientSummaryOf')} groups the declaration by part and access, which, worded, is how these declarations read:
 
 ${examples.map(name => `- \`${name}\`: ${summaryOf(stated, name)}`).join('\n')}
 
-Next to its words, every access of the summary carries its conditions as data (\`holds\`) and how the call names its entries (\`names\`), so a tool evaluates them rather than parsing the words.
-${ctx.link('AmbientContract')} does so for a call: ${ctx.link('AmbientContract:::ofCall')} gives one contract per definition the call may reach (\`maps::map\` draws, \`purrr::map\` does not), with the effects the arguments rule out dropped, the conditions they decide removed, the entries they name resolved, and the ids of the argument nodes each decision rests on.
+The summary itself holds data only: per access its part, its verb, its conditions (\`when\`, \`unless\`), and how the call names its entries (\`names\`), so a tool evaluates them rather than parsing words; ${ctx.link('AmbientWording')} is the one place that words them.
+${ctx.link('AmbientContract')} does so for a call: ${ctx.link('AmbientContract:::ofCall')} gives one contract per definition the call may reach (\`maps::map\` draws, \`purrr::map\` does not), with the effects the arguments rule out dropped, the conditions they decide removed, the entries they name resolved with the ids of the arguments naming them (\`namedBy\`), and per condition whether it holds with the ids of the argument nodes deciding it (\`decisions\`).
 \`map(add = TRUE)\` adds to the plot and starts no new one, as does \`map(add = a)\` after \`a <- TRUE\`, while \`map(...)\` in a function forwarding its arguments may do either.
 The contracts reach across the functions the program defines, using ${ctx.link('CallSites')}: with \`g <- function(...) map(...)\`, the call \`g(add = TRUE)\` has the contract of the \`map\` call within \`g\`, narrowed to \`add = TRUE\`, and the \`map(...)\` call itself is narrowed to what the known calls of \`g\` give, staying open where a call of \`g\` is unknown (\`lapply(x, g)\`) or the calls disagree.
 ${ctx.link('AmbientContract:::narrow')} does the same for effects and arguments at hand, without an analysis only from what is written.

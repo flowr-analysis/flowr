@@ -9,6 +9,7 @@ import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { type BrandedIdentifier, Identifier } from '../../../../../environments/identifier';
 import { MatchArgs } from '../../../../../graph/match-args';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { AmbientStateName, type KeyedState, UnknownKey } from '../../../../../environments/ambient-state-name';
 
 /**
@@ -124,6 +125,24 @@ export function keysOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyE
 		case 'unnamed':
 			return args.flatMap((a): BrandedIdentifier | readonly BrandedIdentifier[] => a === EmptyArgument || a.name !== undefined || a.value === undefined ? []
 				: forwardsDots(a) ? [UnknownKey] : (keys.quoted ? quotedName(a.value) : undefined) ?? stringValuesOf(a.value, data) ?? [UnknownKey]);
+	}
+}
+
+/** The ids of the arguments naming the entries of a call with the arguments `args`, see {@link keysOf}; a forwarded `...` names some as well. */
+export function keyArgumentsOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]): NodeId[] {
+	const given = args.filter((a): a is Exclude<typeof a, typeof EmptyArgument> => a !== EmptyArgument);
+	switch(keys.from) {
+		case 'constant':
+			return [];
+		case 'argument-names':
+			return given.filter(a => a.name === undefined ? !RString.is(a.value) : !keys.ignore?.includes(Identifier.getName(a.name.content))).map(a => a.info.id);
+		case 'unnamed':
+			return given.filter(a => a.name === undefined && a.value !== undefined).map(a => a.info.id);
+		case 'parameter': {
+			const bound = MatchArgs.toNames(args, keys.signature);
+			const named = keys.names.map(n => bound.get(n)).find(a => a?.value !== undefined);
+			return named === undefined ? given.filter(forwardsDots).map(a => a.info.id) : [named.info.id];
+		}
 	}
 }
 

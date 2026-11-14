@@ -1,7 +1,7 @@
 import { ArgProp, FnSig, SemanticCallTag, type BuiltInFnInfo } from './built-in-props';
 import { KeyedState } from './ambient-state-name';
 import type { BrandedIdentifier } from './identifier';
-import { uniqueArrayMerge } from '../../util/collections/arrays';
+import { uniqueArray } from '../../util/collections/arrays';
 import type { AmbientKeys } from '../internal/process/functions/call/built-in/built-in-ambient-keys';
 
 /** The parts of the global state other than the {@link KeyedState|keyed} ones a built-in may access, see {@link AmbientEffect}. */
@@ -251,37 +251,41 @@ export const AmbientVerbInfo: Readonly<Record<AmbientVerb, AmbientWords>> = {
 	[AmbientVerb.Builds]:   { label: 'builds an object drawing', description: 'The call builds an object that only draws once it is printed, like a ggplot.' }
 };
 
-/** One access of a built-in to a part, as {@link ambientSummaryOf} lists it. */
+/** How an access names the entries of its part it is about: as the configuration states them, or by the resource formals naming the files. */
+export type AmbientMembers = AmbientKeys | 'every' | { readonly from: 'resources', readonly formals: readonly BrandedIdentifier[] };
+
+/** One access of a built-in to a part, as {@link ambientSummaryOf} lists it; {@link AmbientWording} words it. */
 export interface AmbientAccessSummary {
 	readonly part:    AmbientFamilyName
 	readonly access:  AmbientVerb
-	/** the access as a page shows it, `adds to plot` */
-	readonly label:   string
-	/** the entries it is about where the configuration knows them (option keys, environment variable names), else how the arguments name them, empty for all of the part or the active instance */
-	readonly members: readonly string[]
-	/** when the access happens, all of them have to hold, empty if it always does */
-	readonly when:    readonly string[]
-	/** the conditions {@link AmbientAccessSummary#when} words, to evaluate for a call instead of parsing the words, see {@link AmbientContract} */
-	readonly holds?:  { readonly when?: AmbientCondition, readonly unless?: AmbientCondition }
-	/** how the call names the entries {@link AmbientAccessSummary#members} words, to resolve for a call, absent for all of the part or the active instance */
-	readonly names?:  readonly (AmbientKeys | 'every')[]
+	/** the access happens only if this holds, see {@link AmbientEffect#when} */
+	readonly when?:   AmbientCondition
+	/** the access happens only unless this holds, see {@link AmbientEffect#unless} */
+	readonly unless?: AmbientCondition
+	/** how the call names the entries it is about, empty for all of the part or the active instance */
+	readonly names:   readonly AmbientMembers[]
 }
 
 /** The accesses of a built-in to one part of the global state and the parts belonging to it, see {@link ambientSummaryOf}. */
 export interface AmbientFamilySummary {
 	readonly family:   AmbientFamilyName
-	readonly label:    string
 	readonly accesses: readonly AmbientAccessSummary[]
 }
 
-function memberWords(effect: AmbientEffect): readonly string[] {
-	const member = effect.member;
-	if(member === undefined) {
-		return effect.family === AmbientPart.Files && effect.sig !== undefined ? effect.sig.filter(([, p]) => (p & ArgProp.Resource) !== 0).map(([n]) => `named by ${n}`) : [];
-	} else if(member === 'every') {
+function membersOf(effect: AmbientEffect): readonly AmbientMembers[] {
+	if(effect.member !== undefined) {
+		return [effect.member];
+	}
+	const formals = effect.family === AmbientPart.Files && effect.sig !== undefined ? effect.sig.filter(([, p]) => (p & ArgProp.Resource) !== 0).map(([n]) => n) : [];
+	return formals.length === 0 ? [] : [{ from: 'resources', formals }];
+}
+
+function memberWords(member: AmbientMembers): readonly string[] {
+	if(member === 'every') {
 		return ['every open one'];
 	}
 	switch(member.from) {
+		case 'resources':      return member.formals.map(n => `named by ${n}`);
 		case 'constant':       return member.keys;
 		case 'argument-names': return ['the names of the arguments'];
 		case 'unnamed':        return ['the unnamed arguments'];
@@ -318,19 +322,42 @@ export function summaryOfEffects(effects: AmbientEffects | undefined): readonly 
 	type Access = { -readonly [K in keyof AmbientAccessSummary]: AmbientAccessSummary[K] };
 	const families = new Map<AmbientFamilyName, Map<string, Access>>();
 	for(const effect of Ambient.list(effects)) {
-		const words = AmbientFamilyInfo[effect.family];
-		const family = words.of ?? effect.family;
+		const family = AmbientFamilyInfo[effect.family].of ?? effect.family;
 		const accesses = families.get(family) ?? new Map<string, Access>();
 		families.set(family, accesses);
-		const when = [...effect.when === undefined ? [] : [`if ${conditionWords(effect.when)}`], ...effect.unless === undefined ? [] : [`unless ${conditionWords(effect.unless)}`]];
-		const key = `${effect.family} ${effect.access} ${when.join()}`;
-		const holds = effect.when === undefined && effect.unless === undefined ? {} : { holds: { ...effect.when === undefined ? {} : { when: effect.when }, ...effect.unless === undefined ? {} : { unless: effect.unless } } };
-		const known = accesses.get(key) ?? { part: effect.family, access: effect.access, label: `${words.verbs?.[effect.access] ?? AmbientVerbInfo[effect.access].label} ${words.noun}`, members: [], when, ...holds };
+		const { when, unless } = effect;
+		const key = JSON.stringify([effect.family, effect.access, when, unless]);
+		const known = accesses.get(key) ?? { part: effect.family, access: effect.access, ...when === undefined ? {} : { when }, ...unless === undefined ? {} : { unless }, names: [] };
 		accesses.set(key, known);
-		known.members = uniqueArrayMerge(known.members, memberWords(effect));
-		if(effect.member !== undefined) {
-			known.names = [...known.names ?? [], effect.member];
-		}
+		known.names = [...known.names, ...membersOf(effect)];
 	}
-	return [...families].map(([family, accesses]) => ({ family, label: AmbientFamilyInfo[family].label, accesses: [...accesses.values()] }));
+	return [...families].map(([family, accesses]) => ({ family, accesses: [...accesses.values()] }));
 }
+
+/**
+ * The words for what {@link ambientSummaryOf} and {@link AmbientContract} state as data, the one place a page, the wiki, or a query
+ * turns a part, an access, the entries it names, or the conditions it happens under into text.
+ * @helper dataflow
+ */
+export const AmbientWording = {
+	name: 'AmbientWording',
+	/** The label of a part, `graphics device`. */
+	family(this: void, family: AmbientFamilyName): string {
+		return AmbientFamilyInfo[family].label;
+	},
+	/** The access as a page shows it, `adds to plot`. */
+	access(this: void, { part, access }: Pick<AmbientAccessSummary, 'part' | 'access'>): string {
+		const words = AmbientFamilyInfo[part];
+		return `${words.verbs?.[access] ?? AmbientVerbInfo[access].label} ${words.noun}`;
+	},
+	/** The entries the access is about, `digits` or `named by file`, empty for all of the part or the active instance. */
+	members(this: void, { names }: Pick<AmbientAccessSummary, 'names'>): readonly string[] {
+		return uniqueArray(names.flatMap(memberWords));
+	},
+	/** The words for one condition, `add is TRUE`. */
+	condition: conditionWords,
+	/** When the access happens, `if add is TRUE`, all of them have to hold, empty if it always does. */
+	conditions(this: void, { when, unless }: Pick<AmbientAccessSummary, 'when' | 'unless'>): readonly string[] {
+		return [...when === undefined ? [] : [`if ${conditionWords(when)}`], ...unless === undefined ? [] : [`unless ${conditionWords(unless)}`]];
+	}
+} as const;

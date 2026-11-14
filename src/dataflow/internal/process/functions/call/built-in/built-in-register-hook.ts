@@ -16,17 +16,18 @@ import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import type { ArgumentSlot } from './built-in-assignment';
 
 export interface RegisterHookConfig {
 	/** name of the hook to register, 'fn-exit' if it triggers on exit */
 	hook: KnownHooks;
 	args: {
 		/** the expression to register as hook */
-		expr:   { idx?: number, name: BrandedIdentifier },
+		expr:   ArgumentSlot,
 		/** argument to control whether to add or replace the current hook */
-		add?:   { idx?: number, name: BrandedIdentifier, default: boolean },
+		add?:   ArgumentSlot & { default: boolean },
 		/** argument to control whether to run the hook before or after other hooks */
-		after?: { idx?: number, name: BrandedIdentifier, default: boolean },
+		after?: ArgumentSlot & { default: boolean },
 	}
 }
 

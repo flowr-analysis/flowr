@@ -63,9 +63,7 @@ function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & Pare
 	};
 }
 
-function getEffectiveOrder<T>(config: {
-	swapSourceAndTarget?: boolean
-}, args: [T, T]): [T, T] {
+function getEffectiveOrder<T>(config: Pick<AssignmentConfiguration, 'swapSourceAndTarget'>, args: [T, T]): [T, T] {
 	return config.swapSourceAndTarget ? [args[1], args[0]] : args;
 }
 
@@ -100,11 +98,17 @@ export interface AssignmentConfiguration {
 	readonly beforeDefine?:        (information: { readonly environment: REnvironmentInformation, readonly graph: DataflowGraph }) => REnvironmentInformation
 }
 
+/** An argument of a call by its name, or else by its position among the unnamed ones. */
+export interface ArgumentSlot {
+	readonly idx?: number
+	readonly name: BrandedIdentifier
+}
+
 export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration {
-	readonly source:       { idx?: number, name: BrandedIdentifier };
-	readonly target:       { idx?: number, name: BrandedIdentifier };
+	readonly source:       ArgumentSlot;
+	readonly target:       ArgumentSlot;
 	/** the class of the S3 method the call binds as `<target>.<class>`, like `.S3method("f", "b", m)` binds `f.b` */
-	readonly targetClass?: { idx?: number, name: BrandedIdentifier };
+	readonly targetClass?: ArgumentSlot;
 	/** binds at the top level wherever the call runs, as registering a method (`setMethod`) does */
 	readonly registers?:   boolean;
 }
@@ -186,7 +190,7 @@ export function processAssignmentLike<OtherInfo>(
 			argsWithNames.set(name, arg);
 		}
 	}
-	const argOf = ({ idx, name }: { idx?: number, name: BrandedIdentifier }) => argsWithNames.get(name) ?? (idx === undefined ? undefined : argsWithoutNames[idx]);
+	const argOf = ({ idx, name }: ArgumentSlot) => argsWithNames.get(name) ?? (idx === undefined ? undefined : argsWithoutNames[idx]);
 	const source = argOf(config.source);
 	const target = argOf(config.target);
 	const classArg = config.targetClass === undefined ? undefined : argOf(config.targetClass);

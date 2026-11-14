@@ -10,7 +10,6 @@ import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/verte
 import { DfgVertex } from '../../dataflow/graph/vertex';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { uniqueArray } from '../../util/collections/arrays';
-import { DefaultMap } from '../../util/collections/defaultmap';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';

@@ -77,6 +77,22 @@ describe('Transitivity through recursion and higher-order calls, checked against
 		callsLikeR(parser, 'a function handed down through six calls of parameters', 'h <- function(x) x\nl1 <- function(f, x) f(x)\nl2 <- function(g2, f, x) g2(f, x)\nl3 <- function(g3, g2, f, x) g3(g2, f, x)\nl4 <- function(g4, g3, g2, f, x) g4(g3, g2, f, x)\nl5 <- function(g5, g4, g3, g2, f, x) g5(g4, g3, g2, f, x)\nl6 <- function(g6, g5, g4, g3, g2, f, x) g6(g5, g4, g3, g2, f, x)\ninvisible(l6(l5, l4, l3, l2, l1, h, 1))\ncat("ok")', '2:22', ['1@function']);
 	}));
 
+	describe('arguments handed on through own functions', () => testing(['higher-order-functions'], () => {
+		const cases: readonly TransitivityCase[] = [
+			{ name: 'an option set through the dots and read', code: 'g <- function(...) options(...)\ng(digits = 3)\nprint(getOption("digits"))' },
+			{ name: 'an option set through the dots beside another one', code: 'g <- function(...) options(...)\ng(digits = 3)\ng(scipen = 5)\nprint(getOption("digits"))' },
+			{ name: 'an option set through a parameter beside an unrelated value', code: 'j <- 9\nh <- function(d) options(digits = d)\nh(3)\nprint(getOption("digits"))', dropped: 'j <- 9' },
+			{ name: 'the argument a function handed the dots uses', code: 'k <- 1\nj <- 2\ng <- function(a, b) a\nh <- function(...) g(...)\nprint(h(k, j))', dropped: 'j <- 2' },
+			{ name: 'the default of a parameter reached through the dots', code: 'k <- 4\nj <- 9\ng <- function(x = k) x\nh <- function(...) g(...)\nprint(h())', dropped: 'j <- 9' },
+			{ name: 'a named argument through two calls handing on the dots', code: 'k <- 1\nj <- 2\ng <- function(a, b) b\nh <- function(...) g(...)\ni <- function(...) h(...)\nprint(i(a = j, b = k))', dropped: 'j <- 2' },
+			{ name: 'a side effect of a function handed on with the dots', code: 'n <- 0\nh <- function(x) { n <<- x; x }\nap <- function(f, ...) f(...)\ninvisible(ap(h, 3))\nprint(n)' },
+			{ name: 'a recursive function handing on the dots to its base case', code: 'k <- 7\ng <- function(n, ...) if(n > 0) g(n - 1, ...) else list(...)$a\nprint(g(3, a = k))' }
+		];
+		for(const c of cases) {
+			sliceMatchesR(parser, c);
+		}
+	}));
+
 	describe('functions looked up by a computed name', () => testing(['name-created', 'higher-order-functions'], () => {
 		const cases: readonly TransitivityCase[] = [
 			{ name: 'get of a parameter', code: 'h <- function() k\nk <- 3\nf <- function(n) get(n)()\nprint(f("h"))' },

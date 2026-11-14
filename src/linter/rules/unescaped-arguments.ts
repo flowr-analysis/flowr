@@ -454,7 +454,7 @@ export const UNESCAPED_ARGUMENTS = {
 				[UnescapedArgumentCategory.JavaScript]: {
 					criticalCalls: SemanticCallTag.JavaScript,
 					criticalArgs:  ArgProp.Injectable,
-					sanitizers:    [...Identifier.fromAll(PkgName.Jsonlite, ['toJSON', 'serializeJSON']), Identifier.from(['toJSON', 'RJSONIO']), Identifier.from(['toJSON', 'rjson'])],
+					sanitizers:    [...Identifier.fromAll(PkgName.Jsonlite, ['toJSON', 'serializeJSON']), ...Identifier.fromAllIn(['RJSONIO', 'rjson'], ['toJSON'])],
 					quickFix:      { call: Identifier.from(['toJSON', PkgName.Jsonlite]), partsOnly: true },
 					methods:       [
 						...['eval', 'call', 'source'].flatMap(method => Identifier.fromAll('V8', ['v8', 'new_context']).map(receiver => ({ receiver, method }))),

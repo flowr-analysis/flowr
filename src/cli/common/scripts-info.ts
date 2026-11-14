@@ -3,12 +3,7 @@
  * @module
  */
 import type { OptionDefinition } from 'command-line-usage';
-import {
-	benchmarkHelperOptions,
-	benchmarkOptions,
-	slicerOptions,
-	summarizerOptions
-} from './options';
+import { benchmarkHelperOptions, benchmarkOptions, slicerOptions, summarizerOptions } from './options';
 import type { MergeableRecord } from '../../util/objects';
 import { asOptionName } from '../repl/commands/repl-commands';
 

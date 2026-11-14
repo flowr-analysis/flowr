@@ -2,11 +2,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElement, FlowrSearchElements, FlowrSearchGetFilter } from './flowr-search';
 import type { FlowrFilter, FlowrFilterExpression } from './flowr-search-filters';
 import type { FlowrSearchGeneratorNode, GeneratorNames } from './search-executor/search-generators';
-import type {
-	FlowrSearchTransformerNode,
-	GetOutputOfTransformer,
-	TransformerNames
-} from './search-executor/search-transformer';
+import type { FlowrSearchTransformerNode, GetOutputOfTransformer, TransformerNames } from './search-executor/search-transformer';
 import { optimize } from './search-optimizer/search-optimizer';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';

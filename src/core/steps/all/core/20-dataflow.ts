@@ -1,9 +1,6 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
 import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
-import {
-	dataflowGraphToJson,
-	dataflowGraphToQuads
-} from '../../../print/dataflow-printer';
+import { dataflowGraphToJson, dataflowGraphToQuads } from '../../../print/dataflow-printer';
 import type { DeepReadonly } from 'ts-essentials';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { produceDataFlowGraph } from '../../../../dataflow/extractor';

@@ -7,11 +7,7 @@ import { expensiveTrace, log, LogLevel } from '../util/log';
 import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { guard } from '../util/assert';
 import type { MergeableRecord } from '../util/objects';
-import type {
-	NormalizedAst,
-	ParentInformation,
-	RNodeWithParent
-} from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation, RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';

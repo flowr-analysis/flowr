@@ -2,10 +2,7 @@ import type { IdMessageBase, MessageDefinition } from './all-messages';
 import * as Joi from 'joi';
 import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
 import type { PipelineOutput } from '../../../../core/steps/pipeline/pipeline';
-import type {
-	DEFAULT_DATAFLOW_PIPELINE,
-	DEFAULT_SLICING_PIPELINE
-} from '../../../../core/steps/pipeline/default-pipelines';
+import type { DEFAULT_DATAFLOW_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../../../../core/steps/pipeline/default-pipelines';
 import { SliceDirection } from '../../../../util/slice-direction';
 
 /**

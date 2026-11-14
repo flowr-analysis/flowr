@@ -16,11 +16,7 @@ import { processRepeatLoop } from '../dataflow/internal/process/functions/call/b
 import { linkCircularRedefinitionsWithinALoop } from '../dataflow/internal/linker';
 import { DataflowInformation, filterOutLoopExitPoints } from '../dataflow/info';
 import { processDataflowFor } from '../dataflow/processor';
-import {
-	createDataflowPipeline,
-	createNormalizePipeline,
-	createParsePipeline
-} from '../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline, createNormalizePipeline, createParsePipeline } from '../core/steps/pipeline/default-pipelines';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { fileProtocol, requestFromInput, retrieveParseDataFromRCode } from '../r-bridge/retriever';
 import { jsonReplacer } from '../util/json';

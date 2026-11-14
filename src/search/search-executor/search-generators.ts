@@ -1,9 +1,6 @@
 import { type FlowrSearchElement, type FlowrSearchGeneratorNodeBase, type FlowrSearchGetFilter, FlowrSearchElements } from '../flowr-search';
 import type { TailTypesOrUndefined } from '../../util/collections/arrays';
-import type {
-	ParentInformation,
-	RNodeWithParent
-} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SlicingCriterion, type SlicingCriteria } from '../../slicing/criterion/parse';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard, isNotUndefined } from '../../util/assert';
@@ -41,8 +38,7 @@ export const generators = {
 } as const;
 
 async function generateAll(data: ReadonlyFlowrAnalysisProvider): Promise<FlowrSearchElements<ParentInformation>> {
-	return new FlowrSearchElements((await getAllNodes(data))
-		.map(node => ({ node })));
+	return new FlowrSearchElements((await getAllNodes(data)).map(node => ({ node })));
 }
 
 async function getAllNodes(data: ReadonlyFlowrAnalysisProvider): Promise<RNodeWithParent[]> {
@@ -135,8 +131,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	// enrich elements with query data
 
 	const nodearr = [...nodesByQuery];
-	const elements = await new FlowrSearchElements(nodearr
-		.flatMap(([_, nodes]) => Array.from(nodes)))
+	const elements = await new FlowrSearchElements(nodearr.flatMap(([_, nodes]) => Array.from(nodes)))
 		.enrich(input, Enrichment.QueryData, { queries: result });
 	return elements.mutate(s => Promise.all(s.map(async e => {
 		const [query, _] = nodearr.find(([_, nodes]) => nodes.has(e)) as [Query['type'], Set<FlowrSearchElement<ParentInformation>>];

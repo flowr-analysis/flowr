@@ -3,12 +3,7 @@ import { linkToQueryOfName } from './doc-util/doc-query';
 import { block, details, section } from './doc-util/doc-structure';
 import { getCfg, printCfgCode } from './doc-util/doc-cfg';
 import { visitCfgInOrder, visitCfgInReverseOrder } from '../control-flow/simple-visitor';
-import {
-	type ControlFlowInformation,
-	CfgVertexType,
-	ControlFlowGraph,
-	CfgVertex
-} from '../control-flow/control-flow-graph';
+import { type ControlFlowInformation, CfgVertexType, ControlFlowGraph, CfgVertex } from '../control-flow/control-flow-graph';
 import { simplifyControlFlowInformation } from '../control-flow/cfg-simplification';
 import { extractCfg } from '../control-flow/control-flow-graph';
 import { printDfGraphForCode } from './doc-util/doc-dfg';

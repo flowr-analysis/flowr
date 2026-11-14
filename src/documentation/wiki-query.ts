@@ -212,10 +212,8 @@ edges in both directions. From this perspective,
 the code \`${exampleA}\` has one cluster (given that all code is related), 
 while the code \`${exampleB}\` has two clusters (given that the \`y\` has no relation to the previous definition).
 
-${details('Example <code>' + exampleA + '</code>',
-	await showQuery(shell, exampleA, [{ type: 'dataflow-cluster' }], { showCode: false, ctx }))}
-${details('Example <code>' + exampleB + '</code>',
-	await showQuery(shell, exampleB, [{ type: 'dataflow-cluster' }], { showCode: false, ctx }))}
+${details('Example <code>' + exampleA + '</code>', await showQuery(shell, exampleA, [{ type: 'dataflow-cluster' }], { showCode: false, ctx }))}
+${details('Example <code>' + exampleB + '</code>', await showQuery(shell, exampleB, [{ type: 'dataflow-cluster' }], { showCode: false, ctx }))}
 
 Using the example code from above, the following query returns all clusters:
 ${

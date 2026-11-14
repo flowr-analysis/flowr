@@ -2,10 +2,7 @@ import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { SourceRange, type SourcePosition, type Column, type Line } from '../../util/range';
 import { expensiveTrace } from '../../util/log';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type {
-	AstIdMap,
-	RNodeWithParent
-} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { slicerLogger } from '../static/static-slicer';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';

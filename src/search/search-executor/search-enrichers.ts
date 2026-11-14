@@ -1,10 +1,5 @@
 import type { FlowrSearchElement, FlowrSearchElements } from '../flowr-search';
-import type {
-	NormalizedAst,
-	AstIdMap,
-	ParentInformation,
-	RNodeWithParent
-} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../dataflow/info';
 import { type MergeableRecord, deepMergeObject } from '../../util/objects';
 import { DfgVertex } from '../../dataflow/graph/vertex';

@@ -5,12 +5,8 @@ import { FlowrGithubBaseRef, FlowrGithubGroupName } from './doc-util/doc-files';
 import { FlowrAnalyzerQmdFilePlugin } from '../project/plugins/file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 import { BuiltInPlugins, makePlugin, registerPluginMaker } from '../project/plugins/plugin-registry';
 import { codeInline } from './doc-util/doc-code';
-import {
-	FlowrAnalyzerProjectDiscoveryPlugin
-} from '../project/plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
-import {
-	FlowrAnalyzerDescriptionFilePlugin
-} from '../project/plugins/file-plugins/flowr-analyzer-description-file-plugin';
+import { FlowrAnalyzerProjectDiscoveryPlugin } from '../project/plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
+import { FlowrAnalyzerDescriptionFilePlugin } from '../project/plugins/file-plugins/flowr-analyzer-description-file-plugin';
 import {
 	FlowrAnalyzerPackageVersionsDescriptionFilePlugin
 } from '../project/plugins/package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
@@ -18,12 +14,8 @@ import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from '../project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
 import { FlowrAnalyzerFilePlugin } from '../project/plugins/file-plugins/flowr-analyzer-file-plugin';
-import {
-	FlowrAnalyzerPackageVersionsPlugin
-} from '../project/plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
-import {
-	FlowrAnalyzerLoadingOrderPlugin
-} from '../project/plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
+import { FlowrAnalyzerPackageVersionsPlugin } from '../project/plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
+import { FlowrAnalyzerLoadingOrderPlugin } from '../project/plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
 import { contextFromInput, contextFromSources, FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { requestFromInput } from '../r-bridge/retriever';
 import { FlowrAnalyzerFilesContext } from '../project/context/flowr-analyzer-files-context';

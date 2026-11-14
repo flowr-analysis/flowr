@@ -28,10 +28,7 @@ import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
 import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
 import { ansiFormatter, voidFormatter } from '../../../util/text/ansi';
-import type {
-	DEFAULT_SLICING_PIPELINE,
-	TREE_SITTER_DATAFLOW_PIPELINE
-} from '../../../core/steps/pipeline/default-pipelines';
+import type { DEFAULT_SLICING_PIPELINE, TREE_SITTER_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput, PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import type { DeepPartial } from 'ts-essentials';
 import { DataflowGraph } from '../../../dataflow/graph/graph';

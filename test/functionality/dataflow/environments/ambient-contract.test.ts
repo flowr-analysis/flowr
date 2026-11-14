@@ -61,6 +61,21 @@ describe('Ambient contracts of calls', withTreeSitter(ts => {
 		check('the maps map draws', 'library(maps)\nmap(add = TRUE)', '2@map', { 'maps::map': ['always plot adds @2@add', ...plot, 'never plot resets @2@add'] });
 		check('the purrr map does not', 'purrr::map(1:3, f)', '1@map', {});
 	});
+	describe('contracts reach across calls of own functions', () => {
+		const adds = (at: string) => ['always plot adds @' + at, ...plot, 'never plot resets @' + at];
+		const either = ['maybe plot adds (if add is TRUE) @2@add', 'maybe plot resets (unless add is TRUE) @2@add', ...plot];
+		check('a call of a function handing on its dots', 'g <- function(...) maps::map(...)\ng(add = TRUE)', '2@g', { 'maps::map': adds('2@add') });
+		check('the call handing on the dots, seen from its only call', 'g <- function(...) maps::map(...)\ng(add = TRUE)', '1@map', { 'maps::map': adds('2@add') });
+		check('calls that disagree leave it open', 'g <- function(...) maps::map(...)\ng(add = TRUE)\ng()', '1@map', { 'maps::map': either });
+		check('a parameter handed on by name', 'g <- function(a) maps::map(add = a)\ng(FALSE)', '2@g', { 'maps::map': ['always plot resets @2@FALSE', ...plot, 'never plot adds @2@FALSE'] });
+		check('the default of a parameter', 'g <- function(a = TRUE) maps::map(add = a)\ng()', '2@g', { 'maps::map': adds('1@add') });
+		check('a chain of functions handing on the dots', 'g <- function(...) maps::map(...)\nh <- function(...) g(...)\nh(add = TRUE)', '3@h', { 'maps::map': adds('3@add') });
+		check('a function run with arguments of its own making stays open', 'g <- function(...) maps::map(...)\nlapply(1, g, add = TRUE)', '1@map', { 'maps::map': ['maybe plot adds (if add is TRUE)', 'maybe plot resets (unless add is TRUE)', ...plot] });
+		check('a recursive function stops', 'g <- function(n, ...) if(n > 0) g(n - 1, ...) else maps::map(...)\ng(3, add = TRUE)', '1@map', { 'maps::map': adds('2@add') });
+		check('a recursive call adding arguments stays open', 'g <- function(n, ...) if(n > 0) g(n - 1, add = FALSE, ...) else maps::map(...)\ng(3, add = TRUE)', '1@map', { 'maps::map': ['maybe plot adds (if add is TRUE) @1@add,2@add', 'maybe plot resets (unless add is TRUE) @1@add,2@add', ...plot] });
+		check('parameters of two functions in one call', 'g <- function(a, ...) h(a, ...)\nh <- function(b, ...) maps::map(add = b, ...)\ng(TRUE)\ng(TRUE, fill = TRUE)', '2@map', { 'maps::map': ['always plot adds @4@TRUE,3@TRUE', ...plot, 'never plot resets @4@TRUE,3@TRUE'] });
+		check('the entries a parameter names', 'f <- function(p) library(p, character.only = TRUE)\nf("dplyr")', '2@f', { 'base::library': ['always search-path writes [dplyr]', 'always lib-paths reads', 'always installed-packages reads [dplyr]'] });
+	});
 	test('a summary states its conditions as data', () => {
 		const curve = ambientSummaryOf({ ...BuiltInIndex.default().get('curve') }).flatMap(f => f.accesses);
 		assert.deepStrictEqual(curve.filter(a => a.holds !== undefined).map(a => [a.access, a.holds]), [[AmbientVerb.Adds, { when: { flag: 'add' } }], [AmbientVerb.Resets, { unless: { flag: 'add' } }]]);

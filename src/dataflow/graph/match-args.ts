@@ -3,7 +3,7 @@
  * @lintIgnore use-instead
  */
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
+import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { type DataflowGraph, FunctionArgument } from './graph';
@@ -19,11 +19,11 @@ import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-f
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { signatureDbOf, type SignatureDb } from '../../project/sigdb/signature-db';
 import { OriginType } from '../origin/dfg-get-origin';
 import { Dataflow } from './df-helper';
+import { CallSites } from '../fn/call-sites';
 import { type BrandedIdentifier, Identifier, PkgName } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../../util/assert';
@@ -100,10 +100,10 @@ export const MatchArgs = {
 			if(dots === undefined || !vertex.params[String(dots)]) {
 				continue;
 			}
-			const names = parameterNames((definition as RFunctionDefinition<ParentInformation>).parameters);
+			const names = CallSites.formals(definition as RFunctionDefinition<ParentInformation>);
 			for(const caller of Dataflow.sourcesOf(graph, id, EdgeType.Calls)) {
 				const call = graph.getVertex(caller);
-				if(!DfgVertex.isFunctionCall(call) || (call.origin !== 'unnamed' && !DfgVertex.hasOrigin(call, BuiltInProcName.Function))) {
+				if(!CallSites.handsOwnArguments(call)) {
 					continue;
 				}
 				const matched = matchArgumentsToParameters(graphArgumentNames(call.args), names);
@@ -214,10 +214,7 @@ function handedOnDotsOf(args: readonly FunctionArgument[], graph: DataflowGraph)
 
 /** The function definition whose parameter `id` names. */
 function definitionOfParameter(id: NodeId, graph: DataflowGraph): RFunctionDefinition<ParentInformation> | undefined {
-	const idMap = graph.idMap;
-	const parameter = idMap?.get(idMap.get(id)?.info.parent ?? -1);
-	const definition = RParameter.is(parameter) ? idMap?.get(parameter.info.parent ?? -1) : undefined;
-	return RFunctionDefinition.is(definition) ? definition : undefined;
+	return CallSites.parameterAt(id, graph)?.[0];
 }
 
 /** The argument lists `args` stands for once the dots it hands on (`g(...)`) are replaced, one per chain of known calls handing them on, each with the arguments these calls hand to the dots in order and by their names. */
@@ -246,7 +243,7 @@ function handedToDots(dots: NodeId, graph: DataflowGraph, seen: Set<NodeId>): Fu
 	if(definition === undefined || seen.has(dots)) {
 		return undefined;
 	}
-	const names = definition.parameters.map(p => p.special ? DotsParameterName : p.name.content);
+	const names = CallSites.formals(definition);
 	const position = names.indexOf(DotsParameterName);
 	const callers = Dataflow.sourcesOf(graph, definition.info.id, EdgeType.Calls);
 	const lists: FunctionArgument[][] = [];
@@ -255,7 +252,7 @@ function handedToDots(dots: NodeId, graph: DataflowGraph, seen: Set<NodeId>): Fu
 		for(const caller of callers) {
 			const call = graph.getVertex(caller);
 			/* a call that runs the function with arguments of its own making (`lapply(x, f)`) hands on what flowR does not know */
-			if(!DfgVertex.isFunctionCall(call) || (call.origin !== 'unnamed' && !DfgVertex.hasOrigin(call, BuiltInProcName.Function))) {
+			if(!CallSites.handsOwnArguments(call)) {
 				return undefined;
 			}
 			const matched = matchArgumentsToParameters(graphArgumentNames(call.args), names);
@@ -283,11 +280,6 @@ function elementReadsOf(dots: NodeId, graph: DataflowGraph): ReadonlyMap<number,
 		byPosition.set(position, [...byPosition.get(position) ?? [], read]);
 	}
 	return byPosition.size === 0 ? undefined : byPosition;
-}
-
-/** The names of the parameters as {@link matchArgumentsToParameters} takes them. */
-function parameterNames(params: readonly RParameter<ParentInformation>[]): (BrandedIdentifier | undefined)[] {
-	return params.map(p => p?.special ? DotsParameterName : p?.name?.content);
 }
 
 /** The call whose argument `read` hands on the dots `dots` (`g(...)`), with the position of that argument. */
@@ -331,7 +323,7 @@ function seenThroughDots(dots: NodeId, args: readonly FunctionArgument[], graph:
 				if(!RFunctionDefinition.is(definition) || !DfgVertex.isFunctionDefinition(vertex)) {
 					return undefined;
 				}
-				const names = parameterNames(definition.parameters);
+				const names = CallSites.formals(definition);
 				const matched = matchArgumentsToParameters(graphArgumentNames(list), names);
 				const inner = names.indexOf(DotsParameterName);
 				const toInner = list.flatMap((a, i) => a !== EmptyArgument && matched[i] === inner ? [i] : []);

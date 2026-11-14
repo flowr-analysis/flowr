@@ -58,6 +58,7 @@ ${examples.map(name => `- \`${name}\`: ${summaryOf(stated, name)}`).join('\n')}
 Next to its words, every access of the summary carries its conditions as data (\`holds\`) and how the call names its entries (\`names\`), so a tool evaluates them rather than parsing the words.
 ${ctx.link('AmbientContract')} does so for a call: ${ctx.link('AmbientContract:::ofCall')} gives one contract per definition the call may reach (\`maps::map\` draws, \`purrr::map\` does not), with the effects the arguments rule out dropped, the conditions they decide removed, the entries they name resolved, and the ids of the argument nodes each decision rests on.
 \`map(add = TRUE)\` adds to the plot and starts no new one, as does \`map(add = a)\` after \`a <- TRUE\`, while \`map(...)\` in a function forwarding its arguments may do either.
+The contracts reach across the functions the program defines, using ${ctx.link('CallSites')}: with \`g <- function(...) map(...)\`, the call \`g(add = TRUE)\` has the contract of the \`map\` call within \`g\`, narrowed to \`add = TRUE\`, and the \`map(...)\` call itself is narrowed to what the known calls of \`g\` give, staying open where a call of \`g\` is unknown (\`lapply(x, g)\`) or the calls disagree.
 ${ctx.link('AmbientContract:::narrow')} does the same for effects and arguments at hand, without an analysis only from what is written.
 
 #### Tracking Ambient State

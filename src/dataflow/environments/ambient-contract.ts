@@ -180,7 +180,7 @@ export const AmbientContract = {
 				return effects.length === 0 ? [] : [{ call, through: [], definition: entry.name, target, ...AmbientContract.narrowAcross(effects, lists, info) }];
 			});
 		});
-		const inner = CallSites.callees(call, graph).filter(definition => !sites.some(s => s.definition === definition)).flatMap(definition => {
+		const inner = Dataflow.calleeDefinitionsOf(graph, call).filter(definition => !sites.some(s => s.definition === definition)).flatMap(definition => {
 			const site: CallSite = { call: node, definition };
 			return CallSites.callsWithin(definition, graph).flatMap(id => AmbientContract.ofCall(id, info, [site, ...sites]).map(c => ({ ...c, through: [call, ...c.through] })));
 		});

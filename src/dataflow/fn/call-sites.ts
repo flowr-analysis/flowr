@@ -63,15 +63,6 @@ export const CallSites = {
 	formals: formalNames,
 	/** The definition whose parameter the node `id` is, or reads alone (`x` in `function(x) x`), with the position of the parameter. */
 	parameterAt,
-	/** The definition the node `id` sits in, if any. */
-	enclosing<Info>(this: void, id: NodeId, idMap: AstIdMap<Info>): RFunctionDefinition<Info & ParentInformation> | undefined {
-		const definition = idMap.get(RNode.strictlyEnclosingFunction(id, idMap) ?? -1);
-		return RFunctionDefinition.is(definition) ? definition : undefined;
-	},
-	/** The definitions the call `call` runs, see {@link Dataflow.calleeDefinitionsOf}. */
-	callees(this: void, call: NodeId, graph: DataflowGraph): readonly RFunctionDefinition<ParentInformation>[] {
-		return Dataflow.calleeDefinitionsOf(graph, call);
-	},
 	/** The calls within the body of `definition` that it makes itself, not those of the functions it defines. */
 	callsWithin(this: void, definition: RFunctionDefinition<ParentInformation>, graph: DataflowGraph): NodeId[] {
 		const idMap = graph.idMap;

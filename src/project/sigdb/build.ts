@@ -32,16 +32,13 @@ function noteZstdSupport(): void {
 
 /** resolve the effective features (everything defaults to on) */
 function resolveFeatures(f: SigDbFeatures | undefined): Required<SigDbFeatures> {
-	if(f === undefined) {
-		return { signatures: true, callGraphs: true, locations: true, dependencies: true, classes: true, contracts: true };
-	}
 	return {
-		signatures:   f.signatures   ?? true,
-		callGraphs:   f.callGraphs   ?? true,
-		locations:    f.locations    ?? true,
-		dependencies: f.dependencies ?? true,
-		classes:      f.classes      ?? true,
-		contracts:    f.contracts    ?? true
+		signatures:   f?.signatures   ?? true,
+		callGraphs:   f?.callGraphs   ?? true,
+		locations:    f?.locations    ?? true,
+		dependencies: f?.dependencies ?? true,
+		classes:      f?.classes      ?? true,
+		contracts:    f?.contracts    ?? true
 	};
 }
 
@@ -297,6 +294,27 @@ export class SigDbBuilder {
 		return names.filter(n => opts.shard === 'top' ? top.has(n) : !top.has(n));
 	}
 
+	/** the deduplicated blobs of the selected packages, interning into `strings` and recording each one's metadata in `meta` */
+	private buildBlobs(opts: Pick<SigDbBuildOptions, 'topN' | 'shard' | 'core'>, tier: SigDbTier, strings: StringPool, feats: Required<SigDbFeatures>, meta: SigDbPkgMetaIndex): Pick<SigShard, 'blobs' | 'pkgs' | 'versions' | 'functions'> {
+		const blobs: PkgBlob[] = [];
+		const blobIdx = new Map<string, number>();
+		const pkgs: Record<string, number> = {};
+		let versions = 0;
+		let functions = 0;
+		for(const name of this.selectPackages(opts)) {
+			const p = this.raw.get(name) as RawPkg;
+			const built = buildBlob(p, strings, tier, feats);
+			if(built.versionCount === 0) {
+				continue;   // a package with no versions in this tier (e.g. a single-version package under `history`) is not routed
+			}
+			versions += built.versionCount;
+			functions += built.functionCount;
+			pkgs[name] = internalize(blobs, blobIdx, JSON.stringify(blobTuple(built.blob)), built.blob);
+			meta[name] = packMeta(p);
+		}
+		return { blobs, pkgs, versions, functions };
+	}
+
 	/**
 	 * Build one {@link SigDb} bundle. `tier: 'current'` keeps only each package's latest version, `'full'` every
 	 * version; `topN` + `shard` further restrict to the top-downloaded packages or the remainder, for a {@link SigDbManifest}.
@@ -305,26 +323,10 @@ export class SigDbBuilder {
 		const tier: SigDbTier = opts.tier ?? 'full';
 		const feats = resolveFeatures(opts.features);
 		const strings = new StringPool();
-		const blobs: PkgBlob[] = [];
-		const blobIdx = new Map<string, number>();
-		const pkgs: Record<string, number> = {};
 		const pkgMeta: SigDbPkgMetaIndex = {};
-		let versionCount = 0;
-		let functionCount = 0;
-		for(const name of this.selectPackages(opts)) {
-			const p = this.raw.get(name) as RawPkg;
-			const built = buildBlob(p, strings, tier, feats);
-			if(built.versionCount === 0) {
-				continue;   // a package with no versions in this tier (e.g. a single-version package under `history`) is not routed
-			}
-			versionCount += built.versionCount;
-			functionCount += built.functionCount;
-			const key = JSON.stringify(blobTuple(built.blob));
-			pkgs[name] = internalize(blobs, blobIdx, key, built.blob);
-			pkgMeta[name] = packMeta(p);
-		}
+		const { blobs, pkgs, versions: versionCount, functions: functionCount } = this.buildBlobs(opts, tier, strings, feats, pkgMeta);
 		const dict = (opts.optimizeStrings ?? true) ? optimizeStringOrder(strings.strings, blobs) : strings.strings;
-		const cranBase = opts.cranBase && opts.cranBase !== DefaultCranBase ? opts.cranBase : undefined;
+		const cranBase = customCranBase(opts);
 
 		const partial: Omit<SigDb, 'content'> = {
 			format:  SigDbMagic, schema:  SigDbSchema, scope:   'signatures',
@@ -359,36 +361,25 @@ export class SigDbBuilder {
 		const meta: SigDbPkgMetaIndex = {};
 		const shards: SigShard[] = specs.map(spec => {
 			const tier: SigDbTier = spec.tier ?? 'full';
-			const blobs: PkgBlob[] = [];
-			const blobIdx = new Map<string, number>();
-			const pkgs: Record<string, number> = {};
-			let versions = 0;
-			let functions = 0;
-			for(const name of this.selectPackages(spec)) {
-				const p = this.raw.get(name) as RawPkg;
-				const built = buildBlob(p, strings, tier, feats); // interns into the SHARED dictionary
-				if(built.versionCount === 0) {
-					continue;   // no versions in this tier (e.g. a single-version package under `history`) -> not routed
-				}
-				versions += built.versionCount;
-				functions += built.functionCount;
-				pkgs[name] = internalize(blobs, blobIdx, JSON.stringify(blobTuple(built.blob)), built.blob);
-				meta[name] = packMeta(p);
-			}
-			return { id: shardId(spec), tier, shard: spec.shard, topN: spec.topN, core: spec.core, blobs, pkgs, versions, functions, hash: '' };
+			return { id: shardId(spec), tier, shard: spec.shard, topN: spec.topN, core: spec.core, ...this.buildBlobs(spec, tier, strings, feats, meta), hash: '' };
 		});
 		// ONE frequency reorder over every shard's blobs, remapping the shared dictionary in place
 		const dict = (opts.optimizeStrings ?? true) ? optimizeStringOrder(strings.strings, shards.flatMap(s => s.blobs)) : strings.strings;
 		for(const s of shards) {
 			s.hash = shardHash(s.blobs, s.pkgs);
 		}
-		const cranBase = opts.cranBase && opts.cranBase !== DefaultCranBase ? opts.cranBase : undefined;
+		const cranBase = customCranBase(opts);
 		return {
 			format:    SigDbMagic, schema:    SigDbSchema, scope:     'signatures',
 			date:      opts.date, generated: opts.generated, ...(cranBase ? { cranBase } : {}),
 			features:  feats, strings:   dict, dictHash:  dictionaryHash(dict), meta, shards
 		};
 	}
+}
+
+/** the CRAN base a bundle records, `undefined` for the default one it need not */
+function customCranBase(opts: Pick<SigDbBuildOptions, 'cranBase'>): string | undefined {
+	return opts.cranBase && opts.cranBase !== DefaultCranBase ? opts.cranBase : undefined;
 }
 
 /** a shard to build: a temporal tier, optionally restricted to a popularity shard and/or the R-core packages */
@@ -470,69 +461,79 @@ class StringPool {
 	}
 }
 
+/** rewrite every dictionary index `blob` holds through `map`, leaving the absent ones (`-1`) as they are */
+function mapStringRefs(blob: PkgBlob, map: (i: number) => number): void {
+	const at = (i: number): number => i >= 0 ? map(i) : i;
+	for(const s of blob.sigs) {
+		for(let k = 0; k < s.length; k++) {
+			const p = s[k];
+			if(typeof p === 'number') {
+				s[k] = at(p);
+			} else {
+				p[0] = at(p[0]);
+				if(p.length === 3) {
+					p[2] = at(p[2]);
+				}
+			}
+		}
+	}
+	for(let c = 0; c < blob.cgs.length; c++) {
+		const idxs: number[] = [];
+		let prev = 0;
+		for(const d of blob.cgs[c]) {
+			prev += d;
+			idxs.push(at(prev));
+		}
+		blob.cgs[c] = deltaEncode(idxs.sort((x, y) => x - y));
+	}
+	for(const f of blob.fns) {
+		f[0] = at(f[0]);
+		f[4] = at(f[4]);
+		for(let i = 6; i < f.length; i++) {
+			f[i] = at(f[i]);
+		}
+	}
+	for(const list of blob.deps) {
+		for(const d of list) {
+			d[0] = at(d[0]);
+			if(d.length === 3) {
+				d[2] = at(d[2]);
+			}
+		}
+	}
+	for(const [version, idx] of Object.entries(blob.sources ?? {})) {
+		(blob.sources as Record<string, number>)[version] = at(idx);
+	}
+	/* a class names itself, its superclasses, its slots and their types, all of them dictionary indices */
+	for(const c of blob.classes ?? []) {
+		c[0] = at(c[0]);
+		for(let i = 0; i < c[3].length; i++) {
+			c[3][i] = at(c[3][i]);
+		}
+		for(let i = 0; i < c[4].length; i++) {
+			const slot = c[4][i];
+			if(typeof slot === 'number') {
+				c[4][i] = at(slot);
+			} else {
+				slot[0] = at(slot[0]);
+				slot[1] = at(slot[1]);
+			}
+		}
+		if(c.length === 6) {
+			c[5] = at(c[5]);
+		}
+	}
+}
+
 /** renumber the dictionary so the most-referenced strings get the smallest indices (a pure bijection) */
 function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 	const n = strings.length;
 	const counts = new Float64Array(n);
-	const bump = (i: number): void => {
-		if(i >= 0) {
-			counts[i]++;
-		}
-	};
 	for(const blob of blobs) {
-		for(const s of blob.sigs) {
-			for(const p of s) {
-				if(typeof p === 'number') {
-					bump(p);
-				} else {
-					bump(p[0]);
-					if(p.length === 3) {
-						bump(p[2]);
-					}
-				}
-			}
-		}
-		for(const c of blob.cgs) {
-			let prev = 0;
-			for(const d of c) {
-				prev += d;
-				bump(prev);
-			}
-		}
-		for(const f of blob.fns) {
-			bump(f[0]);
-			bump(f[4]);
-			f.slice(6).forEach(bump);
-		}
-		for(const list of blob.deps) {
-			for(const d of list) {
-				bump(d[0]);
-				if(d.length === 3) {
-					bump(d[2]);
-				}
-			}
-		}
-		for(const idx of Object.values(blob.sources ?? {})) {
-			bump(idx);
-		}
-		/* a class names itself, its superclasses, its slots and their types, all of them dictionary indices */
-		for(const c of blob.classes ?? []) {
-			bump(c[0]);
-			for(const superIdx of c[3]) {
-				bump(superIdx);
-			}
-			for(const slot of c[4]) {
-				if(typeof slot === 'number') {
-					bump(slot);
-				} else {
-					bump(slot[0]);
-					bump(slot[1]);
-				}
-			}
-			if(c.length === 6) {
-				bump(c[5]);
-			}
-		}
+		mapStringRefs(blob, i => {
+			counts[i]++;
+			return i;
+		});
 	}
 	const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => counts[b] - counts[a] || a - b);
 	const remap = new Int32Array(n);
@@ -540,69 +541,7 @@ function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 		remap[order[newI]] = newI;
 	}
 	for(const blob of blobs) {
-		for(const s of blob.sigs) {
-			for(let k = 0; k < s.length; k++) {
-				const p = s[k];
-				if(typeof p === 'number') {
-					s[k] = remap[p];
-				} else {
-					p[0] = remap[p[0]];
-					if(p.length === 3) {
-						p[2] = remap[p[2]];
-					}
-				}
-			}
-		}
-		for(let c = 0; c < blob.cgs.length; c++) {
-			const idxs: number[] = [];
-			let prev = 0;
-			for(const d of blob.cgs[c]) {
-				prev += d;
-				idxs.push(remap[prev]);
-			}
-			idxs.sort((a, b) => a - b);
-			blob.cgs[c] = deltaEncode(idxs);
-		}
-		for(const f of blob.fns) {
-			f[0] = remap[f[0]];
-			if(f[4] >= 0) {
-				f[4] = remap[f[4]];
-			}
-			for(let i = 6; i < f.length; i++) {
-				if(f[i] >= 0) {
-					f[i] = remap[f[i]];
-				}
-			}
-		}
-		for(const list of blob.deps) {
-			for(const d of list) {
-				d[0] = remap[d[0]];
-				if(d.length === 3) {
-					d[2] = remap[d[2]];
-				}
-			}
-		}
-		for(const [version, idx] of Object.entries(blob.sources ?? {})) {
-			(blob.sources as Record<string, number>)[version] = remap[idx];
-		}
-		for(const c of blob.classes ?? []) {
-			c[0] = remap[c[0]];
-			for(let i = 0; i < c[3].length; i++) {
-				c[3][i] = remap[c[3][i]];
-			}
-			for(let i = 0; i < c[4].length; i++) {
-				const slot = c[4][i];
-				if(typeof slot === 'number') {
-					c[4][i] = remap[slot];
-				} else {
-					slot[0] = remap[slot[0]];
-					slot[1] = remap[slot[1]];
-				}
-			}
-			if(c.length === 6) {
-				c[5] = remap[c[5]];
-			}
-		}
+		mapStringRefs(blob, i => remap[i]);
 	}
 	return order.map(oldI => strings[oldI]);
 }
@@ -712,6 +651,17 @@ class LineWriter {
 	}
 }
 
+/** write one `b` line per blob, returning the byte range each one takes */
+async function writeBlobs(w: LineWriter, blobs: readonly PkgBlob[]): Promise<ByteRange[]> {
+	const ranges: ByteRange[] = [];
+	for(let i = 0; i < blobs.length; i++) {
+		const startByte = w.byteOff;
+		await w.write(`["b",${i},${JSON.stringify(blobTuple(blobs[i]))}]`);
+		ranges.push([startByte, w.byteOff - startByte]);
+	}
+	return ranges;
+}
+
 /** Write `<outBase>.sigs.ndjson` (+ `.br`, `.zst` when supported, `.idx`) -- a single self-contained bundle (its own dictionary). */
 export async function writeSignatureDb(outBase: string, db: SigDb, compress: CompressOptions = {}): Promise<SigDbIndex> {
 	const plain = `${outBase}${SigDbExt}`;
@@ -725,12 +675,7 @@ export async function writeSignatureDb(outBase: string, db: SigDb, compress: Com
 		await w.write(line);
 	}
 	const dict: ByteRange = [dictStartByte, w.byteOff - dictStartByte];
-	const blobs: ByteRange[] = [];
-	for(let i = 0; i < db.blobs.length; i++) {
-		const startByte = w.byteOff;
-		await w.write(`["b",${i},${JSON.stringify(blobTuple(db.blobs[i]))}]`);
-		blobs.push([startByte, w.byteOff - startByte]);
-	}
+	const blobs = await writeBlobs(w, db.blobs);
 	for(const line of batchLines('m', Object.entries(db.meta))) {
 		await w.write(line);
 	}
@@ -769,12 +714,7 @@ export async function writeShardBundle(outBase: string, shard: SigShard, cranBas
 		...(cranBase ? { cranBase } : {}),
 		content: { tier: shard.tier, ...(shard.shard ? { shard: shard.shard, topN: shard.topN } : {}), packages: Object.keys(shard.pkgs).length, versions: shard.versions, functions: shard.functions, hash: shard.hash }
 	}));
-	const blobs: ByteRange[] = [];
-	for(let i = 0; i < shard.blobs.length; i++) {
-		const startByte = w.byteOff;
-		await w.write(`["b",${i},${JSON.stringify(blobTuple(shard.blobs[i]))}]`);
-		blobs.push([startByte, w.byteOff - startByte]);
-	}
+	const blobs = await writeBlobs(w, shard.blobs);
 	for(const line of batchLines('p', Object.entries(shard.pkgs))) {
 		await w.write(line);
 	}

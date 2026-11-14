@@ -33,8 +33,7 @@ import type { SlicingCriterion, SlicingCriteria } from '../slicing/criterion/par
 import { escapeNewline } from './doc-util/doc-escape';
 import type { ShowQueryOptions } from './doc-util/doc-query';
 import { DefaultAssumedRVersion } from '../config';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import type { ArgProp, CallProp } from '../dataflow/environments/built-in-props';
 import { SliceDirection } from '../util/slice-direction';

@@ -1,8 +1,7 @@
 import { ShowDocTimings } from './doc-util/doc-timings';
 import fs from 'fs';
 import path from 'path';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../project/sigdb/reader';
 import { type FnProp, SigDbSchema } from '../project/sigdb/schema';

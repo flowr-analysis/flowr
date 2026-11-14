@@ -1,7 +1,6 @@
 import { registerFaqs } from './data/faq/faqs';
 import { NewQuestionUrl } from './doc-util/doc-issue';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 
 /** https://github.com/flowr-analysis/flowr/wiki/FAQ */
 export class WikiFaq extends DocMaker<'wiki/FAQ.md'> {

@@ -1,8 +1,7 @@
 import { LintingRuleTag } from '../linter/linter-tags';
 import { prefixLines } from './doc-util/doc-general';
 import { type LintingRuleNames, LintingRules } from '../linter/linter-rules';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 
 /* this prints the yaml configuration for the GitHub issue template to request a new linter rule / an update */
 

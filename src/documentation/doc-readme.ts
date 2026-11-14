@@ -20,8 +20,7 @@ import { NewIssueUrl } from './doc-util/doc-issue';
 import { tryInPlayground } from './doc-util/doc-playground';
 import { PlaygroundBox } from '../util/text/playground-link';
 import { joinWithLast } from '../util/text/strings';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 
 const PublicationsMain: { header: string, description: string, doi: string, bibtex: string }[] = [
 	{

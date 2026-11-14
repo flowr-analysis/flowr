@@ -1,5 +1,4 @@
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import { FlowrGithubBaseRef } from './doc-util/doc-files';
 import { RShell } from '../r-bridge/shell';
 import { DataflowGraph } from '../dataflow/graph/graph';

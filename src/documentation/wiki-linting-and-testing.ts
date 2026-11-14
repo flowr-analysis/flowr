@@ -13,8 +13,7 @@ import { getCliLongOptionOf } from './doc-util/doc-cli-option';
 import { DfEdge } from '../dataflow/graph/edge';
 import { Resolve } from '../dataflow/environments/resolve-helper';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import { ChainedWith, MutationCategory, MutationPasses } from '../../test/functionality/_helper/r-mutations';
 import { linkToQueryOfName } from './doc-util/doc-query';
 

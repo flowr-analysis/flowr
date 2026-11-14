@@ -1,6 +1,5 @@
 import type { DataflowGraph, UnknownSideEffect } from '../../dataflow/graph/graph';
-import type { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
-import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
+import { type DEFAULT_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../util/assert';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';

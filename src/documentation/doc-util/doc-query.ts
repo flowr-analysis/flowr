@@ -1,7 +1,6 @@
 import type { RShell } from '../../r-bridge/shell';
-import type { Queries, SupportedQuery, SupportedQueryTypes } from '../../queries/query';
-import { queryWikiPage, SupportedQueries } from '../../queries/query';
-import { SupportedVirtualQueries } from '../../queries/virtual-query/virtual-queries';
+import { type Queries, type SupportedQuery, type SupportedQueryTypes, queryWikiPage, SupportedQueries } from '../../queries/query';
+import { SupportedVirtualQueries, type SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import { autoGenHeader } from './doc-auto-gen';
 import { section } from './doc-structure';
 import { guard } from '../../util/assert';
@@ -9,7 +8,6 @@ import path from 'path';
 import { jsonReplacer } from '../../util/json';
 import { markdownFormatter } from '../../util/text/ansi';
 import { FlowrWikiBaseRef } from './doc-files';
-import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
 import { codeBlock, jsonWithLimit } from './doc-code';
 import { docTook } from './doc-timings';

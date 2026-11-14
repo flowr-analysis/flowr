@@ -3,8 +3,7 @@ import path from 'path';
 import { guard, isNotUndefined } from '../util/assert';
 import { section } from './doc-util/doc-structure';
 import { Mermaid } from '../util/mermaid/mermaid';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 
 interface HelperCategory {
 	readonly id:      string;

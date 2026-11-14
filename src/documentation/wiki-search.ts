@@ -3,8 +3,7 @@ import { FlowrSearchBuilder, FlowrSearchGenerator, Q } from '../search/flowr-sea
 import { VertexType } from '../dataflow/graph/vertex';
 import type { FlowrSearchGeneratorNode } from '../search/search-executor/search-generators';
 import { runSearch } from '../search/flowr-search-executor';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import { FlowrSearchElements } from '../search/flowr-search';
 import { compareByCodeUnit } from '../util/text/strings';
 

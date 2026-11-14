@@ -4,7 +4,7 @@ import { RShell } from '../../../r-bridge/shell';
 import { DockerName } from '../../doc-util/doc-docker';
 import { getCliLongOptionOf } from '../../doc-util/doc-cli-option';
 import { codeBlock } from '../../doc-util/doc-code';
-import { analysisResponseMessage, requestAnalysisMessage } from '../../../cli/repl/server/messages/message-analysis';
+import { analysisResponseMessage, requestAnalysisMessage, type FileAnalysisRequestMessage } from '../../../cli/repl/server/messages/message-analysis';
 import { FlowrWikiBaseRef } from '../../doc-util/doc-files';
 import type { GeneralDocContext } from '../../wiki-mk/doc-context';
 import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';

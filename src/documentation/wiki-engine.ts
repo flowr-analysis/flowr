@@ -4,8 +4,7 @@ import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter
 import { block } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 
 /** https://github.com/flowr-analysis/flowr/wiki/Engines */
 export class WikiEngine extends DocMaker<'wiki/Engines.md'> {

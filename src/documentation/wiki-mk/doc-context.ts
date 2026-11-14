@@ -17,8 +17,7 @@ import {
 	FlowrWikiBaseRef
 } from '../doc-util/doc-files';
 import type { scripts } from '../../cli/common/scripts-info';
-import type { ScriptOptions } from '../doc-util/doc-cli-option';
-import { getReplCommand, getCliLongOptionOf, getConfigOption } from '../doc-util/doc-cli-option';
+import { type ScriptOptions, getReplCommand, getCliLongOptionOf, getConfigOption } from '../doc-util/doc-cli-option';
 import type { FlowrConfig } from '../../config';
 import type { AutocompletablePaths } from '../../util/objects';
 import type { ReplCommandNames } from '../../cli/repl/commands/repl-commands';

@@ -22,7 +22,7 @@ import { packageCode } from './package-code';
 import { RLogical } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 export type DependencyDeclarationKind =
@@ -192,12 +192,8 @@ export const DEPENDENCY_DECLARATION = {
 		const used = new Set<BrandedNamespace>();
 		const ignoreWithin = new Set(config.ignoreWithin);
 		const ignored = (id: NodeId): boolean => {
-			for(let cur = idMap.get(id); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap.get(cur.info.parent)) {
-				if(RFunctionCall.isNamed(cur, ignoreWithin)) {
-					return true;
-				}
-			}
-			return false;
+			const node = idMap.get(id);
+			return RFunctionCall.isNamed(node, ignoreWithin) || RNode.iterateParents(node, idMap).some(p => RFunctionCall.isNamed(p, ignoreWithin));
 		};
 		const add = (id: NodeId, kind: DependencyDeclarationKind, name: BrandedNamespace, message: string, certain = true) => {
 			results.push({ ...at(idMap.get(id), certain), involvedId: id, kind, package: name, message });

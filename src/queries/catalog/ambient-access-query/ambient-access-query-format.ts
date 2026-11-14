@@ -19,9 +19,7 @@ function summary(a: AmbientAccess): AmbientAccessSummary {
 	return { reads: [...a.reads.keys()].sort(), writes: [...a.writes.keys()].sort(), assumed: [...a.assumed.keys()].sort(), kills: [...a.kills.keys()].sort(), variables: [...a.variables.keys()].sort(), draws: [...a.draws] };
 }
 
-/**
- * Executes {@link AmbientAccessQuery}s, sharing one pass over the call graph between all scopes they ask for.
- */
+/** Executes {@link AmbientAccessQuery}s, sharing one pass over the call graph between all scopes they ask for. */
 export async function executeAmbientAccessQuery({ analyzer }: BasicQueryData, queries: readonly AmbientAccessQuery[]): Promise<AmbientAccessQueryResult> {
 	const start = Date.now();
 	const info = await analyzer.dataflow();

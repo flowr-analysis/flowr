@@ -279,9 +279,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		return computed;
 	}
 
-	/**
-	 * Get the call graph for the request if already available, otherwise return `undefined`.
-	 */
+	/** Get the call graph for the request if already available, otherwise return `undefined`. */
 	public peekCallGraph(): CallGraph | undefined {
 		return this.callGraphCache;
 	}

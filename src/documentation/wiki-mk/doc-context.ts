@@ -28,9 +28,7 @@ import type { FlowrConfig } from '../../config';
 import type { AutocompletablePaths } from '../../util/objects';
 import type { ReplCommandNames } from '../../cli/repl/commands/repl-commands';
 
-/**
- * Context available when generating documentation for a wiki in markdown format
- */
+/** Context available when generating documentation for a wiki in markdown format */
 export interface ElementFilter {
 	/** In case names collide, you can use this to further distinguish between them */
 	readonly file?:  RegExp;
@@ -40,17 +38,11 @@ export interface ElementFilter {
 	readonly fuzzy?: boolean;
 }
 
-/**
- * Formatting options for links to code elements
- */
+/** Formatting options for links to code elements */
 export interface LinkFormat {
-	/**
-	 * Whether to use md code font for the link text
-	 */
+	/** Whether to use md code font for the link text */
 	codeFont?:        boolean;
-	/**
-	 * Wrapper for the real name (if specified), e.g., to italicize or bold it
-	 */
+	/** Wrapper for the real name (if specified), e.g., to italicize or bold it */
 	realNameWrapper?: 'i' | 'b';
 }
 

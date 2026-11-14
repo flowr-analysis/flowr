@@ -1,7 +1,6 @@
 import type { SummarizerCliOptions } from '../summarizer-app';
 import { BenchmarkSummarizer } from '../../benchmark/summarizer/summarizer';
 
-
 function getBenchmarkSummarizer(options: SummarizerCliOptions, outputBase: string) {
 	return new BenchmarkSummarizer({
 		graphOutputPath:        options.graph ? `${outputBase}-graph.json` : undefined,
@@ -12,9 +11,7 @@ function getBenchmarkSummarizer(options: SummarizerCliOptions, outputBase: strin
 	});
 }
 
-/**
- * The core function for the 'flowr summarize' script.
- */
+/** The core function for the 'flowr summarize' script. */
 export async function flowrScriptSummarizer(options: SummarizerCliOptions) {
 
 	const outputBase = (options.output ?? options.input).replace(/\.json$|\/$/, '-summary');

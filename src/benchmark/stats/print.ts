@@ -13,9 +13,7 @@ function pad<T>(string: T) {
 	return String(string).padStart(padSize, ' ');
 }
 
-/**
- * Formats the given nanoseconds into a human-readable string.
- */
+/** Formats the given nanoseconds into a human-readable string. */
 export function formatNanoseconds(nanoseconds: bigint | number): string {
 	if(nanoseconds < 0) {
 		return '??';
@@ -35,7 +33,6 @@ export function formatNanoseconds(nanoseconds: bigint | number): string {
 		return pad(`${millis}:${String(nanos).padStart(6, '0')}ms`);
 	}
 }
-
 
 function print<K>(measurements: Map<K, ElapsedTime>, key: K) {
 	const time = measurements.get(key);
@@ -219,10 +216,7 @@ Dataframe shape inference:
 	return result;
 }
 
-
-/**
- * Converts reduction stats to a human-readable string.
- */
+/** Converts reduction stats to a human-readable string. */
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
 	let result = `
 Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices

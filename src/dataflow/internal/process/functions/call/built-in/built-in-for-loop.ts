@@ -32,7 +32,6 @@ import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { DfgVertex } from '../../../../../graph/vertex';
 import { REnvironment } from '../../../../../environments/environment';
 
-
 const ScalarTypes: ReadonlySet<Value['type']> = new Set(['interval', 'number', 'string', 'logical']);
 
 /** a value R iterates over at least once, `NULL` and empty vectors are the ones it does not */

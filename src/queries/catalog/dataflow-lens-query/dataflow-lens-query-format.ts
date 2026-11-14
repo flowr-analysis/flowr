@@ -21,9 +21,7 @@ const HiddenLexemes = `^(${
 		.map(name => escapeRegExp(name)).join('|')
 })$`;
 
-/**
- * Executes the given dataflow lens queries using the provided analyzer.
- */
+/** Executes the given dataflow lens queries using the provided analyzer. */
 export async function executeDataflowLensQuery({ analyzer }: BasicQueryData, queries: readonly DataflowLensQuery[]): Promise<DataflowLensQueryResult> {
 	warnUnlessSingleQuery('Dataflow', queries);
 
@@ -44,9 +42,7 @@ export async function executeDataflowLensQuery({ analyzer }: BasicQueryData, que
 	};
 }
 
-/**
- * Returns a simplified view on the dataflow graph of the analysis
- */
+/** Returns a simplified view on the dataflow graph of the analysis */
 export interface DataflowLensQuery extends BaseQueryFormat {
 	readonly type: 'dataflow-lens';
 }

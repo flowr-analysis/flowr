@@ -12,10 +12,7 @@ import { metaSince } from '../../query-meta';
 import { QueryFunctionFilter } from '../../query-function-filter';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 
-
-/**
- * Execute exception function inspection queries on the given analyzer.
- */
+/** Execute exception function inspection queries on the given analyzer. */
 export async function executeExceptionQuery({ analyzer }: BasicQueryData, queries: readonly InspectExceptionQuery[]): Promise<InspectExceptionQueryResult> {
 	const start = Date.now();
 	const { cg, fns } = await QueryFunctionFilter.inCallGraph(queries, analyzer);

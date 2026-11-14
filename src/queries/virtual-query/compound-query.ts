@@ -29,9 +29,7 @@ export interface CompoundQueryFormat<
 	> & Partial<QueryArgumentsWithType<SubQueryType>>>;
 }
 
-/**
- * Execute a single, virtual compound query in terms of unfolding the contained queries.
- */
+/** Execute a single, virtual compound query in terms of unfolding the contained queries. */
 export function executeCompoundQueries<
 	SubQueryType extends SupportedQueryTypes,
 	CommonArguments extends VirtualCompoundConstraint<SubQueryType> = VirtualCompoundConstraint<SubQueryType>

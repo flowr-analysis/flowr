@@ -118,9 +118,7 @@ export class PipelineExecutor<P extends Pipeline> {
 		this.input = input;
 	}
 
-	/**
-	 * Retrieve the {@link Pipeline|pipeline} that is currently being.
-	 */
+	/** Retrieve the {@link Pipeline|pipeline} that is currently being. */
 	public getPipeline(): P {
 		return this.pipeline;
 	}
@@ -148,7 +146,6 @@ export class PipelineExecutor<P extends Pipeline> {
 		guard(this.currentExecutionStage === PipelineStepStage.OncePerFile, 'Cannot switch to next stage, already in per-request stage.');
 		this.currentExecutionStage = PipelineStepStage.OncePerRequest;
 	}
-
 
 	public getResults(intermediate?: false): PipelineOutput<P>;
 	public getResults(intermediate: true): Partial<PipelineOutput<P>>;

@@ -50,7 +50,6 @@ const CfgLongExample = `f <- function(a, b = 3) {
 
 print(f(21) + f(42))`.trim();
 
-
 function sampleCollectNumbers(cfg: ControlFlowInformation, ast: NormalizedAst): RNumberValue[] {
 	const numbers: RNumberValue[] = [];
 	visitCfgInOrder(cfg.graph, cfg.entryPoints, id => {
@@ -131,9 +130,7 @@ class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 	}
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph */
 export class WikiCfg extends DocMaker<'wiki/Control Flow Graph.md'> {
 	constructor() {
 		super('wiki/Control Flow Graph.md', module.filename, 'control flow graph');

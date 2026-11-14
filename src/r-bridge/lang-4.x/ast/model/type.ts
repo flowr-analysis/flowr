@@ -211,7 +211,6 @@ export enum RType {
 	Delimiter = 'RDelimiter',
 }
 
-
 export const ValidRTypes: Set<string> = new Set(Object.values(RType));
 export const ValidRTypesReverse = Object.fromEntries(Object.entries(RType).map(([k, v]) => [v, k]));
 

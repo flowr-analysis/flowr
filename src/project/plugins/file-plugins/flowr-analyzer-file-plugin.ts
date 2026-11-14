@@ -22,9 +22,7 @@ import { RPath, rPackageSourceRegex } from '../../../util/files';
 export abstract class FlowrAnalyzerFilePlugin extends FlowrAnalyzerPlugin<FlowrFileProvider, FlowrFileProvider | [file: FlowrFileProvider, cont: boolean]> {
 	public readonly type = PluginType.FileLoad;
 
-	/**
-	 * Determine whether this plugin applies to the given file.
-	 */
+	/** Determine whether this plugin applies to the given file. */
 	public abstract applies(file: PathLike): boolean;
 
 	public static override defaultPlugin(): FlowrAnalyzerFilePlugin {

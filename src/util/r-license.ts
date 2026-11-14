@@ -31,16 +31,12 @@ export interface NoLicenseInfo {
  */
 export type RLicenseElementInfo = RLicenseInfo | RLicenseExceptionInfo | RLicenseCombinationInfo | NoLicenseInfo;
 
-/**
- * Parses an R license string into its structured representation.
- */
+/** Parses an R license string into its structured representation. */
 export function parseRLicense(licenseString: string): RLicenseElementInfo {
 	return parseLicenseInfo(skipWhitespace({ position: 0, remInput: licenseString })).element;
 }
 
-/**
- * Stringifies an R license element back into its string representation.
- */
+/** Stringifies an R license element back into its string representation. */
 export function stringifyRLicense(license: RLicenseElementInfo): string {
 	const t = license.type;
 	switch(t) {

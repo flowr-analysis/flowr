@@ -4,9 +4,7 @@ import { RemoteFlowrFilePathBaseRef, FlowrSiteBaseRef } from './doc-util/doc-fil
 import { minimumNodeMajor } from '../util/node-version';
 import { linkToPlayground } from './doc-util/doc-playground';
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Setup
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Setup */
 export class WikiSetup extends DocMaker<'wiki/Setup.md'> {
 	constructor() {
 		super('wiki/Setup.md', module.filename, 'setup instructions');

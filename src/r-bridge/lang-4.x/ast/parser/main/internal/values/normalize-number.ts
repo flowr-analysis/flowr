@@ -8,7 +8,6 @@ import type { NoInfo } from '../../../../model/model';
 import { RType } from '../../../../model/type';
 import type { JsonEntry } from '../../../json/format';
 
-
 /**
  * Normalize the given object as a R number (see {@link RNumberValue.fromRLexeme}), supporting booleans (see {@link boolean2ts}),
  * and special values.

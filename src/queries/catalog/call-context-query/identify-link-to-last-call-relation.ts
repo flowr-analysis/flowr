@@ -33,9 +33,7 @@ export enum CallTargets {
 	Any = 'any'
 }
 
-/**
- * Determines whether the given function call node satisfies the specified call target condition.
- */
+/** Determines whether the given function call node satisfies the specified call target condition. */
 export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no' {
 	const outgoing = graph.outgoingEdges(info.id);
 	if(outgoing === undefined) {
@@ -94,9 +92,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
 	}
 }
 
-/**
- * Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types.
- */
+/** Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types. */
 export function getValueOfArgument<Types extends readonly RType[] = readonly RType[]>(
 	graph: DataflowGraph, call: DataflowGraphVertexFunctionCall | undefined, argument: { name?: string, index: number }, additionalAllowedTypes?: Types
 ): (RNodeWithParent & { type: Types[number] }) | undefined {
@@ -166,9 +162,7 @@ function anyCallMatches(knownCalls: KnownCalls, callName: RegExp | PromotedCallT
 	return matched;
 }
 
-/**
- * Synchronous version of {@link identifyLinkToLastCallRelation}.
- */
+/** Synchronous version of {@link identifyLinkToLastCallRelation}. */
 export function identifyLinkToLastCallRelationSync(
 	from: NodeId,
 	cfg: ControlFlowGraph,

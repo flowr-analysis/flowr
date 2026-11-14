@@ -86,9 +86,7 @@ function prepareStack(this: void, stack: string | undefined): string {
 	return lines.map(l => l.replaceAll(/\(\/.*(src|test)/g, '(<>/$1')).join('\n');
 }
 
-/**
- * Generates a GitHub issue URL for reporting guard errors
- */
+/** Generates a GitHub issue URL for reporting guard errors */
 export function getGuardIssueUrl(message: string): string {
 	const body = encodeURIComponent(`<!-- Please describe your issue in more detail below! -->
 

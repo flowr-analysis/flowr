@@ -1,6 +1,4 @@
-/**
- * Contains the default pipeline for working with flowR
- */
+/** Contains the default pipeline for working with flowR */
 import type { Pipeline, PipelineInput } from './pipeline';
 import { createPipeline } from './pipeline';
 import { PARSE_WITH_R_SHELL_STEP } from '../all/core/00-parse';
@@ -37,7 +35,6 @@ export const TREE_SITTER_NORMALIZE_PIPELINE = createPipeline(PARSE_WITH_TREE_SIT
 export const DEFAULT_PARSE_PIPELINE = createPipeline(PARSE_WITH_R_SHELL_STEP);
 export const TREE_SITTER_PARSE_PIPELINE = createPipeline(PARSE_WITH_TREE_SITTER_STEP);
 
-
 function executorFor<P extends Pipeline>(parser: KnownParser, rShell: P, treeSitter: Pipeline, inputs: Omit<PipelineInput<P>, 'parser'>): PipelineExecutor<P> {
 	return new PipelineExecutor((parser.name === ParserName.TreeSitter ? treeSitter : rShell) as P, { parser: parser as Parser<string>, ...inputs } as PipelineInput<P>);
 }
@@ -54,7 +51,6 @@ export function createParsePipeline(parser: KnownParser, inputs: Omit<PipelineIn
 	return executorFor(parser, DEFAULT_PARSE_PIPELINE, TREE_SITTER_PARSE_PIPELINE, inputs);
 }
 
-
 export function createSlicePipeline(parser: TreeSitterExecutor, inputs: Omit<PipelineInput<typeof DEFAULT_SLICING_PIPELINE>, 'parser'>): PipelineExecutor<typeof TREE_SITTER_SLICING_PIPELINE>;
 export function createSlicePipeline(parser: RShell, inputs: Omit<PipelineInput<typeof DEFAULT_SLICING_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE>;
 export function createSlicePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_SLICING_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_SLICING_PIPELINE>;
@@ -66,7 +62,6 @@ export function createSlicePipeline(parser: KnownParser, inputs: Omit<PipelineIn
 export function createSlicePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_SLICING_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_SLICING_PIPELINE> {
 	return executorFor(parser, DEFAULT_SLICING_PIPELINE, TREE_SITTER_SLICING_PIPELINE, inputs);
 }
-
 
 export function createNormalizePipeline(parser: TreeSitterExecutor, inputs: Omit<PipelineInput<typeof DEFAULT_NORMALIZE_PIPELINE>, 'parser'>): PipelineExecutor<typeof TREE_SITTER_NORMALIZE_PIPELINE>;
 export function createNormalizePipeline(parser: RShell, inputs: Omit<PipelineInput<typeof DEFAULT_NORMALIZE_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_NORMALIZE_PIPELINE>;

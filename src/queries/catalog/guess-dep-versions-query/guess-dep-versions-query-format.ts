@@ -183,9 +183,7 @@ function guessPackage(name: BrandedNamespace, cap: number, surviving: SurvivingE
 	});
 }
 
-/**
- * Executes a guess-dep-versions query.
- */
+/** Executes a guess-dep-versions query. */
 export async function executeGuessDepVersionsQuery(
 	{ analyzer }: BasicQueryData, queries: readonly GuessDepVersionsQuery[]
 ): Promise<GuessDepVersionsQueryResult> {

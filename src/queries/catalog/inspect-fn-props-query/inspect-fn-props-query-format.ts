@@ -17,7 +17,6 @@ import { metaSince } from '../../query-meta';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { QueryFunctionFilter } from '../../query-function-filter';
 
-
 /** every bit, for a query naming no properties to keep */
 const AllProps = ~0;
 
@@ -73,7 +72,6 @@ export async function executeFnPropsQuery({ analyzer }: BasicQueryData, queries:
 		props: keepProps(inferred.props, props ? FunctionSemantics.call.props.mask(props) : undefined)
 	};
 }
-
 
 /** refuses a query that can only answer with nothing: `formals` narrowing an answer that carries none, or `props` naming only properties the single half it asks for cannot state */
 function rejectEmptyAnswer(query: InspectFnPropsQuery, helpers: Joi.CustomHelpers): InspectFnPropsQuery {

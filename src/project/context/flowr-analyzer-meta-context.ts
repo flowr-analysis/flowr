@@ -18,7 +18,6 @@ export enum MetaPriority {
 	Description = 2
 }
 
-
 /**
  * The packages a project declares, grouped as a `DESCRIPTION` groups them. A source without such groups
  * (an `rproject.toml` just lists `dependencies`) reports them as {@link DeclaredPackages#imports}.
@@ -57,46 +56,28 @@ export interface ProjectMetaFields {
 }
 
 export interface ReadOnlyFlowrAnalyzerMetaContext {
-	/**
-	 * The name of this context.
-	 */
+	/** The name of this context. */
 	readonly name: string;
-	/**
-	 * Get the project name.
-	 */
+	/** Get the project name. */
 	getProjectName(): string | undefined;
-	/**
-	 * Get the project title.
-	 */
+	/** Get the project title. */
 	getProjectTitle(): string | undefined;
-	/**
-	 * Get the project version.
-	 */
+	/** Get the project version. */
 	getProjectVersion(): SemVer & { str: string } | undefined;
-	/**
-	 * Get the R version the project targets, if any source declares one.
-	 */
+	/** Get the R version the project targets, if any source declares one. */
 	getRVersion(): string | undefined;
 	/**
 	 * Get the project namespace.
 	 * Any symbol resolve like `a::b` will resolve against this, if `a` matches the namespace.
 	 */
 	getNamespace(): string | undefined;
-	/**
-	 * Get the project authors.
-	 */
+	/** Get the project authors. */
 	getAuthors(): RAuthorInfo[] | undefined;
-	/**
-	 * Get the encoding the project's files are written in.
-	 */
+	/** Get the encoding the project's files are written in. */
 	getEncoding(): string | undefined;
-	/**
-	 * Get the project licenses.
-	 */
+	/** Get the project licenses. */
 	getLicenses(): RLicenseElementInfo[] | undefined;
-	/**
-	 * Get the packages the project declares, grouped by how they are declared.
-	 */
+	/** Get the packages the project declares, grouped by how they are declared. */
 	getDeclaredPackages(): DeclaredPackages;
 }
 

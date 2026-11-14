@@ -16,17 +16,11 @@ import { uniqueArray } from '../../util/collections/arrays';
 import { withGuards } from '../sigdb/guarded-source';
 import { signatureDbOf, type SignatureDb } from '../sigdb/signature-db';
 
-/**
- * Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them.
- */
+/** Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them. */
 export interface ReadOnlyFlowrAnalyzerDependenciesContext {
-	/**
-	 * The name of this context.
-	 */
+	/** The name of this context. */
 	readonly name:             BrandedNamespace;
-	/**
-	 * The functions context associated with this dependencies-context.
-	 */
+	/** The functions context associated with this dependencies-context. */
 	readonly functionsContext: ReadOnlyFlowrAnalyzerFunctionsContext;
 	/**
 	 * Get the dependency with the given name, if it exists.
@@ -52,9 +46,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 */
 	inferredRange(name: BrandedNamespace): Range | undefined;
 
-	/**
-	 * Get all dependencies known to this context.
-	 */
+	/** Get all dependencies known to this context. */
 	getDependencies(): readonly Readonly<Package>[];
 
 	/**
@@ -63,9 +55,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 */
 	declaredPackageNames(): readonly BrandedNamespace[];
 
-	/**
-	 * Metadata of the signature databases the version plugins currently have loaded.
-	 */
+	/** Metadata of the signature databases the version plugins currently have loaded. */
 	loadedSignatureDatabases(): SigDbLoadedInfo[];
 
 	/**
@@ -121,9 +111,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	signatureOf(id: Identifier, version?: string): DecodedFunction | undefined;
 }
 
-/**
- * Manages the project's dependencies, their versions, and their interplay with {@link FlowrAnalyzerPackageVersionsPlugin}s.
- */
+/** Manages the project's dependencies, their versions, and their interplay with {@link FlowrAnalyzerPackageVersionsPlugin}s. */
 export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-dependencies-context';
 

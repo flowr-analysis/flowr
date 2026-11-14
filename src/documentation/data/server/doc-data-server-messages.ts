@@ -21,7 +21,6 @@ import { exampleQueryCode } from '../query/example-query-code';
 import { CallTargets } from '../../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParser } from '../../../r-bridge/parser';
 
-
 function requestResponseDiagram(request: string, response: string): string {
 	return `
     Client->>+Server: ${request}

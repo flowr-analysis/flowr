@@ -138,9 +138,7 @@ function frameOf(node: RNodeWithParent, value: DataFrameDomain | undefined): Dat
 	return { id: node.info.id, lexeme: RNode.lexeme(node), must, may, exact: value.colnames.isFinite() && may.length === 0 };
 }
 
-/**
- * Executes data columns queries: the data frame shape inference runs once for all of them.
- */
+/** Executes data columns queries: the data frame shape inference runs once for all of them. */
 export async function executeDataColumnsQuery({ analyzer }: BasicQueryData, queries: readonly DataColumnsQuery[]): Promise<DataColumnsQueryResult> {
 	const ast = await analyzer.normalize();
 	const dfg = (await analyzer.dataflow()).graph;

@@ -21,7 +21,6 @@ const OneTruth: ReturnedValue = { types: Logical, scalar: true, notNA: true };
 const SingleResult: GuardFacts = { computes: true, singleResult: true, returns: OneTruth };
 const OpensFrame: GuardFacts = { opensFrame: true };
 
-
 /* what R fails on by itself, each read off R; a dispatching one lets a classed value through, which may bring a method */
 const Mathematical = dispatched(is('is.numeric', 'is.logical', 'is.complex'), 'non-numeric argument to mathematical function');
 /* the members of the `Math` group with no complex version, which fail with 'unimplemented complex function' for one */

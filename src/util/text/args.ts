@@ -122,7 +122,6 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 	return args;
 }
 
-
 const MatchingClose = {
 	'<': '>',
 	'[': ']',

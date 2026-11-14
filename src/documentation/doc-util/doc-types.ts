@@ -16,9 +16,7 @@ import { Mermaid } from '../../util/mermaid/mermaid';
  */
 export type TypeElementKind = 'interface' | 'type' | 'enum' | 'class' | 'variable';
 
-/**
- * The full underlying information about a TypeScript type element found in source code.
- */
+/** The full underlying information about a TypeScript type element found in source code. */
 export interface TypeElementInSource {
 	name:                 string;
 	node:                 ts.Node;
@@ -57,9 +55,7 @@ const options: ts.CompilerOptions = {
 
 } as const;
 
-/**
- * Retrieve TypeScript source files from the given file names.
- */
+/** Retrieve TypeScript source files from the given file names. */
 export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {
 		// keeps wiki/doc links consistent across OSes (Windows uses backslashes)
@@ -71,7 +67,6 @@ export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files:
 		return { files: [], program: undefined as unknown as ts.Program };
 	}
 }
-
 
 const DropGenericsPattern = /<.*>/g;
 /**
@@ -133,7 +128,6 @@ function getTextualCommentsFromTypeScript(node: ts.Node): string[] {
 	return out;
 }
 
-
 /**
  * The 1-based line a TypeScript node starts on, for the wiki pages that link into the source.
  * @param node       - the node to locate
@@ -178,7 +172,6 @@ function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
 }
 
 const defaultSkip = ['Pick', 'Partial', 'Required', 'Readonly', 'Omit', 'DeepPartial', 'DeepReadonly', 'DeepWritable', 'StrictOmit'];
-
 
 function followTypeReference(type: ts.TypeReferenceNode, sourceFile: ts.SourceFile): string[] {
 	const node = type.typeName;
@@ -357,7 +350,6 @@ interface MermaidCompact {
 	edgeLines: string[]
 }
 
-
 function getTypePathForTypeScript({ filePath }: Pick<TypeElementInSource, 'filePath' >) {
 	return filePath.replace(/^.*\/src\//, 'src/').replace(/^.*\/test\//, 'test/');
 }
@@ -440,9 +432,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 	return collect;
 }
 
-/**
- * Visualize the type hierarchy as a mermaid class diagram.
- */
+/** Visualize the type hierarchy as a mermaid class diagram. */
 export function visualizeMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], options: { typeNameForMermaid?: string } & MermaidClassDiagramArguments): string | undefined {
 	if(!options.typeNameForMermaid) {
 		return undefined;
@@ -495,9 +485,7 @@ export interface TypeReport {
 export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid: string }): (TypeReport & { mermaid: string });
 export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid?: undefined }): (TypeReport & { mermaid: undefined });
 export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport;
-/**
- * Inspect typescript source code for types and return a report.
- */
+/** Inspect typescript source code for types and return a report. */
 export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport {
 	guard(options.rootFolder !== undefined || options.files !== undefined, 'Either rootFolder or files must be provided');
 	let files = [...options.files ?? []];
@@ -520,7 +508,6 @@ export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport
 	}
 	return getTypesFromFileAsMermaid(files, options);
 }
-
 
 function implSnippet(node: TypeElementInSource | undefined, program: ts.Program, showName = true, nesting = 0, open = false, showImplSnippet = true): string {
 	guard(node !== undefined, 'Node must be defined => invalid change of type name?');
@@ -601,9 +588,7 @@ export function printHierarchy({ program, info, root, ignoredTypes, collapseFrom
 	}
 }
 
-/**
- * Options to print code of an element
- */
+/** Options to print code of an element */
 export interface FnElementInfo {
 	/** The type information collected from the source code */
 	info:             TypeElementInSource[],
@@ -749,7 +734,6 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 	}${codeStyle ? '</code>' : ''}</a>`;
 }
 
-
 /**
  * Create a short link to a type in the documentation.
  * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
@@ -771,7 +755,6 @@ export interface GetDocumentationForTypeFilters {
 	fuzzy?: boolean;
 	type?:  TypeElementKind;
 }
-
 
 /**
  * Retrieve documentation comments for a type.

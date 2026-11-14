@@ -91,4 +91,3 @@ export function makeMagicCommentHandler(and?: AutoSelectPredicate): AutoSelectPr
 	};
 }
 
-

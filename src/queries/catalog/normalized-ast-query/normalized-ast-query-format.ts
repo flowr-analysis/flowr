@@ -6,9 +6,7 @@ import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
-/**
- * Executes the normalized-AST query.
- */
+/** Executes the normalized-AST query. */
 export async function executeNormalizedAstQuery({ analyzer }: BasicQueryData, queries: readonly NormalizedAstQuery[]): Promise<NormalizedAstQueryResult> {
 	warnUnlessSingleQuery('Normalized-Ast', queries);
 	const startTime = Date.now();
@@ -19,9 +17,7 @@ export async function executeNormalizedAstQuery({ analyzer }: BasicQueryData, qu
 	};
 }
 
-/**
- * Simple re-returns the normalized AST of the analysis.
- */
+/** Simple re-returns the normalized AST of the analysis. */
 export interface NormalizedAstQuery extends BaseQueryFormat {
 	readonly type: 'normalized-ast';
 }

@@ -379,9 +379,7 @@ function renamableCallee(node: RNode<ParentInformation>): RNode<ParentInformatio
 		? node.functionName : undefined;
 }
 
-/**
- * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.conditionally} map.
- */
+/** This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.conditionally} map. */
 function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, entry: ConditionalEntry, packageVersions: PackageVersionMap, attached: ReadonlySet<BrandedNamespace> | undefined): DeprecatedFunctionRuleResult[] {
 	const { info, pkg } = entry;
 	const results: DeprecatedFunctionRuleResult[] = [];
@@ -410,7 +408,6 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 			if(!doesPackageVersionMatch(derivedRange, deprecatedArgInfo, setUncertain)) {
 				continue;
 			}
-
 
 			// If `ifValue` is set, check argument value before marking argument as deprecate
 			if(!doesArgumentValueMatch(deprecatedArgInfo, vertex, analyzer, dataflow, setUncertain)) {
@@ -454,7 +451,6 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 
 	return results;
 }
-
 
 /**
  * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.always} map.

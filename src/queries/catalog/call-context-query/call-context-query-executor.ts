@@ -124,7 +124,6 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 	return { promotedQueries, requiresCfg };
 }
 
-
 /**
  * Where the function of a call comes from: the functions it calls and the definition of its name, or the expression
  * computing its callee (`m$r` in `m$r()`). Not its arguments, like the function `lapply(x, function(y) print(y))`

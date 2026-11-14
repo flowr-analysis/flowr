@@ -1,9 +1,7 @@
 import { ansiFormatter, FontStyles } from '../../util/text/ansi';
 import { fileProtocol } from '../../r-bridge/retriever';
 
-/**
- * Completion suggestions for a specific REPL command
- */
+/** Completion suggestions for a specific REPL command */
 export interface CommandCompletions {
 	/** The possible completions for the current argument */
 	readonly completions:   string[];

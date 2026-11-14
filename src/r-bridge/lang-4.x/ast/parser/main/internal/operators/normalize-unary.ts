@@ -11,7 +11,6 @@ import type { NamedJsonEntry } from '../../../json/format';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 import { BuiltInOperators } from '../../../../../../../dataflow/environments/default-builtin-config/base-operators';
 
-
 /**
  * Parses the construct as a {@link RUnaryOp}.
  * @param data     - The data used by the parser (see {@link NormalizerData})

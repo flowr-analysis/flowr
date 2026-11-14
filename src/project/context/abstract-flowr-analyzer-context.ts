@@ -10,22 +10,14 @@ import { log } from '../../util/log';
  * in general, use the {@link FlowrAnalyzerContext} to access the full project context.
  */
 export abstract class AbstractFlowrAnalyzerContext<In, Out, Plugin extends FlowrAnalyzerPlugin<In, Out>> {
-	/**
-	 * A human-readable name of the context. Try to make it unique to avoid confusion in the logs.
-	 */
+	/** A human-readable name of the context. Try to make it unique to avoid confusion in the logs. */
 	public abstract readonly name: string;
-	/**
-	 * The plugins registered for this context. These build the foundation for {@link applyPlugins}.
-	 */
+	/** The plugins registered for this context. These build the foundation for {@link applyPlugins}. */
 	protected readonly plugins: readonly Plugin[];
-	/**
-	 * The linked full project context, allowing plugins to modify and access it.
-	 */
+	/** The linked full project context, allowing plugins to modify and access it. */
 	protected readonly ctx:     FlowrAnalyzerContext;
 
-	/**
-	 * Creates a new context with the given project context, a default plugin (to be used when no other is registered)
-	 */
+	/** Creates a new context with the given project context, a default plugin (to be used when no other is registered) */
 	protected constructor(ctx: FlowrAnalyzerContext, defaultPlugin: Plugin, plugins?: readonly Plugin[]) {
 		this.plugins = [...plugins ?? [], defaultPlugin];
 		this.ctx = ctx;
@@ -47,16 +39,11 @@ export abstract class AbstractFlowrAnalyzerContext<In, Out, Plugin extends Flowr
 		return res.filter(isNotUndefined);
 	}
 
-
-	/**
-	 * Returns the project context this sub-context is attached to
-	 */
+	/** Returns the project context this sub-context is attached to */
 	public getAttachedContext(): FlowrAnalyzerContext {
 		return this.ctx;
 	}
 
-	/**
-	 * Reset the context to its initial state.
-	 */
+	/** Reset the context to its initial state. */
 	public abstract reset(): void;
 }

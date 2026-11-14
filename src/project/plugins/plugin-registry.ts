@@ -81,9 +81,7 @@ import {
 	FlowrAnalyzerLoadingOrderIncludedFilesPlugin
 } from './loading-order-plugins/flowr-analyzer-loading-order-included-files-plugin';
 
-/**
- * The built-in Flowr Analyzer plugins that are always available.
- */
+/** The built-in Flowr Analyzer plugins that are always available. */
 export const BuiltInPlugins = [
 	['file:description', FlowrAnalyzerDescriptionFilePlugin],
 	['versions:description', FlowrAnalyzerPackageVersionsDescriptionFilePlugin],
@@ -181,9 +179,7 @@ export type PluginToRegister<T extends BuiltInFlowrPluginName | string> =
 		: [string, unknown[]]
 		);
 
-/**
- * Create a Flowr Analyzer plugin from a {@link PluginToRegister} specification.
- */
+/** Create a Flowr Analyzer plugin from a {@link PluginToRegister} specification. */
 export function makePlugin<T extends BuiltInFlowrPluginName | string>(toRegister: PluginToRegister<T>): FlowrAnalyzerPlugin {
 	if(toRegister instanceof Object && 'process' in toRegister) {
 		return toRegister;

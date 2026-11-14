@@ -280,7 +280,6 @@ export interface DependenciesQueryMeta extends BaseQueryMeta {
 
 export type DependenciesQueryResult = { readonly '.meta': DependenciesQueryMeta } & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] };
 
-
 export interface DependencyInfo extends Record<string, unknown> {
 	nodeId?:             NodeId
 	alwaysAttached?:     boolean

@@ -16,16 +16,12 @@ import { ArgProp, SemanticCallTag } from '../../dataflow/environments/built-in-p
 import type { BuiltInIndex, BuiltInParam } from '../../dataflow/environments/query-fn-props';
 
 export interface NetworkFunctionsConfig extends MergeableRecord {
-	/**
-	 * The list of function names or more detailed {@link NetworkFunction} information that should be marked in the given context if their arguments match.
-	 */
+	/** The list of function names or more detailed {@link NetworkFunction} information that should be marked in the given context if their arguments match. */
 	fns: readonly (Identifier | NetworkFunction)[]
 }
 
 export interface NetworkFunction extends MergeableRecord {
-	/**
-	 * The name of the network function to find.
-	 */
+	/** The name of the network function to find. */
 	name:                     Identifier,
 	/**
 	 * The {@link FunctionInfo} to use for querying the argument whose value should match {@link onlyTriggerWithArgument}.

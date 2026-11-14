@@ -37,9 +37,7 @@ import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/
 import { AttachedBasePackageSet, attachedBasePackages } from '../../../util/r-base-packages';
 import type { CallContext } from '../../../dataflow/eval/resolve/alias-tracking';
 
-/**
- * Executes a dependencies query.
- */
+/** Executes a dependencies query. */
 export async function executeDependenciesQuery({
 	analyzer,
 }: BasicQueryData, queries: readonly DependenciesQuery[]): Promise<DependenciesQueryResult> {

@@ -85,9 +85,7 @@ export interface LinterQuery extends BaseQueryFormat {
 }
 
 export interface LinterQueryResult extends BaseQueryResult {
-	/**
-	 * The results of the linter query, which returns a set of linting results for each rule that was executed.
-	 */
+	/** The results of the linter query, which returns a set of linting results for each rule that was executed. */
 	readonly results:    LintResultsByRule
 	/** The findings rendered in the requested {@link LinterQuery#format|format}, if one was requested. */
 	readonly formatted?: string

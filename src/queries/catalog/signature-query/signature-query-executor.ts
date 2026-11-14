@@ -32,7 +32,6 @@ import { baseManualTopicUrl, cranMirrorRepoUrl, cranMirrorSourceUrl, cranPageUrl
 
 export { cranMirrorSourceUrl, cranPageUrl, rSourceRef, rSourceUrl };
 
-
 /** whether a pattern uses glob wildcards (`*`, `?`) */
 function hasGlob(pattern: string | undefined): boolean {
 	return pattern !== undefined && /[*?]/.test(pattern);

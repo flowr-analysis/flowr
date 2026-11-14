@@ -38,9 +38,7 @@ async function quickNormalizedAstMultipleFiles() {
 	return n;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Normalized-AST
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Normalized-AST */
 export class WikiNormalizedAst extends DocMaker<'wiki/Normalized AST.md'> {
 	constructor() {
 		super('wiki/Normalized AST.md', module.filename, 'normalized ast');

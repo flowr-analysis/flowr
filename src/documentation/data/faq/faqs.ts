@@ -8,7 +8,6 @@ import { getCliLongOptionOf } from '../../doc-util/doc-cli-option';
 import { setMinLevelOfAllLogs } from '../../../../test/functionality/_helper/log';
 import { expensiveTrace, FlowrLogger } from '../../../util/log';
 
-
 /**
  * Registers the wiki's frequently asked questions, so a page may link to one by id.
  * @param ctx - the documentation context to register them with

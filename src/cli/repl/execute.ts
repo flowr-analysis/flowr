@@ -30,7 +30,6 @@ export function stdioCaptureProcessor(stdio: Stdio, onStdOutLine: (msg: string) 
 	errRl.on('line', onStdErrLine);
 }
 
-
 /**
  * Run the given module with the presented arguments, and wait for it to exit.
  * @param module      - The (flowR) module that you want to use for the fork.

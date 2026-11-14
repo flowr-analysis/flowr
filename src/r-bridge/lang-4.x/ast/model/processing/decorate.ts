@@ -32,16 +32,12 @@ import type { RProject } from '../nodes/r-project';
  */
 export type IdGenerator<OtherInfo> = (data: RProject<OtherInfo> | RNode<OtherInfo>) => NodeId;
 
-/**
- * The simplest id generator which just increments a number on each call.
- */
+/** The simplest id generator which just increments a number on each call. */
 export function deterministicCountingIdGenerator(id = 0): () => NodeId {
 	return () => id++;
 }
 
-/**
- *  Generates ids with a fixed source path, and the location if given, as prefix and an incrementing counter.
- */
+/**  Generates ids with a fixed source path, and the location if given, as prefix and an incrementing counter. */
 export function sourcedDeterministicCountingIdGenerator(path: string, location?: SourceRange, start = 0): () => NodeId {
 	let id = start;
 	/* without a location the ids carry only `path`, as in `eval::13-0`, where the path already names the `eval` call */
@@ -80,7 +76,6 @@ export interface ParentInformation extends ParentContextInfo {
 
 export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInformation>;
 
-
 export type AstIdMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>;
 interface FoldInfo<OtherInfo> { idMap: AstIdMap<OtherInfo>, getId: IdGenerator<OtherInfo>, file?: string }
 
@@ -97,9 +92,7 @@ export interface NormalizedAst<OtherInfo = ParentInformation, Node = RProject<Ot
 	hasError?: boolean
 }
 
-/**
- * Node types for which the nesting score will be increased
- */
+/** Node types for which the nesting score will be increased */
 export const nestForElement: ReadonlySet<RType> = new Set([
 	RType.FunctionDefinition, RType.ForLoop, RType.WhileLoop, RType.RepeatLoop, RType.IfThenElse,
 ]);

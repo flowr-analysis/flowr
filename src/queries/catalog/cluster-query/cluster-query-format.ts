@@ -9,9 +9,7 @@ import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { findAllClusters } from '../../../dataflow/cluster';
 import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
-/**
- * Executes the given dataflow cluster queries using the provided analyzer.
- */
+/** Executes the given dataflow cluster queries using the provided analyzer. */
 export async function executeDataflowClusterQuery({ analyzer }: BasicQueryData, queries: readonly DataflowClusterQuery[]): Promise<DataflowClusterQueryResult> {
 	warnUnlessSingleQuery('The dataflow cluster', queries);
 
@@ -23,9 +21,7 @@ export async function executeDataflowClusterQuery({ analyzer }: BasicQueryData, 
 	};
 }
 
-/**
- * Calculates and returns all clusters encountered in the dataflow graph.
- */
+/** Calculates and returns all clusters encountered in the dataflow graph. */
 export interface DataflowClusterQuery extends BaseQueryFormat {
 	readonly type: 'dataflow-cluster';
 }

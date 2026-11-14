@@ -18,9 +18,7 @@ interface GetCfgReturn {
 	dataflow: DataflowInformation
 }
 
-/**
- * Returns the control flow graph for the given code.
- */
+/** Returns the control flow graph for the given code. */
 export async function getCfg(parser: KnownParser, code: string, simplifications: readonly CfgSimplificationPassName[] = []): Promise<GetCfgReturn> {
 	const context = contextFromInput(code);
 	const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
@@ -33,9 +31,7 @@ export async function getCfg(parser: KnownParser, code: string, simplifications:
 	};
 }
 
-/**
- * Serializes the given control flow graph to a mermaid diagram.
- */
+/** Serializes the given control flow graph to a mermaid diagram. */
 export function printCfg(cfg: ControlFlowInformation, ast: NormalizedAst, prefix = 'flowchart TD\n', simplify = false) {
 	return `
 ${codeBlock('mermaid', cfgToMermaid(cfg, ast, { prefix, simplify }))}
@@ -51,9 +47,7 @@ export interface PrintCfgOptions {
 	readonly ctx?:             GeneralDocContext;
 }
 
-/**
- * Generates and prints the control flow graph for the given code, along with optional metadata and the original code.
- */
+/** Generates and prints the control flow graph for the given code, along with optional metadata and the original code. */
 export async function printCfgCode(parser: KnownParser, code: string, { showCode = true, openCode = false, prefix = 'flowchart TD\n', simplifications = [], simplify = false, ctx }: PrintCfgOptions = {}) {
 	const now = performance.now();
 	const res = await getCfg(parser, code, simplifications);

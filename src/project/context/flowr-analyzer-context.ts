@@ -341,9 +341,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		return fnInfo(typeof name === 'string' ? Identifier.parse(name) : name, this, version);
 	}
 
-	/**
-	 * Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders.
-	 */
+	/** Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders. */
 	public reset(): void {
 		this.files.reset();
 		this.deps.reset();

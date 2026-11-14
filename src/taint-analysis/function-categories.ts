@@ -72,9 +72,7 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape',
 	}
 };
 
-/**
- * Get the set of taint mappings for a given {@link TaintFnCategory}.
- */
+/** Get the set of taint mappings for a given {@link TaintFnCategory}. */
 export function resolveCategoryToTaintMappings<Domain extends AnyAbstractDomain>(category: TaintFnCategory): TaintMapping<Domain>[] {
 	const mappings = taintMappingFromBuiltInIndex(category.callProps, category.args.argProps, category.handler)
 		.map(m => {

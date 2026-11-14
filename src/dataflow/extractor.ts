@@ -103,7 +103,6 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	}
 };
 
-
 function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environment: REnvironmentInformation): void {
 	if(!tracksAnyEnvironment(environment)) {
 		return;

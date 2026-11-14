@@ -33,7 +33,6 @@ export function optimize<
 	};
 }
 
-
 function optimizeGenerator(generator: FlowrSearchGeneratorNode): FlowrSearchGeneratorNode {
 	return dropAnyNameRegex(generator);
 }

@@ -2,9 +2,7 @@ import type { OptionDefinition } from 'command-line-usage';
 import os from 'os';
 import { date2string } from '../../util/text/time';
 
-/**
- * This interface describes options, that every script *must* provide.
- */
+/** This interface describes options, that every script *must* provide. */
 export interface CommonOptions {
 	/** Enables the most verbose logging option available. */
 	verbose: boolean
@@ -15,9 +13,7 @@ export interface CommonOptions {
 	help:    boolean
 }
 
-/**
- * This string contains a string representation of the time this module was loaded.
- */
+/** This string contains a string representation of the time this module was loaded. */
 const StartTimeString = date2string(new Date());
 
 export const benchmarkOptions = [

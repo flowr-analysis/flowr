@@ -22,7 +22,6 @@ export interface RNamedFunctionCall<Info = NoInfo> extends RAstNodeBase<Info>, L
 	readonly arguments: readonly PotentiallyEmptyRArgument<Info>[];
 }
 
-
 /**
  * Direct calls of functions like `(function(x) { x })(3)`.
  * @see RNamedFunctionCall
@@ -39,9 +38,7 @@ export interface RUnnamedFunctionCall<Info = NoInfo> extends RAstNodeBase<Info>,
 
 export type RFunctionCall<Info = NoInfo> = RNamedFunctionCall<Info> | RUnnamedFunctionCall<Info>;
 
-/**
- * Helper for working with {@link RFunctionCall} AST nodes.
- */
+/** Helper for working with {@link RFunctionCall} AST nodes. */
 declare const calledNameChecked: unique symbol;
 
 /** A named call that also passed a check of its name, which says nothing about the named calls that did not. */
@@ -75,15 +72,11 @@ export const RFunctionCall = {
 		return node?.type === RType.FunctionCall;
 	},
 	isNamed,
-	/**
-	 * The name of the function a named call calls, `undefined` for anything else.
-	 */
+	/** The name of the function a named call calls, `undefined` for anything else. */
 	calledName<Info = NoInfo>(this: void, node: RNode<Info> | undefined): Identifier | undefined {
 		return RFunctionCall.isNamed(node) ? node.functionName.content : undefined;
 	},
-	/**
-	 * Type guard for {@link RUnnamedFunctionCall} nodes.
-	 */
+	/** Type guard for {@link RUnnamedFunctionCall} nodes. */
 	isUnnamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RUnnamedFunctionCall<Info> {
 		return RFunctionCall.is(node) && !node.named;
 	},

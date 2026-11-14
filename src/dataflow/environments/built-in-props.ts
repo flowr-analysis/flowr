@@ -426,7 +426,6 @@ function maskOfNames(this: void, of: Record<string, string | number>, names: rea
 	return mask;
 }
 
-
 /** The words for whichever of `mask`'s bits appear in `entries`, shared by {@link ArgProps.words} and {@link CallProps.words}. */
 function wordsOf(this: void, entries: readonly (readonly [number, string])[], mask: number | undefined): string[] {
 	return mask === undefined ? [] : entries.filter(([bit]) => (mask & bit) !== 0).map(([, word]) => word);

@@ -5,7 +5,6 @@ import { DataflowGraph } from '../../graph/graph';
 import { VertexType } from '../../graph/vertex';
 import { ReferenceType } from '../../environments/identifier';
 
-
 /**
  * Processes a value node in the AST for dataflow analysis.
  * For example, literals like numbers.

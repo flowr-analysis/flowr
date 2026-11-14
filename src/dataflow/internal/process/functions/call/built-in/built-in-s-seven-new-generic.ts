@@ -26,7 +26,6 @@ import { linkS4Declaration, linkS4Generic } from './built-in-s-four';
 import { argForImpl } from '../../../../../fn/class-declaration';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 
-
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
 interface S7GenericDispatchConfig {
 	args: {
@@ -38,9 +37,7 @@ interface S7GenericDispatchConfig {
 	binds?: boolean
 }
 
-/**
- * Process an S7 new generic dispatch call like `new_generic` or `setGeneric`.
- */
+/** Process an S7 new generic dispatch call like `new_generic` or `setGeneric`. */
 export function processS7NewGeneric<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],

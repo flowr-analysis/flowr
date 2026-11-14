@@ -20,9 +20,7 @@ async function staticSliceExample() {
 	return { slice, reconstruct };
 }
 
-/**
- * Explain how to write code using flowR
- */
+/** Explain how to write code using flowR */
 export function explainWritingCode(_shell: RShell, ctx: GeneralDocContext): string {
 	return `_flowR_ can be used as a ${ctx.linkPage('flowr:npm', 'module')} and offers several main classes and interfaces that are interesting for extension writers 
 (see the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} or the ${ctx.linkPage('wiki/Core')} wiki page for more information).

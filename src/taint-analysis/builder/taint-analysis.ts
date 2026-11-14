@@ -19,9 +19,7 @@ import { buildFindingContext, renderReport } from './report-template';
 import type { TaintConditionFunction, TaintRole } from '../taint-mapping';
 import type { TaintFnCategory } from '../function-categories';
 
-/**
- * Information passed to a {@link FnCallHook} for each function call visited during taint analysis.
- */
+/** Information passed to a {@link FnCallHook} for each function call visited during taint analysis. */
 export interface FnCallHookInfo {
 	/** The name of the taint analysis */
 	name:       string;
@@ -45,14 +43,10 @@ export interface FnCallHookInfo {
 	ctx:        ReadOnlyFlowrAnalyzerContext;
 }
 
-/**
- * Callback hook invoked when a function call is visited during taint analysis.
- */
+/** Callback hook invoked when a function call is visited during taint analysis. */
 export type FnCallHook = (info: FnCallHookInfo) => void;
 
-/**
- * A single finding produced by a taint analysis, i.e. an AST node whose inferred taint reached Bottom (e.g. a sink call).
- */
+/** A single finding produced by a taint analysis, i.e. an AST node whose inferred taint reached Bottom (e.g. a sink call). */
 export interface TaintFinding {
 	/** The AST node ID that reached Bottom */
 	nodeId: NodeId
@@ -62,9 +56,7 @@ export interface TaintFinding {
 	msg?:   string
 }
 
-/**
- * Result of running a taint analysis, containing the final abstract domain state and any findings.
- */
+/** Result of running a taint analysis, containing the final abstract domain state and any findings. */
 export interface TaintInferenceResult {
 	/** The final abstract domain state after running the taint analysis visitor */
 	domains:  StateAbstractDomain<AnyAbstractDomain>
@@ -86,19 +78,13 @@ export interface TaintAnalysisBuilder<Defs extends readonly string[]> {
 	 */
 	on(category: TaintFnCategory, handler?: TaintConditionFunction<AnyAbstractDomain>): this;
 
-	/**
-	 * Add a callback hook that is invoked for each function call mapping during taint analysis.
-	 */
+	/** Add a callback hook that is invoked for each function call mapping during taint analysis. */
 	withHook(fnCallHook: FnCallHook): this;
 
-	/**
-	 * Add a predefined taint analysis by name.
-	 */
+	/** Add a predefined taint analysis by name. */
 	addPredefined<Name extends AnyPredefinedTaintAnalysisName>(...names: Name[]): RunnableTaintAnalysis<readonly [...Defs, Name]>;
 
-	/**
-	 * Add a custom taint analysis definition.
-	 */
+	/** Add a custom taint analysis definition. */
 	add<Name extends string>(...defs: TaintAnalysisDefinition<Name>[]): RunnableTaintAnalysis<readonly [...Defs, Name]>;
 
 	/**
@@ -164,9 +150,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 		return this as unknown as RunnableTaintAnalysis<readonly [...Defs, Name]>;
 	}
 
-	/**
-	 * Run one or multiple taint analyses.
-	 */
+	/** Run one or multiple taint analyses. */
 	public async run(analyzer: ReadonlyFlowrAnalysisProvider | undefined = this.analyzer): Promise<Map<Defs[number], TaintInferenceResult>> {
 		guard(isNotUndefined(analyzer), 'No analyzer has been set');
 

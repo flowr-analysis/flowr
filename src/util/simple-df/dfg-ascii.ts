@@ -81,9 +81,7 @@ class AsciiCanvas {
 	}
 }
 
-/**
- * Converts the given dataflow graph to an ASCII representation.
- */
+/** Converts the given dataflow graph to an ASCII representation. */
 export function dfgToAscii(dfg: DataflowGraph): string {
 	const { graphlib: dagreGraphlib, layout } = dagre();
 	const g: DagreGraph = new dagreGraphlib.Graph<GraphLabel, NodeLabel, EdgeLabel>();

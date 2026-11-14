@@ -168,7 +168,6 @@ export function matchArgs(patterns: readonly ArgPattern[], actual: readonly (rea
 	return false;
 }
 
-
 /**
  * The pattern for a name with `*` in it, like `read*` or `*csv`, which has to match the whole name.
  * Names with other punctuation (`%*%`, `[[<-`) and a bare `*` are names, not patterns.

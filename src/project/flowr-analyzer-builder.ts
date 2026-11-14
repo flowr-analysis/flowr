@@ -101,9 +101,7 @@ export class FlowrAnalyzerBuilder {
 		key: K,
 		value: ConfigValueAt<K>
 	): this;
-	/**
-	 * Set a specific value in the configuration used by the resulting analyzer.
-	 */
+	/** Set a specific value in the configuration used by the resulting analyzer. */
 	public configure(key: ValidFlowrConfigPaths | EngineConfigPath, value: unknown): this {
 		FlowrConfig.setInConfigInPlace(this.flowrConfig, key, value as never);
 		return this;

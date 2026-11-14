@@ -51,8 +51,6 @@ export function processRecall<OtherInfo>(
 		}
 	}
 
-
-
 	let cur = data.environment.current;
 	let closure: NodeId | undefined;
 	while(cur) {

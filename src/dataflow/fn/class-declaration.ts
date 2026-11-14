@@ -18,8 +18,6 @@ import { Dataflow } from '../graph/df-helper';
 import type { ClassSystem, MemberVisibility } from '../environments/built-in-kinds';
 export { ClassSystem, MemberVisibility } from '../environments/built-in-kinds';
 
-
-
 /** One declared member of a class: an S4 slot, an S7 property, an RC field, or an R6 public/private entry. */
 export interface ClassMember {
 	readonly name:        string;

@@ -11,9 +11,7 @@ import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 
-/**
- * Execute a provenance query collection, {@link Dataflow.provenance}
- */
+/** Execute a provenance query collection, {@link Dataflow.provenance} */
 export async function executeProvenanceQuery({ analyzer }: BasicQueryData, queries: readonly ProvenanceQuery[]): Promise<ProvenanceQueryResult> {
 	const start = Date.now();
 	const results: ProvenanceQueryResult['results'] = {};
@@ -50,14 +48,10 @@ export interface ProvenanceQuery extends BaseQueryFormat {
 }
 
 export interface ProvenanceQueryResult extends BaseQueryResult {
-	/**
-	 * Maps the requested criteria to the returned ids
-	 */
+	/** Maps the requested criteria to the returned ids */
 	results: Record<string, NodeId[]>
 }
-/**
- * Checks whether the given argument represents a fdef boundary with an `f` suffix.
- */
+/** Checks whether the given argument represents a fdef boundary with an `f` suffix. */
 export function fdefBoundaryParser(argument: string): boolean {
 	const endBracket = argument.indexOf(')');
 	return argument[endBracket + 1] === 'f';

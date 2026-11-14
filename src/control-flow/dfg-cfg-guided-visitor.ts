@@ -51,13 +51,10 @@ export class DataflowAwareCfgGuidedVisitor<
 	Config extends DataflowCfgGuidedVisitorConfiguration<ControlFlow, Dfg> = DataflowCfgGuidedVisitorConfiguration<ControlFlow, Dfg>
 > extends BasicCfgGuidedVisitor<ControlFlow, Config> {
 
-	/**
-	 * Get the dataflow graph vertex for the given id
-	 */
+	/** Get the dataflow graph vertex for the given id */
 	protected getDataflowGraph(id: NodeId): DataflowGraphVertexArgument | undefined {
 		return this.config.dfg.getVertex(id);
 	}
-
 
 	protected override onStatementNode(node: CfgStatementVertex): void {
 		super.onStatementNode(node);
@@ -98,9 +95,7 @@ export class DataflowAwareCfgGuidedVisitor<
 		}
 	}
 
-	/**
-	 * called for every cfg vertex that has no corresponding dataflow vertex.
-	 */
+	/** called for every cfg vertex that has no corresponding dataflow vertex. */
 	protected visitUnknown(_vertex: Exclude<CfgVertex, CfgBasicBlockVertex>): void {
 	}
 

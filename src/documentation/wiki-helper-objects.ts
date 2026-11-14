@@ -72,9 +72,7 @@ function declaredHelperObjects(): Map<string, DeclaredHelper> {
 	return found;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Helper-Objects
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Helper-Objects */
 export class WikiHelperObjects extends DocMaker<'wiki/Helper Objects.md'> {
 	constructor() {
 		super('wiki/Helper Objects.md', module.filename, 'helper objects, by what they are about');

@@ -186,7 +186,6 @@ export class DataflowGraphBuilder<
 		} as Partial<DataflowGraphVertexUse>), asRoot);
 	}
 
-
 	/** Adds a **vertex** for a **constant value** (V6). */
 	public constant(id: NodeId, options?: { cds?: readonly ControlDependency[] }, asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({

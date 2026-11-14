@@ -473,9 +473,7 @@ function splitNamespaceArgs(args: string): DirectiveArgument[] {
 	});
 }
 
-/**
- * Parses the given NAMESPACE file
- */
+/** Parses the given NAMESPACE file */
 function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 	const result = getEmptyNamespaceFormat();
 	const fileContent = file.content().toString().replaceAll(cleanLineCommentRegex, '').trim()

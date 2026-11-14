@@ -238,7 +238,6 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 
 }
 
-
 /** Breaks unsatisfiable control dependencies */
 export function cfgAnalyzeDeadCode(cfg: ControlFlowInformation, info: CfgPassInfo): ControlFlowInformation {
 	if(!info.ast || !info.dfg) {

@@ -4,9 +4,7 @@ import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 import { expandCallGraphLibraryInternals } from './expand-library-internals';
 import { CallGraph } from '../../../dataflow/graph/call-graph';
 
-/**
- * Executes the given call graph queries.
- */
+/** Executes the given call graph queries. */
 export async function executeCallGraphQuery({ analyzer }: BasicQueryData, queries: readonly CallGraphQuery[]): Promise<CallGraphQueryResult> {
 	warnUnlessSingleQuery('Call Graph', queries);
 	const startTime = Date.now();

@@ -95,7 +95,6 @@ async function explanation(
 ): Promise<string> {
 	await verifyExpectedSubgraph(parser, code, expectedSubgraph);
 
-
 	return `
 <a id='${name.toLowerCase().replaceAll(' ', '-')}'> </a>
 <a id='${String(type).toLowerCase().replaceAll(' ', '-')}-vertex'> </a>
@@ -340,7 +339,6 @@ ${await (async() => {
 		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => DfgVertex.isFunctionCall(vertex) && Identifier.getName(vertex.name) === 'foo');
 		guard(callVertex !== undefined, () => `Could not find call vertex for ${code}`);
 		const [callId] = callVertex;
-
 
 		return `
 ${text}
@@ -749,7 +747,6 @@ but also the exit points of _all_ function calls.
 		expectedSubgraph: emptyGraph().returns('2@foo', '1@x').returns('1@<-', '1@foo').argument('1@<-', '1@foo')
 	}, []]);
 
-
 	const lateBindingExample = `
 f <- function() x
 x <- 3
@@ -874,7 +871,6 @@ the edge names the vertex that decides (e.g. an \`if\`) and whether it is the br
 		expectedSubgraph: emptyGraph()
 	}, []]);
 
-
 	const results = [];
 	let i = 0;
 	for(const [,edge] of getAllEdges()) {
@@ -905,9 +901,7 @@ async function dummyDataflow(): Promise<DataflowInformation> {
 	return result;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph */
 export class WikiDataflowGraph extends DocMaker<'wiki/Dataflow Graph.md'> {
 	constructor() {
 		super('wiki/Dataflow Graph.md', module.filename, 'dataflow graph');

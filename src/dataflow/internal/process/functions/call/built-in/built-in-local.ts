@@ -22,7 +22,6 @@ import { Resolve } from '../../../../../environments/resolve-helper';
 import { REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 
-
 export interface LocalFunctionConfiguration {
 	args: {
 		/** The expression in `local(expr, env)` */

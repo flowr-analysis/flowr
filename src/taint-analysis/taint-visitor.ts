@@ -57,9 +57,7 @@ export type ArgTaintProjector = (id: NodeId) => AnyAbstractDomain | undefined;
  */
 export type TaintVisitorHook = (info: Omit<FnCallHookInfo, 'name' | 'dfg' | 'ctx'>) => void;
 
-/**
- * Configuration for the taint inference.
- */
+/** Configuration for the taint inference. */
 export type TaintVisitorConfiguration = AbsintVisitorConfiguration & {
 	/** Callbacks invoked when each function call is visited during taint inference */
 	fnCallHook?: TaintVisitorHook;

@@ -201,10 +201,7 @@ function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolea
 	return { completions: [] };
 }
 
-
-/**
- * Produces default readline options for the flowR REPL
- */
+/** Produces default readline options for the flowR REPL */
 export function makeDefaultReplReadline(config: FlowrConfig, historyFile: string | undefined = defaultHistoryFile): readline.ReadLineOptions {
 	return {
 		input:                   process.stdin,
@@ -217,10 +214,7 @@ export function makeDefaultReplReadline(config: FlowrConfig, historyFile: string
 	};
 }
 
-
-/**
- * Handles a string input for the REPL, returning the parsed string and any remaining input.
- */
+/** Handles a string input for the REPL, returning the parsed string and any remaining input. */
 export function handleString(code: string) {
 	return {
 		rCode:     code.length === 0 ? undefined : startAndEndsWith(code, '"') ? JSON.parse(code) as string : code,
@@ -406,13 +400,9 @@ export async function replProcessAnswer(analyzer: FlowrAnalyzer, output: ReplOut
 	}
 }
 
-/**
- * Options for the {@link repl} function.
- */
+/** Options for the {@link repl} function. */
 export interface FlowrReplOptions extends MergeableRecord {
-	/**
-	 * The flowR analyzer to use.
-	 */
+	/** The flowR analyzer to use. */
 	readonly analyzer:             FlowrAnalyzer
 	/**
 	 * A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
@@ -507,10 +497,7 @@ export async function repl(
 	}
 }
 
-
-/**
- * Loads the REPL history from the given file.
- */
+/** Loads the REPL history from the given file. */
 export function loadReplHistory(historyFile: string): string[] | undefined {
 	try {
 		if(!fs.existsSync(historyFile)) {

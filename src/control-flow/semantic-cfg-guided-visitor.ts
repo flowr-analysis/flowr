@@ -81,9 +81,7 @@ export class SemanticCfgGuidedVisitor<
 	Config extends SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg> = SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg>
 > extends DataflowAwareCfgGuidedVisitor<ControlFlow, Dfg, Config> {
 
-	/**
-	 * A helper function to get the normalized AST node for the given id or fail if it does not exist.
-	 */
+	/** A helper function to get the normalized AST node for the given id or fail if it does not exist. */
 	protected getNormalizedAst(id: NodeId | undefined): RNode<OtherInfo & ParentInformation> | undefined {
 		return id === undefined ? undefined : this.config.normalizedAst.idMap.get(id);
 	}
@@ -323,9 +321,7 @@ export class SemanticCfgGuidedVisitor<
 	/** Fires for the root program node being analyzed. */
 	protected onProgram(_data: RExpressionList<OtherInfo>) {}
 
-	/**
-	 * A helper function to request the {@link Dataflow.origin|origins} of the given node.
-	 */
+	/** A helper function to request the {@link Dataflow.origin|origins} of the given node. */
 	protected getOrigins(id: NodeId): Origin[] | undefined {
 		return Dataflow.origin(this.config.dfg, id);
 	}

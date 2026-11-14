@@ -9,10 +9,7 @@ import { QueryFunctionFilter } from '../../query-function-filter';
 import type { ArgumentFacts } from '../../../dataflow/fn/higher-order-function';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 
-
-/**
- * Execute higher-order function inspection queries on the given analyzer.
- */
+/** Execute higher-order function inspection queries on the given analyzer. */
 export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, queries: readonly InspectHigherOrderQuery[]): Promise<Record<NodeId, boolean>> {
 	const filterFor = await QueryFunctionFilter.criteria(queries, analyzer);
 

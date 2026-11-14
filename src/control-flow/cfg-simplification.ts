@@ -15,9 +15,7 @@ export interface CfgPassInfo {
 }
 export type CfgSimplificationPass = (cfg: ControlFlowInformation, info: CfgPassInfo) => ControlFlowInformation;
 
-/**
- * All available control flow graph simplification passes.
- */
+/** All available control flow graph simplification passes. */
 export const CfgSimplificationPasses = {
 	'unique-cf-sets':    uniqueControlFlowSets,
 	'analyze-dead-code': cfgAnalyzeDeadCode,
@@ -49,9 +47,7 @@ export function simplifyControlFlowInformation(
 	return cfg;
 }
 
-/**
- * removes dead vertices and edges from the control flow graph.
- */
+/** removes dead vertices and edges from the control flow graph. */
 function cfgRemoveDeadCode(cfg: ControlFlowInformation, _info?: CfgPassInfo): ControlFlowInformation {
 	// remove every root level node and accompanying vertices that can not be reached from the entry points
 	const reachable = cfgFindAllReachable(cfg);

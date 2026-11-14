@@ -126,34 +126,22 @@ function sameValues(a: readonly (AnyAbstractDomain | undefined)[], b: readonly (
 export class AbstractInterpreter<Domains extends AbstractProduct, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration>
 	extends SemanticCfgGuidedVisitor<NoInfo, ControlFlowInformation, NormalizedAst, DataflowGraph, Config & { defaultVisitingOrder: 'forward' }> {
 
-	/**
-	 * The abstract interpretation analysis performed by the visitor, defining the abstract domains, their abstract semantics, and the reductions between them.
-	 */
+	/** The abstract interpretation analysis performed by the visitor, defining the abstract domains, their abstract semantics, and the reductions between them. */
 	public readonly analysis: Readonly<AbsintAnalysis<Domains>>;
 
-	/**
-	 * The state abstract domain used by the abstract interpretation visitor.
-	 */
+	/** The state abstract domain used by the abstract interpretation visitor. */
 	protected readonly stateDomain: MultiValueStateDomain<Partial<Domains>>;
 
-	/**
-	 * The abstract trace of the abstract interpretation visitor mapping node IDs to the abstract state at the respective node.
-	 */
+	/** The abstract trace of the abstract interpretation visitor mapping node IDs to the abstract state at the respective node. */
 	protected readonly trace: Map<NodeId, MultiValueStateDomain<Partial<Domains>>> = new Map();
 
-	/**
-	 * The current abstract state domain at the currently processed AST node.
-	 */
+	/** The current abstract state domain at the currently processed AST node. */
 	protected currentState: MultiValueStateDomain<Partial<Domains>>;
 
-	/**
-	 * The current worklist stack of next vertex IDs to visit.
-	 */
+	/** The current worklist stack of next vertex IDs to visit. */
 	private stack: NodeId[] = [];
 
-	/**
-	 * The cached abstract interpretation contexts of the abstract domains of the analysis (see {@link getContext}).
-	 */
+	/** The cached abstract interpretation contexts of the abstract domains of the analysis (see {@link getContext}). */
 	private readonly contexts: Map<keyof Domains, AbsintContext<StateDomain<Domains[keyof Domains]>>> = new Map();
 
 	/**
@@ -178,9 +166,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	 */
 	private readonly lastState: Map<NodeId, MultiValueStateDomain<Partial<Domains>>> = new Map();
 
-	/**
-	 * A set of nodes representing variable definitions that have already been visited but whose assignment has not yet been processed.
-	 */
+	/** A set of nodes representing variable definitions that have already been visited but whose assignment has not yet been processed. */
 	private readonly unassigned: Set<NodeId> = new Set();
 
 	/** The call a function body is currently being interpreted for, mapping the body's entry to it. */

@@ -3,12 +3,10 @@ import type Parser from 'web-tree-sitter';
 import type { FilePath } from '../../context/flowr-file';
 import { computeEditRegion } from './edit-computation';
 
-
 export interface ReparseInfo {
 	readonly previousTree: Parser.Tree;
 	readonly editRegion:   Parser.Edit | undefined;
 }
-
 
 /**
  * Computes the information needed to reparse a file incrementally with tree-sitter.

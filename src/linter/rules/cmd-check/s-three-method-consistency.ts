@@ -56,9 +56,6 @@ export interface S3MethodConsistencyMetadata extends MergeableRecord {
 	readonly consideredReplacements: number
 }
 
-
-
-
 /** the formals of a definition, without the backticks of non-syntactic names */
 function formalNames(def: RFunctionDefinition<ParentInformation>): BrandedIdentifier[] {
 	return rawFormalNames(def).map(n => n.replace(/^`(.*)`$/, '$1'));

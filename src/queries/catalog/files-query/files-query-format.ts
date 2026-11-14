@@ -10,9 +10,7 @@ import type { FlowrConfig } from '../../../config';
 import { type CommandCompletions, completePrefixedList } from '../../../cli/repl/completion';
 import { metaSince } from '../../query-meta';
 
-/**
- * Executes the given files queries using the provided analyzer.
- */
+/** Executes the given files queries using the provided analyzer. */
 export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly FilesQuery[]): Promise<FilesQueryResult> {
 	const start = Date.now();
 	const base = analyzer.inspectContext().files.getAllFiles();
@@ -55,9 +53,7 @@ export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly
 	});
 }
 
-/**
- * Returns the content(s) of all files matching the given pattern.
- */
+/** Returns the content(s) of all files matching the given pattern. */
 export interface FilesQuery extends BaseQueryFormat {
 	readonly type:              'files';
 	/** If you provide roles, only files with all the given roles are returned. Supply multiple queries if you want a union! */
@@ -86,7 +82,6 @@ function summarizeObjectWithLimit(obj: object | string, limitChars = 500, limitL
 		return str;
 	}
 }
-
 
 function rolesFromInput(rolesPart: readonly string[]): { valid: FileRole[], invalid: string[] } {
 	return rolesPart

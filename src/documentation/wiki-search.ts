@@ -8,9 +8,7 @@ import { DocMaker } from './wiki-mk/doc-maker';
 import { FlowrSearchElements } from '../search/flowr-search';
 import { compareByCodeUnit } from '../util/text/strings';
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Search-API
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Search-API */
 export class WikiSearch extends DocMaker<'wiki/Search API.md'> {
 	constructor() {
 		super('wiki/Search API.md', module.filename, 'search API');

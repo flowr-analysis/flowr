@@ -85,9 +85,7 @@ function warnIfNearGitHubLimit(file: string): void {
 	}
 }
 
-/**
- * Updates and optionally re-creates all flowR wikis.
- */
+/** Updates and optionally re-creates all flowR wikis. */
 export async function makeAllWikis(force: boolean, filter: string[] | undefined) {
 	const setupStart = new Date();
 	console.log('Setting up wiki generation...');

@@ -2,9 +2,7 @@ import type { IdMessageBase, MessageDefinition } from './all-messages';
 import Joi from 'joi';
 import type { VersionInformation } from '../../../../util/version';
 
-/**
- * The hello message is automatically sent by the sever upon connection.
- */
+/** The hello message is automatically sent by the sever upon connection. */
 export interface FlowrHelloResponseMessage extends IdMessageBase {
 	type:       'hello',
 	/** The hello message never has an id, it is always undefined */

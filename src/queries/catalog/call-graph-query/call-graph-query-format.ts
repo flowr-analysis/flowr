@@ -6,9 +6,7 @@ import type { QueryResults, SupportedQuery } from '../../query';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { CallGraph } from '../../../dataflow/graph/call-graph';
 
-/**
- * Computes the Call Graph of the analyzed project.
- */
+/** Computes the Call Graph of the analyzed project. */
 export interface CallGraphQuery extends BaseQueryFormat {
 	readonly type:                    'call-graph';
 	/**

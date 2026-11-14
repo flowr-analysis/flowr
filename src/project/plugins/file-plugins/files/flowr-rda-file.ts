@@ -8,9 +8,7 @@ import { SecureMode } from '../../../../util/secure-mode';
 
 const rdaLog = log.getSubLogger({ name: 'flowr-rda-file' });
 
-/**
- * This decorates a text file and provides access to its content in the format of an {@link RObjectData}.
- */
+/** This decorates a text file and provides access to its content in the format of an {@link RObjectData}. */
 export class FlowrRDAFile extends FlowrFile<RObjectData[]> {
 	private readonly wrapped:  FlowrFileProvider;
 	private readonly shortcut: boolean;

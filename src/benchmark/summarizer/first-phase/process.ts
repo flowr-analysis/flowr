@@ -292,9 +292,7 @@ function summarizePerOperationStats(nodeStats: PerNodeStatsDfShape[]): Summarize
 	return perOperationNumber;
 }
 
-/**
- * Summarizes the given measurements by calculating the min, max, median, mean, standard deviation, and total.
- */
+/** Summarizes the given measurements by calculating the min, max, median, mean, standard deviation, and total. */
 export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): SummarizedMeasurement {
 	data = data.filter(isNotUndefined);
 	const min = Math.min(...data.map(d => d.min).filter(isNotUndefined));
@@ -309,9 +307,7 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 	return { min, max, median, mean, std, total };
 }
 
-/**
- * Summarizes the given reductions of summarized measurements.
- */
+/** Summarizes the given reductions of summarized measurements. */
 export function summarizeSummarizedReductions(reductions: Reduction<SummarizedMeasurement>[]): Reduction<SummarizedMeasurement> {
 	return {
 		numberOfDataflowNodes:           summarizeSummarizedMeasurement(reductions.map(r => r.numberOfDataflowNodes)),
@@ -336,9 +332,7 @@ function summarizeReductions(reductions: Reduction<number | undefined>[]): Reduc
 	};
 }
 
-/**
- * Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement.
- */
+/** Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement. */
 export function summarizeSummarizedTimePerToken(times: TimePerToken[]): TimePerToken {
 	return {
 		raw:        summarizeSummarizedMeasurement(times.map(t => t.raw)),
@@ -346,9 +340,7 @@ export function summarizeSummarizedTimePerToken(times: TimePerToken[]): TimePerT
 	};
 }
 
-/**
- * Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement.
- */
+/** Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement. */
 export function summarizeTimePerToken(times: TimePerToken<number>[]): TimePerToken {
 	return {
 		raw:        summarizeMeasurement(times.map(t => t.raw)),

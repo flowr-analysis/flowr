@@ -133,9 +133,7 @@ ${prefixLines(codeBlock('bibtex', pub.bibtex), '   ')}
 		joinWithLast(OtherWorksUsingFlowr.map(pub => `[${pub.name}](${pub.doi})`)) + '.\n';
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/blob/main/README.md
- */
+/** https://github.com/flowr-analysis/flowr/blob/main/README.md */
 export class DocReadme extends DocMaker<'README.md'> {
 	constructor() {
 		super('README.md', module.filename, 'flowR README', false);

@@ -51,7 +51,6 @@ export interface EnvirResolution<OtherInfo> {
 	readonly stack?:      StackEnv;
 }
 
-
 function resolveDefsToEnvirResolution<OtherInfo>(defs: readonly IdentifierDefinition[] | undefined, nodeId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirArgRouting<OtherInfo> {
 	if(!defs || defs.length === 0) {
 		return undefined;

@@ -2,9 +2,7 @@ import type { REnvironmentInformation } from './environment';
 import type { IdentifierDefinition } from './identifier';
 import { padToCommonScope } from './scoping';
 
-/**
- * Merges two arrays of identifier definitions into a fresh array, unique by `nodeId` and `definedAt`.
- */
+/** Merges two arrays of identifier definitions into a fresh array, unique by `nodeId` and `definedAt`. */
 export function uniqueMergeValuesInDefinitions(old: readonly IdentifierDefinition[], value: readonly IdentifierDefinition[]): IdentifierDefinition[] {
 	const result = old.slice();
 	for(const v of value) {

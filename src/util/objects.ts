@@ -5,9 +5,7 @@ import { expensiveTrace } from './log';
 import type { ILogObj, Logger } from 'tslog';
 import { FlowrFilter } from '../search/flowr-search-filters';
 
-/**
- * checks if `item` is an object (it may be an array, ...)
- */
+/** checks if `item` is an object (it may be an array, ...) */
 export function isObjectOrArray(item: unknown): boolean {
 	return typeof item === 'object';
 }
@@ -191,9 +189,7 @@ export type AutocompletablePaths<T, Depth extends number = 6> =
 					: `${K}.${AutocompletablePaths<NonNullable<T[K]>, OneLess[Depth]> & string}`)
 			}[keyof T & string];
 
-/**
- * This is a version of a deep clone that preserves unclonable values (like functions, symbols, ...) by keeping the same reference to them.
- */
+/** This is a version of a deep clone that preserves unclonable values (like functions, symbols, ...) by keeping the same reference to them. */
 export function deepClonePreserveUnclonable<T>(obj: T): T {
 	if(typeof obj !== 'object' || obj === null) {
 		return obj;

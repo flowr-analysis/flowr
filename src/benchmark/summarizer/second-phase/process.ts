@@ -14,9 +14,7 @@ import {
 import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
 import { arraySum } from '../../../util/collections/arrays';
 
-/**
- * This big function summarizes multiple summarized stats into one ultimate stat.
- */
+/** This big function summarizes multiple summarized stats into one ultimate stat. */
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => []);
 	const perSliceMeasurements = new DefaultMap<PerSliceMeasurements, SummarizedMeasurement[]>(() => []);
@@ -205,9 +203,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 	};
 }
 
-/**
- * This big function summarizes multiple ultimate stats into one.
- */
+/** This big function summarizes multiple ultimate stats into one. */
 export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): UltimateSlicerStats {
 	return {
 		// these should be deterministic, so we don't technically need to use max, but we do just in case something unexpected happens :)
@@ -325,9 +321,7 @@ export function restoreMeasurementMaps(stats: object) {
 	};
 }
 
-/**
- * Processes the next summary line.
- */
+/** Processes the next summary line. */
 export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicerStats[]): void {
 	let got = JSON.parse(line.toString()) as { summarize: SummarizedSlicerStats };
 	got = {
@@ -349,9 +343,7 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 	allSummarized.push(got.summarize);
 }
 
-/**
- * Processes the next ultimate summary line.
- */
+/** Processes the next ultimate summary line. */
 export function processNextUltimateSummary(line: Buffer, allSummarized: UltimateSlicerStats[]): void {
 	let got = JSON.parse(line.toString()) as UltimateSlicerStats;
 	got = {

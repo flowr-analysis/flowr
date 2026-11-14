@@ -44,7 +44,6 @@ const ContextFunctions: LinkToLastCall = {
 	callName: new RegExp('^(context)$')
 };
 
-
 export const TestFunctions: FunctionInfo[] = [
 	{ package: 'testthat', name: 'test_that', argName: 'desc',        argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions, ContextFunctions], invisible: true },
 	{ package: 'testthat', name: 'describe',  argName: 'description', argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions, ContextFunctions], invisible: true },

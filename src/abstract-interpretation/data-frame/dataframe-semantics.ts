@@ -36,9 +36,7 @@ import type { DataFrameOperation, DataFrameOperations } from './shape-inference'
 /** see `scripts/gen-r-datasets.ts`, which keeps at most this many columns of a data set */
 const MaxDatasetColumns = 200;
 
-/**
- * Represents the different types of data frames in R
- */
+/** Represents the different types of data frames in R */
 enum DataFrameType {
 	DataFrame = 'data.frame',
 	Tibble = 'tibble',
@@ -48,9 +46,7 @@ enum DataFrameType {
 /** The state abstract domain of the data frame shape analysis */
 type DataFrameStateDomain = StateDomain<DataFrameDomain>;
 
-/**
- * A map storing the abstract data frame operations that the expressions of the analyzed program are mapped to.
- */
+/** A map storing the abstract data frame operations that the expressions of the analyzed program are mapped to. */
 export type DataFrameOperationMap = Map<NodeId, readonly DataFrameOperation[]>;
 
 /**
@@ -500,9 +496,7 @@ const DataFrameSemantics = {
 /** the functions the shape inference knows to return a data frame, qualified as `pkg::name`, like `utils::read.csv` */
 export const DataFrameFunctions: ReadonlySet<string> = new Set(Object.keys(DataFrameSemantics.functionCalls));
 
-/**
- * The options of the abstract semantics of the data frame shape inference (see {@link DataFrameShapeSemantics}).
- */
+/** The options of the abstract semantics of the data frame shape inference (see {@link DataFrameShapeSemantics}). */
 export interface DataFrameShapeSemanticsOptions {
 	/** Whether the abstract data frame operations the expressions are mapped to should be stored (defaults to `true`) */
 	readonly trackOperations?: boolean;
@@ -730,9 +724,7 @@ function applyUnknownAssignment(state: DataFrameStateDomain, vertex: DataflowGra
 	}], ctx, operations);
 }
 
-/**
- * Creates the resolve information for resolving the arguments of a data frame function call.
- */
+/** Creates the resolve information for resolving the arguments of a data frame function call. */
 function getResolveInfo(ctx: AbsintContext<DataFrameStateDomain>): ResolveInfo {
 	return { graph: ctx.dfg, idMap: ctx.ast.idMap, full: true, resolve: VariableResolve.Alias, ctx: ctx.context };
 }
@@ -771,9 +763,7 @@ function applyDataFrameExpression(state: DataFrameStateDomain, node: RNode<Paren
 	}
 }
 
-/**
- * Maps a data frame creation function, such as `data.frame(id = 1:5, name = c("A", "B"))`, to abstract data frame operations.
- */
+/** Maps a data frame creation function, such as `data.frame(id = 1:5, name = c("A", "B"))`, to abstract data frame operations. */
 function mapDataFrameCreate(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
@@ -810,9 +800,7 @@ function mapDataFrameCreate(
 	}];
 }
 
-/**
- * Maps a data frame conversion function, such as `as.data.frame(x)`, to abstract data frame operations.
- */
+/** Maps a data frame conversion function, such as `as.data.frame(x)`, to abstract data frame operations. */
 function mapDataFrameConvert(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation },
@@ -910,9 +898,7 @@ function mapDataFrameRead(
 	}];
 }
 
-/**
- * Maps a function adding columns or rows to a data frame, such as `cbind(df, id = 1:5)` or `rbind(df, c(1, "A"))`, to abstract data frame operations.
- */
+/** Maps a function adding columns or rows to a data frame, such as `cbind(df, id = 1:5)` or `rbind(df, c(1, "A"))`, to abstract data frame operations. */
 function mapDataFrameBind(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { special: string[], cols: boolean },
@@ -958,9 +944,7 @@ function mapDataFrameBind(
 	return result;
 }
 
-/**
- * Maps a function returning the first or last rows of a data frame, such as `head(df, 3)` or `tail(df, 3)`, to abstract data frame operations.
- */
+/** Maps a function returning the first or last rows of a data frame, such as `head(df, 3)` or `tail(df, 3)`, to abstract data frame operations. */
 function mapDataFrameHeadTail(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation<number>, fromEnd?: boolean },
@@ -1027,9 +1011,7 @@ function unnamedColumns(count: number): undefined[] | undefined {
 	return Number.isSafeInteger(count) && count >= 0 && count <= MaxNamedColumns ? Array(count).fill(undefined) : undefined;
 }
 
-/**
- * Maps a function subsetting the rows and columns of a data frame, such as `subset(df, id > 1, select = c(id, name))`, to abstract data frame operations.
- */
+/** Maps a function subsetting the rows and columns of a data frame, such as `subset(df, id > 1, select = c(id, name))`, to abstract data frame operations. */
 function mapDataFrameSubset(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
@@ -1111,9 +1093,7 @@ function mapDataFrameSubset(
 	return result;
 }
 
-/**
- * Maps a function filtering the rows of a data frame, such as `filter(df, id > 1)`, to abstract data frame operations.
- */
+/** Maps a function filtering the rows of a data frame, such as `filter(df, id > 1)`, to abstract data frame operations. */
 function mapDataFrameFilter(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
@@ -1152,9 +1132,7 @@ function mapDataFrameFilter(
 	return result;
 }
 
-/**
- * Maps a function selecting the columns of a data frame, such as `select(df, id, name)` or `select(df, -id)`, to abstract data frame operations.
- */
+/** Maps a function selecting the columns of a data frame, such as `select(df, id, name)` or `select(df, -id)`, to abstract data frame operations. */
 function mapDataFrameSelect(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
@@ -1293,9 +1271,7 @@ function mapDataFrameMutate(
 	return result;
 }
 
-/**
- * Maps a function grouping the rows of a data frame by columns, such as `group_by(df, id)`, to abstract data frame operations.
- */
+/** Maps a function grouping the rows of a data frame by columns, such as `group_by(df, id)`, to abstract data frame operations. */
 function mapDataFrameGroupBy(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
@@ -1339,9 +1315,7 @@ function mapDataFrameGroupBy(
 	return result;
 }
 
-/**
- * Maps a function summarizing the columns of a data frame, such as `summarize(df, mean = mean(score))`, to abstract data frame operations.
- */
+/** Maps a function summarizing the columns of a data frame, such as `summarize(df, mean = mean(score))`, to abstract data frame operations. */
 function mapDataFrameSummarize(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
@@ -1380,9 +1354,7 @@ function mapDataFrameSummarize(
 	return result;
 }
 
-/**
- * Maps a function joining two data frames, such as `left_join(df1, df2, by = "id")` or `merge(df1, df2)`, to abstract data frame operations.
- */
+/** Maps a function joining two data frames, such as `left_join(df1, df2, by = "id")` or `merge(df1, df2)`, to abstract data frame operations. */
 function mapDataFrameJoin(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
@@ -1459,9 +1431,7 @@ function mapDataFrameJoin(
 	return result;
 }
 
-/**
- * Maps a function that does not change the shape of a data frame, such as `relocate(df, id)` or `arrange(df, id)`, to abstract data frame operations.
- */
+/** Maps a function that does not change the shape of a data frame, such as `relocate(df, id)` or `arrange(df, id)`, to abstract data frame operations. */
 function mapDataFrameIdentity(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
@@ -1486,9 +1456,7 @@ function mapDataFrameIdentity(
 	}];
 }
 
-/**
- * Maps a function that is not explicitly supported but returns or modifies a data frame, such as `na.omit(df)` or `setNames(df, "id")`, to abstract data frame operations.
- */
+/** Maps a function that is not explicitly supported but returns or modifies a data frame, such as `na.omit(df)` or `setNames(df, "id")`, to abstract data frame operations. */
 function mapDataFrameUnknown(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
@@ -1516,9 +1484,7 @@ function mapDataFrameUnknown(
 	}];
 }
 
-/**
- * Maps a data frame access operation, such as `df$id`, `df["id"]`, or `df[1, 2]`, to abstract data frame operations.
- */
+/** Maps a data frame access operation, such as `df$id`, `df["id"]`, or `df[1, 2]`, to abstract data frame operations. */
 function mapDataFrameAccess(
 	access: RAccess<ParentInformation>,
 	ctx: AbsintContext<DataFrameStateDomain>,
@@ -1531,9 +1497,7 @@ function mapDataFrameAccess(
 	}
 }
 
-/**
- * Maps a string-based access of a data frame column, such as `df$id`, to abstract data frame operations.
- */
+/** Maps a string-based access of a data frame column, such as `df$id`, to abstract data frame operations. */
 function mapDataFrameNamedColumnAccess(
 	access: RNamedAccess<ParentInformation>,
 	ctx: AbsintContext<DataFrameStateDomain>,
@@ -1567,9 +1531,7 @@ function isSingleColumn(shape: DataFrameDomain | undefined): boolean {
 	return shape !== undefined && shape.cols.isValue() && shape.cols.lower === 1 && shape.cols.upper === 1;
 }
 
-/**
- * Maps an index-based access of the rows and columns of a data frame, such as `df[1, ]` or `df[["id"]]`, to abstract data frame operations.
- */
+/** Maps an index-based access of the rows and columns of a data frame, such as `df[1, ]` or `df[["id"]]`, to abstract data frame operations. */
 function mapDataFrameIndexColRowAccess(
 	access: RIndexAccess<ParentInformation>,
 	ctx: AbsintContext<DataFrameStateDomain>,
@@ -1681,9 +1643,7 @@ function mapDataFrameIndexColRowAccess(
 	return result;
 }
 
-/**
- * Maps an assignment to a data frame access, such as `df$id <- 1:5`, `df[] <- NULL`, or `df[1, 2] <- 0`, to abstract data frame operations.
- */
+/** Maps an assignment to a data frame access, such as `df$id <- 1:5`, `df[] <- NULL`, or `df[1, 2] <- 0`, to abstract data frame operations. */
 function mapDataFrameAccessAssignment(
 	node: RNode<ParentInformation>,
 	expression: RNode<ParentInformation>,
@@ -1701,9 +1661,7 @@ function mapDataFrameAccessAssignment(
 	}
 }
 
-/**
- * Maps an assignment to the content of a data frame, such as `df[] <- NULL`, to abstract data frame operations.
- */
+/** Maps an assignment to the content of a data frame, such as `df[] <- NULL`, to abstract data frame operations. */
 function mapDataFrameContentAssignment(
 	access: RAccess<ParentInformation>,
 	expression: RNode<ParentInformation>,
@@ -1730,9 +1688,7 @@ function mapDataFrameContentAssignment(
 	}
 }
 
-/**
- * Maps an assignment to a string-based access of a data frame column, such as `df$id <- 1:5`, to abstract data frame operations.
- */
+/** Maps an assignment to a string-based access of a data frame column, such as `df$id <- 1:5`, to abstract data frame operations. */
 function mapDataFrameNamedColumnAssignment(
 	access: RNamedAccess<ParentInformation>,
 	expression: RNode<ParentInformation>,
@@ -1763,9 +1719,7 @@ function mapDataFrameNamedColumnAssignment(
 	}
 }
 
-/**
- * Maps an assignment to an index-based access of the rows and columns of a data frame, such as `df[1, 2] <- 0`, to abstract data frame operations.
- */
+/** Maps an assignment to an index-based access of the rows and columns of a data frame, such as `df[1, 2] <- 0`, to abstract data frame operations. */
 function mapDataFrameIndexColRowAssignment(
 	access: RIndexAccess<ParentInformation>,
 	expression: RNode<ParentInformation>,
@@ -1827,9 +1781,7 @@ function mapDataFrameIndexColRowAssignment(
 	return result;
 }
 
-/**
- * Maps an assignment to the column names of a data frame, such as `colnames(df) <- c("id", "name")`, to abstract data frame operations.
- */
+/** Maps an assignment to the column names of a data frame, such as `colnames(df) <- c("id", "name")`, to abstract data frame operations. */
 function mapDataFrameColNamesAssignment(
 	node: RNode<ParentInformation>,
 	expression: RNode<ParentInformation>,
@@ -1854,9 +1806,7 @@ function mapDataFrameColNamesAssignment(
 	}];
 }
 
-/**
- * Maps an assignment to the row names of a data frame, such as `rownames(df) <- c("a", "b")`, to abstract data frame operations.
- */
+/** Maps an assignment to the row names of a data frame, such as `rownames(df) <- c("a", "b")`, to abstract data frame operations. */
 function mapDataFrameRowNamesAssignment(
 	node: RNode<ParentInformation>,
 	_expression: RNode<ParentInformation>,
@@ -1874,9 +1824,7 @@ function mapDataFrameRowNamesAssignment(
 	}];
 }
 
-/**
- * Maps an assignment to the dimension names of a data frame, such as `dimnames(df) <- list(NULL, c("id"))`, to abstract data frame operations.
- */
+/** Maps an assignment to the dimension names of a data frame, such as `dimnames(df) <- list(NULL, c("id"))`, to abstract data frame operations. */
 function mapDataFrameDimNamesAssignment(
 	node: RNode<ParentInformation>,
 	_expression: RNode<ParentInformation>,
@@ -1912,9 +1860,7 @@ function getReplacementOperand(
 	return isDataFrameArgument(operand, ctx) ? operand : undefined;
 }
 
-/**
- * Checks whether a replacement function call is nested in another replacement function call, such as `colnames(df)[1:2] <- ...`.
- */
+/** Checks whether a replacement function call is nested in another replacement function call, such as `colnames(df)[1:2] <- ...`. */
 function hasParentReplacement(
 	node: RNode<ParentInformation>,
 	ctx: AbsintContext<DataFrameStateDomain>
@@ -1924,9 +1870,7 @@ function hasParentReplacement(
 	return DfgVertex.hasOrigin(parentVertex, BuiltInProcName.Replacement);
 }
 
-/**
- * Gets the source and the parse request of the file or text that is read by a data frame read function (see {@link mapDataFrameRead}).
- */
+/** Gets the source and the parse request of the file or text that is read by a data frame read function (see {@link mapDataFrameRead}). */
 function getRequestFromRead(
 	fileNameArg: PotentiallyEmptyRArgument<ParentInformation> | undefined,
 	textArg: PotentiallyEmptyRArgument<ParentInformation> | undefined,
@@ -1967,9 +1911,7 @@ function getRequestFromRead(
 	return { source, request };
 }
 
-/**
- * Gets all entries from a line of a CSV file using a custom separator char, quote char, and comment char
- */
+/** Gets all entries from a line of a CSV file using a custom separator char, quote char, and comment char */
 function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"', comment: string = '', trim: boolean = true): (string | undefined)[] {
 	sep = sep.length > 0 ? sep : '\\s';  // default to whitespace separator
 	sep = escapeRegExp(sep, true);  // only allow tokens like `\s`, `\t`, or `\n` in separator, quote, and comment chars
@@ -1988,9 +1930,7 @@ function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = 
 		.toArray();
 }
 
-/**
- * Resolves all selected columns in a select expression, such as `id`, `"id"`, `1`, `c(id, name)`, `c("id", "name")`, `1:2`, `-id`, `-1`, `-c(id, name)`, `c(-1, -2)`, etc.
- */
+/** Resolves all selected columns in a select expression, such as `id`, `"id"`, `1`, `c(id, name)`, `c("id", "name")`, `1:2`, `-id`, `-1`, `-c(id, name)`, `c(-1, -2)`, etc. */
 function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInformation> | undefined)[], info: ResolveInfo) {
 	let selectedCols: (string | number | undefined)[] | undefined = [];
 	let unselectedCols: (string | number | undefined)[] | undefined = [];
@@ -2032,9 +1972,7 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 	return { selectedCols, unselectedCols };
 }
 
-/**
- * Gets the type of a join operation based on whether all rows of the left and of the right data frame are kept (see {@link mapDataFrameJoin}).
- */
+/** Gets the type of a join operation based on whether all rows of the left and of the right data frame are kept (see {@link mapDataFrameJoin}). */
 function getJoinType(keepLeft: boolean, keepRight: boolean): JoinType {
 	if(keepLeft) {
 		return keepRight ? JoinType.Full : JoinType.Left;

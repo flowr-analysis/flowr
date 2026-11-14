@@ -52,14 +52,10 @@ export type QuadIgnoreIf = (key: string, value: unknown) => boolean;
  */
 export type QuadIdRetriever = (obj: unknown, context: ContextForQuad) => string;
 
-/**
- * Either a constant string or a supplier depending on the object in question
- */
+/** Either a constant string or a supplier depending on the object in question */
 export type QuadContextRetriever = ContextForQuad | ((obj: DataForQuad) => ContextForQuad);
 
-/**
- * A deterministic counting id generator for quads.
- */
+/** A deterministic counting id generator for quads. */
 export function defaultQuadIdGenerator(): QuadIdRetriever {
 	let counter = 0;
 	const idMap = new DefaultMap<unknown, number>(() => counter++);
@@ -68,16 +64,12 @@ export function defaultQuadIdGenerator(): QuadIdRetriever {
 
 const ignoredKeysArray = ['complexNumber', 'markedAsInt', 'info'];
 
-/**
- * A default ignore function that ignores undefined values and some common keys.
- */
+/** A default ignore function that ignores undefined values and some common keys. */
 export function defaultQuadIgnoreIf(): QuadIgnoreIf {
 	return (key: string, value: unknown) => value === undefined || ignoredKeysArray.includes(key);
 }
 
-/**
- * See {@link DefaultQuadSerializationConfiguration} for defaults.
- */
+/** See {@link DefaultQuadSerializationConfiguration} for defaults. */
 export interface QuadSerializationConfiguration extends MergeableRecord {
 	/**
 	 * Ignore certain keys or values when serializing to quads.
@@ -89,13 +81,9 @@ export interface QuadSerializationConfiguration extends MergeableRecord {
 	 * @see defaultQuadIdGenerator
 	 */
 	getId?:  QuadIdRetriever
-	/**
-	 * The context of the serialized quads, probably the file-name (constant) or whatever is desired.
-	 */
+	/** The context of the serialized quads, probably the file-name (constant) or whatever is desired. */
 	context: QuadContextRetriever
-	/**
-	 * The basic domain name to use for the quads.
-	 */
+	/** The basic domain name to use for the quads. */
 	domain?: string
 }
 
@@ -109,7 +97,6 @@ export const DefaultQuadSerializationConfiguration: Required<QuadSerializationCo
 function retrieveContext(context: QuadContextRetriever, obj: DataForQuad): string {
 	return typeof context === 'string' ? context : context(obj);
 }
-
 
 let cachedWriter: Writer | undefined;
 const writer = (): Writer => cachedWriter ??= new (n3().Writer)({ format: 'N-Quads' });
@@ -160,7 +147,6 @@ export function graph2quads<AdditionalVertexInformation extends MergeableRecord,
 ): string {
 	return serialize2quads(graph, config);
 }
-
 
 function processArrayEntries(key: string, values: unknown[], obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
 	for(const [index, element] of values.entries()) {

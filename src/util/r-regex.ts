@@ -51,9 +51,7 @@ const inlineFlags = /^\(\?([imsx]+)\)/;
 /** what a pattern JavaScript cannot compile falls back to, so one bad pattern matches nothing rather than throwing */
 const matchesNothing = /(?!)/;
 
-/**
- * Converts an R regex pattern (which may include POSIX character classes) into a JavaScript RegExp.
- */
+/** Converts an R regex pattern (which may include POSIX character classes) into a JavaScript RegExp. */
 export function parseRRegexPattern(pattern: string): RegExp {
 	let convertedPattern = pattern.replaceAll(posixClassRegex, (s, className) => {
 		const charClass = PosixClassMap[className as keyof typeof PosixClassMap];

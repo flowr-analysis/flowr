@@ -8,7 +8,6 @@ export type VirtualQueryArgumentsWithType<
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
 > = CompoundQueryFormat<Base, VirtualArguments>;
 
-
 /* Each executor receives all queries of its type in case it wants to avoid repeated traversal */
 export type VirtualQueryExecutor<Query extends BaseQueryFormat, Result extends BaseQueryFormat[]> = (query: Query) => Result;
 

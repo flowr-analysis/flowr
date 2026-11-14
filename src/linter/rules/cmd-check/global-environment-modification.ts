@@ -205,7 +205,6 @@ function topLevelBindings(ast: NormalizedAst, isPackageCode: (file: string | und
 	return names;
 }
 
-
 /**
  * Port of the `R CMD check` notes on code that changes the global environment
  * (`checking R code for possible problems`): `tools:::.check_package_code_assign_to_globalenv`,

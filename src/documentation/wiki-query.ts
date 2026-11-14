@@ -42,7 +42,6 @@ import type { AbsintQueryType } from '../queries/catalog/absint-query/absint-que
 import { warnMissingSigDb } from './doc-util/doc-sigdb';
 import type { AnyPredefinedTaintAnalysisName } from '../taint-analysis/predefined/predefined';
 
-
 registerQueryDocumentation('call-context', {
 	type:             'active',
 	shortDescription: 'Finds all calls in a set of files that matches specified criteria.',
@@ -1321,9 +1320,7 @@ package/version in the database directly, reach for the ${linkToQueryOfName('sig
 	}
 });
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Query-API
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Query-API */
 export class WikiQuery extends DocMaker<'wiki/Query API.md'> {
 	constructor() {
 		super('wiki/Query API.md', module.filename, 'query API');

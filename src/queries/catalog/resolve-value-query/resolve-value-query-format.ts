@@ -14,18 +14,12 @@ import { metaSince } from '../../query-meta';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 
-
-/**
- * Naive fingerprint to filter out duplicate queries.
- */
+/** Naive fingerprint to filter out duplicate queries. */
 export function fingerPrintOfQuery(query: ResolveValueQuery): string {
 	return JSON.stringify(query);
 }
 
-
-/**
- * Executes a resolve-value query.
- */
+/** Executes a resolve-value query. */
 export async function executeResolveValueQuery({ analyzer }: BasicQueryData, queries: readonly ResolveValueQuery[]): Promise<ResolveValueQueryResult> {
 	const start = Date.now();
 	const results: ResolveValueQueryResult['results'] = {};
@@ -53,7 +47,6 @@ export async function executeResolveValueQuery({ analyzer }: BasicQueryData, que
 		results
 	};
 }
-
 
 export interface ResolveValueQuery extends BaseQueryFormat {
 	readonly type:     'resolve-value';

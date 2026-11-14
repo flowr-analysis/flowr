@@ -378,9 +378,7 @@ export interface OrphanCall {
 	readonly exporters: number;
 }
 
-/**
- * What the orphan calls of one analyzed program implicated, as {@link collectOrphanUsage} reports it.
- */
+/** What the orphan calls of one analyzed program implicated, as {@link collectOrphanUsage} reports it. */
 export interface OrphanUsage {
 	/** per package the project does not already know: the orphan calls that pointed at it, by function name */
 	readonly attributed:       Map<BrandedNamespace, Map<BrandedIdentifier, OrphanCall>>;

@@ -15,7 +15,6 @@ export const FileInput = Symbol('File Input');
 
 type SecurityLatticeElements = [typeof UserInput, typeof NetworkInput, typeof FileInput];
 
-
 export const securityDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bottom, ...SecurityLatticeElements]>()
 	.addLeqOrder(Bottom, [UserInput, NetworkInput, FileInput])
 	.addLeqOrder(UserInput, Top)

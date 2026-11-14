@@ -17,9 +17,7 @@ import type { CallGraph } from '../../../dataflow/graph/call-graph';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 import { transitiveLibraryCallees } from '../call-graph-query/expand-library-internals';
 
-/**
- * Execute does call queries on the given analyzer.
- */
+/** Execute does call queries on the given analyzer. */
 export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries: readonly DoesCallQuery[]): Promise<DoesCallQueryResult> {
 	const start = Date.now();
 	const cg = await analyzer.callGraph();

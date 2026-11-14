@@ -21,9 +21,7 @@ export interface SliceRequestMessage extends IdMessageBase {
 	criterion:        SlicingCriteria,
 	/** The direction to slice in. Defaults to backward slicing if unset. */
 	direction?:       SliceDirection,
-	/**
-	 * Should the magic comments (force-including lines within the slice) be ignored?
-	 */
+	/** Should the magic comments (force-including lines within the slice) be ignored? */
 	noMagicComments?: boolean
 }
 
@@ -37,7 +35,6 @@ export const requestSliceMessage: MessageDefinition<SliceRequestMessage> = {
 		direction: Joi.string().valid(...Object.values(SliceDirection)).description('The direction to slice in. Defaults to backward slicing if unset.')
 	})
 };
-
 
 /**
  * Similar to {@link FileAnalysisResponseMessageJson} this only contains the results of

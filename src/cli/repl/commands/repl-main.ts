@@ -30,17 +30,13 @@ export const standardReplOutput: ReplOutput = {
 	stderr:    console.error
 };
 
-
-/**
- * Information passed to each {@link ReplCommand#fn}.
- */
+/** Information passed to each {@link ReplCommand#fn}. */
 export interface ReplCommandInformation {
 	output:              ReplOutput,
 	allowRSessionAccess: boolean,
 	analyzer:            ReadonlyFlowrAnalysisProvider,
 	remainingLine:       string,
 }
-
 
 /**
  * Information passed to each {@link ReplCodeCommand#fn}.
@@ -90,9 +86,7 @@ interface ParsedReplLine {
 	remaining: string[];
 }
 
-/**
- * Repl command that uses the {@link FlowrAnalyzer}
- */
+/** Repl command that uses the {@link FlowrAnalyzer} */
 export interface ReplCodeCommand extends ReplBaseCommand {
 	isCodeCommand: true;
 	/**

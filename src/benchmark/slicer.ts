@@ -57,9 +57,7 @@ import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { runCalibration } from './calibration';
 
-/**
- * The logger to be used for benchmarking as a global object.
- */
+/** The logger to be used for benchmarking as a global object. */
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' });
 
 /**
@@ -294,7 +292,6 @@ export class BenchmarkSlicer {
 		this.executor.updateRequest({ criterion: slicingCriteria });
 
 		const totalStopwatch = measurements.start('total');
-
 
 		const slicedOutput = await this.measureSliceStep('slice', measurements, 'static slicing');
 		const decodedCriteria = SlicingCriterion.decodeAll(slicingCriteria, (this.normalizedAst as NormalizedAst).idMap);
@@ -712,9 +709,7 @@ export class BenchmarkSlicer {
 		};
 	}
 
-	/**
-	 * Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead.
-	 */
+	/** Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead. */
 	public ensureSessionClosed(): void {
 		this.parser?.close();
 	}

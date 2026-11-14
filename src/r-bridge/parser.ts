@@ -8,9 +8,7 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 
 interface ParserContent<T> {
 	readonly name:        string;
-	/**
-	 * Whether the parser has incremental parsing capabilities
-	 */
+	/** Whether the parser has incremental parsing capabilities */
 	readonly incremental: boolean;
 	information(analyzer: FlowrAnalysisProvider): BaseParserInformation;
 

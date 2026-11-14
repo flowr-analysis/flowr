@@ -259,9 +259,7 @@ export class FlowRServerConnection {
 		sendMessage<FlowrErrorMessage>(this.socket, { id, type: 'error', fatal, reason });
 	}
 
-	/**
-	 * Looks up the analysis stored for the given file token, answering with an error message if there is none.
-	 */
+	/** Looks up the analysis stored for the given file token, answering with an error message if there is none. */
 	private getAnalyzedFile(request: { id?: string, filetoken: string }) {
 		const fileInformation = this.fileMap.get(request.filetoken);
 		if(!fileInformation) {
@@ -302,7 +300,6 @@ export class FlowRServerConnection {
 			this.sendError(request.id, `Error while analyzing file for token ${request.filetoken}: ${String(e)}`);
 		}
 	}
-
 
 	private async handleRepl(base: ExecuteRequestMessage): Promise<void> {
 		const requestResult = validateMessage(base, requestExecuteReplExpressionMessage);
@@ -372,10 +369,7 @@ export class FlowRServerConnection {
 	}
 }
 
-
-/**
- * Sanitizes analysis results by removing any potentially sensitive information like id maps.
- */
+/** Sanitizes analysis results by removing any potentially sensitive information like id maps. */
 export function sanitizeAnalysisResults(parse: ParseStepOutput<string | Tree>, normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>> {
 	return {
 		parse:     parse as ParseStepOutput<string> & PipelinePerStepMetaInformation,

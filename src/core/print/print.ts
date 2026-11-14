@@ -2,9 +2,7 @@ import type { IPipelineStep, StepProcessingFunction } from '../steps/pipeline-st
 import type { TailOfArray } from '../../util/collections/arrays';
 import { guard } from '../../util/assert';
 
-/**
- * Defines the output format of a step that you are interested in.
- */
+/** Defines the output format of a step that you are interested in. */
 export const enum StepOutputFormat {
 	/**
 	 * [Internal]
@@ -17,9 +15,7 @@ export const enum StepOutputFormat {
 	 * of the dataflow analysis are not easily readable in text form.
 	 */
 	Text,
-	/**
-	 * This is usually a one-to-one serialization of the internal format, although it is possible that some recursive references are broken.
-	 */
+	/** This is usually a one-to-one serialization of the internal format, although it is possible that some recursive references are broken. */
 	Json,
 	/**
 	 * If possible, this will produce a mermaid graph of the result and contain the mermaid code.

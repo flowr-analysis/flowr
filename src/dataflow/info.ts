@@ -28,9 +28,7 @@ export interface ControlDependency {
 	readonly byIteration?: boolean
 	/** whether this control dependency is a promise's: what stands under it runs only once the call `id` forces it, see {@link ControlFlow.withinPromise} */
 	readonly byPromise?:   boolean
-	/**
-	 * any file-exist assumptions made
-	 */
+	/** any file-exist assumptions made */
 	readonly file?:        string
 }
 
@@ -105,10 +103,7 @@ export function negateControlDependency(cd: ControlDependency): ControlDependenc
 	};
 }
 
-
-/**
- * Checks whether the given exit point type propagates calls (i.e., whether it aborts the current function execution).
- */
+/** Checks whether the given exit point type propagates calls (i.e., whether it aborts the current function execution). */
 export function doesExitPointPropagateCalls(type: ExitPointType): boolean {
 	return type === ExitPointType.Error;
 }
@@ -141,9 +136,7 @@ export function leaveThrough(exit: ExitPoint, rootId: NodeId): ExitPoint {
 	return { ...exit, nodeId: rootId, jump: exit.jump ?? exit.nodeId };
 }
 
-/**
- * Adds all non-default exit points to the existing list and updates the `invertExitCds` accordingly.
- */
+/** Adds all non-default exit points to the existing list and updates the `invertExitCds` accordingly. */
 export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: readonly ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
 	/* an exit that follows a conditional one (`if(c) return(1); stop()`) only happens if the earlier one did not */
 	const notEarlier = invertExitCds.slice();
@@ -277,9 +270,7 @@ export const DataflowInformation = {
 			hooks:             []
 		};
 	},
-	/**
-	 * Type guard to check whether the given information is a {@link DataflowInformation}.
-	 */
+	/** Type guard to check whether the given information is a {@link DataflowInformation}. */
 	is(info: unknown): info is DataflowInformation {
 		return typeof info === 'object' && info !== null && 'entryPoint' in info && 'exitPoints' in info && 'hooks' in info;
 	}
@@ -319,16 +310,12 @@ export function happensInEveryBranchSet(cds: ReadonlySet<ControlDependency> | un
 	return cds === undefined || (cds.size !== 0 && coversSet(cds));
 }
 
-/**
- * Filters out exit points which end their cascade within a loop.
- */
+/** Filters out exit points which end their cascade within a loop. */
 export function filterOutLoopExitPoints(exitPoints: readonly ExitPoint[]): readonly ExitPoint[] {
 	return exitPoints.filter(({ type }) => type !== ExitPointType.Break && type !== ExitPointType.Next);
 }
 
-/**
- * Calculates the difference between two control dependencies.
- */
+/** Calculates the difference between two control dependencies. */
 export function diffControlDependency<Report extends WriteableDifferenceReport>(a: ControlDependency | undefined, b: ControlDependency | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
@@ -344,9 +331,7 @@ export function diffControlDependency<Report extends WriteableDifferenceReport>(
 	}
 }
 
-/**
- * Calculates the difference between two lists of control dependencies.
- */
+/** Calculates the difference between two lists of control dependencies. */
 export function diffControlDependencies<Report extends WriteableDifferenceReport>(a: readonly ControlDependency[] | undefined, b: readonly ControlDependency[] | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {

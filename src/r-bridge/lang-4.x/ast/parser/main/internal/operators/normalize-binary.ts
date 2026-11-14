@@ -19,7 +19,6 @@ import type { RFunctionDefinition } from '../../../../model/nodes/r-function-def
 import type { BrandedIdentifier } from '../../../../../../../dataflow/environments/identifier';
 import { BuiltInOperators } from '../../../../../../../dataflow/environments/default-builtin-config/base-operators';
 
-
 /**
  * Parsing binary operations includes the pipe, even though the produced PIPE construct is not a binary operation,
  * to ensure it is handled separately from the others (especially in the combination of a pipe bind)

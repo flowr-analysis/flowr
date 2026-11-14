@@ -45,9 +45,7 @@ export interface SeededRandomnessConfig extends MergeableRecord {
 	 * The default value for this is the function `set.seed` and the variable `.Random.seed`.
 	 */
 	randomnessProducers: { type: 'function' | 'assignment', name: BrandedIdentifier }[]
-	/**
-	 * A set of randomness consumer function names that require a seed to be set prior to invocation.
-	 */
+	/** A set of randomness consumer function names that require a seed to be set prior to invocation. */
 	randomnessConsumers: readonly string[]
 }
 

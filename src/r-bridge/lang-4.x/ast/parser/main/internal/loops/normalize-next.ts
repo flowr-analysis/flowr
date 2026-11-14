@@ -6,7 +6,6 @@ import { RType } from '../../../../model/type';
 import type { RNext } from '../../../../model/nodes/r-next';
 import type { JsonEntry } from '../../../json/format';
 
-
 /**
  * Normalizes a `next`, which carries nothing beyond where it is written.
  * @param data - the normalizer's state

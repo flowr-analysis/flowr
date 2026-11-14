@@ -39,14 +39,10 @@ import { resetOnFullInvalidation } from '../cache/flowr-cache';
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
-/**
- * This is a request to process a folder as a project, which will be expanded by the registered {@link FlowrAnalyzerProjectDiscoveryPlugin}s.
- */
+/** This is a request to process a folder as a project, which will be expanded by the registered {@link FlowrAnalyzerProjectDiscoveryPlugin}s. */
 export interface RProjectAnalysisRequest {
 	readonly request: 'project';
-	/**
-	 * The path to the root folder (an absolute path is probably best here).
-	 */
+	/** The path to the root folder (an absolute path is probably best here). */
 	readonly content: string;
 }
 
@@ -89,13 +85,9 @@ function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, role
  * If you are a {@link FlowrAnalyzerProjectDiscoveryPlugin} and want to modify the available files, you can use the {@link FlowrAnalyzerFilesContext} directly.
  */
 export interface ReadOnlyFlowrAnalyzerFilesContext {
-	/**
-	 * The name of this context.
-	 */
+	/** The name of this context. */
 	readonly name:         string;
-	/**
-	 * The loading order context provides access to the loading order of script files in the project.
-	 */
+	/** The loading order context provides access to the loading order of script files in the project. */
 	readonly loadingOrder: ReadOnlyFlowrAnalyzerLoadingOrderContext;
 	/**
 	 * Get all requests that have been added to this context.
@@ -161,9 +153,7 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * we resolve their contents.
 	 */
 	resolveRequest(r: RParseRequest): { r: RParseRequestFromText, path?: string };
-	/**
-	 * Get all files that have been considered during dataflow analysis.
-	 */
+	/** Get all files that have been considered during dataflow analysis. */
 	consideredFilesList(): readonly string[];
 	/**
 	 * Classify the {@link ProjectKind} of the project from its files. A {@link ProjectKind.ShinyApp | shiny app}
@@ -287,17 +277,13 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		resetOnFullInvalidation(this, event);
 	}
 
-	/**
-	 * Record that a file has been considered during dataflow analysis.
-	 */
+	/** Record that a file has been considered during dataflow analysis. */
 	public addConsideredFile(path: string): void {
 		this.consideredFiles.push(path);
 		this.projectKindCache = undefined;
 	}
 
-	/**
-	 * Get all files that have been considered during dataflow analysis.
-	 */
+	/** Get all files that have been considered during dataflow analysis. */
 	public consideredFilesList(): readonly string[] {
 		return this.consideredFiles;
 	}
@@ -347,9 +333,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}, opts);
 	}
 
-	/**
-	 * Add multiple requests to the context. This is just a convenience method that calls {@link addRequest} for each request.
-	 */
+	/** Add multiple requests to the context. This is just a convenience method that calls {@link addRequest} for each request. */
 	public addRequests(requests: readonly RAnalysisRequest[]): void {
 		/* every folder first, so that the files of one request are seen from the same root as those of the others */
 		for(const request of requests) {
@@ -424,9 +408,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}
 	}
 
-	/**
-	 * Add multiple files to the context. This is just a convenience method that calls {@link addFile} for each file.
-	 */
+	/** Add multiple files to the context. This is just a convenience method that calls {@link addFile} for each file. */
 	public addFiles(files: (string | FlowrFileProvider | RParseRequestFromFile)[]): void {
 		for(const file of files) {
 			this.addFile(file);

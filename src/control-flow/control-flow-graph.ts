@@ -16,9 +16,7 @@ import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorat
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { uniqueArray } from '../util/collections/arrays';
 
-/**
- * The type of a {@link CfgVertex} in the {@link ControlFlowGraph}.
- */
+/** The type of a {@link CfgVertex} in the {@link ControlFlowGraph}. */
 export enum CfgVertexType {
 	/**
 	 * something like an if, assignment, ... even though in the classical sense of R they are still expressions
@@ -102,9 +100,7 @@ export const CfgVertex = {
 	makeStatement(this: void, id: NodeId, info: { children?: NodeId[], callTargets?: Set<NodeId> } = {}): CfgStatementVertex {
 		return CfgVertex.makeExprOrStm(id, CfgVertexType.Statement, info) as CfgStatementVertex;
 	},
-	/**
-	 * A convenience function to create a new vertex which is either a statement or an expression.
-	 */
+	/** A convenience function to create a new vertex which is either a statement or an expression. */
 	makeExprOrStm(this: void, id: NodeId, type: CfgVertexType.Expression | CfgVertexType.Statement, { children, callTargets }: { children?: NodeId[], callTargets?: Set<NodeId> } = {}): CfgExpressionVertex | CfgStatementVertex {
 		if(children === undefined && callTargets === undefined) {
 			return [type, id] as CfgExpressionVertex | CfgStatementVertex;
@@ -176,9 +172,7 @@ export const CfgVertex = {
 	getId<T extends CfgVertex | undefined>(this: void, vertex: T): T extends undefined ? NodeId | undefined : NodeId {
 		return (vertex === undefined ? undefined : vertex[1]) as T extends undefined ? NodeId | undefined : NodeId;
 	},
-	/**
-	 * Check whether two vertices are equal, i.e., they have the same type, id, and if they are basic block vertices, they also have the same elements in the same order.
-	 */
+	/** Check whether two vertices are equal, i.e., they have the same type, id, and if they are basic block vertices, they also have the same elements in the same order. */
 	equal(this: void, a: CfgVertex, b: CfgVertex): boolean {
 		if(a === b) {
 			return true;
@@ -206,9 +200,7 @@ export const CfgVertex = {
 	setBasicBlockElements(this: void, vertex: CfgBasicBlockVertex, elems: readonly Exclude<CfgVertex, CfgBasicBlockVertex>[]): void {
 		vertex[2] = elems;
 	},
-	/**
-	 * Converts the given id to a, canonical, basic block lift (i.e., it adds 'bb-' as a prefix).
-	 */
+	/** Converts the given id to a, canonical, basic block lift (i.e., it adds 'bb-' as a prefix). */
 	toBasicBlockId<Id extends NodeId>(this: void, id: Id): `bb-${Id}` {
 		return `bb-${id}`;
 	},
@@ -219,9 +211,7 @@ export const CfgVertex = {
 		}
 		return (vertex)[3];
 	},
-	/**
-	 * Get the children of a statement or expression vertex, i.e., the child nodes attached to this one.
-	 */
+	/** Get the children of a statement or expression vertex, i.e., the child nodes attached to this one. */
 	getChildren(this: void, vertex: CfgVertex | undefined): NodeId[] | undefined {
 		if(vertex === undefined || vertex[0] === CfgVertexType.Block) {
 			return undefined;
@@ -246,21 +236,15 @@ export type CfgEdge = CfgFlowEdge | CfgControlEdge;
  */
 export const CfgEdge = {
 	name: 'CfgEdge',
-	/**
-	 * Check whether the given edge is a flow dependency edge.
-	 */
+	/** Check whether the given edge is a flow dependency edge. */
 	isFlowDependency(this: void, edge: CfgEdge | undefined): edge is CfgFlowEdge {
 		return edge === CfgEdgeType.Flow;
 	},
-	/**
-	 * Check whether the given edge is a control dependency edge.
-	 */
+	/** Check whether the given edge is a control dependency edge. */
 	isControlDependency(this: void, edge: CfgEdge | undefined): edge is CfgControlEdge {
 		return typeof edge === 'object';
 	},
-	/**
-	 * Create a flow dependency edge.
-	 */
+	/** Create a flow dependency edge. */
 	makeFd(this: void): CfgFlowEdge {
 		return CfgEdgeType.Flow;
 	},
@@ -311,9 +295,7 @@ export const CfgEdge = {
 	unpackWhen(this: void, edge: CfgControlEdge): typeof RTrue | typeof RFalse {
 		return edge.when ? RTrue : RFalse;
 	},
-	/**
-	 * Check whether two edges are equal.
-	 */
+	/** Check whether two edges are equal. */
 	equals(this: void, a: CfgEdge, b: CfgEdge): boolean {
 		if(CfgEdge.isFlowDependency(a) && CfgEdge.isFlowDependency(b)) {
 			return true;
@@ -352,9 +334,7 @@ export const CfgEdge = {
 	}
 } as const;
 
-/**
- * A read-only view of the {@link ControlFlowGraph}.
- */
+/** A read-only view of the {@link ControlFlowGraph}. */
 export interface ReadOnlyControlFlowGraph {
 	/**
 	 * Get all ids of the root vertices &mdash; vertices that are not part of
@@ -422,9 +402,7 @@ export interface ReadOnlyControlFlowGraph {
 	 *                      This is the pendant of {@link DataflowGraph#hasVertex|hasVertex()} on a {@link DataflowGraph}.
 	 */
 	readonly hasVertex:          (id: NodeId, includeBlocks?: boolean) => boolean
-	/**
-	 * Obtain the basic block associated with the given element id (i.e. if this is an element within a basic block, return the blockit belongs to).
-	 */
+	/** Obtain the basic block associated with the given element id (i.e. if this is an element within a basic block, return the blockit belongs to). */
 	readonly getBasicBlock:      (elemId: NodeId) => CfgBasicBlockVertex | undefined
 	/**
 	 * Returns true if the graph may contain basic blocks and false if we know that it does not.
@@ -726,9 +704,7 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 		return this.edgeInfos;
 	}
 
-	/**
-	 * Retrieve a vertex by its id.
-	 */
+	/** Retrieve a vertex by its id. */
 	getVertex(id: NodeId, includeBlocks = true): CfgVertex | undefined {
 		if(this.isView) {
 			const dfg = this.dfg as DataflowGraph;
@@ -929,9 +905,7 @@ export interface ControlFlowInformation<Vertex extends CfgVertex = CfgVertex> ex
 	graph:       ControlFlowGraph<Vertex>
 }
 
-/**
- * Create an empty control flow information object.
- */
+/** Create an empty control flow information object. */
 export function emptyControlFlowInformation(): ControlFlowInformation {
 	return {
 		returns:     [],

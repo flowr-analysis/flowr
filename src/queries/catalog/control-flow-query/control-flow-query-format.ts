@@ -8,9 +8,7 @@ import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { type CfgSimplificationPassName, CfgSimplificationPasses } from '../../../control-flow/cfg-simplification';
 import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
-/**
- * Executes the control flow query with the given simplification passes.
- */
+/** Executes the control flow query with the given simplification passes. */
 export async function executeControlFlowQuery({ analyzer }: BasicQueryData, queries: readonly ControlFlowQuery[]): Promise<ControlFlowQueryResult> {
 	warnUnlessSingleQuery('The control flow', queries);
 
@@ -24,9 +22,7 @@ export async function executeControlFlowQuery({ analyzer }: BasicQueryData, quer
 	};
 }
 
-/**
- * Provides the control flow graph with an optional, fixed configuration
- */
+/** Provides the control flow graph with an optional, fixed configuration */
 export interface ControlFlowQuery extends BaseQueryFormat {
 	readonly type:    'control-flow';
 	readonly config?: {

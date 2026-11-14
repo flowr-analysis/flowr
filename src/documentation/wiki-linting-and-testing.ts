@@ -26,10 +26,7 @@ function mutationCategories(): string {
 		MutationPasses.filter(p => p.category === category).map(p => `- \`${p.name}\`: ${p.description}`).join('\n'))).join('\n');
 }
 
-
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing */
 export class WikiLintingAndTesting extends DocMaker<'wiki/Linting and Testing.md'> {
 	constructor() {
 		super('wiki/Linting and Testing.md', module.filename, 'linting and testing definitions');

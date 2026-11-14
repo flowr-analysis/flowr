@@ -68,9 +68,7 @@ export const StaticSliceFlags = [
 	...SharedSliceFlags
 ] as const satisfies readonly SliceFlag[];
 
-/**
- * Checks whether the given argument represents a slicing direction with an `f` suffix (in any flag order).
- */
+/** Checks whether the given argument represents a slicing direction with an `f` suffix (in any flag order). */
 export function sliceDirectionParser(argument: string): SliceDirection {
 	return sliceFlagSuffix(argument).includes(Forward) ? SliceDirection.Forward : SliceDirection.Backward;
 }
@@ -131,16 +129,12 @@ export function queryLineCode(line: readonly string[], from = 1): string | undef
 	return code.length > 0 ? code : undefined;
 }
 
-/**
- * Parses a single slicing criterion from the given argument.
- */
+/** Parses a single slicing criterion from the given argument. */
 export function sliceCriterionParser(argument: string | undefined): SlicingCriterion | undefined {
 	return splitCriteriaArgument(argument)?.criteria as SlicingCriterion | undefined;
 }
 
-/**
- * Parses multiple slicing criteria from the given argument.
- */
+/** Parses multiple slicing criteria from the given argument. */
 export function sliceCriteriaParser(argument: string | undefined): SlicingCriteria | undefined {
 	return splitCriteriaArgument(argument)?.criteria.split(';') as SlicingCriteria | undefined;
 }

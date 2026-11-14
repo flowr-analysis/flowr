@@ -30,7 +30,6 @@ export function setOf(elements: readonly Value[]): Lift<ValueSet<Value[]>> {
 	};
 }
 
-
 /**
  * Checks, whether the given value is a set.
  * @see {@link setFrom} - to create sets

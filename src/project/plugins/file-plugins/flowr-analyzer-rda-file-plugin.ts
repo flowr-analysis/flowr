@@ -23,9 +23,7 @@ export class FlowrAnalyzerRdaFilePlugin extends FlowrAnalyzerPatternFilePlugin {
 		super(filePattern);
 	}
 
-	/**
-	 * Processes the given file, assigning it the {@link FileRole.Data} role.
-	 */
+	/** Processes the given file, assigning it the {@link FileRole.Data} role. */
 	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): FlowrRDAFile {
 		return FlowrRDAFile.from(file, FileRole.Data);
 	}

@@ -205,7 +205,6 @@ export class DataflowGraph<
 	/* the qualified call names, built on demand and dropped on every change, as vertices and edges both decide them */
 	private qualifiedNames?: QualificationCache;
 
-
 	toJSON(): DataflowGraphJson {
 		return {
 			rootVertices:        Array.from(this.rootVertices),

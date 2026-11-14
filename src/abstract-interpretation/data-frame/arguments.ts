@@ -295,9 +295,7 @@ export function isDataFrameArgument(arg: RNode<ParentInformation> | PotentiallyE
 	return !RArgument.isEmpty(arg) && ctx.getAbstractValue(arg) !== undefined;
 }
 
-/**
- * Checks whether a node is `NULL` in R (represents a `NULL` symbol).
- */
+/** Checks whether a node is `NULL` in R (represents a `NULL` symbol). */
 export function isRNull(node: RNode<ParentInformation> | undefined):
 	node is RSymbol<ParentInformation, typeof RNull>;
 export function isRNull(node: PotentiallyEmptyRArgument<ParentInformation> | undefined):
@@ -311,16 +309,12 @@ export function isRNull(node: RNode<ParentInformation> | PotentiallyEmptyRArgume
 	return RSymbol.is(node) && node.content === RNull;
 }
 
-/**
- * Checks whether a string is a valid columns name according to the flag `check.names` in R.
- */
+/** Checks whether a string is a valid columns name according to the flag `check.names` in R. */
 export function isValidColName(colname: string | undefined): boolean {
 	return colname !== undefined && ColNamesRegex.test(colname);
 }
 
-/**
- * Parses a text of file parse request using the provided parser function.
- */
+/** Parses a text of file parse request using the provided parser function. */
 export function parseRequestContent(
 	request: RParseRequest,
 	parser: (line: Buffer | string, lineNumber: number) => void,

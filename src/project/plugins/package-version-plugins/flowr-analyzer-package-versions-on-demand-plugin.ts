@@ -26,7 +26,6 @@ import { isBaseRPackage } from '../../../util/r-base-packages';
 import { SecureMode } from '../../../util/secure-mode';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 
-
 /** a name or string literal as the text it stands for */
 function literalText(node: RNode<ParentInformation> | undefined): string | undefined {
 	if(RSymbol.is(node)) {

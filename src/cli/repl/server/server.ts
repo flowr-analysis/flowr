@@ -60,7 +60,6 @@ export class FlowRServer {
 	}
 }
 
-
 function notYetInitialized(c: Socket, id: string | undefined) {
 	sendMessage<FlowrErrorMessage>(c, {
 		id,

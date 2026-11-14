@@ -73,9 +73,7 @@ async function extractStepsExample(analyzer: FlowrAnalyzer) {
 	return { normalizedAst, dataflow, cfg };
 }
 
-/**
- * Shows how to use the query API to perform a static slice (please do not simplify).
- */
+/** Shows how to use the query API to perform a static slice (please do not simplify). */
 async function sliceQueryExample(analyzer: FlowrAnalyzer) {
 	const { slice, reconstruct } = await analyzer.query({
 		type:     'static-slice',
@@ -84,9 +82,7 @@ async function sliceQueryExample(analyzer: FlowrAnalyzer) {
 	return { slice, reconstruct };
 }
 
-/**
- * Shows how to inspect the context of an analyzer instance.
- */
+/** Shows how to inspect the context of an analyzer instance. */
 export function inspectContextExample(analyzer: FlowrAnalyzer) {
 	const ctx = analyzer.inspectContext();
 	console.log('dplyr version', ctx.deps.getDependency('dplyr'));
@@ -236,9 +232,7 @@ ${table('ArgProp', 'Argument role', prop => new Set(index.params(prop as number)
 `;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Core
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Core */
 export class WikiCore extends DocMaker<'wiki/Core.md'> {
 	constructor() {
 		super('wiki/Core.md', module.filename, 'core');

@@ -14,8 +14,6 @@ import type { RComment } from '../../../../model/nodes/r-comment';
 import type { JsonEntry, NamedJsonEntry } from '../../../json/format';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
-
-
 /**
  * Normalizes a `for(<variable> in <vector>) <body>`, `undefined` if the entry is not one.
  * @param data      - the normalizer's state

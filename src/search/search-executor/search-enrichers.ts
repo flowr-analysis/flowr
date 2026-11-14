@@ -26,7 +26,6 @@ import type { KnownRoxygenTags, RoxygenTag } from '../../r-bridge/roxygen2/roxyg
 import { FlowrSearchBuilder } from '../flowr-search-builder';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
-
 /** The search element of the node `id` belongs to (see {@link NodeId.nodeOf}), `undefined` if there is none. */
 function elementOf(id: NodeId, idMap: AstIdMap<ParentInformation>): FlowrSearchElement<ParentInformation> | undefined {
 	const node = NodeId.nodeOf(id, idMap);
@@ -34,14 +33,10 @@ function elementOf(id: NodeId, idMap: AstIdMap<ParentInformation>): FlowrSearchE
 }
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
-	/**
-	 * A function that is applied to each element of the search to enrich it with additional data.
-	 */
+	/** A function that is applied to each element of the search to enrich it with additional data. */
 	readonly enrichElement?: (element: FlowrSearchElement<ParentInformation>, search: FlowrSearchElements<ParentInformation>, analyzer: ReadonlyFlowrAnalysisProvider, args: ElementArguments | undefined, previousValue: ElementContent | undefined) => AsyncOrSync<ElementContent>
 	readonly enrichSearch?:  (search: FlowrSearchElements<ParentInformation>, data: ReadonlyFlowrAnalysisProvider, args: SearchArguments | undefined, previousValue: SearchContent | undefined) => AsyncOrSync<SearchContent>
-	/**
-	 * The mapping function used by the {@link Mapper.Enrichment} mapper.
-	 */
+	/** The mapping function used by the {@link Mapper.Enrichment} mapper. */
 	readonly mapper?:        (content: ElementContent) => FlowrSearchElement<ParentInformation>[]
 }
 export type EnrichmentElementContent<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer EC, infer _EA, infer _SC, infer _SA> ? EC : never;
@@ -90,9 +85,7 @@ export interface LastCallSearchContent extends CallTargetsSearchContent {
 }
 
 export interface CfgInformationElementContent extends MergeableRecord {
-	/**
-	 * Whether the current node is a root node in the CFG, which is a node that is not contained inside of a function definition.
-	 */
+	/** Whether the current node is a root node in the CFG, which is a node that is not contained inside of a function definition. */
 	isRoot:       boolean
 	/**
 	 * Whether the current node is reachable from the root of the CFG.
@@ -101,9 +94,7 @@ export interface CfgInformationElementContent extends MergeableRecord {
 	isReachable?: boolean
 }
 export interface CfgInformationSearchContent extends MergeableRecord {
-	/**
-	 * The CFG attached to the search, extracted using {@link extractCfg}.
-	 */
+	/** The CFG attached to the search, extracted using {@link extractCfg}. */
 	cfg:             ControlFlowInformation
 	/**
 	 * The nodes the control flow reaches, together with the syntax that holds them.
@@ -392,9 +383,7 @@ export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<Pa
 	return e?.enrichments?.[enrichment] as EnrichmentElementContent<E>;
 }
 
-/**
- * Enriches the given search element with the given enrichment type, using the provided analysis data.
- */
+/** Enriches the given search element with the given enrichment type, using the provided analysis data. */
 export async function enrichElement<Element extends FlowrSearchElement<ParentInformation>, E extends Enrichment>(
 	e: Element, s: FlowrSearchElements<ParentInformation>, analyzer: ReadonlyFlowrAnalysisProvider, enrichment: E, args?: EnrichmentElementArguments<E>): Promise<Element> {
 	const enrichmentData = getEnrichment(enrichment);

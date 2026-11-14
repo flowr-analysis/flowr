@@ -27,9 +27,7 @@ export const RExpressionList = {
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RExpressionList<Info> {
 		return node?.type === RType.ExpressionList;
 	},
-	/**
-	 * Type guard for implicit {@link RExpressionList} nodes, i.e., expression lists that are not created by a wrapper like `{}`.
-	 */
+	/** Type guard for implicit {@link RExpressionList} nodes, i.e., expression lists that are not created by a wrapper like `{}`. */
 	isImplicit<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RExpressionList<Info>  {
 		return RExpressionList.is(node) && node.grouping === undefined;
 	},

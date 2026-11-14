@@ -114,7 +114,6 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: reado
 	};
 }
 
-
 function parseNamedFunctionCall(data: NormalizerData, symbolContent: readonly NamedJsonEntry[], mappedWithName: readonly NamedJsonEntry[], location: SourceRange, content: string): RNamedFunctionCall {
 	let functionName: RNode | undefined;
 	if(symbolContent.length === 1 && symbolContent[0].name === RawRType.StringConst) {

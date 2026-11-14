@@ -9,9 +9,7 @@ const version = '2.17.6';
 // this is automatically replaced with the release date by release-it (scripts/bump-version.ts)
 export const versionDate = '2026-11-13T12:10:52Z';
 
-/**
- * Retrieves the current flowR version as a new {@link SemVer} object.
- */
+/** Retrieves the current flowR version as a new {@link SemVer} object. */
 export function flowrVersion(): SemVer {
 	return new SemVer(version);
 }

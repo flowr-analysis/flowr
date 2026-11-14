@@ -7,9 +7,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
-/**
- * Executes the given dataflow queries.
- */
+/** Executes the given dataflow queries. */
 export async function executeDataflowQuery({ analyzer }: BasicQueryData, queries: readonly DataflowQuery[]): Promise<DataflowQueryResult> {
 	warnUnlessSingleQuery('Dataflow', queries);
 	const startTime = Date.now();
@@ -23,9 +21,7 @@ export async function executeDataflowQuery({ analyzer }: BasicQueryData, queries
 /** Above this many characters, the mermaid.live link is dropped from the REPL output (large graphs produce megabyte-sized base64 urls). */
 const MaxMermaidUrlLength = 8000;
 
-/**
- * Simple re-returns the dataflow graph of the analysis.
- */
+/** Simple re-returns the dataflow graph of the analysis. */
 export interface DataflowQuery extends BaseQueryFormat {
 	readonly type:          'dataflow';
 	/** Whether to include the environments of the vertices and function definitions (default), see {@link DataflowGraph#withoutEnvironments}. */

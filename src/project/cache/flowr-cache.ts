@@ -35,7 +35,6 @@ export type InvalidationEvent<Content extends StringableContent = StringableCont
 	{ type: InvalidationEventType.Full }
  |  SingleFileInvalidationEvent<Content>;
 
-
 export type InvalidationEventHandler<Content extends StringableContent = StringableContent> = (event: InvalidationEvent<Content>) => void;
 
 export interface InvalidationEventReceiver<Content extends StringableContent = StringableContent> {
@@ -61,9 +60,7 @@ export function resetOnFullInvalidation(target: { reset(): void }, event: Invali
 	}
 }
 
-/**
- * Central class for caching analysis results in FlowR.
- */
+/** Central class for caching analysis results in FlowR. */
 export abstract class FlowrCache<Cache> implements InvalidationEventReceiver {
 	private value:      Cache | undefined = undefined;
 	private dependents: InvalidationEventReceiver[] = [];
@@ -90,9 +87,7 @@ export abstract class FlowrCache<Cache> implements InvalidationEventReceiver {
 		this.notifyDependents(event);
 	}
 
-	/**
-	 * Notify all dependents of a cache invalidation event.
-	 */
+	/** Notify all dependents of a cache invalidation event. */
 	public notifyDependents(event: InvalidationEvent) {
 		for(const dependent of this.dependents) {
 			dependent.receive(event);

@@ -15,7 +15,6 @@ import type { MermaidMarkdownMark } from '../../util/mermaid/info';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { CallGraph } from '../../dataflow/graph/call-graph';
 
-
 /**
  * Visualizes the dataflow graph as a mermaid graph inside a markdown code block.
  * Please use this only for documentation purposes, for programmatic usage use {@link DataflowMermaid.convert} directly.
@@ -31,9 +30,7 @@ ${codeBlock('mermaid', Dataflow.visualize.mermaid.convert({
 	`;
 }
 
-/**
- * Options for {@link printDfGraphForCode}.
- */
+/** Options for {@link printDfGraphForCode}. */
 export interface PrintDataflowGraphOptions {
 	readonly mark?:               ReadonlySet<MermaidMarkdownMark>;
 	readonly showCode?:           boolean;
@@ -47,9 +44,7 @@ export interface PrintDataflowGraphOptions {
 	readonly ctx?:                GeneralDocContext;
 }
 
-/**
- * Visualizes a side effect for documentation purposes.
- */
+/** Visualizes a side effect for documentation purposes. */
 export function formatSideEffect(ef: UnknownSideEffect): string {
 	if(typeof ef === 'object') {
 		return `${ef.id} (linked)`;
@@ -108,7 +103,6 @@ ${switchCodeAndGraph ? dfGraph : codeText}
 	}
 	return exposeResult ? [resultText, result] : resultText;
 }
-
 
 /** returns resolved expected df graph */
 export async function verifyExpectedSubgraph(parser: KnownParser, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {

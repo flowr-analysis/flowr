@@ -7,9 +7,7 @@ class ValueConversionError extends Error {
 	}
 }
 
-/**
- * transforms a value to something R can understand (e.g., booleans to TRUE/FALSE)
- */
+/** transforms a value to something R can understand (e.g., booleans to TRUE/FALSE) */
 export function ts2r<T>(value: T): string {
 	if(typeof value === 'string') {
 		return JSON.stringify(value);
@@ -43,16 +41,12 @@ export const RTrue = 'TRUE';
 /** The R literal for the logical false */
 export const RFalse = 'FALSE';
 
-/**
- * Checks whether the given string is an R boolean (logical) literal.
- */
+/** Checks whether the given string is an R boolean (logical) literal. */
 export function isBoolean(value: string): boolean {
 	return value === RTrue || value === RFalse;
 }
 
-/**
- * Converts an R boolean (logical) literal to a TypeScript boolean.
- */
+/** Converts an R boolean (logical) literal to a TypeScript boolean. */
 export function boolean2ts(value: string): boolean {
 	if(value === RTrue) {
 		return true;
@@ -145,9 +139,7 @@ export const RNumberValue = {
 	}
 } as const;
 
-/**
- * Represents a string value in R, including the type of quotes used and whether it is a raw string.
- */
+/** Represents a string value in R, including the type of quotes used and whether it is a raw string. */
 export interface RStringValue {
 	str:    string
 	/** from the R-language definition a string is either delimited by a pair of single or double quotes, 'none' strings are syntactically unquoted but treated as strings  */
@@ -196,10 +188,7 @@ export const RStringValue = {
 export const RNa = 'NA';
 export const RNull = 'NULL';
 
-
-/**
- * Checks whether the given string is the R NA literal (untyped).
- */
+/** Checks whether the given string is the R NA literal (untyped). */
 export function isNA(value: string): value is (typeof RNa) {
 	return value === RNa;
 }

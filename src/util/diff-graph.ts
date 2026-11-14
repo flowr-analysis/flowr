@@ -70,9 +70,7 @@ export interface GraphDiffContext<Graph = DataflowGraph> extends GenericDifferen
 	config: GenericDiffConfiguration
 }
 
-/**
- * Create the context for differencing two graphs
- */
+/** Create the context for differencing two graphs */
 export function initDiffContext<Graph>(left: NamedGraph<Graph>, right: NamedGraph<Graph>, config?: Partial<GenericDiffConfiguration>): GraphDiffContext<Graph> {
 	return {
 		left:      left.graph,

@@ -9,31 +9,23 @@ export type AbstractDataFrameShape = {
 	readonly rows:     PosIntervalDomain;
 };
 
-/**
- * The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain.
- */
+/** The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain. */
 export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 	public create(value: AbstractDataFrameShape): this {
 		return new DataFrameDomain(value) as this;
 	}
 
-	/**
-	 * The current abstract value of the column names domain.
-	 */
+	/** The current abstract value of the column names domain. */
 	public get colnames(): AbstractDataFrameShape['colnames'] {
 		return this.value.colnames;
 	}
 
-	/**
-	 * The current abstract value of the column count domain.
-	 */
+	/** The current abstract value of the column count domain. */
 	public get cols(): AbstractDataFrameShape['cols'] {
 		return this.value.cols;
 	}
 
-	/**
-	 * The current abstract value of the row count domain.
-	 */
+	/** The current abstract value of the row count domain. */
 	public get rows(): AbstractDataFrameShape['rows'] {
 		return this.value.rows;
 	}

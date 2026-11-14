@@ -4,7 +4,6 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 /** What a formatter prints: text, or a semantic value (a name, a package, an id) whose meaning ends in the output. */
 export type Printable = string | BrandedIdentifier | BrandedNamespace | NodeId;
 
-
 // noinspection JSUnusedGlobalSymbols
 export const enum FontStyles {
 	Bold = 1,
@@ -108,23 +107,17 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 	}
 }();
 
-/**
- * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text with a bold font weight.
- */
+/** This does not work if the {@link setFormatter|formatter} is void. Tries to format the text with a bold font weight. */
 export function italic(s: Printable, f: OutputFormatter = formatter, options?: FormatOptions): string {
 	return f.format(s, { style: FontStyles.Italic, ...options });
 }
 
-/**
- * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text with an italic font shape.
- */
+/** This does not work if the {@link setFormatter|formatter} is void. Tries to format the text with an italic font shape. */
 export function bold(s: Printable, f: OutputFormatter = formatter, options?: FormatOptions): string {
 	return f.format(s, { style: FontStyles.Bold, ...options });
 }
 
-/**
- * Color the text in the given foreground color.
- */
+/** Color the text in the given foreground color. */
 export function color(s: Printable, c: Colors, f: OutputFormatter = formatter, opts?: { bright?: boolean, style?: FontStyles | readonly FontStyles[] }): string {
 	return f.format(s, { color: c, effect: ColorEffect.Foreground, ...opts });
 }
@@ -134,9 +127,7 @@ export function faint(s: Printable, f: OutputFormatter = formatter, options?: Fo
 	return f.format(s, { style: FontStyles.Faint, ...options });
 }
 
-/**
- * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text as informational message.
- */
+/** This does not work if the {@link setFormatter|formatter} is void. Tries to format the text as informational message. */
 export function ansiInfo(s: Printable, f: OutputFormatter = formatter): string {
 	return f.format(s, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 }
@@ -205,9 +196,7 @@ export const ansiFormatter = {
 
 export let formatter: OutputFormatter = ansiFormatter;
 
-/**
- * (Globally) sets the output formatter used by the utility functions in this module.
- */
+/** (Globally) sets the output formatter used by the utility functions in this module. */
 export function setFormatter(setFormatter: OutputFormatter): void {
 	formatter = setFormatter;
 }

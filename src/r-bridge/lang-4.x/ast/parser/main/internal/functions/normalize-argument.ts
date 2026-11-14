@@ -11,7 +11,6 @@ import { RawRType, RType } from '../../../../model/type';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
 
-
 /**
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.
  * Probably directly called by the function call parser as otherwise, we do not expect to find arguments.

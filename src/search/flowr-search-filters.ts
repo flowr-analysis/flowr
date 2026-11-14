@@ -123,9 +123,7 @@ export interface CallPropsArgs {
 }
 
 type ValidFilterTypes<F extends FlowrFilter = FlowrFilter> = FlowrFilterName | FlowrFilterWithArgs<F, FlowrFilterArgs<F>> | RType | VertexType;
-/**
- * By default, we provide filter for every {@link RType} and {@link VertexType}.
- */
+/** By default, we provide filter for every {@link RType} and {@link VertexType}. */
 export type FlowrFilterExpression<F extends FlowrFilter = FlowrFilter> = FlowrFilterCombinator | ValidFilterTypes<F>;
 
 interface BooleanBinaryNode<Composite> {
@@ -144,11 +142,9 @@ type LeafSpecial<F extends FlowrFilter = FlowrFilter> = { readonly type: 'specia
 
 type Leaf = LeafRType | LeafVertexType | LeafSpecial;
 
-
 type BooleanNode = BooleanBinaryNode<BooleanNode>
 	| BooleanUnaryNode<BooleanNode>
 	| Leaf;
-
 
 type BooleanNodeOrCombinator = BooleanNode | FlowrFilterCombinator;
 
@@ -242,9 +238,7 @@ export class FlowrFilterCombinator {
 }
 export const F = FlowrFilterCombinator;
 
-/**
- * Converts the given binary tree to a string representation.
- */
+/** Converts the given binary tree to a string representation. */
 export function binaryTreeToString(tree: BooleanNode): string {
 	const res = treeToStringImpl(tree, 0);
 	// drop outer parens

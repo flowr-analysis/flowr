@@ -90,7 +90,6 @@ function splitLinesRegex(relevantLines: string[], regex: RegExp) {
 	return lineChunks;
 }
 
-
 /**
  * Parses the given file into news chunks.
  * @param file - The file to parse

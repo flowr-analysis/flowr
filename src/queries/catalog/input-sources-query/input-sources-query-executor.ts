@@ -17,9 +17,7 @@ import { AttachedBasePackages } from '../../../util/r-base-packages';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
 import { REnvironment } from '../../../dataflow/environments/environment';
 
-/**
- * Execute an input sources query
- */
+/** Execute an input sources query */
 export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, queries: readonly InputSourcesQuery[]): Promise<InputSourcesQueryResult> {
 	const start = Date.now();
 	const results: Record<string, InputSources> = {};

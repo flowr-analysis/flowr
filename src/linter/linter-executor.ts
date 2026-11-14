@@ -33,9 +33,7 @@ function locatedIn<Result extends LintingResult>(found: Result, idMap: AstIdMap)
 	return file === found.loc[4] ? found : { ...found, loc: [found.loc[0], found.loc[1], found.loc[2], found.loc[3], file] };
 }
 
-/**
- * Executes a specific linting rule on the given analysis provider input.
- */
+/** Executes a specific linting rule on the given analysis provider input. */
 export async function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: ReadonlyFlowrAnalysisProvider, lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>): Promise<LintingResults<Name>> {
 	try {
 		const rule = getLintingRule(ruleName);

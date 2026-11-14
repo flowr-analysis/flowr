@@ -40,8 +40,6 @@ ${prefixLines(content, '> ')}
 `;
 }
 
-
-
 /**
  * A section heading with an explicit anchor, so a link to it survives the title being reworded.
  * @param title  - the heading's text
@@ -52,7 +50,6 @@ export function section(title: string, depth: 1 | 2 | 3 | 4 | 5 | 6 = 2, anchor 
 	return `<h${depth} id="${anchor}">${title}</h${depth}>`;
 }
 
-
 function strToLink(str: string): string {
 	const match = str.match(/^(.*?)@(.*)$/);
 	if(match) {
@@ -61,9 +58,7 @@ function strToLink(str: string): string {
 	}
 	return `[${str}](#${Mermaid.escapeId(str)})`;
 }
-/**
- * Supported pattern: `Name@link`
- */
+/** Supported pattern: `Name@link` */
 export function collapsibleToc(content: Record<string, Record<string, Record<string, undefined> | undefined> | undefined>): string {
 	let output = '';
 	for(const [section, subsections] of Object.entries(content)) {

@@ -43,9 +43,7 @@ export interface UnusedDefinitionResult extends LintingResult {
 }
 
 export interface UnusedDefinitionConfig extends MergeableRecord {
-	/**
-	 * Whether to include (potentially anonymous) function definitions in the search (e.g., should we report uncalled anonymous functions?).
-	 */
+	/** Whether to include (potentially anonymous) function definitions in the search (e.g., should we report uncalled anonymous functions?). */
 	includeFunctionDefinitions: boolean
 	/**
 	 * Whether to suppress definitions that the analyzed project exports via its `NAMESPACE` (the package's public API).
@@ -54,11 +52,8 @@ export interface UnusedDefinitionConfig extends MergeableRecord {
 	excludeExportedDefinitions: boolean
 }
 
-/**
- * The dots parameter is a special parameter and must never be reported as an unused definition.
- */
+/** The dots parameter is a special parameter and must never be reported as an unused definition. */
 const DotsParameter = '...';
-
 
 /**
  * The generics a definition named `name.class` may be an S3 method for: the built-ins flowR labels
@@ -293,9 +288,7 @@ function quickFixForUnused(variable: RNode<ParentInformation>, dfg: DataflowGrap
 	return replacement === undefined ? undefined : [{ type: 'replace', loc: totalRangeToRemove, replacement, description }];
 }
 
-/**
- * consider `x <- function() ...` if we say `x` is unused and propose to remove everything, there should be no separate quick fix for the function definition
- */
+/** consider `x <- function() ...` if we say `x` is unused and propose to remove everything, there should be no separate quick fix for the function definition */
 function onlyKeepSupersetOfUnused(elements: UnusedDefinitionResult[]): UnusedDefinitionResult[] {
 	const locs = elements.flatMap(e => e.quickFix?.map(q => q.loc) ?? [e.loc]);
 	if(locs.length <= 1) {

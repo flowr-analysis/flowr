@@ -19,7 +19,6 @@ import type { HookInformation } from '../hooks';
 import { DfgVertex } from './vertex';
 import { AmbientAccess } from './ambient-access';
 
-
 /** This is the underlying function to calculate the difference based on a given context. Use {@link Dataflow.diffGraphs} to calculate the diff of two graphs. */
 export function diffDataflowGraph(ctx: GraphDiffContext): void {
 	diffRootVertices(ctx);

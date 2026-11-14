@@ -7,7 +7,6 @@ import type { RComment } from '../../../../model/nodes/r-comment';
 import type { JsonEntry } from '../../../json/format';
 import { normalizeComment } from './normalize-comment';
 
-
 const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/;
 
 /**

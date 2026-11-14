@@ -2,7 +2,6 @@ import type { RNumberValue } from '../../../../r-bridge/lang-4.x/convert-values'
 import { type Lift, type ValueInterval, type ValueNumber, isBottom, isTop } from '../r-value';
 import { getScalarFromInteger, liftScalar } from '../scalar/scalar-constants';
 
-
 /**
  * An interval from `start` to `end`, both given as plain numbers or as R numbers.
  * @param start          - where the interval begins, and where it ends too if `end` is left out
@@ -22,7 +21,6 @@ export function intervalFrom(start: RNumberValue | number, end = start, startInc
 function shiftNum(v: Lift<ValueNumber>): ValueNumber {
 	return isBottom(v) || isTop(v) ? liftScalar(v) : v;
 }
-
 
 /**
  * The same as {@link intervalFrom}, but from bounds that are already lifted values.

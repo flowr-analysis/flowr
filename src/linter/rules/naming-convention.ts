@@ -27,9 +27,7 @@ export interface NamingConventionResult extends LintingResult {
 	detectedCasing: CasingConvention
 }
 
-/**
- * It is planned to have a config like ESLint
- */
+/** It is planned to have a config like ESLint */
 export interface NamingConventionConfig extends MergeableRecord {
 	/** which casing convention to enforce */
 	caseing: CasingConvention | 'auto'
@@ -56,9 +54,7 @@ function withoutPrefix(identifier: BrandedIdentifier, ignorePrefix: string | und
 	return ignorePrefix ? identifier.replace(new RegExp(`^(${ignorePrefix})`), '') : identifier;
 }
 
-/**
- * Attempts to detect the possible casing conventions used in the given identifier and returns an array ordered by likelihood of the casing convention being correct.
- */
+/** Attempts to detect the possible casing conventions used in the given identifier and returns an array ordered by likelihood of the casing convention being correct. */
 export function detectPotentialCasings(identifier: BrandedIdentifier, ignorePrefix?: string): CasingConvention[] {
 	if(identifier.trim() === '' || !containsAlpha(identifier)) {
 		return [];
@@ -105,9 +101,7 @@ export function detectCasing(identifier: BrandedIdentifier, ignorePrefix?:  stri
 	return detectPotentialCasings(identifier, ignorePrefix)[0] ?? CasingConvention.Unknown;
 }
 
-/**
- * Determines the most used casing convention in the given list of symbols.
- */
+/** Determines the most used casing convention in the given list of symbols. */
 export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[]): CasingConvention {
 	const counts = new Map<CasingConvention, number>();
 	for(const { detectedCasing } of symbols) {
@@ -125,9 +119,7 @@ export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[
 	return mostUsed;
 }
 
-/**
- * Attempts to fix the casing of the given identifier to match the provided convention.
- */
+/** Attempts to fix the casing of the given identifier to match the provided convention. */
 export function fixCasing(identifier: BrandedIdentifier, convention: CasingConvention, ignorePrefix?: string): BrandedIdentifier | undefined {
 	if(!containsAlpha(identifier)) {
 		return undefined;
@@ -155,9 +147,7 @@ export function fixCasing(identifier: BrandedIdentifier, convention: CasingConve
 	}
 }
 
-/**
- * Creates quick fixes for renaming all references to the given node to match the provided replacement.
- */
+/** Creates quick fixes for renaming all references to the given node to match the provided replacement. */
 export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: NodeId, replacement: BrandedIdentifier, conv: CasingConvention): LintQuickFixReplacement[] | undefined {
 	const refs = Dataflow.refsToSymbol(graph, nodeId);
 	const idMap = graph.idMap;

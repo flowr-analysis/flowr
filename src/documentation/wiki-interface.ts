@@ -103,7 +103,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 `;
 }
 
-
 async function explainRepl(parser: KnownParser, ctx: GeneralDocContext): Promise<string> {
 	return `
 > [!NOTE]
@@ -376,9 +375,7 @@ ${describeSchema(FlowrConfig.Schema, markdownFormatter)}
 	`;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Interface
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Interface */
 export class WikiInterface extends DocMaker<'wiki/Interface.md'> {
 	constructor() {
 		super('wiki/Interface.md', module.filename, 'interface');

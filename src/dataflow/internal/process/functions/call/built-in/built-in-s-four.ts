@@ -53,7 +53,6 @@ export interface S4UseConfig {
 	readonly registersMethod?: boolean;
 }
 
-
 /** The names an argument states, looking through the `c(...)`/`signature(...)` wrappers a signature may use. */
 function classNamesOf<O>(node: RNode<O & ParentInformation> | undefined, data: Data<O>): readonly ClassName[] {
 	const known = node === undefined ? [] : NodeValue.knownStringsOf(node.info.id, data);

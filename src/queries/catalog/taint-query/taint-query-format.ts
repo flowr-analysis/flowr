@@ -12,11 +12,7 @@ import { type CommandCompletions, completePrefixedList } from '../../../cli/repl
 import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
 import { log } from '../../../util/log';
 
-
-
-/**
- * Executes the given taint queries using the provided analyzer.
- */
+/** Executes the given taint queries using the provided analyzer. */
 export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: readonly TaintQuery[]): Promise<TaintQueryResult<AllPredefinedTaintAnalysisNames>> {
 	const flattened = queries.flatMap(q => q.defs);
 	const start = Date.now();
@@ -42,9 +38,6 @@ export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: r
 		},
 	};
 }
-
-
-
 
 export interface TaintQuery extends BaseQueryFormat {
 	readonly type: 'taint';

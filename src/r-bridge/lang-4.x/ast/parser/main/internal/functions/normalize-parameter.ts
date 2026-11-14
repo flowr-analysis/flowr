@@ -23,7 +23,6 @@ export function tryNormalizeParameter(data: NormalizerData, objs: readonly Named
 		return undefined;
 	}
 
-
 	const symbol = objs[0];
 	if(symbol.name !== RawRType.SymbolFormals) {
 		parseLog.warn(`expected symbol for parameter, yet received ${JSON.stringify(objs)}`);

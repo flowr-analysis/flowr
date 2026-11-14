@@ -21,9 +21,7 @@ import { AbstractInterpreter, type AbsintAnalysis } from '../../../abstract-inte
 import { log } from '../../../util/log';
 import { metaSince } from '../../query-meta';
 
-/**
- * Executes the given abstract interpretation queries using the provided analyzer.
- */
+/** Executes the given abstract interpretation queries using the provided analyzer. */
 export async function executeAbsintQuery<AbsintType extends AbsintQueryType>({ analyzer }: BasicQueryData, queries: readonly AbsintQuery<AbsintType>[]): Promise<AbsintQueryResult<AbsintType>> {
 	if(queries.length === 0 || queries.some(query => query.inference !== queries[0].inference)) {
 		throw new Error('The inference types of bundled abstract interpretation queries must be the same.');
@@ -115,7 +113,6 @@ export type AbsintQueryStateDomain<AbsintType extends AbsintQueryType = AbsintQu
 
 export type AbsintQueryDomain<AbsintType extends AbsintQueryType = AbsintQueryType> =
 	typeof AbsintQueryInferences[AbsintType] extends { domain: string } ? AbsintQueryDomains<AbsintType>[typeof AbsintQueryInferences[AbsintType]['domain']] : MultiValueDomain<Partial<AbsintQueryDomains<AbsintType>>>;
-
 
 function absintQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
 	if(line.length === 0 || (line.length === 1 && !startingNewArg)) {

@@ -109,7 +109,6 @@ export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration
 	readonly registers?:   boolean;
 }
 
-
 function yieldsEnvironment<OtherInfo>(
 	node:  RNode<OtherInfo & ParentInformation>,
 	graph: DataflowGraph,

@@ -20,7 +20,6 @@ export function prefixLines(line: string, prefix: string) {
 	return line.split('\n').map(l => `${prefix}${l}`).join('\n');
 }
 
-
 /**
  * Joins the given elements using the given join string, but uses a different string for the last join.
  * @example

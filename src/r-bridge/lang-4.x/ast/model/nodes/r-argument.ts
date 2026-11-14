@@ -8,9 +8,7 @@ import type { PotentiallyEmptyRArgument } from './r-function-call';
 import { EmptyArgument } from './r-function-call';
 import type { BrandedIdentifier } from '../../../../../dataflow/environments/identifier';
 
-/**
- * Represents a named or unnamed argument of a function definition in R.
- */
+/** Represents a named or unnamed argument of a function definition in R. */
 export interface RArgument<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	readonly type: RType.Argument;
 	/* the name is represented as a symbol to additionally get location information */
@@ -42,9 +40,7 @@ export const RArgument = {
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RArgument<Info> {
 		return node?.type === RType.Argument;
 	},
-	/**
-	 * Type guard for arguments that are empty, i.e. {@link EmptyArgument}.
-	 */
+	/** Type guard for arguments that are empty, i.e. {@link EmptyArgument}. */
 	isEmpty<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): node is typeof EmptyArgument {
 		return node === EmptyArgument;
 	},
@@ -56,15 +52,11 @@ export const RArgument = {
 	isNotEmpty<T>(this: void, node: T): node is Exclude<T, typeof EmptyArgument> {
 		return node !== EmptyArgument;
 	},
-	/**
-	 * Type guard for named arguments, i.e. arguments with a name.
-	 */
+	/** Type guard for named arguments, i.e. arguments with a name. */
 	isNamed<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): node is RArgument<Info> & { name: RSymbol<Info, BrandedIdentifier> } {
 		return node !== EmptyArgument && RArgument.is(node) && node.name !== undefined;
 	},
-	/**
-	 * Type guard for unnamed arguments, i.e. arguments without a name.
-	 */
+	/** Type guard for unnamed arguments, i.e. arguments without a name. */
 	isUnnamed<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): node is RUnnamedArgument<Info> {
 		return node !== EmptyArgument && RArgument.is(node) && node.name === undefined && node.value !== undefined;
 	},
@@ -89,25 +81,19 @@ export const RArgument = {
 	unnamedValueOrArg<Info = NoInfo>(this: void, arg: PotentiallyEmptyRArgument<Info>): RNode<Info> | PotentiallyEmptyRArgument<Info> {
 		return RArgument.unnamedValueOf<Info>(arg) ?? arg;
 	},
-	/**
-	 * The non-empty argument with exactly the given `name`, `undefined` if there is none.
-	 */
+	/** The non-empty argument with exactly the given `name`, `undefined` if there is none. */
 	findNamed<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], name: BrandedIdentifier): RArgument<Info> | undefined {
 
 		return args.find((a): a is RArgument<Info> => a !== EmptyArgument && a.name?.content === name);
 	},
-	/**
-	 * Type guard for arguments with a value, i.e. arguments that are not just placeholders without a value.
-	 */
+	/** Type guard for arguments with a value, i.e. arguments that are not just placeholders without a value. */
 	isWithValue<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RArgument<Info> & { value: RNode<Info> } {
 		return RArgument.is(node) && node.value !== undefined;
 	},
 	getWithId<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): Exclude<PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, typeof EmptyArgument> | undefined {
 		return id === undefined ? undefined : args.filter(RArgument.isNotEmpty).find(arg => arg.info.id === id);
 	},
-	/**
-	 * Retrieve the value of the argument with the given id from the list of arguments.
-	 */
+	/** Retrieve the value of the argument with the given id from the list of arguments. */
 	getValue<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): RNode<OtherInfo> | undefined {
 		return RArgument.getWithId(args, id)?.value;
 	}

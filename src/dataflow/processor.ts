@@ -1,6 +1,4 @@
-/**
- * Based on a two-way fold, this processor will automatically supply scope information
- */
+/** Based on a two-way fold, this processor will automatically supply scope information */
 import type { ControlDependency } from './info';
 import { DataflowInformation } from './info';
 import { activeDataflowBudget } from '../gas';
@@ -18,31 +16,23 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	readonly parser:               Parser<KnownParserType>
-	/**
-	 * Initial and frozen ast-information
-	 */
+	/** Initial and frozen ast-information */
 	readonly completeAst:          NormalizedAst<OtherInfo>
 	/**
 	 * Correctly contains pushed local scopes introduced by `function` scopes.
 	 * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
 	 */
 	readonly environment:          REnvironmentInformation
-	/**
-	 * Other processors to be called by the given functions
-	 */
+	/** Other processors to be called by the given functions */
 	readonly processors:           DataflowProcessors<OtherInfo>
 	/**
 	 * The chain of file paths that lead to this inclusion.
 	 * The most recent (last) entry is expected to always be the current one.
 	 */
 	readonly referenceChain:       (string | undefined)[]
-	/**
-	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
-	 */
+	/** The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs). */
 	readonly cds:                  readonly ControlDependency[] | undefined
-	/**
-	 * The flowr context used for environment seeding, files, and precision control, ...
-	 */
+	/** The flowr context used for environment seeding, files, and precision control, ... */
 	readonly ctx:                  FlowrAnalyzerContext
 	/**
 	 * If set, the function call with this id is known to resolve to built-ins only,
@@ -77,9 +67,7 @@ export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherI
 
 type NodeWithKey<OtherInfo, Key> = RNode<OtherInfo & ParentInformation> & { type: Key };
 
-/**
- * This way, a processor mapped to a {@link RType#Symbol} require a {@link RSymbol} as first parameter and so on.
- */
+/** This way, a processor mapped to a {@link RType#Symbol} require a {@link RSymbol} as first parameter and so on. */
 export type DataflowProcessors<OtherInfo> = {
 	[key in RNode['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, key>>
 };

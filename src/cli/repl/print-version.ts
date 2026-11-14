@@ -4,9 +4,7 @@ import { defaultSigDbPath, readManifestDate } from '../../project/sigdb/manifest
 import { formatter, italic } from '../../util/text/ansi';
 import { pathToFileURL } from 'url';
 
-/**
- * Returns a version string for the REPL including flowR, R, and the engine in use.
- */
+/** Returns a version string for the REPL including flowR, R, and the engine in use. */
 export async function versionReplString(parser: KnownParser): Promise<string> {
 	const version = await retrieveVersionInformation(parser);
 	const rVersion = version.r === 'none' ? '' : version.r === 'unknown' ? ', R version unknown' : `, R v${version.r}`;
@@ -45,9 +43,7 @@ function sigDbSummaryString(): string {
 	return it('sigdb: ') + refs.join(it(', ')) + (shared !== undefined ? it(` ${shared}`) : '');
 }
 
-/**
- * Prints the version information for the REPL including flowR, R, and the bundled signature databases.
- */
+/** Prints the version information for the REPL including flowR, R, and the bundled signature databases. */
 export async function printVersionRepl(parser: KnownParser): Promise<void> {
 	const sigdb = sigDbSummaryString();
 	console.log((await versionReplString(parser)).replace(/\)$/, () => `, ${sigdb})`));

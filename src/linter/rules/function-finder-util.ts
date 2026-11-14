@@ -29,9 +29,7 @@ export interface FunctionsMetadata extends MergeableRecord {
 	totalFunctionDefinitions: number;
 }
 
-/**
- * This helper object collects utility functions used to create linting rules that search for specific functions.
- */
+/** This helper object collects utility functions used to create linting rules that search for specific functions. */
 export const functionFinderUtil = {
 	createSearch: (functions?: readonly Identifier[], qualifyNames = true) => {
 		const search = Q.all().filter(VertexType.FunctionCall)
@@ -113,15 +111,12 @@ export const functionFinderUtil = {
 	}
 };
 
-
 function suppliesArgument(call: DataflowGraphVertexFunctionCall, argIdx: number | 'unnamed' | undefined, argName: BrandedIdentifier | undefined): boolean {
 	return call.args.some((arg, index) => arg !== EmptyArgument
 		&& (argName !== undefined ? arg.name === argName : index === argIdx));
 }
 
-/**
- * Test if a function call has an argument with a specific value
- */
+/** Test if a function call has an argument with a specific value */
 export function hasArgumentValue(
 	test: RegExp | string,
 	fnVertex: DataflowGraphVertexFunctionCall,

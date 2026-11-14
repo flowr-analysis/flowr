@@ -77,9 +77,7 @@ export interface AttachSpec {
 	readonly pos?:           number;
 }
 
-/**
- * Process a library call like `library` or `require`
- */
+/** Process a library call like `library` or `require` */
 export function processLibrary<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],

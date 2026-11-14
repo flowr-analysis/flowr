@@ -13,9 +13,7 @@ const FlowrFaqTopics = {
 const FlowrFaqMainTitle = '💮 <i>flowR</i> FAQ';
 
 type Topic = keyof typeof FlowrFaqTopics;
-/**
- * Manage all questions and answers by topic.
- */
+/** Manage all questions and answers by topic. */
 export class FaqStore {
 	private faqs:      DefaultMap<Topic, [question: string, answer: string][]> = new DefaultMap(() => []);
 	private currTopic: Topic | undefined = undefined;

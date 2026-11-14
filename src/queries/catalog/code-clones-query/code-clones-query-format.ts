@@ -16,9 +16,7 @@ import { CloneIndex } from '../../../clones/clone-index';
 import { deepMergeObject } from '../../../util/objects';
 import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
-/**
- * Builds the clone index of the analyzed files and runs the requested clone detectors on it.
- */
+/** Builds the clone index of the analyzed files and runs the requested clone detectors on it. */
 export async function executeCodeClonesQuery({ analyzer }: BasicQueryData, queries: readonly CodeClonesQuery[]): Promise<CodeClonesQueryResult> {
 	warnUnlessSingleQuery('The code-clones', queries);
 	const query = queries[0];

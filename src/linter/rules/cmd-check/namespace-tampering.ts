@@ -47,7 +47,6 @@ export type NamespaceTamperingMetadata = MergeableRecord;
 /** the calls that name a namespace by the package name they are handed */
 const NamespaceGetters: ReadonlySet<BrandedIdentifier> = new Set(['asNamespace', 'getNamespace', 'loadNamespace']);
 
-
 /** the package a namespace argument names, `'own'` for the package's own one, `undefined` if unknown */
 function namespaceOf(node: RNode<ParentInformation> | undefined, info: ResolveInfo, own: string | undefined, depth = 0): string | 'own' | undefined {
 	if(node === undefined) {

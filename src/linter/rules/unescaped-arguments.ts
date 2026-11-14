@@ -35,9 +35,7 @@ import { LintingRuleTag } from '../linter-tags';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { uniqueArray } from '../../util/collections/arrays';
 
-/**
- * The kinds of critical operations to check for unescaped arguments.
- */
+/** The kinds of critical operations to check for unescaped arguments. */
 export enum UnescapedArgumentCategory {
 	/** Functions performing system commands, e.g. `system` */
 	System = 'system',
@@ -74,9 +72,7 @@ interface UnescapedArgumentsEntry {
 	 * @see {@link ArgProps}
 	 */
 	readonly criticalArgs:  ArgProps;
-	/**
-	 * The functions that escape an unescaped argument of a critical function
-	 */
+	/** The functions that escape an unescaped argument of a critical function */
 	readonly sanitizers:    readonly Identifier[];
 	/**
 	 * The function to wrap an unescaped expression in as quick fix
@@ -124,9 +120,7 @@ export interface UnescapedArgumentsMetadata extends MergeableRecord {
 }
 
 export interface UnescapedArgumentsConfig extends MergeableRecord {
-	/**
-	 * The target, critical functions, critical arguments, sanitizers and quick fixes for each category
-	 */
+	/** The target, critical functions, critical arguments, sanitizers and quick fixes for each category */
 	readonly categories:         Record<UnescapedArgumentCategory, UnescapedArgumentsEntry>;
 	/**
 	 * The categories that should be disabled and not checked
@@ -138,9 +132,7 @@ export interface UnescapedArgumentsConfig extends MergeableRecord {
 	 * @see {@link InputType}
 	 */
 	readonly acceptedInputs:     readonly InputType[];
-	/**
-	 * The maximum depth to descent to find unescaped parts of an argument
-	 */
+	/** The maximum depth to descent to find unescaped parts of an argument */
 	readonly maxDecentDepth:     number;
 }
 
@@ -333,9 +325,7 @@ function isCertainlyCritical(source: InputSource, config: UnescapedArgumentsConf
 	return source.types.some(type => !config.acceptedInputs.includes(type) && !UncertainInputs.includes(type));
 }
 
-/**
- * Gets all unescaped sources for the critical target calls of the given category
- */
+/** Gets all unescaped sources for the critical target calls of the given category */
 async function getUnescapedSources(
 	category: UnescapedArgumentCategory,
 	targets: readonly CriticalTarget[],

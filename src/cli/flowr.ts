@@ -142,7 +142,6 @@ function createConfig(): FlowrConfig {
 		}
 	}
 
-
 	// for all options that we manually supply that have a config equivalent, set them in the config
 	config = FlowrConfig.amend(config, c => {
 		(c.engines as EngineConfig[]) ??= [];
@@ -278,7 +277,6 @@ async function mainServer(useWebSocket: boolean) {
 	const backend: Server = useWebSocket ? new WebSocketServerWrapper(options['ws-allow-origin']) : new NetServer();
 	await new FlowRServer(engines.engines, engines.default, options['r-session-access'], config, backend).start(options.port);
 }
-
 
 async function main() {
 	try {

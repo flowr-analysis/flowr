@@ -4,9 +4,7 @@ import type { Pipeline } from './pipeline';
 import { jsonReplacer } from '../../../util/json';
 import { partitionArray } from '../../../util/collections/arrays';
 
-/**
- * Given a set of {@link IPipelineStep|steps} with their dependencies, this function verifies all requirements of {@link createPipeline}.
- */
+/** Given a set of {@link IPipelineStep|steps} with their dependencies, this function verifies all requirements of {@link createPipeline}. */
 export function verifyAndBuildPipeline(steps: readonly IPipelineStep[]): Pipeline {
 	if(steps.length === 0) {
 		throw new InvalidPipelineError('0) Pipeline is empty');

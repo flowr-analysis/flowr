@@ -8,9 +8,7 @@ import { RawRType } from '../../../../model/type';
 import type { NamedJsonEntry } from '../../../json/format';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
-/**
- * Try to parse the construct as a {@link RIfThenElse}.
- */
+/** Try to parse the construct as a {@link RIfThenElse}. */
 export function tryNormalizeIfThenElse(
 	data: NormalizerData,
 	[ifT, lpT, cT, rpT, tT, eT, ebT]: [

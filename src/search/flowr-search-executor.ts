@@ -7,9 +7,7 @@ import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 export type GetSearchElements<S> = S extends FlowrSearch<infer _, infer _, infer _, infer Elements> ? Elements : never;
 
-/**
- * Run a search with the given search query and data.
- */
+/** Run a search with the given search query and data. */
 export async function runSearch<S extends FlowrSearchLike>(
 	search: S,
 	input: ReadonlyFlowrAnalysisProvider

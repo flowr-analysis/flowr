@@ -15,7 +15,6 @@ import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration, t
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
-
 export const loopyFunctions = new Set<BuiltInProcName>([BuiltInProcName.ForLoop, BuiltInProcName.WhileLoop, BuiltInProcName.RepeatLoop]);
 
 /**

@@ -91,7 +91,6 @@ interface AmbientWrite {
 	readonly assumed?: true
 }
 
-
 /** a write that may not happen: it reads what was there, so it can still replace the state and keep everything before reachable */
 function maybe(name: AmbientStateName): AmbientWrite {
 	return { name, mode: AmbientWriteMode.Maybe };
@@ -372,8 +371,6 @@ const GlobalEffectEnv = /^(TZ|LANG|LANGUAGE|LC_\w+|R_\w+|TMPDIR|TEMP|TMP|HOME|PA
 function keyedReads(state: KeyedState, keys: readonly BrandedIdentifier[]): AmbientStateName[] {
 	return keys.length === 0 || keys.includes(UnknownKey) ? [AmbientStateName.allOf(state)] : [...keys.map(k => AmbientStateName.keyed(state, k)), AmbientStateName.keyed(state, UnknownKey)];
 }
-
-
 
 /** Where each part of the global state lives, which gives every {@link AmbientEffect} its reads and writes. */
 interface FamilyState {

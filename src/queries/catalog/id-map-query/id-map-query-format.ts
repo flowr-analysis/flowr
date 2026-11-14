@@ -5,9 +5,7 @@ import type { QueryResults, SupportedQuery } from '../../query';
 import { summarizeIdsIfTooLong, queryHeader } from '../../query-print';
 import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
-/**
- * Executes the given ID map queries using the provided analyzer.
- */
+/** Executes the given ID map queries using the provided analyzer. */
 export async function executeIdMapQuery({ analyzer }: BasicQueryData, queries: readonly IdMapQuery[]): Promise<IdMapQueryResult> {
 	warnUnlessSingleQuery('Id-Map', queries);
 

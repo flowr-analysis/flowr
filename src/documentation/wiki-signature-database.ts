@@ -209,9 +209,7 @@ function pluginLink(key: string): string {
 	return `[\`${key}\`](${RemoteFlowrFilePathBaseRef}src/project/plugins/plugin-registry.ts)`;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Signature-Database
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Signature-Database */
 export class WikiSignatureDatabase extends DocMaker<'wiki/Signature Database.md'> {
 	constructor() {
 		super('wiki/Signature Database.md', module.filename, 'bundled signature database that resolves `library()` calls');

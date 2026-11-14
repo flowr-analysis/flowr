@@ -45,9 +45,7 @@ export interface FlowrAnalysisOptions {
 	readonly gas?: GasOverrides;
 }
 
-/**
- * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
- */
+/** Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state. */
 export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser> extends ReadonlyFlowrAnalysisProvider<Parser> {
 	/**
 	 * Returns project context information.
@@ -68,14 +66,10 @@ export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser>
 	 * @see {@link FlowrAnalysisProvider.addRequest|addRequest} - for adding analysis requests to the analyzer.
 	 */
 	addFile(...f: (string | FlowrFileProvider<string> | RParseRequestFromFile)[]): void
-	/**
-	 * Reset the analyzer state, including the context and the cache.
-	 */
+	/** Reset the analyzer state, including the context and the cache. */
 	reset(): void;
 
-	/**
-	 * Receive cache invalidation events from the cache and propagate them to the context and other relevant components.
-	 */
+	/** Receive cache invalidation events from the cache and propagate them to the context and other relevant components. */
 	receive(event: InvalidationEvent): void
 }
 
@@ -113,9 +107,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekParse} - to get the parse output if already available without triggering a new computation.
 	 */
 	parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>>
-	/**
-	 * Peek at the parse output for the request, if it was already computed.
-	 */
+	/** Peek at the parse output for the request, if it was already computed. */
 	peekParse(): NonNullable<AnalyzerCacheType<Parser>['parse']> | undefined;
 	/**
 	 * Parse standalone R code provided as a string or via the `file://` protocol.
@@ -129,9 +121,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekNormalize} - to get the normalized AST if already available without triggering a new computation.
 	 */
 	normalize(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;
-	/**
-	 * Peek at the normalized abstract syntax tree for the request, if it was already computed.
-	 */
+	/** Peek at the normalized abstract syntax tree for the request, if it was already computed. */
 	peekNormalize(): NormalizedAst & PipelinePerStepMetaInformation | undefined;
 
 	/**
@@ -146,9 +136,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekDataflow} - to get the dataflow graph if already available without triggering a new computation.
 	 */
 	dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation>;
-	/**
-	 * Peek at the dataflow graph for the request, if it was already computed.
-	 */
+	/** Peek at the dataflow graph for the request, if it was already computed. */
 	peekDataflow(): DataflowInformation & PipelinePerStepMetaInformation | undefined;
 	/**
 	 * Get the control flow graph (CFG) for the request.
@@ -157,17 +145,11 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekControlflow} - to get the CFG if already available without triggering a new computation.
 	 */
 	controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation>;
-	/**
-	 * Peek at the control flow graph (CFG) for the request, if it was already computed.
-	 */
+	/** Peek at the control flow graph (CFG) for the request, if it was already computed. */
 	peekControlflow(simplifications?: readonly CfgSimplificationPassName[]): ControlFlowInformation | undefined;
-	/**
-	 * Calculate the call graph for the request.
-	 */
+	/** Calculate the call graph for the request. */
 	callGraph(force?: boolean): Promise<CallGraph>;
-	/**
-	 * Peek at the call graph for the request, if it was already computed.
-	 */
+	/** Peek at the call graph for the request, if it was already computed. */
 	peekCallGraph(): CallGraph | undefined;
 	/**
 	 * A value computed from the current analysis once per `key` (e.g. the function computing it), shared by
@@ -205,9 +187,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 */
 	query<Types extends SupportedQueryTypes = SupportedQueryTypes>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>>;
 	query<Type extends SupportedQueryTypes>(query: QueryArgumentsWithType<Type>, options?: FlowrAnalysisOptions): Promise<SingleQueryResult<Type>>;
-	/**
-	 * Access the taint analysis API for the request.
-	 */
+	/** Access the taint analysis API for the request. */
 	taint<Names extends readonly string[] = []>(): TaintAnalysisBuilder<Names>;
 	/**
 	 * Run a search on the current analysis.
@@ -228,7 +208,6 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	/** Discard every {@link updateConfig} override made so far and invalidate the cached analysis. */
 	resetConfig(): void;
 }
-
 
 /**
  * Central class for conducting analyses with FlowR.

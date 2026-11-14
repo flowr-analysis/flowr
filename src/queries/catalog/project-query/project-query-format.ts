@@ -60,9 +60,7 @@ function collectDependencyStats(declared: DeclaredPackages, deps: ReadOnlyFlowrA
 	};
 }
 
-/**
- * Executes the given project queries.
- */
+/** Executes the given project queries. */
 export async function executeProjectQuery({ analyzer }: BasicQueryData, queries: readonly ProjectQuery[]): Promise<ProjectQueryResult> {
 	warnUnlessSingleQuery('Project', queries);
 	const startTime = Date.now();
@@ -110,7 +108,6 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 		dfaPerformed: analyzer.peekDataflow() !== undefined
 	};
 }
-
 
 export interface ProjectQuery extends BaseQueryFormat {
 	readonly type:    'project';

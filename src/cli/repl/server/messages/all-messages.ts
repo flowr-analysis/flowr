@@ -10,13 +10,9 @@ import type { SliceRequestMessage, SliceResponseMessage } from './message-slice'
 import type { FlowrErrorMessage } from './message-error';
 import type { QueryRequestMessage, QueryResponseMessage } from './message-query';
 
-/**
- * If you send a message it must *not* contain a newline but the message must be terminated by a newline.
- */
+/** If you send a message it must *not* contain a newline but the message must be terminated by a newline. */
 export interface IdMessageBase {
-	/**
-	 * The at this time unknown type
-	 */
+	/** The at this time unknown type */
 	type: string
 	/**
 	 * The id that links a request with its responses, it is up to the calling client to make sure it is unique.
@@ -30,7 +26,6 @@ export interface MessageDefinition<T extends FlowrMessage | IdMessageBase> {
 	type:   T['type'] | undefined
 	schema: Joi.Schema
 }
-
 
 export const baseMessage: MessageDefinition<IdMessageBase> = {
 	type:   '**base**',

@@ -319,7 +319,6 @@ export interface IdentifierReference {
 /** The name of an S4, S7, reference, or R6 class. */
 export type ClassName = string & { __brand?: 'class' };
 
-
 /** The definition of an {@link Identifier|identifier} within the {@link DataflowGraph|graph}. */
 export interface InGraphIdentifierDefinition extends IdentifierReference {
 	readonly type:             InGraphReferenceType

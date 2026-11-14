@@ -34,9 +34,7 @@ export interface RAuthorInfo {
 	readonly comment?: string[];
 }
 
-/**
- * Convert structured R author information into an R `Authors@R` string.
- */
+/** Convert structured R author information into an R `Authors@R` string. */
 export function rAuthorInfoToReadable(author: RAuthorInfo): string {
 	const nameStr = author.name.join(' ');
 	const emailStr = author.email ? ` <${author.email}>` : '';
@@ -139,7 +137,6 @@ function parseRoles(roleStr: string | undefined): AuthorRole[] {
 	}
 	return roles;
 }
-
 
 function parseComments(commentStr: string | undefined): { contents: string[], orcid: string | undefined } | undefined {
 	if(!commentStr) {

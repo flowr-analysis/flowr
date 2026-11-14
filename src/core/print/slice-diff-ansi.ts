@@ -28,9 +28,7 @@ function highlight(s: string, selected: boolean): string {
 	return selected ? ansiFormatter.format(primary, { style: FontStyles.Underline }) : primary;
 }
 
-/**
- * Print a slice diff with ANSI colors
- */
+/** Print a slice diff with ANSI colors */
 export function sliceDiffAnsi(slice: ReadonlySet<NodeId>, normalized: NormalizedAst, criteriaIds: ReadonlySet<NodeId>, originalCode: string) {
 	let importantLocations = Array.from(normalized.idMap.entries())
 		.filter(([id, { location }]) => slice.has(id) && isNotUndefined(location))

@@ -7,9 +7,7 @@ import { FileRole, type FlowrFileProvider } from '../../../project/context/flowr
 import { SourceLocation, type Line } from '../../../util/range';
 import { RPath } from '../../../util/files';
 
-/**
- * One file or directory of the package, as `R CMD build` would put it into the tarball.
- */
+/** One file or directory of the package, as `R CMD build` would put it into the tarball. */
 export interface PackageEntry {
 	/** the path relative to the package root, with `/` as separator */
 	readonly relative:    string

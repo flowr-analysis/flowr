@@ -415,9 +415,7 @@ const cachedBlobs: CachedBlob[] = [];
 let hand = 0;
 let cachedBlobBytes = 0;
 
-/**
- * Keep `blob` decoded for `db`, dropping blobs until all of them fit the budget (age gated).
- */
+/** Keep `blob` decoded for `db`, dropping blobs until all of them fit the budget (age gated). */
 function keepBlob(db: SigDatabase, blobIdx: number, bytes: number): CachedBlob {
 	while(cachedBlobBytes + bytes > blobCacheBudget && cachedBlobs.length > 0) {
 		if(hand >= cachedBlobs.length) {

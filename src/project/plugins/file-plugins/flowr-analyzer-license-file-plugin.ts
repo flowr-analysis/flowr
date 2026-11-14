@@ -5,9 +5,7 @@ import { type FlowrFileProvider, FileRole } from '../../context/flowr-file';
 
 const FileNamePattern = /license(\.md|\.txt)?$/i;
 
-/**
- * This plugin provides supports for the identification of license files.
- */
+/** This plugin provides supports for the identification of license files. */
 export class FlowrAnalyzerLicenseFilePlugin extends FlowrAnalyzerPatternFilePlugin {
 	public readonly name = 'flowr-analyzer-license-files-plugin';
 	public readonly description = 'Loads license files.';
@@ -21,9 +19,7 @@ export class FlowrAnalyzerLicenseFilePlugin extends FlowrAnalyzerPatternFilePlug
 		super(pathPattern);
 	}
 
-	/**
-	 * Processes the given file, assigning it the {@link FileRole.License} role.
-	 */
+	/** Processes the given file, assigning it the {@link FileRole.License} role. */
 	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): FlowrFileProvider {
 		file.assignRole(FileRole.License);
 		return file;

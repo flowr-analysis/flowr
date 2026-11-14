@@ -56,9 +56,7 @@ export interface FunctionCallOrigin {
 	readonly id:   NodeId;
 }
 
-/**
- * This is similar to a {@link FunctionCallOrigin}, but used for built-in functions that have no direct correspondence in the dataflow graph.
- */
+/** This is similar to a {@link FunctionCallOrigin}, but used for built-in functions that have no direct correspondence in the dataflow graph. */
 export interface BuiltInFunctionOrigin {
 	readonly type: OriginType.BuiltInFunctionOrigin;
 	/** processor that is used to process the built-in function */

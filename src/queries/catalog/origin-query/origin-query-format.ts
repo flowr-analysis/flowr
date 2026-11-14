@@ -12,9 +12,7 @@ import { metaSince } from '../../query-meta';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 
-/**
- * Execute origin queries, catching duplicates with the same fingerprint
- */
+/** Execute origin queries, catching duplicates with the same fingerprint */
 export async function executeOriginQuery({ analyzer }: BasicQueryData, queries: readonly OriginQuery[]): Promise<OriginQueryResult> {
 	const start = Date.now();
 	const results: OriginQueryResult['results'] = {};
@@ -38,7 +36,6 @@ export async function executeOriginQuery({ analyzer }: BasicQueryData, queries: 
 		results
 	};
 }
-
 
 export interface OriginQuery extends BaseQueryFormat {
 	readonly type:      'origin';
@@ -65,7 +62,6 @@ function originQueryLineParser(output: ReplOutput, line: readonly string[], _con
 		rCode: queryLineCode(line)
 	};
 }
-
 
 export const OriginQueryDefinition = {
 	title:           'Origin Query',

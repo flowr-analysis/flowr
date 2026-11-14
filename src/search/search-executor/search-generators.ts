@@ -20,9 +20,7 @@ import type TreeSitter from 'web-tree-sitter';
 import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { ParserName } from '../../r-bridge/parser';
 
-/**
- * This is a union of all possible generator node types
- */
+/** This is a union of all possible generator node types */
 export type FlowrSearchGeneratorNode = {
 	[K in GeneratorNames]:
 	FlowrSearchGeneratorNodeBase<K,
@@ -32,9 +30,7 @@ export type FlowrSearchGeneratorNode = {
 
 export type GeneratorNames = keyof typeof generators;
 
-/**
- * All supported generators!
- */
+/** All supported generators! */
 export const generators = {
 	all:          generateAll,
 	get:          generateGet,
@@ -59,7 +55,6 @@ async function getAllNodes(data: ReadonlyFlowrAnalysisProvider): Promise<RNodeWi
 	}
 	return [...byId.values()];
 }
-
 
 async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex, filePathRegex, fuzzy, innermostOnly } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
 	const normalize = await input.normalize();
@@ -199,9 +194,7 @@ async function generateCriterion(input: ReadonlyFlowrAnalysisProvider, args: { c
 	);
 }
 
-/**
- * Runs the search generator described by the given node
- */
+/** Runs the search generator described by the given node */
 export function runGenerator(node: FlowrSearchGeneratorNode, input: ReadonlyFlowrAnalysisProvider): Promise<FlowrSearchElements<ParentInformation>> {
 	if(!generators[node.name]) {
 		throw new Error(`Unknown generator: ${node.name}`);

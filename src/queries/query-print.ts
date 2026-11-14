@@ -56,9 +56,7 @@ function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly Ca
 	return result.join(', ');
 }
 
-/**
- * Converts call context query results to an ASCII representation
- */
+/** Converts call context query results to an ASCII representation */
 export function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], idMap: AstIdMap<ParentInformation>): string {
 	/* traverse over 'kinds' and within them 'subkinds' */
 	const result: string[] = [];
@@ -99,9 +97,7 @@ export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly 
 	return formatter === markdownFormatter ? textWithTooltip(acc, JSON.stringify(ids)) : acc;
 }
 
-/**
- * Generates an ASCII summary of the given query results
- */
+/** Generates an ASCII summary of the given query results */
 export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(
 	formatter: OutputFormatter, totalInMs: number, results: QueryResults<S>,
 	analyzer: ReadonlyFlowrAnalysisProvider, queries: Queries<S>

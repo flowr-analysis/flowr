@@ -112,9 +112,7 @@ import {
 	FunctionInfoQueryDefinition
 } from './catalog/function-info-query/function-info-query-format';
 
-/**
- * These are all queries that can be executed from within flowR
- */
+/** These are all queries that can be executed from within flowR */
 export type Query = CallContextQuery
 	| ConfigQuery
 	| SearchQuery
@@ -162,9 +160,7 @@ type SupportedQueriesType = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
 };
 
-/**
- * The result of parsing a query line from, e.g., the repl.
- */
+/** The result of parsing a query line from, e.g., the repl. */
 export interface ParsedQueryLine<QueryType extends BaseQueryFormat['type']> {
 	/** The parsed query or queries from the line. */
 	query:  QueryArgumentsWithType<QueryType> | QueryArgumentsWithType<QueryType>[] | undefined;
@@ -354,9 +350,7 @@ async function retryQueriesIndividually(data: BasicQueryData, group: readonly Qu
 	return merged === undefined ? { '.meta': { timing: 0 }, error } as BaseQueryResult : { ...merged, error } as BaseQueryResult;
 }
 
-/**
- * Produces a Joi schema representing all supported queries.
- */
+/** Produces a Joi schema representing all supported queries. */
 export function SupportedQueriesSchema() {
 	return Joi.alternatives(
 		Object.values(SupportedQueries).map(q => q.schema)
@@ -370,18 +364,14 @@ export const CompoundQuerySchema = Joi.object({
 	arguments:       Joi.array().items(Joi.object()).required().description('Arguments for each query.')
 }).description('Compound query used to combine queries of the same type');
 
-/**
- * Produces a Joi schema representing all virtual queries.
- */
+/** Produces a Joi schema representing all virtual queries. */
 export function VirtualQuerySchema() {
 	return Joi.alternatives(
 		CompoundQuerySchema
 	).description('Virtual queries (used for structure)');
 }
 
-/**
- * Produces a Joi schema representing any supported query (including virtual queries).
- */
+/** Produces a Joi schema representing any supported query (including virtual queries). */
 export function AnyQuerySchema() {
 	return Joi.alternatives(
 		SupportedQueriesSchema(),
@@ -389,16 +379,12 @@ export function AnyQuerySchema() {
 	).description('A virtual or an active query!');
 }
 
-/**
- * Produces a Joi schema representing an array of supported queries.
- */
+/** Produces a Joi schema representing an array of supported queries. */
 export function QueriesSchema() {
 	return Joi.array().items(AnyQuerySchema()).description('Queries to run on the file analysis information (in the form of an array)');
 }
 
-/**
- * Wraps a function that executes a REPL query and, if it fails, checks whether there were any requests to analyze.
- */
+/** Wraps a function that executes a REPL query and, if it fails, checks whether there were any requests to analyze. */
 export async function genericWrapReplFailIfNoRequest<T>(
 	fn: () => Promise<T>,
 	output: ReplOutput,

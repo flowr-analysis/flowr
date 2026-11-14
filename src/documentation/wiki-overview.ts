@@ -7,9 +7,7 @@ import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { codeBlock } from './doc-util/doc-code';
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Overview
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Overview */
 export class WikiOverview extends DocMaker<'wiki/Overview.md'> {
 	constructor() {
 		super('wiki/Overview.md', module.filename, 'modules');

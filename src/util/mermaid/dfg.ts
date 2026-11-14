@@ -14,9 +14,7 @@ import { DataflowInformation } from '../../dataflow/info';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
-/**
- * Internal representation of a mermaid graph in flowR
- */
+/** Internal representation of a mermaid graph in flowR */
 export interface MermaidGraph {
 	nodeLines:           string[]
 	edgeLines:           string[]
@@ -33,7 +31,6 @@ export interface MermaidGraph {
 	/** show the edge-free base-R qualification (`acf` as `stats::acf`); `false` when the signature database is disabled */
 	qualifyBaseR?:       boolean
 }
-
 
 function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformation | undefined, mermaid: MermaidGraph, idPrefix = ''): void {
 	if(subflow === undefined) {
@@ -82,7 +79,6 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
 	mermaid.presentEdges.add(edgeId);
 }
 
-
 function printArg(arg: FunctionArgument | undefined): string {
 	if(arg === undefined) {
 		return '??';
@@ -123,10 +119,7 @@ function boldLexeme(lexeme: string, display: string): string {
 	return `**${Mermaid.escape(display)}**`;
 }
 
-
-/**
- * Translates a vertex tag to the corresponding mermaid node brackets.
- */
+/** Translates a vertex tag to the corresponding mermaid node brackets. */
 export function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: string, close: string } {
 	let open: string;
 	let close: string;
@@ -146,9 +139,7 @@ export function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open
 	return { open, close };
 }
 
-/**
- * Prints an identifier definition in a human-readable format.
- */
+/** Prints an identifier definition in a human-readable format. */
 export function printIdentifier(id: IdentifierDefinition): string {
 	return `**${id.name ? Identifier.toString(id.name) : 'undefined'}** (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.cds ? ' cds: {' + id.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
 }
@@ -314,7 +305,6 @@ export interface MermaidGraphConfiguration {
 	qualifyBaseR?:        boolean
 }
 
-
 // make the passing of root ids more performant again
 function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
@@ -346,13 +336,10 @@ export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGr
 	return `${prefix}flowchart TD\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`;
 }
 
-/**
- * Converts two dataflow graphs to a mermaid url that visualizes their differences.
- */
+/** Converts two dataflow graphs to a mermaid url that visualizes their differences. */
 export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, prefix: string): string {
 	return Mermaid.codeToUrl(diffGraphsToMermaid(left, right, prefix));
 }
-
 
 /**
  * The helper object for all things regarding the mermaid based visualization of dataflow graphs!
@@ -368,9 +355,7 @@ export const DataflowMermaid = {
 		const mermaid = graphToMermaidGraph(config.includeOnlyIds ?? config.graph.rootIds(), config);
 		return { string: `${mermaid.nodeLines.join('\n')}\n${mermaid.edgeLines.join('\n')}`, mermaid };
 	},
-	/**
-	 * This is a simplified version of {@link DataflowMermaid.convert}
-	 */
+	/** This is a simplified version of {@link DataflowMermaid.convert} */
 	raw(this: void, graph: DataflowGraph | DataflowInformation, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false, qualifyBaseR = true): string {
 		graph = DataflowInformation.is(graph) ? graph.graph : graph;
 		return DataflowMermaid.convert({ graph, includeEnvironments, mark, simplified, qualifyBaseR }).string;

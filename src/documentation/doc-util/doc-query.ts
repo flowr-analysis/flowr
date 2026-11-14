@@ -37,9 +37,7 @@ export interface ShowQueryOptions {
 	readonly prepare?:        (builder: FlowrAnalyzerBuilder) => void;
 }
 
-/**
- * Visualizes a query and its results in markdown format.
- */
+/** Visualizes a query and its results in markdown format. */
 export async function showQuery<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
@@ -125,10 +123,7 @@ export const RegisteredQueries = {
 	'virtual': new Map<string, QueryDocumentation>()
 };
 
-
-/**
- * Registers a new documentation for a query.
- */
+/** Registers a new documentation for a query. */
 export function registerQueryDocumentation(query: SupportedQueryTypes | SupportedVirtualQueryTypes, doc: QueryDocumentation) {
 	const map = RegisteredQueries[doc.type];
 	if(map.has(query)) {
@@ -167,7 +162,6 @@ export function linkToQueryOfName(id: SupportedQueryTypes | SupportedVirtualQuer
 	return `[${linkText ?? getQueryTitle(id)}](${queryPageUrl(id)})`;
 }
 
-
 /**
  * The table of contents for one kind of query, its entries sorted by the title they are shown under.
  * @param type - whether to list the active or the virtual queries
@@ -204,7 +198,6 @@ The ${name} is executed by ${ctx.link((supported?.executor ?? SupportedVirtualQu
 
 `.trim();
 }
-
 
 /** Keyed by the file path each page is written to. */
 export async function queryPages(shell: RShell, ctx: GeneralDocContext, type: 'active' | 'virtual'): Promise<Record<string, string>> {

@@ -12,7 +12,6 @@ import { DfEdge, EdgeType } from '../../../../graph/edge';
 import { Unquote } from '../../../../environments/built-in-kinds';
 export { Unquote } from '../../../../environments/built-in-kinds';
 
-
 /** `!!x` parses as `!(!x)`, so peel the run of `!` to reach the operand. */
 function unquotedOperandOf<Info>(node: RNode<Info>, style: Unquote): RNode<Info> | undefined {
 	if(style === Unquote.Bquote) {

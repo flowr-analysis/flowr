@@ -23,9 +23,7 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 		}
 	}
 
-	/**
-	 * Add one or more taint mapping rules to the mapper
-	 */
+	/** Add one or more taint mapping rules to the mapper */
 	public pushMapping(mappings: TaintMapping<Domain>[]) {
 		this.mapRulesToInternal(mappings).forEach(m => this.add(m));
 	}
@@ -44,9 +42,7 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 		}
 	}
 
-	/**
-	 * Get all mappings belonging to the given identifier
-	 */
+	/** Get all mappings belonging to the given identifier */
 	public getMappings(identifier: Identifier) {
 		return this.byName.get(Identifier.getName(identifier))?.filter(m => TaintMapper.matches(m.identifier, identifier)) ?? [];
 	}
@@ -56,9 +52,7 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 		return Identifier.matches(mapped, called) || (Identifier.getNamespace(called) === undefined && Identifier.matches(called, mapped));
 	}
 
-	/**
-	 * Create a new, independent mapper containing the same taint mappings
-	 */
+	/** Create a new, independent mapper containing the same taint mappings */
 	public clone(): TaintMapper<Domain> {
 		return new TaintMapper<Domain>(this.mapper);
 	}

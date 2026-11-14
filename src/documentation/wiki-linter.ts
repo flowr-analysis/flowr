@@ -630,9 +630,7 @@ async function getTexts(parser: KnownParser, ctx: GeneralDocContext): Promise<Re
 	};
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Linter
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Linter */
 export class WikiLinter extends DocMaker<'wiki/Linter.md'> {
 	constructor() {
 		super('wiki/Linter.md', module.filename, 'linter');

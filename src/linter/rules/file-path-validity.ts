@@ -52,9 +52,7 @@ export interface FilePathValidityConfig extends MergeableRecord {
 	 * Entries in this array use the {@link FunctionInfo} format from the dependencies query.
 	 */
 	additionalWriteFunctions: readonly FunctionInfo[]
-	/**
-	 * Whether unknown file paths should be included as linting results.
-	 */
+	/** Whether unknown file paths should be included as linting results. */
 	includeUnknown:           boolean
 	/**
 	 * Whether URLs should be validated by checking the endpoint exists.

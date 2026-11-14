@@ -18,8 +18,8 @@ export function queryHeader(name: string, formatter: OutputFormatter, timing: nu
 
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object }, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
-	const id = isObj ? nodeId?.id : nodeId;
-	const info = isObj ? nodeId?.info : undefined;
+	const id = isObj ? nodeId.id : nodeId;
+	const info = isObj ? nodeId.info : undefined;
 	if(NodeId.isBuiltIn(id)) {
 		return italic(id, formatter) + (info ? ` (${JSON.stringify(info)})` : '');
 	}
@@ -31,25 +31,11 @@ function nodeString(nodeId: NodeId | { id: NodeId, info?: object }, formatter: O
 }
 
 function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], idMap: AstIdMap<ParentInformation>): string {
-	const result: string[] = [];
-	for(const { id, calls = [], linkedIds = [], aliasRoots = [] } of results.slice(0, 20)) {
-		const node = idMap.get(id);
-		if(node === undefined) {
-			result.push(` ${bold('UNKNOWN: ' + JSON.stringify({ calls, linkedIds }))}`);
-			continue;
-		}
-		let line = nodeString(id, formatter, idMap);
-		if(calls.length > 0) {
-			line += ` with ${calls.length} call${calls.length > 1 ? 's' : ''} (${calls.map(c => nodeString(c, formatter, idMap)).join(', ')})`;
-		}
-		if(linkedIds.length > 0) {
-			line += ` with ${linkedIds.length} link${linkedIds.length > 1 ? 's' : ''} (${linkedIds.map(c => nodeString(c, formatter, idMap)).join(', ')})`;
-		}
-		if(aliasRoots.length > 0) {
-			line += ` with ${aliasRoots.length} alias root${aliasRoots.length > 1 ? 's' : ''} (${aliasRoots.map(c => nodeString(c, formatter, idMap)).join(', ')})`;
-		}
-		result.push(line);
-	}
+	const withAll = (items: readonly (NodeId | { id: NodeId, info?: object })[], noun: string) =>
+		items.length > 0 ? ` with ${items.length} ${noun}${items.length > 1 ? 's' : ''} (${items.map(c => nodeString(c, formatter, idMap)).join(', ')})` : '';
+	const result = results.slice(0, 20).map(({ id, calls = [], linkedIds = [], aliasRoots = [] }) => idMap.get(id) === undefined
+		? ` ${bold('UNKNOWN: ' + JSON.stringify({ calls, linkedIds }))}`
+		: nodeString(id, formatter, idMap) + withAll(calls, 'call') + withAll(linkedIds, 'link') + withAll(aliasRoots, 'alias root'));
 	if(results.length > 20) {
 		result.push(` ... and ${results.length - 20} more hits`);
 	}
@@ -58,17 +44,11 @@ function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly Ca
 
 /** Converts call context query results to an ASCII representation */
 export function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], idMap: AstIdMap<ParentInformation>): string {
-	/* traverse over 'kinds' and within them 'subkinds' */
-	const result: string[] = [];
-	for(const [kind, { subkinds }] of Object.entries(results['kinds'])) {
-		const amountOfHits = Object.values(subkinds).reduce((acc, cur) => acc + cur.length, 0);
-		result.push(`   ╰ ${bold(kind, formatter)} (${amountOfHits} hit${amountOfHits === 1 ? '' : 's'}):`);
-		for(const [subkind, values] of Object.entries(subkinds)) {
-			const amountOfSubHits = values.length;
-			result.push(`     ╰ ${bold(subkind, formatter)} (${amountOfSubHits} hit${amountOfSubHits === 1 ? '' : 's'}): ${asciiCallContextSubHit(formatter, values, idMap)}`);
-		}
-	}
-	return result.join('\n');
+	const hits = (n: number) => `${n} hit${n === 1 ? '' : 's'}`;
+	return Object.entries(results['kinds']).flatMap(([kind, { subkinds }]) => [
+		`   ╰ ${bold(kind, formatter)} (${hits(Object.values(subkinds).reduce((acc, cur) => acc + cur.length, 0))}):`,
+		...Object.entries(subkinds).map(([subkind, values]) => `     ╰ ${bold(subkind, formatter)} (${hits(values.length)}): ${asciiCallContextSubHit(formatter, values, idMap)}`)
+	]).join('\n');
 }
 
 /**
@@ -98,23 +78,17 @@ export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly 
 }
 
 /** Generates an ASCII summary of the given query results */
-export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(
-	formatter: OutputFormatter, totalInMs: number, results: QueryResults<S>,
-	analyzer: ReadonlyFlowrAnalysisProvider, queries: Queries<S>
-): Promise<string> {
+export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(formatter: OutputFormatter, totalInMs: number, results: QueryResults<S>, analyzer: ReadonlyFlowrAnalysisProvider, queries: Queries<S>): Promise<string> {
 	const result: string[] = [];
-
 	for(const [query, queryResults] of Object.entries(results)) {
 		if(query === '.meta') {
 			continue;
 		}
-
 		if(queryResults === undefined || (typeof queryResults === 'object' && queryResults !== null && 'error' in queryResults)) {
 			const message = (queryResults as { error?: string } | undefined)?.error ?? 'unknown error';
 			result.push(`Query: ${bold(query, formatter)} ${bold('failed', formatter)}: ${message}`);
 			continue;
 		}
-
 		const queryType = SupportedQueries[query as SupportedQueryTypes];
 		const relevantQueries = queries.filter(q => q.type === query as SupportedQueryTypes) as Query[];
 		if(await queryType.asciiSummarizer(formatter, analyzer, queryResults as BaseQueryResult, result, relevantQueries)) {
@@ -122,19 +96,9 @@ export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(
 		}
 
 		result.push(`Query: ${bold(query, formatter)}`);
-
-		let timing = -1;
-
-		for(const [key, value] of Object.entries(queryResults as Awaited<QueryResult<S>>)) {
-			if(key === '.meta') {
-				timing = (value as BaseQueryMeta).timing;
-				continue;
-			}
-			result.push(` ╰ ${key}: ${JSON.stringify(value)}`);
-		}
-		result.push(`  - Took ${printAsMs(timing, 0)}`);
+		const { '.meta': meta, ...rest } = queryResults as Awaited<QueryResult<S>> & { '.meta'?: BaseQueryMeta };
+		result.push(...Object.entries(rest).map(([key, value]) => ` ╰ ${key}: ${JSON.stringify(value)}`), `  - Took ${printAsMs(meta?.timing ?? -1, 0)}`);
 	}
-
 	if(analyzer.flowrConfig.repl.queryStats !== false) {
 		result.push(italic(`All queries together required ≈${printAsMs(results['.meta'].timing, 0)} (1ms accuracy, total ${printAsMs(totalInMs, 0)})`, formatter));
 	}

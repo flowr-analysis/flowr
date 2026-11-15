@@ -38,9 +38,28 @@ export function verticesByName<Info>(graph: DataflowGraph, type: VertexType, idM
 	return Map.groupBy(named, id => NodeId.recoverBareName(id, idMap) as string);
 }
 
-/** The names a deferred expression touches, each with the node touching it and whether it is written. */
-function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): readonly (readonly [NodeId, BrandedIdentifier, boolean])[] {
-	const names: (readonly [NodeId, BrandedIdentifier, boolean])[] = [];
+/** A call or a symbol of a deferred expression, in the order the expression holds them. */
+interface Touched {
+	readonly call: boolean
+	readonly id:   NodeId
+	readonly name: BrandedIdentifier
+}
+
+/** Per AST, what each deferred expression holds: the syntax does not change, so every link of the same expression shares one walk. */
+const touchedCache = new WeakMap<AstIdMap, Map<NodeId, readonly Touched[]>>();
+
+/** The calls and symbols below `expr`, not descending into function definitions, whose bodies run only when called. */
+function touchedWithin<Info>(expr: NodeId, idMap: AstIdMap<Info & ParentInformation>): readonly Touched[] {
+	let perAst = touchedCache.get(idMap);
+	if(perAst === undefined) {
+		perAst = new Map();
+		touchedCache.set(idMap, perAst);
+	}
+	const known = perAst.get(expr);
+	if(known !== undefined) {
+		return known;
+	}
+	const touched: Touched[] = [];
 	const callees = new Set<NodeId>();
 	RNode.visitAst<Info & ParentInformation>(idMap.get(expr), inner => {
 		/* a definition only creates its closure, the body runs when it is called and that call carries its effects */
@@ -48,26 +67,36 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 			return true;
 		} else if(RFunctionCall.isNamed(inner)) {
 			callees.add(inner.functionName.info.id);
-			/* a call reads the function it names, so `eval(quote(f()))` needs the definition of `f` */
-			if(DfgVertex.isFunctionCall(graph.getVertex(inner.info.id))) {
-				names.push([inner.info.id, Identifier.getName(inner.functionName.content), false]);
-				for(const def of Dataflow.sourcesOf(graph, inner.info.id, EdgeType.SideEffectOnCall)) {
-					const name = NodeId.recoverBareName(def, idMap);
-					if(name !== undefined) {
-						names.push([def, name, true]);
-					}
-				}
-			}
-			return false;
-		} else if(!RSymbol.is(inner) || callees.has(inner.info.id)) {
-			return false;
-		}
-		const vertex = graph.getVertex(inner.info.id);
-		if(DfgVertex.isUse(vertex) || DfgVertex.isVariableDefinition(vertex)) {
-			names.push([inner.info.id, Identifier.getName(inner.content), DfgVertex.isVariableDefinition(vertex)]);
+			touched.push({ call: true, id: inner.info.id, name: Identifier.getName(inner.functionName.content) });
+		} else if(RSymbol.is(inner) && !callees.has(inner.info.id)) {
+			touched.push({ call: false, id: inner.info.id, name: Identifier.getName(inner.content) });
 		}
 		return false;
 	});
+	perAst.set(expr, touched);
+	return touched;
+}
+
+/** The names a deferred expression touches, each with the node touching it and whether it is written. */
+function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): readonly (readonly [NodeId, BrandedIdentifier, boolean])[] {
+	const names: (readonly [NodeId, BrandedIdentifier, boolean])[] = [];
+	for(const { call, id, name } of touchedWithin(expr, idMap)) {
+		const vertex = graph.getVertex(id);
+		if(call) {
+			/* a call reads the function it names, so `eval(quote(f()))` needs the definition of `f` */
+			if(DfgVertex.isFunctionCall(vertex)) {
+				names.push([id, name, false]);
+				for(const def of Dataflow.sourcesOf(graph, id, EdgeType.SideEffectOnCall)) {
+					const written = NodeId.recoverBareName(def, idMap);
+					if(written !== undefined) {
+						names.push([def, written, true]);
+					}
+				}
+			}
+		} else if(DfgVertex.isUse(vertex) || DfgVertex.isVariableDefinition(vertex)) {
+			names.push([id, name, DfgVertex.isVariableDefinition(vertex)]);
+		}
+	}
 	return names;
 }
 

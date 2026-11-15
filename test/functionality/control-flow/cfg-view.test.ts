@@ -1,14 +1,13 @@
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import { CfgEdge, CfgVertex, ControlFlowGraph, extractCfg } from '../../../src/control-flow/control-flow-graph';
 import { visitCfgInOrder } from '../../../src/control-flow/simple-visitor';
 import { FlowrConfig } from '../../../src/config';
 import { jsonReplacer } from '../../../src/util/json';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import type { KnownParser } from '../../../src/r-bridge/parser';
+import { analyze } from '../_helper/analyzer';
 
 const programs = [
 	'x <- 1\nprint(x)',
@@ -19,15 +18,14 @@ const programs = [
 	'while(u) { next }\nafter'
 ];
 
-async function analyze(parser: KnownParser, code: string): Promise<DataflowInformation> {
-	const context = contextFromInput(code, FlowrConfig.default());
-	return (await createDataflowPipeline(parser, { context }).allRemainingSteps()).dataflow;
+async function dataflowOf(parser: KnownParser, code: string): Promise<DataflowInformation> {
+	return await (await analyze(parser, code, { config: FlowrConfig.default() })).dataflow();
 }
 
 describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 	describe('reads the same before and after it is projected', () => {
 		test.each(programs)('%s', async code => {
-			const dataflow = await analyze(parser, code);
+			const dataflow = await dataflowOf(parser, code);
 			const view = extractCfg(dataflow).graph;
 			const copy = extractCfg(dataflow).graph;
 			/* asking for everything at once is what turns a view into a graph of its own */
@@ -51,7 +49,7 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 
 	describe('names where a construct starts and ends', () => {
 		test('an if starts at its condition and ends on itself', async() => {
-			const dataflow = await analyze(parser, 'if(u) 1 else 2');
+			const dataflow = await dataflowOf(parser, 'if(u) 1 else 2');
 			const cfg = extractCfg(dataflow);
 			const graph = cfg.graph;
 			const [ifId] = [...graph.vertices(true).keys()].filter(id => NodeId.recoverName(id, dataflow.graph.idMap)?.startsWith('if'));
@@ -66,7 +64,7 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 		});
 
 		test('a condition names the construct it decides', async() => {
-			const dataflow = await analyze(parser, 'if(u) 3 else 2\nwhile(v) b');
+			const dataflow = await dataflowOf(parser, 'if(u) 3 else 2\nwhile(v) b');
 			const cfg = extractCfg(dataflow);
 			const graph = cfg.graph;
 			const lexemeOf = (id: NodeId) => NodeId.recoverName(id, dataflow.graph.idMap);
@@ -79,7 +77,7 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 		});
 
 		test('an expression ends on its operator', async() => {
-			const dataflow = await analyze(parser, '2 * 3');
+			const dataflow = await dataflowOf(parser, '2 * 3');
 			const graph = extractCfg(dataflow).graph;
 			const [mulId] = [...graph.vertices(true).keys()].filter(id => NodeId.recoverName(id, dataflow.graph.idMap) === '*');
 

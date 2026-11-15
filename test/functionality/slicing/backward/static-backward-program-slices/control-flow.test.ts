@@ -1,5 +1,4 @@
-import { assertSliced, withShell, assertSliceMatchesR, withTreeSitter } from '../../../_helper/shell';
-import type { TestConfigurationWithOutput } from '../../../_helper/shell';
+import { assertSliced, withShell, assertSliceMatchesR, withTreeSitter, type TestConfigurationWithOutput } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';

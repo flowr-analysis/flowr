@@ -1,10 +1,9 @@
-import type { BrandedIdentifier, IdentifierString } from '../dataflow/environments/identifier';
-import { Identifier } from '../dataflow/environments/identifier';
+import { type BrandedIdentifier, type IdentifierString, Identifier } from '../dataflow/environments/identifier';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { DfgVertex, type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import type { RLogicalValue } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { RNull, RNumberValue, RStringValue, RFalse, RTrue  } from '../r-bridge/lang-4.x/convert-values';
+import type { RNull, RNumberValue, RStringValue, RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { Record } from '../util/record';
 import type { AbsintContext, AbstractSemantics } from './abstract-semantics';
 import type { AnyAbstractDomain } from './domains/abstract-domain';

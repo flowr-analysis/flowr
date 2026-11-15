@@ -336,9 +336,9 @@ function checkPage(page: RdPage, rdName: string, path: string, raw: string | und
 			calls.push(parsed);
 		}
 	}
-	const add = (kind: DocumentationMismatchKind, name: BrandedIdentifier, message: string, loc: SourceLocation, fn?: BrandedIdentifier) => {
+	function add(kind: DocumentationMismatchKind, name: BrandedIdentifier, message: string, loc: SourceLocation, fn?: BrandedIdentifier) {
 		out.push({ certainty: LintingResultCertainty.Certain, involvedId: undefined, loc, kind, name, rdFile: rdName, function: fn, message });
-	};
+	}
 	const usageLoc = (call: UsageCall) => rdLoc(path, raw, UsageStart, usageNeedles(call.name));
 
 	if(config.checkCodoc && page.name !== 'defunct' && !page.name.endsWith('-defunct')) {

@@ -1,8 +1,7 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { FnSig } from '../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../fn/function-semantics';
-import type { ExitPoint, DataflowInformation } from '../../../../info';
-import { ExitPointType, withCds } from '../../../../info';
+import { type ExitPoint, type DataflowInformation, ExitPointType, withCds } from '../../../../info';
 import { processAllArguments } from './common';
 import { EnvironmentLookups } from './built-in/built-in-envir-utils';
 import { applyKills } from '../../../../environments/apply-kill';
@@ -14,8 +13,7 @@ import { RString } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-stri
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
-import type { FunctionArgument } from '../../../../graph/graph';
-import { DataflowGraph } from '../../../../graph/graph';
+import { type FunctionArgument, DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { NseArguments, NseKind } from './nse-kind';
 import { ControlFlow } from '../../../control-flow';

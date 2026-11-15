@@ -59,7 +59,7 @@ describe('Fixpoint', () => {
 
 	describe('DemandSolver', () => {
 		/* whether every path from a node ends in `end`, assumed true within a cycle: a greatest fixpoint */
-		const allEnd = (graph: Graph, rounds = 10) => {
+		function allEnd(graph: Graph, rounds = 10) {
 			const computed: string[] = [];
 			const solver = new DemandSolver<string, boolean>({
 				transfer: (n, valueOf) => {
@@ -73,7 +73,7 @@ describe('Fixpoint', () => {
 				exhausted: () => false
 			});
 			return { solver, computed };
-		};
+		}
 
 		test('computes acyclic nodes once', () => {
 			const { solver, computed } = allEnd({ a: ['b', 'c'], b: ['end'], c: ['end'] });

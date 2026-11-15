@@ -1,8 +1,7 @@
 import type { Writable } from 'ts-essentials';
 import type { DataflowProcessorInformation } from '../processor';
 import { FunctionSemantics } from '../fn/function-semantics';
-import type { DataflowInformation } from '../info';
-import { ExitPointType } from '../info';
+import { type DataflowInformation, ExitPointType } from '../info';
 import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, nseArgumentPositions } from '../internal/process/functions/call/known-call-handling';
 import { type NseArguments, NseKind } from '../internal/process/functions/call/nse-kind';
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access';
@@ -21,13 +20,13 @@ import { processFunctionDefinition } from '../internal/process/functions/call/bu
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list';
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type PotentiallyEmptyRArgument, EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
 import type { DataflowGraph } from '../graph/graph';
-import { processLibrary, processPrefer  } from '../internal/process/functions/call/built-in/built-in-library';
+import { processLibrary, processPrefer } from '../internal/process/functions/call/built-in/built-in-library';
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source';
 import { processApply } from '../internal/process/functions/call/built-in/built-in-apply';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
@@ -39,7 +38,7 @@ import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import { type AmbientCondition, withImpliedAmbient } from './ambient-effect';
 import { applyAmbientEffects, holds, markLocking, processAmbientScope } from '../internal/process/functions/call/built-in/built-in-ambient-state';
 import { Ternary } from '../../util/logic';
-import type { REnvironmentInformation } from './environment';
+import { type REnvironmentInformation, REnvironment } from './environment';
 import type { Value } from '../eval/values/r-value';
 import type { ResolveInfo } from '../eval/resolve/alias-tracking';
 import { resolveAsElement, resolveAsList, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
@@ -82,9 +81,7 @@ import { processNamespaceAccess } from '../internal/process/functions/call/built
 import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
 import { processStringTemplate } from '../internal/process/functions/call/built-in/built-in-string-template';
 import { ArgProp, type BuiltInFnInfo, type FnSig, type SigLayout } from './built-in-props';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { AttachedBasePackageSet } from '../../util/r-base-packages';
-import { REnvironment } from './environment';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,

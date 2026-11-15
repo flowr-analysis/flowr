@@ -17,10 +17,7 @@ export class DefaultMap<K, V = K> {
 		this.internal = map;
 	}
 
-	/**
-	 * Sets a value for a given key.
-	 * As you provide value, this does not invoke the generator!
-	 */
+	/** Sets a value for a given key. As you provide value, this does not invoke the generator! */
 	public set(k: K, v: V): this {
 		this.internal.set(k, v);
 		return this;

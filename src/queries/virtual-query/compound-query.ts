@@ -5,10 +5,7 @@ import type { StrictOmit } from 'ts-essentials';
 /** @see CompoundQueryFormat */
 export type VirtualCompoundConstraint<SubQueryType extends SupportedQueryTypes> = keyof StrictOmit<QueryArgumentsWithType<SubQueryType>, 'type'>;
 
-/**
- * Virtual Query Format.
- * Grouping query parameters of the same type (re-specified in the `query` field).
- */
+/** Virtual Query Format. Grouping query parameters of the same type (re-specified in the `query` field). */
 export interface CompoundQueryFormat<
 	/* The queries we collect, locked by `query` demanding a single type */
 	SubQueryType extends SupportedQueryTypes,

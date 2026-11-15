@@ -20,7 +20,7 @@ export function statedGuardsOf(this: void, guards: FunctionGuards, idMap: AstIdM
 	}
 	const calls = callsOfTerms(clauses.map(c => c.requires));
 	return compactRecord({
-		requires:    summarizeClauses(clauses).requires,
+		requires:    summarizeClauses(clauses).requires || undefined,
 		calls:       nonEmpty(calls),
 		required:    nonEmpty(guards.required),
 		formals:     hasFormals ? guards.formals : undefined,

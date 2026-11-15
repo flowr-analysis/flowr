@@ -1,6 +1,5 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ControlDependency } from './info';
-import { happensInEveryBranch, negateControlDependency } from './info';
+import { type ControlDependency, happensInEveryBranch, negateControlDependency } from './info';
 import { DefaultMap } from '../util/collections/defaultmap';
 import type { KnownHooks } from './environments/built-in-kinds';
 export { KnownHooks } from './environments/built-in-kinds';

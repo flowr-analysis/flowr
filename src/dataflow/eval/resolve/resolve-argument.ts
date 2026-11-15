@@ -1,11 +1,10 @@
 import { type DataflowGraph, FunctionArgument } from '../../graph/graph';
-import { RValue } from '../values/r-value';
-import type { DataflowGraphVertexFunctionCall } from '../../graph/vertex';
+import { RValue, isValue, type Value } from '../values/r-value';
+import { type DataflowGraphVertexFunctionCall, DfgVertex } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { MatchArgs } from '../../graph/match-args';
 import { isNotUndefined } from '../../../util/assert';
-import { DfgVertex } from '../../graph/vertex';
 import { EdgeType } from '../../graph/edge';
 import { Dataflow } from '../../graph/df-helper';
 import { callFnProps } from '../../environments/query-fn-props';
@@ -15,7 +14,6 @@ import { type BrandedIdentifier, Identifier } from '../../environments/identifie
 import { Constant, Unknown } from '../../../queries/catalog/dependencies-query/dependency-values';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { valueSetGuard } from '../values/general';
-import { isValue, type Value } from '../values/r-value';
 import { RFalse, RTrue } from '../../../r-bridge/lang-4.x/convert-values';
 import { collectStrings } from '../values/string/string-constants';
 import type { VariableResolve } from '../../../config';

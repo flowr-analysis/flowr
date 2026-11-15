@@ -32,14 +32,14 @@ const NonNumeric = 'non-numeric argument to binary operator';
 const Arithmetic: GuardFacts = { asks: operands(dispatched(Calculable, NonNumeric)), computes: true };
 /* the remainder of complex numbers fails only once there is one to compute */
 /* `quote(a) == "a"` compares the deparsed call, as did an order of a symbol or call before R 4.4.0 made it an error */
-const Compared = (operator: string, ordered: boolean): GuardFacts => {
+function Compared(operator: string, ordered: boolean): GuardFacts {
 	const message = `comparison (${operator}) is possible only for atomic and list types`;
 	const unordered = dispatched(not('is.function', 'is.environment'), message);
 	return { asks: operands(ordered ? [
 		...unordered.map(f => ({ ...f, until: '4.4.0' })),
 		...dispatched(not('is.function', 'is.environment', 'is.symbol', 'is.call'), message).map(f => ({ ...f, since: '4.4.0' }))
 	] : unordered), computes: true };
-};
+}
 const Elementwise: GuardFacts = { asks: operands(dispatched(is('is.numeric', 'is.logical', 'is.complex', 'is.raw', 'is.null'), 'operations are possible only for numeric, logical or complex types')), computes: true };
 /* no dispatch happens, but a class like `Date` may hide a number from `is.numeric`, and an empty operand reads as `NA` */
 const LogicalOperand = (operand: string, operator: string): readonly RFailure[] => [

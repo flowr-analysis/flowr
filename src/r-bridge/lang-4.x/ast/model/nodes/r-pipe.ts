@@ -1,5 +1,4 @@
-import type { RAstNodeBase, Location, NoInfo } from '../model';
-import { RNode } from '../model';
+import { type RAstNodeBase, type Location, type NoInfo, RNode } from '../model';
 import { RType } from '../type';
 import { SemVer } from 'semver';
 import { MIN_VERSION_PIPE, MIN_VERSION_PIPE_BIND, MIN_VERSION_PIPE_PLACEHOLDER, MIN_VERSION_PIPE_PLACEHOLDER_EXTRACT } from '../versions';
@@ -33,10 +32,7 @@ export const RPipe = {
 	hasPlaceHolderFromRVersion(this: void): SemVer {
 		return new SemVer(MIN_VERSION_PIPE_PLACEHOLDER);
 	},
-	/**
-	 * Returns the minimum R version that supports using the placeholder like '_' in access
-	 * patterns: `_$a`
-	 */
+	/** Returns the minimum R version that supports using the placeholder like '_' in access patterns: `_$a` */
 	hasAccessPlaceHolderFromRVersion(this: void): SemVer {
 		return new SemVer(MIN_VERSION_PIPE_PLACEHOLDER_EXTRACT);
 	},

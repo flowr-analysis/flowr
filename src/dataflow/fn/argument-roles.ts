@@ -2,15 +2,17 @@
  * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
-import type { DataflowGraph } from '../graph/graph';
+import { type DataflowGraph, FunctionArgument } from '../graph/graph';
 import { FunctionSemantics } from './function-semantics';
-import { FunctionArgument } from '../graph/graph';
 import { Dataflow } from '../graph/df-helper';
 import { DfEdge, EdgeType } from '../graph/edge';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo } from '../graph/vertex';
-import { DfgVertex } from '../graph/vertex';
-import type { ArgProps, FnSig } from '../environments/built-in-props';
-import { ArgProp } from '../environments/built-in-props';
+import {
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexFunctionDefinition,
+	type DataflowGraphVertexInfo,
+	DfgVertex
+} from '../graph/vertex';
+import { type ArgProps, type FnSig, ArgProp } from '../environments/built-in-props';
 import { reflectiveRolesOf, type BuiltInLookup } from './frame-reflection';
 import { builtInLookup } from '../environments/query-fn-props';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -145,13 +147,13 @@ function identityFrom(node: NodeId, state: RoleState, depth: number, open: Set<N
 	const touched = new Set<NodeId>([node]);
 	const before = [...open];
 	open.add(node);
-	const walk = (next: NodeId): ReadonlySet<NodeId> => {
+	function walk(next: NodeId): ReadonlySet<NodeId> {
 		const reached = identityFrom(next, state, depth + 1, open);
 		for(const id of reached.touched) {
 			touched.add(id);
 		}
 		return reached.found;
-	};
+	}
 	const [branches, steps] = sameValueAs(node, state);
 	for(const step of steps) {
 		for(const id of walk(step)) {
@@ -219,7 +221,7 @@ function takesApart(vertex: DataflowGraphVertexInfo | undefined): boolean {
 function statedRoles(definition: DataflowGraphVertexFunctionDefinition, state: RoleState): Map<NodeId, ArgProps> {
 	const byName = formalsByName(definition, state);
 	const roles = new Map<NodeId, ArgProps>();
-	const add = (node: NodeId, props: ArgProps): void => {
+	function add(node: NodeId, props: ArgProps): void {
 		/* forcing `if(c) a else b` evaluates only one of `a` and `b`, so neither is forced for certain */
 		const always = (props & ArgProp.Forced) === 0 ? undefined : identityFrom(node, state, 0, new Set()).found;
 		const written = writtenFormal(node, byName, state);
@@ -227,7 +229,7 @@ function statedRoles(definition: DataflowGraphVertexFunctionDefinition, state: R
 			const own = always === undefined || always.has(formal) || formal === written ? props : props & ~ArgProp.Forced;
 			roles.set(formal, (roles.get(formal) ?? 0) | own);
 		}
-	};
+	}
 	for(const [node, vertex] of Dataflow.callsIn(definition, state.graph)) {
 		/* a formal the body calls is what it is used as, whether or not any built-in says so */
 		for(const callee of calledNames(node, vertex, state)) {

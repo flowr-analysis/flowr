@@ -1,14 +1,12 @@
 import { describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../../src/r-bridge/retriever';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 import { label } from '../../../_helper/label';
+import { analyze } from '../../../_helper/analyzer';
 
 describe('Definitions written inside an argument', withTreeSitter(ts => {
 	async function outNamesOf(code: string): Promise<string[]> {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-		analyzer.addRequest(requestFromInput(code));
+		const analyzer = await analyze(ts, code);
 		const df = await analyzer.dataflow();
 		return df.out.map(({ name }) => name === undefined ? '<anonymous>' : Identifier.toString(name));
 	}

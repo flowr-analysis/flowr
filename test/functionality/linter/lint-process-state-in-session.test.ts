@@ -7,8 +7,7 @@ const server = (body: string, prelude = '') => `${prelude}server <- function(inp
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('process state in session', () => {
-		const lint = (name: string, code: string, expected: Record<string, unknown>[], config?: object) =>
-			assertLinterLines(name, parser, code, 'process-state-in-session', expected, config);
+		const lint = (name: string, code: string, expected: Record<string, unknown>[], config?: object) => assertLinterLines(name, parser, code, 'process-state-in-session', expected, config);
 
 		describe('global variables', () => {
 			lint('a superassignment to a global', server('user <<- input$name'), [{ line: 2, change: ProcessStateChange.GlobalSuperAssignment, name: 'user' }]);

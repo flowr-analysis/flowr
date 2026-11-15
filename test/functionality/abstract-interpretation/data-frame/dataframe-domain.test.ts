@@ -15,8 +15,7 @@ describe('Data Frame Domains', () => {
 		rows:     new PosIntervalDomain(rows)
 	});
 
-	const createState = (state: [NodeId, ExpectedDataFrameShape][] | typeof Bottom) =>
-		new StateAbstractDomain(state === Bottom ? Bottom : new Map(state.map(([id, value]) => [id, createDomain(value)])), DataFrameDomain.top());
+	const createState = (state: [NodeId, ExpectedDataFrameShape][] | typeof Bottom) => new StateAbstractDomain(state === Bottom ? Bottom : new Map(state.map(([id, value]) => [id, createDomain(value)])), DataFrameDomain.top());
 
 	const DataFrameBottom = { colnames: Bottom, cols: Bottom, rows: Bottom } satisfies ExpectedDataFrameShape;
 	const DataFrameTop = { colnames: [[], Top], cols: PosIntervalTop, rows: PosIntervalTop } satisfies ExpectedDataFrameShape;

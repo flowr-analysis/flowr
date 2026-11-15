@@ -1,11 +1,10 @@
 import { isBuiltInProcName } from '../environments/built-in-proc-name';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../graph/graph';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, VertexType } from '../graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, VertexType, DfgVertex } from '../graph/vertex';
 import { type EdgeTypeBits, EdgeType, DfEdge } from '../graph/edge';
 import { isNotUndefined } from '../../util/assert';
 import type { Identifier } from '../environments/identifier';
-import { DfgVertex } from '../graph/vertex';
 import { Dataflow } from '../graph/df-helper';
 
 export const enum OriginType {

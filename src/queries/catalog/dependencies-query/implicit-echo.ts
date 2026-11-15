@@ -1,5 +1,5 @@
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { EmptyArgument, RFunctionCall  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';

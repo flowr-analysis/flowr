@@ -108,7 +108,7 @@ function columnPanel(view: Viewed, state: ViewState, column: number, change: () 
 			panel.append(histogram(values));
 		}
 		const range = filter?.kind === 'range' ? filter : undefined;
-		const bound = (label: string, value: number | undefined, set: (x: number | undefined) => void) => {
+		function bound(label: string, value: number | undefined, set: (x: number | undefined) => void) {
 			const input = el('input');
 			input.type = 'number';
 			input.placeholder = label;
@@ -117,15 +117,15 @@ function columnPanel(view: Viewed, state: ViewState, column: number, change: () 
 				set(input.value.trim() === '' ? undefined : Number(input.value));
 			});
 			return input;
-		};
-		const apply = (next: { min?: number, max?: number, na: boolean }) => {
+		}
+		function apply(next: { min?: number, max?: number, na: boolean }) {
 			if(next.min === undefined && next.max === undefined && next.na) {
 				state.filters.delete(column);
 			} else {
 				state.filters.set(column, { kind: 'range', ...next });
 			}
 			change();
-		};
+		}
 		const now = { min: range?.min, max: range?.max, na: range?.na ?? true };
 		const na = el('input');
 		na.type = 'checkbox';
@@ -139,14 +139,14 @@ function columnPanel(view: Viewed, state: ViewState, column: number, change: () 
 	} else {
 		const found = counts(rows, column);
 		const chosen = filter?.kind === 'values' ? filter.values : undefined;
-		const set = (values: ReadonlySet<string> | undefined) => {
+		function set(values: ReadonlySet<string> | undefined) {
 			if(values === undefined || found.every(([value]) => values.has(value))) {
 				state.filters.delete(column);
 			} else {
 				state.filters.set(column, { kind: 'values', values });
 			}
 			change();
-		};
+		}
 		const actions = el('div', 'dv-actions');
 		actions.append(
 			button('dv-link', 'all', 'keep every value', () => set(undefined)),
@@ -262,7 +262,7 @@ function viewer(view: Viewed, state: ViewState, popped: boolean): HTMLElement {
 	});
 	/* a viewer that was on the page and left it (a closed dialog, cleared output) stops following the state */
 	let placed = false;
-	const draw = () => {
+	function draw() {
 		placed ||= box.isConnected;
 		if(placed && !box.isConnected) {
 			state.shown.delete(draw);
@@ -295,7 +295,7 @@ function viewer(view: Viewed, state: ViewState, popped: boolean): HTMLElement {
 		}));
 		side.replaceChildren(...state.focus === undefined ? [] : [columnPanel(view, state, state.focus, change)]);
 		box.classList.toggle('with-side', state.focus !== undefined);
-	};
+	}
 	state.shown.add(draw);
 	draw();
 	return box;

@@ -1,11 +1,11 @@
 import { assertQuery } from '../_helper/query';
 import { label } from '../_helper/label';
 import { withShell } from '../_helper/shell';
-import type {
-	StaticSliceQuery,
-	StaticSliceQueryResult
+import {
+	type StaticSliceQuery,
+	type StaticSliceQueryResult,
+	fingerPrintOfQuery
 } from '../../../src/queries/catalog/static-slice-query/static-slice-query-format';
-import { fingerPrintOfQuery } from '../../../src/queries/catalog/static-slice-query/static-slice-query-format';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import {
 	DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE,

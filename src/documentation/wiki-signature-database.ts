@@ -172,10 +172,10 @@ function bundledDatabaseTable(): string | undefined {
 		return undefined;
 	}
 	const sizeOf = (file: string | undefined): string => file ? humanBytes(fs.statSync(file).size) : 'n/a';
-	const loadOf = (file: string | undefined): string => {
+	function loadOf(file: string | undefined): string {
 		const load = file ? measureLoad(file) : undefined;
 		return load !== undefined ? `≈ ${roughDuration(load)}` : 'n/a';
-	};
+	}
 	const shardRows: string[] = [];
 	const seenShards = new Set<string>();
 	for(const manifestPath of manifestPaths) {

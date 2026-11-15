@@ -2,19 +2,23 @@
  * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
-import type { DataflowGraph } from '../../graph/graph';
-import { FunctionArgument } from '../../graph/graph';
+import { type DataflowGraph, FunctionArgument } from '../../graph/graph';
 import { Dataflow } from '../../graph/df-helper';
 import { OriginType, type Origin } from '../../origin/dfg-get-origin';
-import type { CallRuledOut, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse  } from '../../graph/vertex';
-import { DfgVertex } from '../../graph/vertex';
+import {
+	type CallRuledOut,
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexFunctionDefinition,
+	type DataflowGraphVertexUse,
+	DfgVertex
+} from '../../graph/vertex';
 import { DfEdge, EdgeType } from '../../graph/edge';
 import { ArgProp, CallProp, CallProps, ImpureProps, SemanticCallTag, type ArgProps, type FnSig } from '../../environments/built-in-props';
 import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../environments/identifier';
 import { BuiltInProcName } from '../../environments/built-in-proc-name';
 import { builtInLookup } from '../../environments/query-fn-props';
 import { MatchArgs } from '../../graph/match-args';
-import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import { type ReadOnlyFlowrAnalyzerContext, contextFromInput } from '../../../project/context/flowr-analyzer-context';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RConstant, RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -42,13 +46,11 @@ import { linkedFunctionIds, MaxContextDepth } from '../../internal/dispatch-link
 import { baseRExportOwner, isBasePrimitive } from '../../../util/r-base-packages';
 import { RBaseGuards } from '../../../data/r-base-guards.generated';
 import { BranchPaths, type BranchStep } from '../../../abstract-interpretation/branch-paths';
-import { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
+import { ControlFlowGraph, CfgVertex, type CfgBasicBlockVertex } from '../../../control-flow/control-flow-graph';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RRepeatLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
 import { isNotUndefined } from '../../../util/assert';
-import { contextFromInput } from '../../../project/context/flowr-analyzer-context';
 import { DataflowAwareCfgGuidedVisitor } from '../../../control-flow/dfg-cfg-guided-visitor';
-import { CfgVertex, type CfgBasicBlockVertex } from '../../../control-flow/control-flow-graph';
 import { RUnaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import { RAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RPipe } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
@@ -892,10 +894,10 @@ function inherit(this: void, target: NodeId, vertex: DataflowGraphVertexFunction
 	}
 	const call = callBinding(vertex, formalNamesOf(callee), state.graph, v => termOf(v, scope, state));
 	/* a closure reads the formals of the function it is called from as well */
-	const outer = (origin: NodeId) => {
+	function outer(origin: NodeId) {
 		const name = scope.formals.get(origin);
 		return name === undefined ? undefined : GuardTerm.formal(name);
-	};
+	}
 	for(const clause of contract.clauses) {
 		const inherited = { kind: clause.kind, pure: clause.pure, via: [vertex.id, ...clause.via ?? []], ...(clause.message === undefined ? {} : { message: clause.message }) };
 		const { requires, unlessNamed } = atCall(clause.requires, call, outer, state.facts);
@@ -1454,7 +1456,9 @@ function guardVisitor(this: void): new (run: Run) => { walk(): void } {
 				return;
 			} else if(RBinaryOp.is(node) && (node.operator === '&&' || node.operator === '||') && name !== undefined) {
 				/* the path already states what makes R look at the right operand */
-				const operand = (formal: BrandedIdentifier) => (state.facts(node.operator)?.asks?.[formal] ?? []).map(({ when: _, ...failure }) => failure);
+				const operand = (formal: BrandedIdentifier) => {
+					return (state.facts(node.operator)?.asks?.[formal] ?? []).map(({ when: _, ...failure }) => failure);
+				};
 				for(const [side, formal] of [[node.lhs, 'x'], [node.rhs, 'y']] as const) {
 					this.evaluated.set(side.info.id, () => eachPath(side, run, path => {
 						const term = termOf(side, run.scope, state);
@@ -1481,7 +1485,9 @@ function guardVisitor(this: void): new (run: Run) => { walk(): void } {
 			} else if(RExpressionList.is(node) || RRepeatLoop.is(node) || (call !== undefined && (runsBuiltIn(vertex, BuiltInProcName.Return) || name === 'UseMethod'))) {
 				return;
 			}
-			const all = () => vertex.args.filter(FunctionArgument.isNotEmpty).map(a => valueOfArgument(a.nodeId, vertex, state.graph)).filter(n => n !== undefined);
+			const all = () => {
+				return vertex.args.filter(FunctionArgument.isNotEmpty).map(a => valueOfArgument(a.nodeId, vertex, state.graph)).filter(n => n !== undefined);
+			};
 			const lazy = (call !== undefined && !RFunctionCall.isNamed(call)) || soleCallee(id, state) !== undefined ? all() : evaluatedAndNot(vertex, state).lazy;
 			/* of a named argument, what flowR hands over may be its name, the value R does not evaluate sits next to it */
 			lazy.map(value => RNode.directParent(value, state.graph.idMap as AstIdMap)).forEach((argument, at) => RNode.collectAllIds(RArgument.is(argument) ? argument : lazy[at]).forEach(n => this.skip(n)));
@@ -1708,7 +1714,7 @@ function withCases(this: void, claims: Readonly<Record<BrandedIdentifier, Formal
 
 /** The claims with what the program offers for the names they need. */
 function withCandidates(this: void, claims: Readonly<Record<BrandedIdentifier, FormalClaim>>, state: GuardState): Record<BrandedIdentifier, FormalClaim> {
-	const fill = (name: ClaimedName): ClaimedName => {
+	function fill(name: ClaimedName): ClaimedName {
 		const { prefix, suffix } = name;
 		if(prefix === undefined && suffix === undefined) {
 			return name;
@@ -1718,7 +1724,7 @@ function withCandidates(this: void, claims: Readonly<Record<BrandedIdentifier, F
 			.filter(fn => fn.length > start.length + end.length && fn.startsWith(start) && fn.endsWith(end) && state.bindsFunction(fn))
 			.map(fn => fn.slice(start.length, fn.length - end.length));
 		return candidates.length === 0 ? name : { ...name, candidates };
-	};
+	}
 	return Object.fromEntries(Object.entries(claims).map(([formal, claim]) => [formal, claim.resolves === undefined ? claim : { ...claim, resolves: claim.resolves.map(fill) }]));
 }
 

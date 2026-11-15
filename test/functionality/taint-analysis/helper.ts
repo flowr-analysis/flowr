@@ -6,12 +6,14 @@ import {
 	getInferredValueForCriterionFromStateDomain
 } from '../abstract-interpretation/inference';
 import { guard } from '../../../src/util/assert';
-import type {
-	AnyPredefinedTaintAnalysisName
+import {
+	type AnyPredefinedTaintAnalysisName,
+	predefinedTaintAnalyses
 } from '../../../src/taint-analysis/predefined/predefined';
-import { predefinedTaintAnalyses } from '../../../src/taint-analysis/predefined/predefined';
-import type { TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
-import { CompositeTaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
+import {
+	type TaintAnalysisDefinition,
+	CompositeTaintAnalysisDefinition
+} from '../../../src/taint-analysis/builder/taint-analysis-definition';
 import type { MultiValueDomain } from '../../../src/abstract-interpretation/domains/multi-value-state-domain';
 import type { TaintProduct } from '../../../src/taint-analysis/taint-visitor';
 import type { TaintAnalysisBuilder } from '../../../src/taint-analysis/builder/taint-analysis';

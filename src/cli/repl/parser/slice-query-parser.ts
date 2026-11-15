@@ -153,7 +153,9 @@ export function sliceFlagCompletions(arg: string, flags: readonly SliceFlag[]): 
 	if(!split) {
 		return undefined;
 	}
-	const has = (flag: string) => split.flags.includes(flag);
+	const has = (flag: string) => {
+		return split.flags.includes(flag);
+	};
 	const offered = flags.filter(f =>
 		!has(f.flag)
 		&& (f.requires === undefined || f.requires.some(has))

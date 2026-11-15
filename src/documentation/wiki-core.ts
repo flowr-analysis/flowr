@@ -1,6 +1,6 @@
 import { codeBlock } from './doc-util/doc-code';
 import { produceDataFlowGraph } from '../dataflow/extractor';
-import { parseRequests } from '../r-bridge/parser';
+import { parseRequests, type ParseStepOutputSingleFile } from '../r-bridge/parser';
 import { normalize, normalizeButNotDecorated } from '../r-bridge/lang-4.x/ast/parser/json/parser';
 import { documentReplSession } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
@@ -16,7 +16,7 @@ import { processRepeatLoop } from '../dataflow/internal/process/functions/call/b
 import { linkCircularRedefinitionsWithinALoop } from '../dataflow/internal/linker';
 import { DataflowInformation, filterOutLoopExitPoints } from '../dataflow/info';
 import { processDataflowFor } from '../dataflow/processor';
-import { createDataflowPipeline, createNormalizePipeline, createParsePipeline } from '../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { fileProtocol, requestFromInput, retrieveParseDataFromRCode } from '../r-bridge/retriever';
 import { jsonReplacer } from '../util/json';
@@ -30,7 +30,7 @@ import { createPipeline } from '../core/steps/pipeline/pipeline';
 import { staticSlice } from '../slicing/static/static-slicer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
-import { contextFromInput, type FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { GasFeatureKey, GasLevel } from '../gas';
@@ -447,7 +447,7 @@ While looking at the mermaid visualization of such an AST is nice and usually su
 Let's have a look at the normalized AST for the sample code \`${sampleCode}\` (please refer to the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} wiki page for more information):
 
 ${details('Normalized AST for <code>x <- 1; print(x)</code>', codeBlock('json',
-	JSON.stringify((await createNormalizePipeline(shell, { context: contextFromInput(sampleCode) }).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
+	JSON.stringify((await (await new FlowrAnalyzerBuilder().setParser(shell).buildFor(sampleCode)).normalize()).ast, jsonReplacer, 4)
 ))}
 
 This is… a lot! We get the type from the ${ctx.link('RType')} enum, the lexeme, location information, an id, the children of the node, and their parents.
@@ -470,7 +470,7 @@ For single nodes, we use ${ctx.link(normalizeSingleNode)} which contains a catch
 The output of just this pass is listed below (using the ${ctx.link(normalizeButNotDecorated)} function):
 
 ${details('Ast for <code>x <- 1; print(x)</code> after the first normalization', codeBlock('json',
-	JSON.stringify(normalizeButNotDecorated((await createParsePipeline(shell, { context: contextFromInput(sampleCode) }).allRemainingSteps()).parse.files[0]), jsonReplacer, 4)
+	JSON.stringify(normalizeButNotDecorated((await (await new FlowrAnalyzerBuilder().setParser(shell).buildFor(sampleCode)).parse()).files[0] as ParseStepOutputSingleFile<string>), jsonReplacer, 4)
 ))}
 
 

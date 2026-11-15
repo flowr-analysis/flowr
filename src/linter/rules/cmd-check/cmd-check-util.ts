@@ -8,7 +8,7 @@ import { FileRole } from '../../../project/context/flowr-file';
 import { rootDescriptionFile } from './package-files';
 import { FlowrDescriptionFile } from '../../../project/plugins/file-plugins/files/flowr-description-file';
 import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
-import type { ParentInformation, AstIdMap, NormalizedAst  } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation, AstIdMap, NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { isBaseRPackage } from '../../../util/r-base-packages';

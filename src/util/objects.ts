@@ -158,10 +158,7 @@ type Primitive =
 	| Date
 	| ((...args: never[]) => unknown);
 
-/**
- * What sits at the given path of `T`, the counterpart of {@link AutocompletablePaths}.
- * `never` whenever the path names nothing.
- */
+/** What sits at the given path of `T`, the counterpart of {@link AutocompletablePaths}. `never` whenever the path names nothing. */
 export type ValueAtPath<T, Path extends string> =
 	Path extends `${infer Key}.${infer Rest}`
 		? Key extends keyof T ? ValueAtPath<NonNullable<T[Key]>, Rest> : never

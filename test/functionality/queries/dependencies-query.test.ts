@@ -22,8 +22,7 @@ import { join } from 'path';
 import { type BrandedNamespace, type BrandedIdentifier, Identifier } from '../../../src/dataflow/environments/identifier';
 import { DefaultBuiltinConfig } from '../../../src/dataflow/environments/default-builtin-config';
 import { builtInNames, BuiltInIndex } from '../../../src/dataflow/environments/query-fn-props';
-import type { BuiltInFnInfo } from '../../../src/dataflow/environments/built-in-props';
-import { ArgProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
+import { type BuiltInFnInfo, ArgProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
 import { readFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/read-functions';
 import { writeFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { OtherPathFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
@@ -32,6 +31,7 @@ import { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyze
 import { FlowrConfig } from '../../../src/config';
 import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
 import { controlledSigDb } from '../_helper/linter';
+import { analyze } from '../_helper/analyzer';
 
 assumeLoadedPackages('car', 'ggplot2', 'ggthemes', 'jmcm', 'magrittr', 'maps', 'plotly', 'remotes', 'rlang', 'tinyplot');
 
@@ -1296,8 +1296,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				}
 			}
 			async function flowrPrints(code: string): Promise<boolean> {
-				const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-				analyzer.addRequest(code);
+				const analyzer = await analyze(parser, code);
 				const results = await analyzer.query({ type: 'dependencies' });
 				return (results.write ?? []).some(d => d.implicit === true);
 			}
@@ -1410,8 +1409,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		const recordedElsewhere = new Set<BrandedIdentifier>(['rast', 'vect', 'writeRaster', 'writeVector', 'writeCDF', 'readMat', 'writeMat', 'open.nc', 'create.nc']);
 
 		test('every entry names a package that exports it', async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest('1');
+			const analyzer = await analyze(parser, '1');
 			const sources = analyzer.inspectContext().deps.signatureSources();
 			const exportsOf = (pkg: BrandedNamespace): BrandedIdentifier[] => sources.filter(s => s.packageNames().includes(pkg))
 				.flatMap(s => [...s.lookup(pkg)?.exported ?? [], ...(s.functions(pkg) ?? []).map(f => f.name)]);

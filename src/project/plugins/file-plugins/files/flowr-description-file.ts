@@ -1,11 +1,9 @@
 import { RString } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { type FlowrFileProvider, type FileRole, FlowrWrappedFile, FlowrTextFile } from '../../../context/flowr-file';
-import type { RAuthorInfo } from '../../../../util/r-author';
-import { AuthorRole, parseTextualAuthorString, parseRAuthorString } from '../../../../util/r-author';
+import { type RAuthorInfo, AuthorRole, parseTextualAuthorString, parseRAuthorString } from '../../../../util/r-author';
 import { splitAtEscapeSensitive } from '../../../../util/text/args';
 import type { DeepReadonly } from 'ts-essentials';
-import type { RLicenseElementInfo } from '../../../../util/r-license';
-import { parseRLicense } from '../../../../util/r-license';
+import { type RLicenseElementInfo, parseRLicense } from '../../../../util/r-license';
 import { Package, type PackageType } from '../../package-version-plugins/package';
 import type { SemVer } from 'semver';
 import { RVersion } from '../../../../util/r-version';

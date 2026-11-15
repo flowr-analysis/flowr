@@ -116,10 +116,7 @@ export type TaintMapping<Domain extends AnyAbstractDomain> =
 	| TaintFixedMapping<Domain>
 	| TaintConditionMapping<Domain>;
 
-/**
- * Internal representation of a taint rule.
- * Each rule is mapped to a single identifier simplifying search and retrieval.
- */
+/** Internal representation of a taint rule. Each rule is mapped to a single identifier simplifying search and retrieval. */
 type TaintMappingInternal<Domain extends AnyAbstractDomain> = {
 	readonly role?:      TaintRole;
 	readonly category?:  string;

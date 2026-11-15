@@ -135,7 +135,7 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 	const contracts = new Pool<StatedGuards>();
 	const contractOf: Record<number, number> = {};
 
-	const sig = (params: readonly SigParamInfo[]): number => {
+	function sig(params: readonly SigParamInfo[]): number {
 		if(!feats.signatures || params.length === 0) {
 			return -1;
 		}
@@ -151,15 +151,15 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 			return props === 0 ? nameI : [nameI, props];
 		});
 		return sigs.intern(JSON.stringify(value), value);
-	};
-	const cg = (callees: readonly string[]): number => {
+	}
+	function cg(callees: readonly string[]): number {
 		if(!feats.callGraphs || callees.length === 0) {
 			return -1;
 		}
 		const idxs = Array.from(new Set(callees), c => strings.str(c)).sort((a, b) => a - b);
 		return cgs.intern(idxs.join(','), deltaEncode(idxs));
-	};
-	const fn = (f: SigFunctionInfo): number => {
+	}
+	function fn(f: SigFunctionInfo): number {
 		const base: SigFn = [strings.str(f.name), sig(f.params), cg(f.callees), f.props,
 			feats.locations && f.file ? strings.str(f.file) : -1, feats.locations ? f.line ?? -1 : -1];
 		const topic = f.topic && f.topic !== f.name ? strings.str(f.topic) : -1;
@@ -172,8 +172,8 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 		const idx = fns.intern(`${rec.join(',')}|${contract}`, rec);
 		contractOf[idx] = contract;
 		return idx;
-	};
-	const depList = (list: readonly SigDependencyInfo[]): number => {
+	}
+	function depList(list: readonly SigDependencyInfo[]): number {
 		// sorted by (type, name) for a canonical, poolable form
 		const value: SigDep[] = list
 			.toSorted((a, b) => a.type - b.type || a.name.localeCompare(b.name))
@@ -181,10 +181,10 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 				? [strings.str(d.name), d.type, strings.str(d.constraint)]
 				: [strings.str(d.name), d.type]);
 		return deps.intern(JSON.stringify(value), value);
-	};
+	}
 
 	/** one class record, pooled like a function so a version that changes nothing about a class reuses its slot */
-	const cls = (c: SigClassInfo): number => {
+	function cls(c: SigClassInfo): number {
 		const systemIdx = SigClassSystemNames.indexOf(c.system);
 		const props = (c.virtual ? ClassProp.Virtual : 0) | (c.union ? ClassProp.Union : 0)
 			| (c.package !== undefined ? ClassProp.Foreign : 0);
@@ -197,7 +197,7 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 		];
 		const rec: SigClass = c.package !== undefined ? [...head, strings.str(String(c.package))] : head;
 		return classes.intern(JSON.stringify(rec), rec);
-	};
+	}
 
 	const versions: Record<string, number[]> = {};
 	const classesByVersion: Record<string, number[]> = {};

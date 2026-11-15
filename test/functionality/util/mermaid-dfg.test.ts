@@ -4,9 +4,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { withTreeSitter } from '../_helper/shell';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import { DataflowMermaid } from '../../../src/util/mermaid/dfg';
+import { analyze } from '../_helper/analyzer';
 
 function nodeLabels(mermaid: string): string[] {
 	return [...mermaid.matchAll(/"`([\s\S]*?)`"/g)].map(m => m[1]);
@@ -18,8 +17,7 @@ const awkwardName = 'we`ird.R';
 
 describe('Dataflow mermaid', withTreeSitter(parser => {
 	test('marks a linked unknown side effect like a plain one', async() => {
-		const result = await createDataflowPipeline(parser, { context: contextFromInput('f()') }).allRemainingSteps();
-		const graph = result.dataflow.graph;
+		const { graph } = await (await analyze(parser, 'f()')).dataflow();
 		const [id] = graph.rootIds();
 		graph.markIdForUnknownSideEffects(id, { type: 'link-to-last-call', callName: /^g$/ });
 		assert.include(DataflowMermaid.raw(graph), 'stroke:red');
@@ -31,8 +29,9 @@ describe('Dataflow mermaid', withTreeSitter(parser => {
 			fs.writeFileSync(sourced, 'if(u > 1) { y <- 2 }\nf <- function(a) { a + 1 }\nq <- "a\\"b"\n');
 			const main = path.join(dir, 'main.R');
 			fs.writeFileSync(main, `source('${rPath(sourced)}')\nx <- f(y)\n`);
-			const result = await createDataflowPipeline(parser, { context: contextFromInput(`file://${main}`) }).allRemainingSteps();
-			return DataflowMermaid.raw(result.dataflow.graph, false, undefined, simplified);
+			const analyzer = await analyze(parser, `file://${main}`);
+			const dataflow = await analyzer.dataflow();
+			return DataflowMermaid.raw(dataflow.graph, false, undefined, simplified);
 		} finally {
 			fs.rmSync(dir, { recursive: true, force: true });
 		}

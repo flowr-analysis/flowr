@@ -2,13 +2,16 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	type PotentiallyEmptyRArgument,
+	RFunctionCall,
+	EmptyArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EnvType, REnvironment, SearchPathPackagePrefix, type Environment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { DfgVertex } from '../../../../../graph/vertex';
-import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { StackEnvBuiltins, StackEnvKind } from '../../../../../environments/default-builtin-config';
 import { type BrandedIdentifier, Identifier, ReferenceType } from '../../../../../environments/identifier';

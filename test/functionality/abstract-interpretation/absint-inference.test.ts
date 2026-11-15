@@ -1,12 +1,16 @@
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assert, describe, test } from 'vitest';
-import type { AbsintAnalysis, AbsintPredecessor, AbsintVisitorConfiguration } from '../../../src/abstract-interpretation/absint-inference';
-import { AbstractInterpreter } from '../../../src/abstract-interpretation/absint-inference';
+import {
+	type AbsintAnalysis,
+	type AbsintPredecessor,
+	type AbsintVisitorConfiguration,
+	AbstractInterpreter
+} from '../../../src/abstract-interpretation/absint-inference';
 import { IntervalDomain } from '../../../src/abstract-interpretation/domains/interval-domain';
 import type { MultiValueStateDomain } from '../../../src/abstract-interpretation/domains/multi-value-state-domain';
 import type { StateDomain } from '../../../src/abstract-interpretation/domains/state-domain';
 import { ValueSemantics } from '../../../src/abstract-interpretation/value-semantics';
-import type { DataflowGraphVertexFunctionCall } from '../../../src/dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../src/dataflow/graph/vertex';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { guard } from '../../../src/util/assert';
 import { runInterpreter } from './inference';
@@ -14,7 +18,6 @@ import { FlowrConfig } from '../../../src/config';
 import { FunctionArgument } from '../../../src/dataflow/graph/graph';
 import type { OnCall } from '../../../src/control-flow/semantic-cfg-guided-visitor';
 import { type BrandedIdentifier, Identifier } from '../../../src/dataflow/environments/identifier';
-import { VertexType } from '../../../src/dataflow/graph/vertex';
 
 /** The single abstract domain of the analyses below, i.e. an interval per AST node */
 type IntervalDomains = { interval: IntervalDomain };

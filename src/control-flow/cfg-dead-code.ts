@@ -1,7 +1,6 @@
 /* currently this does not do work on function definitions */
-import type { ControlFlowInformation } from './control-flow-graph';
+import { type ControlFlowInformation, CfgEdge } from './control-flow-graph';
 import { Resolve } from '../dataflow/environments/resolve-helper';
-import { CfgEdge } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
 import type { CfgPassInfo } from './cfg-simplification';

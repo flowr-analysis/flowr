@@ -265,6 +265,7 @@ export const TidyEvalPackages = [PkgName.Rlang, PkgName.Dplyr, PkgName.GgPlot2] 
 export const DbConnectSig: FnSig = sig({ drv: Forced.Value, dbname: Forced.Resource, '...': Forced.Value });
 export const DbConnSig: FnSig = sig({ conn: Forced.Resource });
 export const DbReads = { ...Ambient.files.reads, sig: DbConnSig } as const;
+/** Configuration for functions that read from or write to a database connection. */
 export const DbReadsWrites = (sig: FnSig) => [{ ...Ambient.files.reads, sig }, { ...Ambient.files.writes, sig }] as const;
 export const DbPackages = [PkgName.Dbi, PkgName.Rsqlite, 'RPostgres', 'RMariaDB', 'odbc', 'pool'] as const;
 /** reads the files some arguments name and writes the ones its {@link ArgProp.Written} arguments name, like `file.copy` or `unzip` */
@@ -452,11 +453,12 @@ export const PrintDispatched = { ...ReadPrintingOptions, dispatchOn: 0 } as cons
 /** what turning a number into text reads */
 export const ReadsNumberFormat = { ...Ambient.option.reads, member: { from: 'constant', keys: NumberFormatOptions } } as const;
 /** sets the entries of an environment variable, a locale or a search path state that the call names with the parameter `name` of the given signature */
-export const SetsEntryNamedBy = (state: KeyedState, signature: readonly string[], name: string, rest: { readonly fallback?: string, readonly quoted?: boolean | string } = {}) =>
-	({ family: state, access: AmbientVerb.Writes, member: { from: 'parameter', signature, names: [name], ...rest } }) as const;
+export const SetsEntryNamedBy = (state: KeyedState, signature: readonly string[], name: string, rest: { readonly fallback?: string, readonly quoted?: boolean | string } = {}) => ({ family: state, access: AmbientVerb.Writes, member: { from: 'parameter', signature, names: [name], ...rest } }) as const;
+/** Configuration for functions that set an entry of the given key in the given state. */
 export const SetsEntry = (state: KeyedState, key: string) => ({ family: state, access: AmbientVerb.Writes, member: { from: 'constant', keys: [key] } }) as const;
 /** `library(pkg)` and `library("pkg")` name the package, `library(pkg, character.only = TRUE)` looks the variable up */
 export const LibrarySearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['package', 'help', 'pos', 'lib.loc', 'character.only'], 'package', { quoted: 'character.only' });
+/** Configuration for loaders that search the library path. */
 export const LoaderSearchPath = (quoted: boolean) => ({ ...Ambient.searchPath.writes, member: { from: 'unnamed', quoted } }) as const;
 /** a loader installing each missing package first, so a later load may find it installed */
 export const LoaderInstalls = (quoted: boolean) => [LoaderSearchPath(quoted), { ...Ambient.installed.adds, member: { from: 'unnamed', quoted } }] as const;
@@ -464,6 +466,7 @@ export const LoaderInstalls = (quoted: boolean) => [LoaderSearchPath(quoted), { 
 const PackagesNamedBy = (name: string, access: AmbientVerb) => ({ ...SetsEntryNamedBy(KeyedState.InstalledPackages, [name], name, { fallback: UnknownKey }), access });
 /** puts the packages the first parameter `name` names into the first library path, fetched from the repositories */
 export const InstallsPackages = (name: string) => [PackagesNamedBy(name, AmbientVerb.Writes), Ambient.libPaths.reads, { ...Ambient.option.reads, member: { from: 'constant', keys: ['repos'] } }] as const;
+/** Configuration for functions that remove (detach or unload) the named packages. */
 export const RemovesPackages = (name: string) => [PackagesNamedBy(name, AmbientVerb.Writes), Ambient.libPaths.reads] as const;
 /** looks up whether the packages the parameter `name` names are installed, every one if it is not given */
 export const ReadsInstalled = (name: string | undefined, quoted = false) => name === undefined ? Ambient.installed.reads : { ...SetsEntryNamedBy(KeyedState.InstalledPackages, [name], name, { quoted }), access: AmbientVerb.Reads };

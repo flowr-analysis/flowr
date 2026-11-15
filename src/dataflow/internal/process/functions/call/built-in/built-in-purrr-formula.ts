@@ -1,4 +1,9 @@
-import { Identifier, ReferenceType  } from '../../../../../environments/identifier';
+import {
+	Identifier,
+	ReferenceType,
+	type BrandedIdentifier,
+	type InGraphIdentifierDefinition
+} from '../../../../../environments/identifier';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
@@ -8,7 +13,6 @@ import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Dataflow } from '../../../../../graph/df-helper';
-import type { BrandedIdentifier, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { convertFnArguments } from '../common';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -16,8 +20,7 @@ import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EdgeType } from '../../../../../graph/edge';
 import { dataflowLogger } from '../../../../../logger';
-import type { DataflowGraph } from '../../../../../graph/graph';
-import { FunctionArgument } from '../../../../../graph/graph';
+import { type DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { isNotUndefined } from '../../../../../../util/assert';

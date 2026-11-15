@@ -6,7 +6,7 @@ import { queryCase, runQuery } from '../_helper/query';
 import { RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FunctionGuards } from '../../../src/dataflow/fn/guards/function-guards';
-import type { FormalClaim } from '../../../src/dataflow/fn/guards/guard-claims';
+import { type FormalClaim, claimWords, returnConditions, returnWords } from '../../../src/dataflow/fn/guards/guard-claims';
 import { ArgProp } from '../../../src/dataflow/environments/built-in-props';
 import { FunctionSemantics } from '../../../src/dataflow/fn/function-semantics';
 import { InspectFnGuardsQueryDefinition } from '../../../src/queries/catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
@@ -14,7 +14,6 @@ import { VertexType } from '../../../src/dataflow/graph/vertex';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { RBaseGuards } from '../../../src/data/r-base-guards.generated';
 import { builtInGuards, reasonsOf } from '../../../src/dataflow/fn/guards/built-in-guards';
-import { claimWords, returnConditions, returnWords } from '../../../src/dataflow/fn/guards/guard-claims';
 import { FlowrConfig } from '../../../src/config';
 import { RValueType } from '../../../src/dataflow/environments/guard-facts';
 import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
@@ -951,7 +950,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 /* everything above again, this time asking R whether what the query states is true */
 describe('Guards hold in R', { sequential: true }, withShell(shell => withTreeSitter(parser => {
 	const Oracle = path.resolve('test/testfiles/guards/oracle.R').replaceAll('\\', '/');
-	const toR = (value: unknown): string => {
+	function toR(value: unknown): string {
 		if(Array.isArray(value)) {
 			return `${value.some(v => typeof v === 'object' && v !== null) ? 'list' : 'c'}(${value.map(toR).join(', ')})`;
 		} else if(value === null) {
@@ -960,7 +959,7 @@ describe('Guards hold in R', { sequential: true }, withShell(shell => withTreeSi
 			return `list(${Object.entries(value).map(([k, v]) => `${JSON.stringify(k)} = ${toR(v)}`).join(', ')})`;
 		}
 		return typeof value === 'boolean' ? (value ? 'TRUE' : 'FALSE') : JSON.stringify(value);
-	};
+	}
 	/* the packages may not be around, what is special about them was checked when writing their entries */
 	const NeedsPackage = /checkmate|assertthat|rlang/;
 	test(label('no normal return breaks a claim', ['name-normal'], ['other']), async() => {

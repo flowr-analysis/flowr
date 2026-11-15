@@ -1077,9 +1077,8 @@ export function processAmbientScope<OtherInfo>(name: RSymbol<OtherInfo & ParentI
 	const local = code === undefined && data.environment.level > 0;
 	const { writes, unknown } = scope.preserve ? { writes: local ? [{ name: singleStateOf(AmbientSingleState.Rng), mode: AmbientWriteMode.Local }] : [], unknown: false } : scopedWrites(scope, args, bound, local);
 	const cds = data.cds ? [...data.cds] : undefined;
-	const apply = (environment: REnvironmentInformation): REnvironmentInformation =>
-		family !== undefined ? deviceAccess({ ...DataflowInformation.initialize(rootId, data), environment }, rootId, data, local ? DeviceAccess.Switch : DeviceAccess.Open, family).environment
-			: defineAmbient(environment, rootId, cds, writes);
+	const apply = (environment: REnvironmentInformation): REnvironmentInformation => family !== undefined ? deviceAccess({ ...DataflowInformation.initialize(rootId, data), environment }, rootId, data, local ? DeviceAccess.Switch : DeviceAccess.Open, family).environment
+		: defineAmbient(environment, rootId, cds, writes);
 
 	let { information } = processKnownFunctionCall({
 		name, args, rootId, data, origin:    BuiltInProcName.Default,

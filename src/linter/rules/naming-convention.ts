@@ -9,7 +9,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { type LintingResult, type LintingRule, type LintQuickFixReplacement, LintingResultCertainty, prettyPrint, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
-import { collectCalledNames, isS3MethodName } from './unused-definition';
+import { collectCalledNames, isS3MethodName } from './unused-definitions';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 
 export enum CasingConvention {

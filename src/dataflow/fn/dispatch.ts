@@ -6,7 +6,7 @@ import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
+import { RoleInParent, RRole } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { DataflowGraph } from '../graph/graph';
 import { EdgeType } from '../graph/edge';
 import { type DataflowGraphVertexFunctionCall, DfgVertex, type S4SignatureEntry, VertexType } from '../graph/vertex';
@@ -153,7 +153,7 @@ function definitionStep(id: NodeId, node: RNode<ParentInformation> | undefined, 
 	const { graph } = info;
 	if(node?.info.role === RoleInParent.ParameterName) {
 		/* R dispatches on the promise the call binds, so every call of the function has to bind one */
-		const fn = node.info.parent === undefined ? undefined : info.idMap.get(node.info.parent)?.info.parent;
+		const fn = RRole.functionOfParameter(id, info.idMap);
 		const bound = Dataflow.targetsOf(graph, id, EdgeType.DefinedByOnCall);
 		/* in the context of one call, the parameter holds what that call binds */
 		const inCall = fn === undefined ? undefined : info.callContext?.get(fn);
@@ -292,12 +292,12 @@ export function s4HierarchyOf(graph: DataflowGraph): S4Hierarchy {
 	const supers = new Map<ClassName, ClassName[]>([...classes].map(([name, decl]) => [name, [...decl.contains]]));
 	const declared = new Set(classes.keys());
 	let oldClasses: Map<ClassName, NodeId[]> | undefined = new Map();
-	const add = (sub: ClassName, sup: ClassName | undefined) => {
+	function add(sub: ClassName, sup: ClassName | undefined) {
 		const list = supers.get(sub) ?? [];
 		if(sup !== undefined && sup !== sub && !list.includes(sup)) {
 			supers.set(sub, [...list, sup]);
 		}
-	};
+	}
 	for(const [id, { classDecl }] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const registered = classDecl?.oldClasses;
 		if(registered !== undefined) {
@@ -435,10 +435,10 @@ export function s4MethodsOf(graph: DataflowGraph, linked: (ids: ReadonlySet<Node
 
 /** The formals of the generic S4 dispatches on: the formals of the program's generic, or those all its methods share, without `...`. */
 export function s4DispatchFormals(generic: NodeId | undefined, methods: readonly S4Method[], idMap: AstIdMap): readonly BrandedIdentifier[] | undefined {
-	const formalsOf = (fn: NodeId) => {
+	function formalsOf(fn: NodeId) {
 		const node = idMap.get(fn);
 		return RFunctionDefinition.is(node) ? node.parameters.map(p => p.special ? DotsParameterName : p.name.content).filter(n => n !== DotsParameterName) : undefined;
-	};
+	}
 	if(generic !== undefined) {
 		/* a `setGeneric(signature = )` restricts the formals dispatched on */
 		const own = idMap.get(generic);

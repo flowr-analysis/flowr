@@ -1,10 +1,8 @@
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ControlDependency } from '../info';
-import { ExitPointType } from '../info';
+import { type ControlDependency, ExitPointType } from '../info';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { CallGraph } from '../graph/call-graph';
-import type { DataflowGraphVertexArgument } from '../graph/vertex';
-import { DfgVertex } from '../graph/vertex';
+import { type DataflowGraphVertexArgument, DfgVertex } from '../graph/vertex';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';

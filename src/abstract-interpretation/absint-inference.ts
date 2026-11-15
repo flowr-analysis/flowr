@@ -26,15 +26,13 @@ import { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NormalizedAst, ParentInformation, RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
-import type { RNull } from '../r-bridge/lang-4.x/convert-values';
-import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
+import { type RNull, RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { Bottom } from './domains/lattice';
 import { guard, isNotUndefined } from '../util/assert';
 import { Record } from '../util/record';
 import type { AbsintContext, AbstractSemantics } from './abstract-semantics';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
-import type { MultiValueDomain } from './domains/multi-value-state-domain';
-import { MultiValueStateDomain } from './domains/multi-value-state-domain';
+import { type MultiValueDomain, MultiValueStateDomain } from './domains/multi-value-state-domain';
 import type { AbstractProduct, ProductReduction } from './domains/partial-product-domain';
 import type { StateDomain } from './domains/state-domain';
 

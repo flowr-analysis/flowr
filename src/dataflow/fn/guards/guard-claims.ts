@@ -715,13 +715,13 @@ function succeedsInWords(this: void, call: GuardCall, facts: GuardFactsLookup): 
  */
 export function readingOf(this: void, condition: GuardTerm, facts: GuardFactsLookup, group?: BrandedIdentifier): string | undefined {
 	const alternatives = GuardTerm.disjuncts(condition);
-	const read = (term: GuardTerm) => {
+	function read(term: GuardTerm) {
 		if(GuardTerm.isCall(term, 'succeeds') && term.known && GuardTerm.isCall(term.args[0]?.value)) {
 			return succeedsInWords(term.args[0].value, facts);
 		}
 		const [of] = GuardTerm.isCall(term, 'is.object') && term.known ? term.args : [];
 		return group !== undefined && of !== undefined ? `${GuardTerm.render(of.value)} may have a ${group} method` : undefined;
-	};
+	}
 	const readings = alternatives.map(read);
 	return readings.every(r => r === undefined) ? undefined : alternatives.map((a, at) => readings[at] ?? GuardTerm.render(a)).join(' || ');
 }
@@ -747,21 +747,21 @@ function setOf(this: void, words: readonly (string | number | boolean)[]): strin
  * `typeof(m) in {integer, double}`, `length(m) == 1`, and `m >= 0`.
  */
 export function claimConditions(this: void, formal: string, { types, unclassedTypes, values, partial, classes, bounds, notNA, callable, whole, resolves }: FormalClaim): string[] {
-	const ofTypes = (named: readonly string[], unclassed: boolean) => {
+	function ofTypes(named: readonly string[], unclassed: boolean) {
 		const left = typeNames(AnyType).filter(t => !named.includes(t));
 		/* NULL is the one value of its type, which R asks for by name */
 		const said = named.length === 1 && named[0] === 'NULL' ? `is.null(${formal})`
 			: left.length === 1 && left[0] === 'NULL' ? `!is.null(${formal})`
 				: left.length < named.length ? `typeof(${formal}) not in ${setOf(left)}` : `typeof(${formal}) in ${setOf(named)}`;
 		return unclassed ? `${said} unless is.object(${formal})` : said;
-	};
+	}
 	/* NULL has no elements, so a length bound says nothing more of it */
 	const onlyNull = types?.length === 1 && types[0] === 'NULL';
-	const range = (measure: string, [lower, upper]: ClaimedRange) => {
+	function range(measure: string, [lower, upper]: ClaimedRange) {
 		const of = measure === 'value' ? formal : `${measure}(${formal})`;
 		return lower !== null && lower === upper ? [`${of} == ${lower}`]
 			: [...lower === null ? [] : [`${of} >= ${lower}`], ...upper === null ? [] : [`${of} <= ${upper}`]];
-	};
+	}
 	return [
 		...types === undefined ? [] : [ofTypes(types, false)],
 		...unclassedTypes === undefined ? [] : [ofTypes(unclassedTypes, true)],

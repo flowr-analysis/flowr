@@ -104,7 +104,6 @@ const writer = (): Writer => cachedWriter ??= new (n3().Writer)({ format: 'N-Qua
 /**
  * Serializes the given object or array to rdf quads.
  * @param obj    - The object to serialize (must be a Record and no array etc.)
- * @param config - Further configuration options
  * @returns      the serialized quads
  * @see graph2quads
  */

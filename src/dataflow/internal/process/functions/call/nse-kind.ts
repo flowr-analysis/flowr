@@ -11,10 +11,7 @@ export enum NseArguments {
 	First       = 'first'
 }
 
-/**
- * How an argument escapes standard evaluation, which decides what is marked
- * {@link EdgeType.NonStandardEvaluation}.
- */
+/** How an argument escapes standard evaluation, which decides what is marked {@link EdgeType.NonStandardEvaluation}. */
 export enum NseKind {
 	/** the argument is not evaluated at all (`quote(x + y)`), so nothing within it is */
 	Quoted      = 'quoted',

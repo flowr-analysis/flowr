@@ -97,10 +97,7 @@ function splitExprs(tokens: readonly NamedJsonEntry[]) {
 	return segments;
 }
 
-/**
- * Handles semicolons within _and_ braces at the start and end of the expression
- * @param raw - The tokens to split
- */
+/** Handles semicolons within _and_ braces at the start and end of the expression */
 function handleExpressionList(raw: readonly NamedJsonEntry[]): HandledExpressionList {
 	if(raw.length === 0) {
 		return { segments: [], comments: [], braces: undefined };

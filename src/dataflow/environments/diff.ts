@@ -1,8 +1,7 @@
 import { type GenericDifferenceInformation, type WriteableDifferenceReport, setDifference } from '../../util/diff';
 import { type IEnvironment, type REnvironmentInformation, builtInEnvJsonReplacer } from './environment';
 import { jsonReplacer } from '../../util/json';
-import type { IdentifierReference } from './identifier';
-import { Identifier } from './identifier';
+import { type IdentifierReference, Identifier } from './identifier';
 import { diffControlDependencies } from '../info';
 
 function sameName(a: Identifier | undefined, b: Identifier | undefined): boolean {

@@ -174,12 +174,12 @@ export function handedOn(dataflow: DataflowInformation, ast: NormalizedAst, call
 export function assignmentOf(dataflow: DataflowInformation, ast: NormalizedAst, id: NodeId, memo?: FlowMemo): AssignmentTarget | undefined {
 	/* every value along the way is assigned to what the start is, so a later ask from any of them is answered at once */
 	const path: NodeId[] = [];
-	const settle = (target: AssignmentTarget | undefined) => {
+	function settle(target: AssignmentTarget | undefined) {
 		for(const at of path) {
 			memo?.assignments.set(at, target);
 		}
 		return target;
-	};
+	}
 	const seen = new Set<NodeId>();
 	for(let current = id; !seen.has(current);) {
 		if(memo?.assignments.has(current)) {

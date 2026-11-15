@@ -1,5 +1,4 @@
-import type { RoxygenBlock, RoxygenTag } from './roxygen-ast';
-import { isKnownRoxygenText, KnownRoxygenTags } from './roxygen-ast';
+import { type RoxygenBlock, type RoxygenTag, isKnownRoxygenText, KnownRoxygenTags } from './roxygen-ast';
 import type { RNode } from '../lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../lang-4.x/ast/model/processing/decorate';
 import { RComment } from '../lang-4.x/ast/model/nodes/r-comment';
@@ -124,10 +123,11 @@ function val(state: RoxygenParseContext, [name, rest]: TagLine, lineToVal: (line
 }
 
 const spaceVals = (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => splitAtEscapeSensitive(l.join(' ')));
-const flagVal =  (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, () => undefined);
+const flagVal = (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, () => undefined);
 
 const section = (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => ({ title: l[0].trim(), content: l.slice(1).join('\n').trim() }));
 
+/** Parses a tag line into its first word (or backtick-quoted name) and the rest, stored under the given names. */
 export const firstAndRest = (firstName: string, secondName: string) => (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => {
 	const text = l.join('\n').trim();
 	const quoted = /^`([^`]*)`/.exec(text);

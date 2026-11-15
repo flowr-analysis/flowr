@@ -870,6 +870,11 @@ export class SigDatabase extends HistorySource implements PackageSignatureSource
 		return this.index.meta[pkg]?.[2] ?? 0;
 	}
 
+	/** whether the latest version of the package is CRAN-archived (its source tarball then lives under `Archive`) */
+	public archived(pkg: BrandedNamespace): boolean {
+		return this.index.meta[pkg]?.[1] === 1;
+	}
+
 	protected historyBlob(pkg: BrandedNamespace): PkgBlob | undefined {
 		return this.blob(pkg);
 	}
@@ -1195,6 +1200,12 @@ export class SigDatabaseSet extends HistorySource implements PackageSignatureSou
 	public downloads(pkg: BrandedNamespace): number {
 		const meta = this.manifest.meta?.[pkg];
 		return meta ? meta[2] : Math.max(0, ...this.route(pkg).map(i => this.shard(i).downloads(pkg)));
+	}
+
+	/** whether the latest version of the package is CRAN-archived (see {@link SigDatabase.archived}); O(1) via the hoisted metadata */
+	public archived(pkg: BrandedNamespace): boolean {
+		const meta = this.manifest.meta?.[pkg];
+		return meta ? meta[1] === 1 : this.route(pkg).some(i => this.shard(i).archived(pkg));
 	}
 
 	protected recordedLatest(pkg: BrandedNamespace): string {

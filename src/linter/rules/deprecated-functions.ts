@@ -1,21 +1,24 @@
 import type { Range } from 'semver';
-import { functionFinderUtil, hasArgumentValue  } from './function-finder-util';
+import { functionFinderUtil, hasArgumentValue } from './function-finder-util';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { BuiltInDefinitions } from '../../dataflow/environments/built-in-config';
-import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
-import { Identifier } from '../../dataflow/environments/identifier';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { FunctionArgument } from '../../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { DfgVertex } from '../../dataflow/graph/vertex';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier } from '../../dataflow/environments/identifier';
+import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
+import { type DataflowGraphVertexFunctionCall, DfgVertex } from '../../dataflow/graph/vertex';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { uniqueArray } from '../../util/collections/arrays';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
-import type { LintingResult, LintingRule, LintQuickFix } from '../linter-format';
-import { prettyPrint, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import {
+	type LintingResult,
+	type LintingRule,
+	type LintQuickFix,
+	prettyPrint,
+	LintingResultCertainty,
+	LintingRuleCertainty
+} from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { RRange } from '../../util/r-version';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -26,7 +29,7 @@ import { Ternary } from '../../util/logic';
 import type  { KnownParser } from '../../r-bridge/parser';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
-import type { DeprecatedArgumentInformation, DeprecatedFunctionInformation, DeprecationState  } from '../../dataflow/environments/deprecation-info';
+import type { DeprecatedArgumentInformation, DeprecatedFunctionInformation, DeprecationState } from '../../dataflow/environments/deprecation-info';
 
 /**
  * Result of the {@link DEPRECATED_FUNCTIONS} linting rule
@@ -316,9 +319,9 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 		for(const deprecatedArgInfo of info.whenArgs) {
 			const argNode = isDeprecatedArgumentPresent(vertex, deprecatedArgInfo, idMap);
 			let certainty = known;
-			const setUncertain = () => {
+			function setUncertain() {
 				certainty = LintingResultCertainty.Uncertain;
-			};
+			}
 			if(argNode === undefined || !doesPackageVersionMatch(derivedRange, deprecatedArgInfo, setUncertain) || !doesArgumentValueMatch(deprecatedArgInfo, vertex, analyzer, dataflow, setUncertain)) {
 				continue;
 			}

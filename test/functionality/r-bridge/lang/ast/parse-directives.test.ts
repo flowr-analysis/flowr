@@ -4,9 +4,8 @@ import { decorateLabelContext, label } from '../../../_helper/label';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { afterAll, assert, describe, test } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
-import { createNormalizePipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { analyze } from '../../../_helper/analyzer';
 
 describe('Parse the line directive', { concurrent: false }, withShell(shell => {
 	assertAst(label('Simple line', ['line-directive']),
@@ -34,7 +33,7 @@ describe('Reserved words as assignment targets', { concurrent: false }, withShel
 	test(decorateLabelContext(label('r-shell rejects `if <- 5`, matching R', ['reserved-words']), ['parse']), async() => {
 		let threw = false;
 		try {
-			await createNormalizePipeline(shell, { context: contextFromInput('if <- 5') }).allRemainingSteps();
+			await (await analyze(shell, 'if <- 5')).normalize();
 		} catch(e) {
 			threw = true;
 			assert.match(String(e), /unable to parse/);
@@ -43,7 +42,8 @@ describe('Reserved words as assignment targets', { concurrent: false }, withShel
 	});
 
 	test(decorateLabelContext(label('tree-sitter silently drops `if <- 5`, unlike r-shell', ['reserved-words']), ['parse']), async() => {
-		const result = await createNormalizePipeline(ts, { context: contextFromInput('if <- 5') }).allRemainingSteps();
-		assert.deepStrictEqual(result.normalize.ast.files[0]?.root.children, [], 'tree-sitter should silently drop `if <- 5` rather than keep any node for it');
+		const analyzer = await analyze(ts, 'if <- 5');
+		const normalize = await analyzer.normalize();
+		assert.deepStrictEqual(normalize.ast.files[0]?.root.children, [], 'tree-sitter should silently drop `if <- 5` rather than keep any node for it');
 	});
 }));

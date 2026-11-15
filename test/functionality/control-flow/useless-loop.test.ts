@@ -1,26 +1,24 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { extractCfg } from '../../../src/control-flow/control-flow-graph';
 import { onlyLoopsOnce } from '../../../src/control-flow/useless-loop';
 import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
-import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
+import { analyze } from '../_helper/analyzer';
 
 
 describe('One Iteration Loop Detection', withTreeSitter(shell => {
 	function checkLoop(name: string, code: string, node: SlicingCriterion, expectedLoopsOnlyOnce: boolean) {
 		test(name, async() => {
-			const context = contextFromInput(code.trim());
-			const result = await createDataflowPipeline(shell, {
-				context
-			}).allRemainingSteps();
-			const cfg = extractCfg(result.dataflow);
+			const analyzer = await analyze(shell, code.trim());
+			const dataflow = await analyzer.dataflow();
+			const normalize = await analyzer.normalize();
+			const cfg = extractCfg(dataflow);
 
 			const actual = onlyLoopsOnce(
-				SlicingCriterion.parse(node, result.normalize.idMap),
-				result.dataflow.graph, cfg,
-				result.normalize,
-				context,
+				SlicingCriterion.parse(node, normalize.idMap),
+				dataflow.graph, cfg,
+				normalize,
+				analyzer.inspectContext(),
 			);
 			assert(actual === expectedLoopsOnlyOnce, `Expected to ${expectedLoopsOnlyOnce ? 'loop only once' : 'loop multiple times'}`);
 		});

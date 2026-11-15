@@ -156,7 +156,7 @@ These can be found in [the \`_helper\` subdirectory](${RemoteFlowrFilePathBaseRe
 For example, an [existing test](${RemoteFlowrFilePathBaseRef}test/functionality/dataflow/main/atomic/dataflow-atomic.test.ts) that tests the dataflow graph of a simple variable looks like this:
 ${codeBlock('typescript', `
 assertDataflow(label('simple variable', ['name-normal']), shell,
-	'x', emptyGraph().use('0', 'x')
+	'x', emptyGraph().use(0, 'x')
 );
 `)}
 Have a look at ${ctx.link('assertDataflow')}, ${ctx.link('label')}, and ${ctx.link('emptyGraph')} for more information.

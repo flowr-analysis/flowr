@@ -14,21 +14,12 @@ import { type DataflowGraphVertexFunctionDefinition,
 } from './vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EdgeType } from './edge';
-import type { ControlDependency, ExitPoint } from '../info';
-import { ExitPointType } from '../info';
+import { type ControlDependency, type ExitPoint, ExitPointType } from '../info';
 import { getDefaultProcessor } from '../environments/default-builtin-config';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 import type { HookInformation } from '../hooks';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { autoPrintReads, PrintWrites } from '../internal/process/functions/call/built-in/built-in-ambient-state';
-
-function normalizeCds(cds: readonly ControlDependency[] | undefined): ControlDependency[] | undefined {
-	return cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) }));
-}
-
-function normalizeReference<T extends { nodeId: NodeId, cds?: readonly ControlDependency[] }>(ref: T): T {
-	return { ...ref, nodeId: NodeId.normalize(ref.nodeId), cds: normalizeCds(ref.cds) };
-}
 
 /** Creates an empty dataflow graph. Should only be used in tests and documentation. */
 export function emptyGraph(this: void, cleanEnv?: REnvironmentInformation, idMap?: AstIdMap) {
@@ -55,27 +46,26 @@ export class DataflowGraphBuilder<
 
 	/** Adds a **vertex** for a **function definition** (V1). */
 	public defineFunction(id: NodeId,
-		exitPoints: readonly ExitPoint[] | readonly NodeId[], subflow: Omit<DataflowFunctionFlowInformation, 'hooks'> & { hooks?: HookInformation[] },
+		exitPoints: readonly ExitPoint[] | readonly NodeId[], subflow: Omit<DataflowFunctionFlowInformation, 'hooks' | 'in' | 'out' | 'unknownReferences'> & Partial<Pick<DataflowFunctionFlowInformation, 'in' | 'out' | 'unknownReferences'>> & { hooks?: HookInformation[] },
 		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, cds?: readonly ControlDependency[], readParams?: [NodeId, boolean][], mode?: DataflowGraphVertexFunctionDefinition['mode'] },
 		asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
 			tag:     VertexType.FunctionDefinition,
-			id:      NodeId.normalize(id),
+			id,
 			params:  Object.fromEntries(info?.readParams ?? []),
 			subflow: {
 				...subflow,
-				entryPoint:        NodeId.normalize(subflow.entryPoint),
-				graph:             new Set([...subflow.graph].map(NodeId.normalize)),
-				out:               subflow.out.map(normalizeReference),
-				in:                subflow.in.map(normalizeReference),
-				unknownReferences: subflow.unknownReferences.map(normalizeReference),
+				in:                subflow.in ?? [],
+				out:               subflow.out ?? [],
+				unknownReferences: subflow.unknownReferences ?? [],
+				graph:             new Set(subflow.graph),
 				hooks:             subflow.hooks ?? [],
 			},
 			mode:       info?.mode,
-			exitPoints: exitPoints.map(e => typeof e === 'object' ? normalizeReference(e) :
-				({ nodeId: NodeId.normalize(e), type: ExitPointType.Default, cds: undefined })
+			exitPoints: exitPoints.map(e => typeof e === 'object' ? e :
+				({ nodeId: e, type: ExitPointType.Default, cds: undefined })
 			),
-			cds:         normalizeCds(info?.cds),
+			cds:         info?.cds,
 			environment: info?.environment,
 		}, asRoot);
 	}
@@ -84,6 +74,7 @@ export class DataflowGraphBuilder<
 	public call(id: NodeId, name: BrandedIdentifier, args: FunctionArgument[],
 		info?: {
 			returns?:            readonly NodeId[],
+			/** what the call reads, it also calls each built-in among them */
 			reads?:              readonly NodeId[],
 			onlyBuiltIn?:        boolean,
 			/** whether a call of only built-ins keeps its environment, as one looking names up in it does (`get`) */
@@ -99,11 +90,11 @@ export class DataflowGraphBuilder<
 		const onlyBuiltInAuto = info?.reads?.length === 1 && NodeId.isBuiltIn(info?.reads[0]);
 		this.addVertexWithDefaultEnv({
 			tag:         VertexType.FunctionCall,
-			id:          NodeId.normalize(id),
+			id,
 			name,
-			args:        args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: NodeId.normalize(a.nodeId), cds: undefined }),
+			args:        args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, cds: undefined }),
 			environment: (info?.onlyBuiltIn || onlyBuiltInAuto) && !info?.keepsEnvironment ? undefined : info?.environment ?? this.defaultEnvironment,
-			cds:         normalizeCds(info?.cds),
+			cds:         info?.cds,
 			onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
 			origin:      info?.origin ?? [getDefaultProcessor(name) ?? BuiltInProcName.Function],
 			link:        info?.link
@@ -119,6 +110,9 @@ export class DataflowGraphBuilder<
 		if(info?.reads) {
 			for(const call of info.reads) {
 				this.reads(id, call);
+				if(NodeId.isBuiltIn(call)) {
+					this.calls(id, call);
+				}
 			}
 		}
 		return this;
@@ -156,9 +150,9 @@ export class DataflowGraphBuilder<
 		info?: { cds?: readonly ControlDependency[], definedBy?: NodeId[] }, asRoot: boolean = true) {
 		this.addVertexWithDefaultEnv({
 			tag: VertexType.VariableDefinition,
-			id:  NodeId.normalize(id),
+			id,
 			name,
-			cds: normalizeCds(info?.cds),
+			cds: info?.cds,
 		}, asRoot);
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
@@ -172,19 +166,19 @@ export class DataflowGraphBuilder<
 	public use(id: NodeId, name?: BrandedIdentifier, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv(deepMergeObject({
 			tag:         VertexType.Use,
-			id:          NodeId.normalize(id),
+			id,
 			name,
 			cds:         undefined,
 			environment: undefined
-		}, { ...info, cds: normalizeCds(info?.cds) } as Partial<DataflowGraphVertexUse>), asRoot);
+		}, info as Partial<DataflowGraphVertexUse>), asRoot);
 	}
 
 	/** Adds a **vertex** for a **constant value** (V6). */
 	public constant(id: NodeId, options?: { cds?: readonly ControlDependency[] }, asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
 			tag:         VertexType.Value,
-			id:          NodeId.normalize(id),
-			cds:         normalizeCds(options?.cds),
+			id,
+			cds:         options?.cds,
 			environment: undefined
 		}, asRoot);
 	}
@@ -196,7 +190,7 @@ export class DataflowGraphBuilder<
 			}
 			return this;
 		}
-		return this.addEdge(NodeId.normalize(from), NodeId.normalize(to as NodeId), type);
+		return this.addEdge(from, to as NodeId, type);
 	}
 
 	/** Adds a **read edge**. */
@@ -246,7 +240,7 @@ export class DataflowGraphBuilder<
 
 	/** explicitly overwrite the root ids of the graph, this is just an easier variant in case you working with a lot of functions this saves you a lot of `false` flags. */
 	public overwriteRootIds(ids: readonly NodeId[]) {
-		this.rootVertices = new Set(ids.map(NodeId.normalize));
+		this.rootVertices = new Set(ids);
 		return this;
 	}
 }

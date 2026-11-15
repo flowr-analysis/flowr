@@ -3,8 +3,7 @@ import { type TestLabel, label, decorateLabelContext } from '../../../_helper/la
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { decorateAst } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type SlicingCriteriaFilter, collectAllSlicingCriteria } from '../../../../../src/slicing/criterion/collect-all';
-import type { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
-import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
+import { type SlicingCriteria, SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { DefaultAllVariablesFilter } from '../../../../../src/slicing/criterion/filters/all-variables';
 import { describe, assert, test } from 'vitest';

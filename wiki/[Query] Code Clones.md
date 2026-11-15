@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 13:32:41 UTC (v2.17.6), do not edit directly._
 <h2 id="Code Clones Query">Code Clones Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Finds code clones in all analyzed files with a configurable selection of AST, token, and fingerprint based algorithms.\
@@ -32,7 +32,7 @@ Use `config` to tune the thresholds of each algorithm, and `maxPairs` to limit t
 
 _Results (prettified and summarized):_
 
-Query: **code-clones** (8 ms)\
+Query: **code-clones** (4 ms)\
 &nbsp;&nbsp;&nbsp;╰ 2 clone pairs in 1 file\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ [gst 1.00] **normalize** _<input 0>:1.14-4.1_ ~ **scale_it** _<input 0>:5.13-8.1_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ [winnowing 1.00] **normalize** _<input 0>:1.14-4.1_ ~ **scale_it** _<input 0>:5.13-8.1_
@@ -66,7 +66,7 @@ scale_it <- function(values) {
 	
 </details>
 
-In code, passing the query on its own to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L363"><code>FlowrAnalyzer::<b>query</b></code></a> returns its result directly:
+In code, passing the query on its own to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L362"><code>FlowrAnalyzer::<b>query</b></code></a> returns its result directly:
 
 ```typescript
 const { pairs } = await analyzer.query({ type: 'code-clones', algorithms: ['gst', 'winnowing'] });
@@ -82,6 +82,6 @@ for(const { algorithm, similarity, a, b } of pairs) {
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Code Clones Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/code-clones-query/code-clones-query-format.ts#L20"><code><span title="Builds the clone index of the analyzed files and runs the requested clone detectors on it.">executeCodeClonesQuery</span></code></a>.
+The Code Clones Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/code-clones-query/code-clones-query-format.ts#L19"><code><span title="Builds the clone index of the analyzed files and runs the requested clone detectors on it.">executeCodeClonesQuery</span></code></a>.
 
 </details>

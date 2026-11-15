@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 13:32:41 UTC (v2.17.6), do not edit directly._
 <h2 id="Data Columns Query">Data Columns Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the columns of a data frame that can be written at a position, as an editor offers them to complete.\
@@ -29,7 +29,7 @@ The query asks for the columns at that position:
 
 _Results (prettified and summarized):_
 
-Query: **data-columns** (2 ms)\
+Query: **data-columns** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **2:34** (masked of penguins): species, island, bill_len, bill_dep, flipper_len, body_mass, sex, year
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -50,6 +50,6 @@ The position has to fall within a node. An editor completing a name not typed ye
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Data Columns Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/data-columns-query/data-columns-query-format.ts#L142"><code><span title="Executes data columns queries: the data frame shape inference runs once for all of them.">executeDataColumnsQuery</span></code></a>.
+The Data Columns Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/data-columns-query/data-columns-query-format.ts#L141"><code><span title="Executes data columns queries: the data frame shape inference runs once for all of them.">executeDataColumnsQuery</span></code></a>.
 
 </details>

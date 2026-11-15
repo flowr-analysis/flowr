@@ -11,7 +11,7 @@ import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation } from '../../../util/range';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { callsBuiltIn } from '../../linter-util';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';

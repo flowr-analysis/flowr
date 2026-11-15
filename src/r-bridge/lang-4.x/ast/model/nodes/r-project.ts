@@ -1,5 +1,4 @@
-import type { NoInfo } from '../model';
-import { RNode } from '../model';
+import { type NoInfo, RNode } from '../model';
 import { RType } from '../type';
 import type { RExpressionList } from './r-expression-list';
 import type { NodeId } from '../processing/node-id';

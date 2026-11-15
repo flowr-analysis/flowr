@@ -7,10 +7,9 @@ import { SigDatabase, getSharedSigSourceSync } from '../../../src/project/sigdb/
 import { SigDbBuilder, writeSignatureDb } from '../../../src/project/sigdb/build';
 import { defaultSigDbPaths } from '../../../src/project/sigdb/manifest';
 import { SigDbExt, FnProp, MaxDefaultLength, type SigFunctionInfo } from '../../../src/project/sigdb/schema';
-import { executeQueries, Query } from '../../../src/queries/query';
+import { executeQueries, Query, asciiSummaryOfQueryResult } from '../../../src/queries/query';
 import { ArgProp } from '../../../src/dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../../src/dataflow/environments/query-fn-props';
-import { asciiSummaryOfQueryResult } from '../../../src/queries/query-print';
 import { ansiFormatter } from '../../../src/util/text/ansi';
 import { SignatureQueryDefinition, type SignatureQuery } from '../../../src/queries/catalog/signature-query/signature-query-format';
 import { signatureFunctionInfo, signaturePackageInfo, cranMirrorSourceUrl, rSourceRef, signatureQueryCompleter } from '../../../src/queries/catalog/signature-query/signature-query-executor';
@@ -264,9 +263,9 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 	describe('fromLine parser', () => {
 		const parse = (line: string[]) => SignatureQueryDefinition.fromLine?.({} as never, line, {} as never).query;
 		/** parse the space-separated `input` line and assert it yields exactly one signature query with `expected`'s fields */
-		const sigParse = (desc: string, input: string, expected: Partial<Omit<SignatureQuery, 'type'>>): void => {
+		function sigParse(desc: string, input: string, expected: Partial<Omit<SignatureQuery, 'type'>>): void {
 			test(desc, () => expect(parse(input.length ? input.split(' ') : [])).toEqual([{ type: 'signature', ...expected }]));
-		};
+		}
 
 		sigParse('parses package and function positionals', 'mypkg foo', { package: 'mypkg', function: 'foo' });
 		sigParse('ignores unknown --flags (positional-only)', 'mypkg --all', { package: 'mypkg' });

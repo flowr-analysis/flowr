@@ -140,7 +140,7 @@ export function staticRemovalSlice(
 ): RemovalSliceResult {
 	const statements = statementsOf(ast);
 	const statementId = (id: NodeId) => statementOf(ast, statements, id)?.info.id;
-	const removable = (seeds: readonly NodeId[]): NodeId[] => {
+	function removable(seeds: readonly NodeId[]): NodeId[] {
 		const slice = staticSlice({ ctx, info, ast, ids: seeds, direction: SliceDirection.Backward, threshold }).result;
 		/* a statement is in the slice once any part of it is, as the slice of `body(f) <- x` may hold its parts alone */
 		const inSlice = new Set([...slice, ...seeds].map(statementId).filter(id => id !== undefined));
@@ -156,7 +156,7 @@ export function staticRemovalSlice(
 		const candidates = [...statements.keys()].filter(id => inSlice.has(id) && !needed.has(id));
 		const chosen = new Set(candidates);
 		return candidates.filter(id => !ancestors(ast, ast.idMap.get(id)?.info.parent).some(at => chosen.has(at)));
-	};
+	}
 
 	/* removing a save (`ggsave()`) or a device removes what it saves, which would otherwise keep it alive */
 	const seeds = new Set(ids);

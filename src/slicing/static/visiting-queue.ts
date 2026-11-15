@@ -44,7 +44,6 @@ export class VisitingQueue {
 
 	/**
 	 * Adds a node to the queue if it has not been seen before.
-	 * @param target             - the node to add
 	 * @param env                - the environment the node is traversed in
 	 * @param envFingerprint     - the fingerprint of the environment
 	 * @param onlyForSideEffects - whether the node is only used for its side effects

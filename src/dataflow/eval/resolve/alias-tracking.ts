@@ -37,7 +37,7 @@ import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RPipe } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import { RLoopConstructs, RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
+import { RoleInParent, RRole } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { Resolve } from '../../environments/resolve-helper';
 import { NodeValue } from './node-value';
 import { Dataflow } from '../../graph/df-helper';
@@ -106,9 +106,14 @@ function contextCallOf(id: NodeId, idMap: AstIdMap, callContext: CallContext | u
 	if(callContext === undefined) {
 		return undefined;
 	}
-	const node = idMap.get(id);
-	const parameter = node?.info.role === RoleInParent.ParameterName && node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
-	return parameter?.info.parent === undefined ? undefined : callContext.get(parameter.info.parent);
+	const fn = RRole.functionOfParameter(id, idMap);
+	return fn === undefined ? undefined : callContext.get(fn);
+}
+
+/** Whether a call may hand the parameter a value resolution cannot pin down: some call binds such a value, or no call in the code binds the parameter at all. */
+export function parameterMayHoldUnknown(param: NodeId, info: ResolveInfo): boolean {
+	const handed = info.graph === undefined ? [] : Dataflow.targetsOf(info.graph, param, EdgeType.DefinedByOnCall);
+	return handed.length === 0 || handed.some(arg => isTop(resolveIdToValue(arg, info)));
 }
 
 /** The call an argument value is handed to: the closest call around it, or the call a pipe feeds it into. */
@@ -711,10 +716,6 @@ const DefinitionValueFlowEdges = EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 /** The edges from the target of a replacement to the bindings it replaces, whose value it changes a part of. */
 const OldValueFlowEdges = EdgeType.Reads | EdgeType.DefinedByOnCall;
 
-function isParameterOf(id: NodeId, fn: NodeId, idMap: AstIdMap): boolean {
-	const node = idMap.get(id);
-	return node?.info.role === RoleInParent.ParameterName && node.info.parent !== undefined && idMap.get(node.info.parent)?.info.parent === fn;
-}
 
 /** Whether the walk stays in the frame of `fn` when it moves to `target`: a node of the body of `fn` itself, whose definitions a run of `fn` makes in its own frame, unless they go elsewhere (`<<-`, `assign`). */
 function inSameFrame(target: NodeId, fn: NodeId, graph: DataflowGraph, idMap: AstIdMap): boolean {
@@ -724,7 +725,7 @@ function inSameFrame(target: NodeId, fn: NodeId, graph: DataflowGraph, idMap: As
 		return true;
 	}
 	const parent = idMap.get(target)?.info.parent;
-	return isParameterOf(target, fn, idMap) || (parent !== undefined && DfgVertex.hasOrigin(graph.getVertex(parent), BuiltInProcName.Assignment));
+	return RRole.functionOfParameter(target, idMap) === fn || (parent !== undefined && DfgVertex.hasOrigin(graph.getVertex(parent), BuiltInProcName.Assignment));
 }
 
 /** The frames the walk is in once it follows the `Returns` edge of `call` to `target`: a new frame of the function called, the same frame for what the call hands back of its own arguments, and none it knows otherwise. */
@@ -861,7 +862,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	const cleanFingerprint = ctx.env.getCleanEnvFingerprint();
 	/* the frames and runs each fingerprint stands for, so the same node is walked once per frame and run it is reached in */
 	const contextOf = new Map<string, WalkContext>();
-	const enqueue = (target: NodeId, at: readonly CallFrame[], runs: readonly LoopIteration[]) => {
+	function enqueue(target: NodeId, at: readonly CallFrame[], runs: readonly LoopIteration[]) {
 		if(at.length === 0 && runs.length === 0) {
 			queue.add(target, clean, cleanFingerprint, false);
 			return;
@@ -869,7 +870,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		const key = `${cleanFingerprint}|${at.map(f => `${f.fn}@${f.call}${f.runs?.map(i => `:${i.loop}:${i.k}`).join('') ?? ''}`).join('/')}|${runs.map(i => `${i.loop}:${i.k}`).join('/')}`;
 		contextOf.set(key, [at, runs]);
 		queue.add(target, clean, key, false);
-	};
+	}
 	enqueue(id, frames, iterations);
 
 	/* what the replacement at `id` holds in the given runs and frames: its old value with the part it replaces changed */
@@ -904,7 +905,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	const follow = (id: NodeId, flow: EdgeType, frames: readonly CallFrame[], iterations: readonly LoopIteration[], visit: (target: NodeId, frames: readonly CallFrame[], runs: readonly LoopIteration[]) => void) => {
 		const outgoingEdges = graph.edgesFrom(id);
 		const top = frames.at(-1);
-		const ownParameter = top !== undefined && isParameterOf(id, top.fn, idMap);
+		const ownParameter = top !== undefined && RRole.functionOfParameter(id, idMap) === top.fn;
 		/* an argument handed on through the dots of the calls around comes from one of them */
 		const contextCall = ownParameter ? undefined : contextCallOf(id, idMap, callContext);
 		const inCalls = ownParameter ? frames.map(f => f.call) : contextCall === undefined ? undefined : [contextCall];
@@ -939,14 +940,14 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	};
 	/* what a call the walk ended in folds to, see below */
 	const folded: Value[] = [];
-	const fold = (result: ResolveResult) => {
+	function fold(result: ResolveResult) {
 		const values = valueSetGuard(result);
 		if(values === undefined || values.elements.some(isTop)) {
 			return false;
 		}
 		folded.push(...values.elements);
 		return true;
-	};
+	}
 	while(queue.nonEmpty()) {
 		const { id, envFingerprint } = queue.next();
 		const [frames, iterations] = envFingerprint === cleanFingerprint ? NoWalkContext : contextOf.get(envFingerprint) ?? NoWalkContext;

@@ -101,16 +101,16 @@ function signatureDatabaseEntries(counts: SigDbCounts | undefined): BenchmarkGra
 		return [];
 	}
 	const data: BenchmarkGraphEntry[] = [];
-	const count = (name: string, value: number | undefined) => {
+	function count(name: string, value: number | undefined) {
 		if(typeof value === 'number') {
 			data.push({ name: `${SigDbPrefix} ${name}`, unit: '#', value });
 		}
-	};
-	const bytes = (name: string, value: number | undefined) => {
+	}
+	function bytes(name: string, value: number | undefined) {
 		if(typeof value === 'number') {
 			data.push({ name: `${SigDbPrefix} ${name}`, unit: 'KiB', value: kib(value) });
 		}
-	};
+	}
 	count('bundles', counts.bundles);
 	for(const [kind, value] of Object.entries(counts.bundlesByKind ?? {})) {
 		count(`bundles (${kind})`, value);
@@ -137,7 +137,6 @@ function signatureDatabaseEntries(counts: SigDbCounts | undefined): BenchmarkGra
 
 /**
  * Write the graph output for the ultimate slicer stats to a file
- * @param ultimate        - The ultimate slicer stats
  * @param outputGraphPath - The path to write the graph output to
  */
 export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath: string) {

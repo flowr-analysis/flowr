@@ -3,8 +3,7 @@ import { type DataflowFunctionFlowInformation, type DataflowGraph, FunctionArgum
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceTypeReverseMapping } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { DFControlFlowEdge } from '../../dataflow/graph/edge';
-import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../../dataflow/graph/edge';
+import { type DFControlFlowEdge, ControlFlowEdgeTypes, DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { DfgVertex, type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { MermaidDefaultMarkStyle, type MermaidMarkdownMark, type MermaidMarkStyle } from './info';
@@ -155,10 +154,22 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 		return ['Built-in'];
 	}
 	const lines = [...printEnvironmentToLines(env.parent), `${environmentLevel(env)}${'-'.repeat(40)}`];
-	const longestName = Math.max(...[...env.memory.keys()].map(x => x.length));
-	for(const [name, defs] of env.memory.entries()) {
-		const printName = `${name}:`;
-		lines.push(`  ${printName.padEnd(longestName + 1, ' ')} {${defs.map(printIdentifier).join(', ')}}`);
+	/* what a package attaches are hundreds of names that say nothing about the code, so they show as the packages they come from */
+	const attached = new Set<string>();
+	const own = [...env.memory.entries()].filter(([, defs]) => {
+		const packages = defs.map(d => NodeId.toPkgFn(d.nodeId)?.[0]);
+		if(packages.length === 0 || packages.includes(undefined)) {
+			return true;
+		}
+		packages.forEach(p => attached.add(p as string));
+		return false;
+	});
+	const longestName = Math.max(...own.map(([name]) => name.length));
+	for(const [name, defs] of own) {
+		lines.push(`  ${`${name}:`.padEnd(longestName + 1, ' ')} {${defs.map(printIdentifier).join(', ')}}`);
+	}
+	if(attached.size > 0) {
+		lines.push(`  and what ${[...attached].sort().join(', ')} attach`);
 	}
 	return lines;
 }

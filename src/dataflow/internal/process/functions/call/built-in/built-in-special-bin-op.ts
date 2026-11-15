@@ -1,6 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { ControlDependency, DataflowInformation } from '../../../../../info';
-import { ExitPointType } from '../../../../../info';
+import { type ControlDependency, type DataflowInformation, ExitPointType } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';

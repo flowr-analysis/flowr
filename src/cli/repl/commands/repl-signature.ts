@@ -1,10 +1,9 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { bold, italic } from '../../../util/text/ansi';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
-import { executeQueries } from '../../../queries/query';
+import { executeQueries, asciiSummaryOfQueryResult } from '../../../queries/query';
 import { SignatureQueryDefinition } from '../../../queries/catalog/signature-query/signature-query-format';
 import { FunctionInfoQueryDefinition } from '../../../queries/catalog/function-info-query/function-info-query-format';
-import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import { downloadFullSigDb, SigDbDownloadError } from '../../../project/sigdb/sigdb-download';
 import { persistSigDbPathToGlobalConfig } from '../../../config';
 import { fileProtocol } from '../../../r-bridge/retriever';

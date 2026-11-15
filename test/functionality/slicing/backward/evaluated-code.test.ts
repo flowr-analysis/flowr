@@ -1,8 +1,8 @@
 import { assert, describe, test } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { assumeLoadedPackages, sliceOf, withTreeSitter } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import type { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { analyze } from '../../_helper/analyzer';
 
 assumeLoadedPackages('glue');
 
@@ -25,8 +25,7 @@ describe('Slicing code that is evaluated indirectly', withTreeSitter(parser => {
 		const count = 250;
 		const evals = Array.from({ length: count }, (_, i) => `eval(quote(v${i % 7} + w))`).join('; ');
 		const callers = Array.from({ length: count }, (_, i) => `h${i} <- function(z) { v${i % 7} <- z; w <- 2; g() }`);
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest([`g <- function() { ${evals} }`, ...callers].join('\n'));
+		const analyzer = await analyze(parser, [`g <- function() { ${evals} }`, ...callers].join('\n'));
 		const started = Date.now();
 		await analyzer.dataflow();
 		assert.isBelow(Date.now() - started, 30_000);

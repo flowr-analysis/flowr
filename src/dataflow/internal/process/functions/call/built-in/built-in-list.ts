@@ -7,13 +7,11 @@ import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import type { InGraphReferenceType } from '../../../../../environments/identifier';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { Identifier, ReferenceType, type InGraphReferenceType } from '../../../../../environments/identifier';
+import { type REnvironmentInformation, REnvironment } from '../../../../../environments/environment';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { REnvironment } from '../../../../../environments/environment';
 
 /**
  * Process a list call.

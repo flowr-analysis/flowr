@@ -117,10 +117,10 @@ export const NAMESPACE_TAMPERING = {
 		const results: NamespaceTamperingResult[] = [];
 		const add = (node: RNode<ParentInformation>, result: Omit<NamespaceTamperingResult, 'loc' | 'involvedId' | 'certainty'>, certain = true) => results.push({ ...at(node, certain), ...result });
 		for(const { name, node, vertex: call } of packageCalls(df.graph, idMap, pkg)) {
-			const arg = (formals: Record<string, string>, formal: string) => {
+			function arg(formals: Record<string, string>, formal: string) {
 				const ids = FunctionSemantics.call.match.toSpec(call.args, formals).get(formal);
 				return ids?.length === 1 ? idMap.get(ids[0]) : undefined;
-			};
+			}
 			switch(name) {
 				case 'unlockBinding': case 'assignInNamespace': {
 					const unlock = name === 'unlockBinding';

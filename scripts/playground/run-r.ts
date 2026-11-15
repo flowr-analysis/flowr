@@ -413,7 +413,7 @@ function figureTabs(figures: readonly Figure[]): HTMLElement {
 	const tabs = el('div', 'figure-tabs');
 	const view = el('div', 'figure-view');
 	let url: string | undefined;
-	const show = (figure: Figure, tab: Element): void => {
+	function show(figure: Figure, tab: Element): void {
 		if(url !== undefined) {
 			URL.revokeObjectURL(url);
 		}
@@ -436,7 +436,7 @@ function figureTabs(figures: readonly Figure[]): HTMLElement {
 			img.src = url;
 			view.replaceChildren(img);
 		}
-	};
+	}
 	for(const figure of figures) {
 		const tab = button('figure-tab', figure.name, `show ${figure.name}, which the script saved`, () => show(figure, tab));
 		tabs.append(tab);

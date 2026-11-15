@@ -12,9 +12,9 @@ import { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number
 
 describe('Assign unique Ids and Parents', { concurrent: false }, withShell(shell => {
 	describe('Testing Deterministic Counting of Id Assignment', () => {
-		const assertDecorated = (name: string, input: string, expected: RNodeWithParent): void => {
+		function assertDecorated(name: string, input: string, expected: RNodeWithParent): void {
 			assertDecoratedAst(name, shell, input, expected);
-		};
+		}
 		// decided to test with ast parsing, as we are dependent on these changes in reality
 		describe('Single nodes (leafs)', () => {
 			const exprList = (...children: readonly RNodeWithParent[]): RNodeWithParent => ({

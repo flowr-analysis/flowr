@@ -18,7 +18,6 @@ import type { NamedJsonEntry } from '../../../json/format';
 /**
  * Parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)
  * @param data - The data used by the parser (see {@link NormalizerData})
- * @param elem - The element to parse
  * @returns    The parsed element as an `RNode` or an `RDelimiter` if it is such.
  */
 export function normalizeSingleNode(data: NormalizerData, elem: NamedJsonEntry): RNode | RDelimiter {

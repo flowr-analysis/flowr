@@ -18,10 +18,7 @@ export async function executeRecursionQuery({ analyzer }: BasicQueryData, querie
 	return result;
 }
 
-/**
- * Either returns all function definitions alongside whether they are recursive,
- * or just those matching the filters.
- */
+/** Either returns all function definitions alongside whether they are recursive, or just those matching the filters. */
 export interface InspectRecursionQuery extends BaseQueryFormat {
 	readonly type:    'inspect-recursion';
 	readonly filter?: readonly SlicingCriterion[]

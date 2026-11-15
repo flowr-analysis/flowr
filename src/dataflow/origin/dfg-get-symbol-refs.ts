@@ -15,7 +15,6 @@ import { Dataflow } from '../graph/df-helper';
  * print(y)
  * }
  * ```
- * @param graph  - Dataflow Graph
  * @param nodeId - NodeId of Symbol to resolve
  * @returns      List including the Definitions and References to that definition
  * @useInstead {@link Dataflow.refsToSymbol}

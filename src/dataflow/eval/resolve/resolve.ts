@@ -1,9 +1,19 @@
-import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { setOf } from '../values/sets/set-constants';
-import { valueSetGuard, valueFromRNumber  } from '../values/general';
+import { valueSetGuard, valueFromRNumber } from '../values/general';
 import { NodeValue } from './node-value';
-import { RValue } from '../values/r-value';
+import {
+	RValue,
+	isValue,
+	type Lift,
+	Top,
+	type Value,
+	type ValueList,
+	type ValueListElement,
+	type ValueNumber,
+	type ValueVector
+} from '../values/r-value';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -15,7 +25,6 @@ import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandler, BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { OriginType } from '../../origin/dfg-get-origin';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
-import { isValue, type Lift, Top, type Value, type ValueList, type ValueListElement, type ValueNumber, type ValueVector } from '../values/r-value';
 import { listElementAt, listField, listFrom } from '../values/lists/list-constants';
 import type { ResolveInfo, ResolveResult } from './alias-tracking';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';

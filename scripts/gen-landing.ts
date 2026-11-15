@@ -18,7 +18,7 @@ import { OriginType } from '../src/dataflow/origin/dfg-get-origin';
 import { stringifyValue } from '../src/dataflow/eval/values/r-value';
 import { SliceDirection } from '../src/util/slice-direction';
 import { explain } from './page-lib/lint-text';
-import { arraySum, uniqueArray  } from '../src/util/collections/arrays';
+import { arraySum, uniqueArray } from '../src/util/collections/arrays';
 import { highlightR, renderRToken, tokenizeR, escapeHtml as escape } from '../src/util/text/r-highlight';
 
 /**
@@ -278,10 +278,10 @@ function timings(): { rows: string[][], files: string, lines: string, when: stri
 		return undefined;
 	}
 	const of = (benches: Benchmark[], name: string): number | undefined => benches.find(b => b.name === name)?.value;
-	const sum = (benches: Benchmark[], names: string[]): number | undefined => {
+	function sum(benches: Benchmark[], names: string[]): number | undefined {
 		const parts = names.map(n => of(benches, n));
 		return parts.every(v => v !== undefined) ? arraySum(parts) : undefined;
-	};
+	}
 	const Analysis = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information'];
 	const wanted: [string, (b: Benchmark[]) => number | undefined][] = [
 		['analyzing a script', b => sum(b, Analysis)],
@@ -489,7 +489,9 @@ function render(data: PageData): string {
 	 */
 	const pointable = (code: string, criteria: readonly string[], found: string[][] = []): string => code.split('\n').map((line, index) => {
 		const mine = criteria.filter(c => c.startsWith(`${index + 1}@`));
-		const said = (criterion: string): string => found.filter(([c]) => c === criterion).map(([, , text]) => text).join('; ');
+		function said(criterion: string): string {
+			return found.filter(([c]) => c === criterion).map(([, , text]) => text).join('; ');
+		}
 		const named = highlightWithMarks(line, marksFor(line, index + 1, mine.map(criterion => ({
 			criterion,
 			name: criterion.slice(criterion.indexOf('@') + 1),
@@ -528,8 +530,7 @@ function render(data: PageData): string {
 		return `\t\t\t<span class="line" data-line="${number}">${html}</span>`;
 	}).join('\n');
 
-	const kindsOn = (pairs: string[][], line: number): string[] =>
-		uniqueArray(pairs.filter(([, , at]) => at === String(line)).map(([kind]) => kind));
+	const kindsOn = (pairs: string[][], line: number): string[] => uniqueArray(pairs.filter(([, , at]) => at === String(line)).map(([kind]) => kind));
 	const depSource = (code: string, pairs: string[][]): string => code.split('\n').map((line, index) => {
 		const number = index + 1;
 		const mine = pairs.filter(([, , at]) => at === String(number));

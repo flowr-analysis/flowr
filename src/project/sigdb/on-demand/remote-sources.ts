@@ -54,8 +54,7 @@ export interface OnDemandSourceOptions {
 	readonly githubMirrors?:       boolean;
 }
 
-const GitHubArchive = (owner: string, repo: string, ref: string) =>
-	`https://codeload.github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tar.gz/${ref.split('/').map(encodeURIComponent).join('/')}`;
+const GitHubArchive = (owner: string, repo: string, ref: string) => `https://codeload.github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tar.gz/${ref.split('/').map(encodeURIComponent).join('/')}`;
 
 /** A GitHub remote as `remotes`/`pak` write it: `owner/repo`, optionally `/subdir`, `@ref`, `#pr`, or a `github::` prefix. */
 export function parseGitHubRemote(remote: string): { owner: string, repo: string, subdir?: string, ref?: string } | undefined {
@@ -115,14 +114,14 @@ export function cranSource(options: OnDemandSourceOptions = {}): OnDemandSource 
 	const mirror = (options.cranMirror ?? 'https://cloud.r-project.org/src/contrib/').replace(/\/?$/, '/');
 	const github = options.githubMirrors !== false;
 	const indices = new Map<string, Promise<Map<string, string>>>();
-	const ofVersion = (name: string, version: string): PackageArchive[] => {
+	function ofVersion(name: string, version: string): PackageArchive[] {
 		const file = `${name}_${version}.tar.gz`;
 		return [
 			...github ? [{ url: GitHubArchive('cran', name, `refs/tags/${version}`), origin: 'cran' }] : [],
 			{ url: `${mirror}${file}`, origin: 'cran' },
 			{ url: `${mirror}Archive/${name}/${file}`, origin: 'cran' }
 		];
-	};
+	}
 	return {
 		name: 'cran',
 		async archives({ name, version }, fetch) {

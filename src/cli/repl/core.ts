@@ -274,12 +274,12 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
-		const reportFailure = (e: unknown) => {
+		function reportFailure(e: unknown) {
 			output.stderr(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 			if(log.settings.minLevel < LogLevel.Fatal) {
 				console.error(e);
 			}
-		};
+		}
 		try {
 			const processor = getCommand(command);
 			if(processor?.localOnly && remote) {
@@ -385,7 +385,6 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
  * This function interprets the given `expr` as a REPL command (see {@link repl} for more on the semantics).
  * @param analyzer            - The flowR analyzer to use.
  * @param output              - Defines two methods that every function in the repl uses to output its data.
- * @param expr                - The expression to process.
  * @param allowRSessionAccess - If true, allows the execution of arbitrary R code.
  * @param remote              - If true, the expression comes from a (untrusted) client of the server, which may not use {@link ReplBaseCommand#localOnly} commands.
  */

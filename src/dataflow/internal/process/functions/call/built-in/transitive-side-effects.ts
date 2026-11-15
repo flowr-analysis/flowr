@@ -1,29 +1,39 @@
 import { isNotUndefined } from '../../../../../../util/assert';
 import { type DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
+import {
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexFunctionDefinition,
+	DfgVertex,
+	VertexType
+} from '../../../../../graph/vertex';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EnvType, type Environment, REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import type { FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { attachExportVertex, attachLibrary } from './built-in-library';
-import type { NamedInGraphIdentifierDefinition, BrandedIdentifier, BrandedNamespace, IdentifierDefinition, IdentifierReference } from '../../../../../environments/identifier';
+import {
+	type NamedInGraphIdentifierDefinition,
+	type BrandedIdentifier,
+	type BrandedNamespace,
+	type IdentifierDefinition,
+	type IdentifierReference,
+	Identifier,
+	ReferenceType
+} from '../../../../../environments/identifier';
 import { Frame, type MemoryView } from '../../../../../environments/frame-memory';
-import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { RLoopConstructs, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RProject } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { ProgramOrder } from '../../../../program-order';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { drawingWritesDevice, hiddenSideEffects, reachesBuiltInLate, readsOfHiddenBuiltIn, writesOfHiddenBuiltIn } from './built-in-ambient-state';
 import { DefaultMap, memoize } from '../../../../../../util/collections/defaultmap';
 import { Dataflow } from '../../../../../graph/df-helper';
 import { type AmbientFamily, AmbientStateName, GraphicsDevices, OutputSinks } from '../../../../../environments/ambient-state-name';
 import { AmbientAccess, AmbientAccessKind } from '../../../../../graph/ambient-access';
 import { BuiltInIndex, callFnProps, queryFnProps } from '../../../../../environments/query-fn-props';
-import { ArgProp, type BuiltInFnInfo, FnSig } from '../../../../../environments/built-in-props';
+import { ArgProp, type BuiltInFnInfo, FnSig, SemanticCallTag } from '../../../../../environments/built-in-props';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
-import { SemanticCallTag } from '../../../../../environments/built-in-props';
 import { Ternary } from '../../../../../../util/logic';
 import { type DataflowInformation, ControlDependency, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { ReachSummaries } from '../../../../../../util/fixpoint';
@@ -34,7 +44,7 @@ import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lan
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
+import { RRole } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { RValue } from '../../../../../eval/values/r-value';
@@ -85,10 +95,10 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 	let order: PromiseOrder | undefined;
 	let functions: ReadonlyMap<NodeId, AmbientAccess> | undefined;
 	/* the global state a closure changes while it runs, which a promise it forces may see */
-	const changedBy = (fns: readonly NodeId[]) => {
+	function changedBy(fns: readonly NodeId[]) {
 		functions ??= ambientAccessOfFunctions(graph);
 		return Monoid.fold(AmbientAccess.monoid, fns.map(fn => functions?.get(fn) ?? AmbientAccess.empty));
-	};
+	}
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		/* a function of a package flowR has no body for forces its arguments as its signature states, see `keptPromisesOfPackageCall` */
 		const kept = Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => !NodeId.isBuiltIn(t) && DfgVertex.isFunctionDefinition(graph.getVertex(t)))
@@ -99,11 +109,11 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 		const args = vertex.args.filter(FunctionArgument.isNotEmpty).map(a => ({ ids: new Set(RNode.collectAllIds(idMap.get(a.nodeId))), at: a.nodeId }));
 		/* what each write is named, and the argument it is written in, if any */
 		const writes = new Map<BrandedIdentifier, [NodeId, ReadonlySet<NodeId> | undefined][]>();
-		const write = (name: BrandedIdentifier | undefined, def: NodeId, within?: ReadonlySet<NodeId>) => {
+		function write(name: BrandedIdentifier | undefined, def: NodeId, within?: ReadonlySet<NodeId>) {
 			if(name !== undefined) {
 				writes.set(name, [...writes.get(name) ?? [], [def, within]]);
 			}
-		};
+		}
 		for(const def of Dataflow.sourcesOf(graph, id, EdgeType.SideEffectOnCall)) {
 			write(NodeId.isBuiltIn(def) ? undefined : nameOf(def), def);
 		}
@@ -239,10 +249,10 @@ export function linkStatementsAfterCallsOfClosures(this: void, graph: DataflowGr
 		if(after === undefined || after.size === 0) {
 			continue;
 		}
-		const changed = () => {
+		function changed() {
 			functions ??= ambientAccessOfFunctions(graph);
 			return Monoid.fold(AmbientAccess.monoid, closures.map(fn => functions?.get(fn) ?? AmbientAccess.empty));
-		};
+		}
 		for(const reader of linkAmbientReadsToWrites(graph, after, changed)) {
 			/* the reader sees the write only as the call runs it */
 			graph.addEdge(reader, id, EdgeType.Reads);
@@ -510,8 +520,7 @@ class PromiseOrder {
 		}
 		const lastWrite = statements.findLastIndex((s, i) => i < mayForce && this.assigns(s.info.id, name, BuiltInProcName.Assignment));
 		for(const before of seen) {
-			const node = this.idMap.get(before);
-			const parameter = node?.info.role === RoleInParent.ParameterName && this.idMap.get(node.info.parent ?? -1)?.info.parent === fn;
+			const parameter = RRole.functionOfParameter(before, this.idMap) === fn;
 			const index = this.statementIndex(before, statements);
 			if((parameter && lastWrite >= 0) || (index >= 0 && (index < lastWrite || index > surelyForces))) {
 				this.graph.removeEdgeType(read, before, EdgeType.Reads);

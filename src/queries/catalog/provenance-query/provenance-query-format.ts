@@ -34,7 +34,7 @@ export async function executeProvenanceQuery({ analyzer }: BasicQueryData, queri
 /** Calculates the provenance starting from a given criterion */
 export interface ProvenanceQuery extends BaseQueryFormat {
 	readonly type:          'provenance';
-	/** The slicing criterion to use as a start*/
+	/** The slicing criterion to use as a start */
 	readonly criterion:     SlicingCriterion,
 	/** Whether to stop on fdef boundaries */
 	readonly restrictFdef?: boolean;

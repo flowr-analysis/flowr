@@ -270,7 +270,7 @@ function addClassOwnershipUsage(usage: Map<BrandedNamespace, PackageUsage>, deps
 	const owners = sources.map(src => classOwnerIndexFor(src, anchored));
 	const mayIntroduce = declared.length === 0;
 
-	const attribute = (cls: string, fromNamespace: boolean): void => {
+	function attribute(cls: string, fromNamespace: boolean): void {
 		for(const [i, src] of sources.entries()) {
 			const owner = owners[i].get(cls) ?? (fromNamespace && mayIntroduce ? src.classOwner(cls) : undefined);
 			if(owner === undefined) {
@@ -283,7 +283,7 @@ function addClassOwnershipUsage(usage: Map<BrandedNamespace, PackageUsage>, deps
 			}
 			return;
 		}
-	};
+	}
 	namespaceClasses.forEach(cls => attribute(cls, true));
 	codeClasses.forEach(cls => attribute(cls, false));
 }
@@ -878,7 +878,7 @@ function countOverForest(factors: readonly CountFactor[], tree: readonly (Factor
 	}
 	// weight[i] of a node: how many assignments of its subtree exist with that node fixed to version i
 	const visited = factors.map(() => false);
-	const subtree = (node: number, from: number): number[] => {
+	function subtree(node: number, from: number): number[] {
 		visited[node] = true;
 		const weight = factors[node].survivors.map(() => 1);
 		for(const edge of neighbours[node]) {
@@ -891,7 +891,7 @@ function countOverForest(factors: readonly CountFactor[], tree: readonly (Factor
 			}
 		}
 		return weight;
-	};
+	}
 	let total = 1;
 	for(let i = 0; i < factors.length; i++) {
 		if(!visited[i]) {

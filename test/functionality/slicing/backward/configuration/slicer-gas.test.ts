@@ -7,6 +7,7 @@ import { GasFeatureKey, GasLevel } from '../../../../../src/gas';
 import { staticSlice } from '../../../../../src/slicing/static/static-slicer';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { analyze } from '../../../_helper/analyzer';
 
 /** Stands in for an embedder that wants to bound the analysis: it reports the slicer as out of resources. */
 class NoSlicerGasPlugin extends FlowrAnalyzerGasPlugin {
@@ -129,8 +130,7 @@ describe('Slicing under gas', withTreeSitter(ts => {
 	});
 
 	test('a per-call bound reaches the slice and ends with the call', async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-		analyzer.addRequest(code);
+		const analyzer = await analyze(ts, code);
 		const bounded = await analyzer.query([{ type: 'static-slice', criteria: ['3@y'], noReconstruction: true }],
 			{ gas: { [GasFeatureKey.Slicer]: { critical: 0 } } });
 		const boundedSlice = Object.values(bounded['static-slice'].results)[0].slice;

@@ -92,10 +92,7 @@ export function withCds(base: readonly ControlDependency[] | undefined, toAdd: r
 	return result;
 }
 
-/**
- * Negates the given control dependency (i.e., flips the `when` flag).
- * This keeps undefined `when` values intact as undefined.
- */
+/** Negates the given control dependency (i.e., flips the `when` flag). This keeps undefined `when` values intact as undefined. */
 export function negateControlDependency(cd: ControlDependency): ControlDependency {
 	return { ...cd, when: cd.when === undefined ? undefined : !cd.when };
 }

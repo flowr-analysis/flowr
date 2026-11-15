@@ -3,12 +3,27 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { RValue } from '../../../../../eval/values/r-value';
 import type { DataflowInformation } from '../../../../../info';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { type EnvHolderDefinition, type BrandedIdentifier, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { hasEnvState, ReferenceType } from '../../../../../environments/identifier';
-import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
-import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
+import {
+	type PotentiallyEmptyRArgument,
+	RFunctionCall,
+	EmptyArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	type EnvHolderDefinition,
+	type BrandedIdentifier,
+	Identifier,
+	type IdentifierDefinition,
+	type InGraphIdentifierDefinition,
+	type NamedInGraphIdentifierDefinition,
+	hasEnvState,
+	ReferenceType
+} from '../../../../../environments/identifier';
+import {
+	type Environment,
+	type REnvironmentInformation,
+	DefaultAttachPosition,
+	REnvironment
+} from '../../../../../environments/environment';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import { isEnclosingFrame, resolveNodeToStackEnv } from './built-in-stack-env';
 import { NodeValue } from '../../../../../eval/resolve/node-value';

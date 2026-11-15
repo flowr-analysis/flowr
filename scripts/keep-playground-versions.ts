@@ -70,7 +70,7 @@ export function diff(reference: Buffer, target: Buffer): Buffer {
 /** applies a {@link diff}, in the keeper and, written out as it stands, in the browser */
 export function patch(reference: Uint8Array, delta: Uint8Array): Uint8Array {
 	let at = 0, last = 0, written = 0;
-	const read = () => {
+	function read() {
 		let n = 0;
 		for(let scale = 1; ; scale *= 128) {
 			const byte = delta[at++];
@@ -79,7 +79,7 @@ export function patch(reference: Uint8Array, delta: Uint8Array): Uint8Array {
 				return n;
 			}
 		}
-	};
+	}
 	const out = new Uint8Array(read());
 	while(at < delta.length) {
 		const run = read();

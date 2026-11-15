@@ -3,8 +3,8 @@ import { SupportedQueries, executeQueries } from '../../../src/queries/query';
 import { setMinLevelOfAllLogs } from '../_helper/log';
 import { LogLevel } from '../../../src/util/log';
 import { withTreeSitter } from '../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { DoesCallQuery } from '../../../src/queries/catalog/does-call-query/does-call-query-format';
+import { analyze } from '../_helper/analyzer';
 
 /** runs the given queries while keeping the expected error out of the test log */
 async function quietly<T>(fn: () => Promise<T>): Promise<T> {
@@ -50,8 +50,7 @@ describe('Query API error propagation', () => {
 		const invalid = { type: 'does-call', queryId: 'invalid', call: '2@f', calls: { type: 'nope' } } as unknown as DoesCallQuery;
 
 		async function query(...queries: readonly DoesCallQuery[]) {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(code);
+			const analyzer = await analyze(parser, code);
 			return (await quietly(() => analyzer.query(queries))) as unknown as Record<string, { results?: Record<string, unknown>, error?: string }>;
 		}
 

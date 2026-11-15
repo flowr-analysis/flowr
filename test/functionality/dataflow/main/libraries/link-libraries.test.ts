@@ -14,6 +14,7 @@ import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { loadNodesForNamespace } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-library';
 import { EnvType, REnvironment, builtInEnvJsonReplacer } from '../../../../../src/dataflow/environments/environment';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { analyze } from '../../../_helper/analyzer';
 
 
 
@@ -210,11 +211,10 @@ describe('Link libraries', withTreeSitter(ts => {
 	// R attaches from inside a function to the global search path, and a second `library()` of an already
 	// attached package is a no-op there, so both call sites are provenance for the one search-path entry
 	test('A load inside a function and a later top-level load both count', async() => {
-		const loads = async(code: string) => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-			analyzer.addRequest(code);
+		async function loads(code: string) {
+			const analyzer = await analyze(ts, code);
 			return loadNodesForNamespace((await analyzer.dataflow()).environment, 'pkgA').length;
-		};
+		}
 		expect(await loads('f <- function() library("pkgA")\nf()\nlibrary("pkgA")\npkgA::fa()')).toBe(2);
 		expect(await loads('library("pkgA")\nf <- function() library("pkgA")\nf()\npkgA::fa()')).toBe(2);
 		expect(await loads('f <- function() library("pkgA")\nf()\npkgA::fa()')).toBe(1);
@@ -263,15 +263,15 @@ describe('Link libraries', withTreeSitter(ts => {
 			resolveIdsAsCriterion: true
 		});
 
-	const registerAbc = (a: FlowrAnalyzer): void => {
+	function registerAbc(a: FlowrAnalyzer): void {
 		a.context().deps
 			.addDependency(Package.fromConstants('pkgA', 'export(fa)', ['fa']))
 			.addDependency(Package.fromConstants('pkgB', 'export(fb)', ['fb']))
 			.addDependency(Package.fromConstants('pkgC', 'export(fc)', ['fc']));
-	};
+	}
 
 	/** Builds the expected subgraph for calls that resolve to a package export and back to its `library()` call. */
-	const resolvesTo = (...links: { call: string, pkg: string, fn: string, lib: string, callEdge?: number }[]) => {
+	function resolvesTo(...links: { call: string, pkg: string, fn: string, lib: string, callEdge?: number }[]) {
 		let g = emptyGraph();
 		for(const { call, pkg, fn, lib, callEdge } of links) {
 			const builtIn = NodeId.fromPkgFn(pkg, fn);
@@ -279,7 +279,7 @@ describe('Link libraries', withTreeSitter(ts => {
 				.addEdge(builtIn, lib, EdgeType.Reads | EdgeType.Calls);
 		}
 		return g;
-	};
+	}
 	const abc = { modifyAnalyzer: registerAbc, expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;
 
 	assertDataflow(label('Nested if-else links each call to its package', ['library-loading', 'search-path']), ts,
@@ -413,8 +413,7 @@ describe('Link libraries', withTreeSitter(ts => {
 
 describe('Dynamic search path', withTreeSitter(ts => {
 	test(label('search() reads the library() before it', ['dynamic-search-path'], ['dataflow']), async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-		analyzer.addRequest('library(tools)\nn <- search()');
+		const analyzer = await analyze(ts, 'library(tools)\nn <- search()');
 		const { graph } = await analyzer.dataflow();
 		const calls = (name: string) => graph.verticesOfType(VertexType.FunctionCall).filter(([, v]) => Identifier.getName(v.name) === name).map(([id]) => id).toArray();
 		const [library] = calls('library');

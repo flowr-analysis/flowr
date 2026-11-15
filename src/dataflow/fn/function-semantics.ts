@@ -8,7 +8,7 @@ import { guardsOfFunctions, summarizeClauses } from './guards/function-guards';
 import { builtInGuards } from './guards/built-in-guards';
 import { CallContracts } from './guards/call-contracts';
 import { argForImpl, classDeclarationOfImpl, declaredClassesImpl, superClassesOfImpl, toSigClassesImpl } from './class-declaration';
-import { DfgVertex } from '../graph/vertex';
+import { DfgVertex, type DataflowGraphVertexInfo } from '../graph/vertex';
 import { ArgProps, CallProps, FnSig } from '../environments/built-in-props';
 import { MatchArgs } from '../graph/match-args';
 import { CallSites } from './call-sites';
@@ -16,7 +16,6 @@ import { Nse } from '../internal/process/functions/call/nse';
 import { Quoted } from '../internal/process/functions/call/quoted';
 import { Deferred } from '../internal/process/functions/call/deferred';
 import { UnsupportedFunctions } from '../../abstract-interpretation/unsupported-functions';
-import type { DataflowGraphVertexInfo } from '../graph/vertex';
 import type { DecodedFunction } from '../../project/sigdb/decode';
 
 /**

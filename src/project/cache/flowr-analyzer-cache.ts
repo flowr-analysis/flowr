@@ -38,10 +38,7 @@ function isTreeSitterParse(parse: unknown): parse is ParseStepOutput<Tree> {
 			f => typeof f.parsed === 'object' && f.parsed !== null && 'rootNode' in f.parsed);
 }
 
-/**
- * This provides the full analyzer caching layer, please avoid using this directly
- * and prefer the {@link FlowrAnalyzer}.
- */
+/** This provides the full analyzer caching layer, please avoid using this directly and prefer the {@link FlowrAnalyzer}. */
 export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<AnalyzerCacheType<Parser>> {
 	private args:              FlowrAnalyzerCacheOptions<Parser>;
 	private pipeline!:         AnalyzerPipelineExecutor<Parser>;
@@ -258,11 +255,11 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		const store = this.derivedCache;
 		/* shared by every later caller, so it runs against a contingent of its own rather than the asking one,
 		 * and a result computed under gas pressure (which may be incomplete) is handed out but not kept */
-		const forget = () => {
+		function forget() {
 			if(store.get(key) === computed) {
 				store.delete(key);
 			}
-		};
+		}
 		const computed: Promise<T> = this.args.context.gas.withFreshGas(compute).then(({ value, degraded }) => {
 			if(degraded) {
 				forget();

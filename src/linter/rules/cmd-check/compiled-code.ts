@@ -289,21 +289,21 @@ function rulesFor(files: PackageFiles, config: CompiledCodeConfig, sysReq: strin
 	const known = new Set(files.entries.filter(e => !e.isDirectory).map(e => e.relative));
 	const verdict = (std: string) => config.obsoleteCxxStandards.includes(std) ? 'Obsolete' : config.knownCxxStandards.includes(std) ? undefined : 'Unknown';
 	const callRe = new RegExp(`(?<![\\w.]|->)(${alt(config.unportableCalls)})\\s*\\(`, 'g');
-	const objectRule = (names: readonly string[], symbol: (n: string) => string, gate?: (t: string) => boolean): Rule => {
+	function objectRule(names: readonly string[], symbol: (n: string) => string, gate?: (t: string) => boolean): Rule {
 		const re = new RegExp(`(?<![\\w.:]|->)(${alt(names)})\\b`, 'g');
 		return { ...Code, gate, line: codeLine(l => [...l.matchAll(re)].map(m => [symbol(m[1])])), message: (file, _, [s]) => report(file, s, s.startsWith('std::') ? 'C++' : 'C') };
-	};
+	}
 	const report = (file: string, symbol: string, lang: string) => fresh(`${file}:${symbol}`, `Found '${symbol}', possibly from '${symbol}' (${lang}): compiled code should not call entry points which ${category(symbol)}`);
 	const codeLine = (f: (line: string) => string[][]) => (l: string): Hits => /^\s*#\s*(?:include|pragma)\b/.test(l) ? false : f(l);
 	const nonApi = new Map([...NonApiEntryPoints, ...config.extraNonApiEntryPoints].map(n => [n.replace(/^Rf_/, ''), n]));
 	const nonApiRe = new RegExp(`(?<![\\w.]|->)(?:Rf_)?(${alt([...nonApi.keys()])})\\b`, 'g');
 	const Code = { kind: 'compiled code', files: CFamily, prep: (t: string) => stripC(t, true), uncertain: true } as const;
 	const Make = (kind: CompiledCodeKind, files: RegExp) => ({ kind, files, once: true }) as const;
-	const blas = (lib: string, after: string): Rule => {
+	function blas(lib: string, after: string): Rule {
 		const use = new RegExp(`\\$[{(]?${lib}`), followed = new RegExp(`\\$[{(]?${lib}.*\\$[{(]?${after}`);
 		return { kind:    'for portable use of $(BLAS_LIBS) and $(LAPACK_LIBS)', files:   /^src\/(?:Makevars(?:\.in)?|Makefile(?:\.win|\.ucrt)?)$/, logical: true, when:    !anyFile(FortranSrc),
 			line:    l => /^[ \t]*PKG_LIBS/.test(l) && use.test(l) && !followed.test(l), message: file => `Apparently using $(${lib}) without following $(${after}) in '${file}'` };
-	};
+	}
 	const pragma = (pattern: RegExp, message: string, gate?: Rule['gate']): Rule => ({ kind: 'pragmas in C/C++ headers and code', files: /^(?:src|inst\/include)\/.*\.(?:c|cc|cpp|h|hh|hpp)$/, once: true, line: pattern, message, gate });
 	const important = /^\s*#pragma (?:GCC|clang) diagnostic ignored[^-]*[-]W(?:uninitialized|float-equal|array-bound|format)/;
 	const kindFile = { kind: 'usage of KIND in Fortran files', files: FortranSrc } as const;

@@ -3,11 +3,9 @@ import { expect } from 'chai';
 import { defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { label } from '../../_helper/label';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IEnvironment } from '../../../../src/dataflow/environments/environment';
-import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
-import type { Identifier, IdentifierDefinition } from '../../../../src/dataflow/environments/identifier';
+import { type IEnvironment, REnvironment } from '../../../../src/dataflow/environments/environment';
+import { ReferenceType, type Identifier, type IdentifierDefinition } from '../../../../src/dataflow/environments/identifier';
 import { assert, describe, test } from 'vitest';
-import { REnvironment } from '../../../../src/dataflow/environments/environment';
 
 /** if you pass multiple `definedAt`, this will expect the node to have multiple definitions */
 function existsDefinedAt(name: string, definedAt: NodeId[], result: IEnvironment | undefined, message?: string) {

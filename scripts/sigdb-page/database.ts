@@ -1,5 +1,13 @@
-import type { RRepository } from '../../src/util/r-package-urls';
-import { baseManualIndexUrl, baseManualTopicUrl, cranMirrorSourceUrl, rdrrPackageUrl, rdrrTopicUrl, RRepositories, rSourceUrl } from '../../src/util/r-package-urls';
+import {
+	type RRepository,
+	baseManualIndexUrl,
+	baseManualTopicUrl,
+	cranMirrorSourceUrl,
+	rdrrPackageUrl,
+	rdrrTopicUrl,
+	RRepositories,
+	rSourceUrl
+} from '../../src/util/r-package-urls';
 import { argsOf, wordsOf } from './query';
 import { ExportFlag } from './export-flags';
 
@@ -379,10 +387,10 @@ function inWorker(encoded: string): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const url = URL.createObjectURL(new Blob([`self.onmessage = async ({ data }) => self.postMessage(await (${unzip.toString()})(data));`], { type: 'text/javascript' }));
 		const worker = new Worker(url);
-		const done = () => {
+		function done() {
 			worker.terminate();
 			URL.revokeObjectURL(url);
-		};
+		}
 		worker.onmessage = (event: MessageEvent<string>) => {
 			resolve(event.data);
 			done();

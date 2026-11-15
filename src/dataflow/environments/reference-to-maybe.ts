@@ -1,9 +1,7 @@
-import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference } from './identifier';
-import { Identifier, ReferenceType } from './identifier';
+import { type BrandedIdentifier, type IdentifierDefinition, type IdentifierReference, Identifier, ReferenceType } from './identifier';
 import type { DataflowGraph } from '../graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ControlDependency } from '../info';
-import { withCds } from '../info';
+import { type ControlDependency, withCds } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
 import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 import { DfgVertex } from '../graph/vertex';

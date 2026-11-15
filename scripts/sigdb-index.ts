@@ -93,7 +93,7 @@ export function guardsForPage(): Record<string, Guards> {
  */
 export function wordDocsForPage(): Record<string, string> {
 	const docs: Record<string, string> = {};
-	const read = (file: string, enumName: string, keyOf: (member: ts.EnumMember) => string | undefined) => {
+	function read(file: string, enumName: string, keyOf: (member: ts.EnumMember) => string | undefined) {
 		const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
 		source.forEachChild(node => {
 			if(!ts.isEnumDeclaration(node) || node.name.text !== enumName) {
@@ -107,7 +107,7 @@ export function wordDocsForPage(): Record<string, string> {
 				}
 			}
 		});
-	};
+	}
 	read(path.join('src', 'dataflow', 'environments', 'built-in-props.ts'), 'SemanticCallTag', member => member.initializer && ts.isStringLiteral(member.initializer) ? member.initializer.text : undefined);
 	const names = new Set(Object.values(FnPropNames));
 	read(path.join('src', 'project', 'sigdb', 'schema.ts'), 'FnProp', member => {
@@ -301,13 +301,13 @@ function statedWithRealPackages(baseNames: ReadonlySet<BrandedNamespace>, topics
 	if(!complete) {
 		return stated;
 	}
-	const settled = (name: BrandedIdentifier, entry: StatedSignature): StatedSignature => {
+	function settled(name: BrandedIdentifier, entry: StatedSignature): StatedSignature {
 		const owner = baseRExportOwner(name);
 		if(owner !== undefined) {
 			return owner === entry.pkg ? entry : { ...entry, pkg: owner };
 		}
 		return topics.has(entry.pkg + '::' + name) ? entry : { ...entry, pkg: '' };
-	};
+	}
 	return new Map([...stated].map(([name, entries]) =>
 		[name, entries.map(entry => baseNames.has(entry.pkg) ? settled(name, entry) : entry)]));
 }

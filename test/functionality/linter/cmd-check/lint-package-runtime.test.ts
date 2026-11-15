@@ -2,11 +2,11 @@ import { assert, describe, test } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { executeLintingRule } from '../../../../src/linter/linter-executor';
-import { LintingResults, LintingResultCertainty  } from '../../../../src/linter/linter-format';
+import { LintingResults, LintingResultCertainty } from '../../../../src/linter/linter-format';
 import { withTreeSitter } from '../../_helper/shell';
 import { assertLinterPackage } from '../../_helper/linter';
+import { analyze } from '../../_helper/analyzer';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('package-runtime', () => {
@@ -106,8 +106,7 @@ describe('flowR linter', withTreeSitter(parser => {
 					fs.mkdirSync(path.join(root, 'R'));
 					fs.writeFileSync(path.join(root, 'DESCRIPTION'), desc());
 					fs.writeFileSync(path.join(root, 'R', 'a.R'), 'f <- function() 1\n');
-					const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-					analyzer.addRequest(`file://${root}`);
+					const analyzer = await analyze(parser, `file://${root}`);
 					const result = LintingResults.unpackSuccess(await executeLintingRule(rule, analyzer));
 					assert.deepStrictEqual(result.results.map(r => r.kind), ['missing-namespace']);
 				} finally {

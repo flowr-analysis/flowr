@@ -1,7 +1,6 @@
 import { hooksUnder } from '../../../../../hooks';
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { ControlDependency, DataflowInformation } from '../../../../../info';
-import { ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
+import { type ControlDependency, type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,

@@ -79,9 +79,8 @@ export function processRegisterHook<OtherInfo>(
 
 	const res = processKnownFunctionCall({ name, args: transformed, rootId, data, origin: BuiltInProcName.RegisterHook });
 	const where = { graph: res.information.graph, environment: res.information.environment };
-	const isSet = (ids: ReadonlySet<NodeId>): boolean =>
-		Array.from(ids).flatMap(id => NodeValue.setOf(id, data, where)?.elements ?? [])
-			.some(v => v.type === 'logical' && v.value !== false);
+	const isSet = (ids: ReadonlySet<NodeId>): boolean => Array.from(ids).flatMap(id => NodeValue.setOf(id, data, where)?.elements ?? [])
+		.some(v => v.type === 'logical' && v.value !== false);
 	const shouldAdd = addIds.size === 0 ? config.args.add?.default : isSet(addIds);
 	const shouldBeAfter = afterIds.size === 0 ? config.args.after?.default : isSet(afterIds);
 

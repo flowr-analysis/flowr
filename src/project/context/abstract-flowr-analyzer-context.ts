@@ -23,10 +23,7 @@ export abstract class AbstractFlowrAnalyzerContext<In, Out, Plugin extends Flowr
 		this.ctx = ctx;
 	}
 
-	/**
-	 * Run all registered plugins on the given args, please be aware that if they are async, it is up to you to
-	 * await them.
-	 */
+	/** Run all registered plugins on the given args, please be aware that if they are async, it is up to you to await them. */
 	protected applyPlugins(args: Parameters<Plugin['processor']>[1]): Out[] {
 		const res: (Out | undefined)[] = [];
 		for(const plugin of this.plugins) {

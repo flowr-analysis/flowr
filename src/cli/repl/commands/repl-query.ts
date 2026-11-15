@@ -8,11 +8,11 @@ import {
 	SupportedQueries,
 	type SupportedQuery,
 	type SupportedQueryTypes,
-	VirtualQuerySchema
+	VirtualQuerySchema,
+	asciiSummaryOfQueryResult
 } from '../../../queries/query';
 import { SupportedVirtualQueries } from '../../../queries/virtual-query/virtual-queries';
 import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import { jsonReplacer } from '../../../util/json';
 import type { BaseQueryResult } from '../../../queries/base-query-format';
 import { closingQuote, splitAtEscapeSensitive, unescapeArg } from '../../../util/text/args';
@@ -189,7 +189,6 @@ const ConfigLineRegex = /^(@config)(?:\s+([\s\S]*))?$/;
  * All input is treated as arguments, no R code is separated so that the individual queries can handle it.
  * `@config` is passed its rest-of-line untouched, since its own `fromLine` reads a single raw token and the
  * generic tokenizer would otherwise strip quotes out of a `+path=["a"]` value.
- * @param line - The input line
  */
 function parseQueryArgs(line: string) {
 	const configMatch = ConfigLineRegex.exec(line);

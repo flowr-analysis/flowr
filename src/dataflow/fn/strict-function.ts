@@ -5,25 +5,21 @@
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FunctionSemantics } from './function-semantics';
 import type { AstIdMap, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
+import { RoleInParent, RRole } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { ExitPoint } from '../info';
-import { ControlDependency, ExitPointType } from '../info';
+import { type ExitPoint, ControlDependency, ExitPointType } from '../info';
 import { errorEscapes } from '../internal/linker';
 import type { DataflowGraph } from '../graph/graph';
 import { DfEdge, EdgeType } from '../graph/edge';
 import { NodeValue } from '../eval/resolve/node-value';
 import { Resolve } from '../environments/resolve-helper';
 import { fallbackUntargetedCall } from '../graph/call-graph';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
-import { DfgVertex, VertexType } from '../graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, DfgVertex, VertexType } from '../graph/vertex';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
-import type { ArgProps } from '../environments/built-in-props';
-import { ArgProp, DispatchCallees, FnSig as Sig } from '../environments/built-in-props';
-import type { BuiltInLookup } from './frame-reflection';
-import { reflectiveRolesOf } from './frame-reflection';
+import { type ArgProps, ArgProp, DispatchCallees, FnSig as Sig } from '../environments/built-in-props';
+import { type BuiltInLookup, reflectiveRolesOf } from './frame-reflection';
 import { builtInLookup } from '../environments/query-fn-props';
 import { Identifier } from '../environments/identifier';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -265,7 +261,7 @@ function isElementRead(id: NodeId, graph: DataflowGraph): boolean {
 function boundParameters(call: DataflowGraphVertexFunctionCall, argument: NodeId, idMap: AstIdMap, graph: DataflowGraph, origins?: Map<NodeId, readonly NodeId[]>): NodeId[] | undefined {
 	const sources = new Set([argument, argumentValue(argument, idMap)]);
 	/* a call handed as the argument links on call what its own callees read as well, which binds no parameter, an argument to dots read by position only is bound to the reads of its position (`..1`) */
-	const linked = [...sources].flatMap(from => Dataflow.targetsOf(graph, from, EdgeType.DefinesOnCall)).filter(p => idMap.get(p)?.info.role === RoleInParent.ParameterName || isElementRead(p, graph));
+	const linked = [...sources].flatMap(from => Dataflow.targetsOf(graph, from, EdgeType.DefinesOnCall)).filter(p => RRole.isParameterName(p, idMap) || isElementRead(p, graph));
 	if(linked.length > 0 || Dataflow.calleeIdsOf(graph, call.id).length > 0) {
 		return linked;
 	}
@@ -360,7 +356,9 @@ function strictnessOfParameter(param: NodeId, definition: DataflowGraphVertexFun
 	}
 	const dispatch = state.dispatch.get(definition.id);
 	if(dispatch !== undefined) {
-		const surely = (values: readonly Ternary[]) => dispatch.certain ? agree(values) : weaken(agree(values));
+		const surely = (values: readonly Ternary[]) => {
+			return dispatch.certain ? agree(values) : weaken(agree(values));
+		};
 		const methods = Dataflow.targetsOf(state.graph, param, EdgeType.DefinesOnCall).map(target => handedTo(target, state));
 		reads.push(surely(methods));
 		if(dispatch.next.length > 0) {
@@ -457,7 +455,7 @@ function forcingPointsOf(params: readonly NodeId[], graph: DataflowGraph, idMap:
 		seen.add(param);
 		/* a read of the dots by position is bound to the argument itself */
 		const element = isElementRead(param, graph);
-		const binding = element ? Dataflow.targetsOf(graph, param, EdgeType.Reads).find(t => idMap.get(t)?.info.role === RoleInParent.ParameterName) : param;
+		const binding = element ? Dataflow.targetsOf(graph, param, EdgeType.Reads).find(t => RRole.isParameterName(t, idMap)) : param;
 		const owner = idMap.get(idMap.get(binding ?? -1)?.info.parent ?? -1)?.info.parent;
 		/* a promise bound outside of every function (`delayedAssign`) is forced by each call running a closure reading it */
 		const global = !element && !DfgVertex.isFunctionDefinition(graph.getVertex(owner ?? ''));

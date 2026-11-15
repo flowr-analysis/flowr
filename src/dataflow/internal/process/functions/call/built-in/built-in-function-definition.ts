@@ -25,8 +25,7 @@ import { type ClassFlowInfo, s3DispatchClassesOf } from '../../../../../fn/dispa
 import { instanceBindingsOfMethod } from '../../../../../fn/class-declaration';
 import { type NextMethods, callsNextMethod, type DispatchContext, DispatchNarrower, internalGenericMethods, linkedFunctionIds, type NarrowedDispatch, ruledOutPerCall, unlinkExcludedMethods } from '../../../../dispatch-linking';
 import { createFreshEnvState } from './built-in-new-env';
-import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
-import { EnvType, REnvironment } from '../../../../../environments/environment';
+import { type Environment, type REnvironmentInformation, EnvType, REnvironment } from '../../../../../environments/environment';
 import type { MemoryView } from '../../../../../environments/frame-memory';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import type { ReadOnlyFlowrAnalyzerContext, FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
@@ -464,11 +463,11 @@ function namesShadowingBuiltIns(environment: REnvironmentInformation, graph: Dat
 	const shadowing = new Set<BrandedIdentifier>();
 	const generics = new Set<BrandedIdentifier>();
 	/* `as.character.zz` may be a method of `as` or of `as.character`, so every prefix is a candidate */
-	const methodOf = (name: BrandedIdentifier) => {
+	function methodOf(name: BrandedIdentifier) {
 		for(let dot = name.indexOf('.', 1); dot > 0; dot = name.indexOf('.', dot + 1)) {
 			generics.add(name.slice(0, dot));
 		}
-	};
+	}
 	for(const env of REnvironment.frames(environment.current)) {
 		/* an attached package may shadow a built-in a function body bound to before it was attached; its keys suffice, building the definitions of every export would be costly */
 		if(env.t === EnvType.Namespace) {
@@ -563,7 +562,7 @@ function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identi
 	}
 	const classes = perArgument.flat();
 	const prefixes = s3MethodPrefixesOf(name);
-	const pick = (stopAt: RNode<ParentInformation> | undefined) => {
+	function pick(stopAt: RNode<ParentInformation> | undefined) {
 		const picked = new Set<IdentifierDefinition>();
 		for(const cls of classes) {
 			for(const c of [...cls, 'default']) {
@@ -575,7 +574,7 @@ function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identi
 			}
 		}
 		return picked;
-	};
+	}
 	const picked = pick(statement);
 	const callsNext = linkedFunctionIds(new Set([...picked].map(d => d.nodeId)), graph).some(d => callsNextMethod(d, graph));
 	/* a next method continues along the class vector past where the dispatch stops */
@@ -859,10 +858,10 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 		const object = treatAsS3 ? dispatchedObjectOf(vertex, graph) : undefined;
 		let s3Objects: readonly NodeId[] | undefined = object === undefined ? undefined : [object];
 		/* a built-in keeps no environment, but the frame of the function it is in may bind methods */
-		const methodEnvironment = () => {
+		function methodEnvironment() {
 			const frame = vertex.environment === undefined ? graph.getVertex(enclosingOf(id) ?? '') : undefined;
 			return DfgVertex.isFunctionDefinition(frame) ? REnvironment.overwrite(outEnvironment, frame.subflow.environment) : effectiveEnvironment;
-		};
+		}
 		if(mayDispatch && !treatAsS3 && dispatchesOnClass(name, effectiveEnvironment, databaseInfoOf)) {
 			const own = linkOwnS3Methods(vertex, name, graph, methodEnvironment(), runsOnceAt(id), ctx, databaseInfoOf);
 			own.methods.forEach(m => targets.add(m));
@@ -880,14 +879,14 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 				}
 			}
 		}
-		const decide = (info?: ClassFlowInfo) => {
+		function decide(info?: ClassFlowInfo) {
 			const decided = narrowedDispatchOf(narrower, vertex, s3Objects, targets, definedLater, info);
 			/* the call depends on the registrations a decision relies on */
 			for(const registration of decided?.reads ?? []) {
 				graph.addEdge(id, registration, EdgeType.Reads);
 			}
 			return decided;
-		};
+		}
 		const narrowed = decide();
 		/* a dispatch on what the calls of its function hand it is decided per call as well */
 		const contexts = narrower.perCall(id, targets, narrowed, decide);

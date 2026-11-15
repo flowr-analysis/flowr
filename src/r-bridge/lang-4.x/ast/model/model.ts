@@ -19,16 +19,14 @@ import type { EmptyArgument, RFunctionCall } from './nodes/r-function-call';
 import type { RParameter } from './nodes/r-parameter';
 import type { RArgument } from './nodes/r-argument';
 import { RExpressionList } from './nodes/r-expression-list';
-import type { RIndexAccess, RNamedAccess } from './nodes/r-access';
-import { RAccess } from './nodes/r-access';
+import { type RIndexAccess, type RNamedAccess, RAccess } from './nodes/r-access';
 import type { RUnaryOp } from './nodes/r-unary-op';
 import type { RBinaryOp } from './nodes/r-binary-op';
 import type { RPipe } from './nodes/r-pipe';
 import type { RDelimiter } from './nodes/info/r-delimiter';
 import type { AstIdMap, ParentInformation } from './processing/decorate';
 import type { NodeId } from './processing/node-id';
-import type { OnEnter, OnExit } from './processing/visitor';
-import { NodeVisitor } from './processing/visitor';
+import { type OnEnter, type OnExit, NodeVisitor } from './processing/visitor';
 import { assertUnreachable } from '../../../../util/assert';
 import { getDocumentationOf } from '../../../roxygen2/documentation-provider';
 
@@ -90,10 +88,7 @@ export interface WithChildren<Info, Children extends RAstNodeBase<Info, string |
  */
 export type Leaf<Info = NoInfo, LexemeType = string> = RAstNodeBase<Info, LexemeType>;
 
-/**
- * Indicates, that the respective {@link RAstNodeBase} node has known source code
- * location information.
- */
+/** Indicates, that the respective {@link RAstNodeBase} node has known source code location information. */
 export interface Location {
 	/**
 	 * The location may differ from what is stated in {@link Source#fullRange} as it
@@ -103,16 +98,10 @@ export interface Location {
 	location: SourceRange
 }
 
-/**
- * Represents the type of namespaces in the R programming language.
- * At the moment, this is only the name of the namespace.
- */
+/** Represents the type of namespaces in the R programming language. At the moment, this is only the name of the namespace. */
 export type NamespaceIdentifier = string;
 
-/**
- * This subtype of {@link RNode} represents all types of constants
- * represented in the normalized AST.
- */
+/** This subtype of {@link RNode} represents all types of constants represented in the normalized AST. */
 export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info>;
 /**
  * Helper object to provide helper functions for {@link RConstant|RConstants}.
@@ -131,10 +120,7 @@ export const RConstant = {
 	/** A set of all types of constants in the normalized AST, i.e. number, string, and logical constants. */
 	constantTypes: new Set([RType.Number, RType.String, RType.Logical]) as ReadonlySet<RType>
 } as const;
-/**
- * This subtype of {@link RNode} represents all types of {@link Leaf} nodes in the
- * normalized AST.
- */
+/** This subtype of {@link RNode} represents all types of {@link Leaf} nodes in the normalized AST. */
 export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info> | RLineDirective<Info>;
 /**
  * Represents a leaf node in the normalized AST, i.e. a node that does not have any children. This includes comment, symbol, constant, break, next, and line directive nodes.
@@ -175,10 +161,7 @@ export const RLoopConstructs = {
 		return enclosing !== undefined && !RFunctionDefinition.is(idMap.get(enclosing));
 	}
 } as const;
-/**
- * As an extension to {@link RLoopConstructs}, this subtype of {@link RNode} includes
- * the {@link RIfThenElse} construct as well.
- */
+/** As an extension to {@link RLoopConstructs}, this subtype of {@link RNode} includes the {@link RIfThenElse} construct as well. */
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>;
 /**
  * Helper for working with {@link RConstructs} AST nodes.
@@ -196,10 +179,7 @@ export const RConstructs = {
 	/** A set of all types of constructs in the normalized AST, i.e. for, repeat and while loops and if-then-else constructs. */
 	constructTypes: new Set([...RLoopConstructs.loopConstructTypes, RType.IfThenElse]) as ReadonlySet<RType>
 } as const;
-/**
- * This subtype of {@link RNode} represents all types related to functions
- * (calls and definitions) in the normalized AST.
- */
+/** This subtype of {@link RNode} represents all types related to functions (calls and definitions) in the normalized AST. */
 export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RParameter<Info> | RArgument<Info>;
 /**
  * Helper for working with {@link RFunctions} AST nodes.

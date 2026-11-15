@@ -1,15 +1,14 @@
 import { describe, assert, test, beforeAll } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { VertexType } from '../../../../src/dataflow/graph/vertex';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
+import { analyze } from '../../_helper/analyzer';
 
 /** every call of `code`, grouped by the called name, answered with `ask` */
 async function callsBy(code: string, ask: (id: NodeId, graph: DataflowGraph) => boolean): Promise<Record<string, boolean[]>> {
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
-	analyzer.addRequest(code);
+	const analyzer = await analyze(new TreeSitterExecutor(), code);
 	const graph = (await analyzer.dataflow()).graph;
 	const out: Record<string, boolean[]> = {};
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {

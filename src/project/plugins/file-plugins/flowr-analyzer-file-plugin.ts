@@ -1,7 +1,6 @@
 import { FlowrAnalyzerPlugin, PluginType } from '../flowr-analyzer-plugin';
 import type { PathLike } from 'fs';
-import type { FlowrFileProvider } from '../../context/flowr-file';
-import { FileRole } from '../../context/flowr-file';
+import { type FlowrFileProvider, FileRole } from '../../context/flowr-file';
 import { SemVer } from 'semver';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { RPath, rPackageSourceRegex } from '../../../util/files';

@@ -67,11 +67,11 @@ function scriptHelpText(script: [string, ReplBaseCommand], f: OutputFormatter, s
 }
 
 function printFamilyVariants(children: string[], cmds: Record<string, ReplCommand | ReplCodeCommand>, f: OutputFormatter): string {
-	const variant = (name: string) => {
+	function variant(name: string) {
 		const aliases = cmds[name].aliases;
 		const suffix = aliases.length > 0 ? ' ' + italic(`(${aliases.map(a => ':' + a).join(', ')})`, f) : '';
 		return cmd(':' + name + (cmds[name + '*'] ? '[*]' : ''), f) + suffix;
-	};
+	}
 	return wrapAfter(`     ${italic('variants:', f)} `, children.map(variant).join(', '));
 }
 

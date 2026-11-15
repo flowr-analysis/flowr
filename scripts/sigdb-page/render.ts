@@ -6,6 +6,7 @@ import { ExportFlag } from './export-flags';
 import { aboutFlagNamed, aboutOf, Flags, Kinds, Origins } from './about';
 import { contract as contractView, formalChip, formalMark, hueOf, light, link, originTag, related, titled, type Part } from './contract-view';
 import { uniqueArray } from '../../src/util/collections/arrays';
+import { StoredLocation } from '../../src/dataflow/fn/guards/stored-location';
 
 /** a word of a signature with what it means, for its hover */
 function described(word: string): string {
@@ -89,14 +90,14 @@ function marked(name: string, needle: string, at: number): HTMLSpanElement {
 
 /** toggles `detailOf` below `row` on a click that is not on a link, and returns what opens it right away */
 function opens(row: HTMLElement, detailOf: () => Node): () => void {
-	const toggle = () => {
+	function toggle() {
 		const open = row.querySelector('.detail');
 		if(open) {
 			open.remove();
 		} else {
 			row.append(detailOf());
 		}
-	};
+	}
 	row.addEventListener('click', event => {
 		if(!(event.target as HTMLElement | null)?.closest('a')) {
 			toggle();
@@ -270,10 +271,10 @@ export class Hits {
 		}
 		/* what to ask flowR for parameters and the call graph, for the hit's package or the package row last hovered, copied on a click */
 		const ask = el('code', 'askcmd');
-		const asks = (qualified: string) => {
+		function asks(qualified: string) {
 			ask.textContent = ':query @signature ' + qualified;
 			ask.title = 'for parameters and the call graph, ask flowR this; click to copy';
-		};
+		}
 		asks(chosen === undefined ? '* ' + name : chosen + '::' + name);
 		ask.addEventListener('click', event => {
 			event.stopPropagation();
@@ -573,13 +574,13 @@ function probableClaims(guards: Guards): { readonly methods: readonly string[], 
 	if(methods.length < 2) {
 		return undefined;
 	}
-	const asked = (g: Guards) => {
+	function asked(g: Guards) {
 		const by = new Map<string, Set<string>>((g[5] ?? []).map(f => [f, new Set(['!missing(' + f + ')'])]));
 		for(const [formal, words] of g[1]) {
 			by.set(formal, new Set([...by.get(formal) ?? [], ...words]));
 		}
 		return by;
-	};
+	}
 	const own = asked(guards);
 	const [first, ...rest] = methods.map(m => asked(db.guards.get(m) as Guards));
 	const common = [...first].flatMap(([formal, words]): [string, string[]][] => {
@@ -635,10 +636,10 @@ function ownContract(name: string, guards: Guards, formals: readonly string[], o
 /** how a contract relates to others by S3 dispatch: a generic with the methods that have contracts as well, or a method with its generic and the other methods of that */
 function dispatchOf(name: string, guards: Guards, chip: (formal: string) => HTMLElement, owner: Owner | undefined): HTMLElement[] {
 	const [, , , , , , , , dispatch, methodOf] = guards;
-	const listed = (methods: readonly string[], said: string): Part[] => {
+	function listed(methods: readonly string[], said: string): Part[] {
 		const shown = methods.filter(m => m !== (owner?.pkg.name ?? '') + '::' + name && db.guards.has(m));
 		return shown.length === 0 ? [] : [said, ...shown.flatMap((m, at) => [...at > 0 ? ['; '] : [], ...located(m, owner)])];
-	};
+	}
 	const lines: HTMLElement[] = [];
 	if(dispatch?.length === 2) {
 		const line = el('p', 'chead');
@@ -660,15 +661,14 @@ function dispatchOf(name: string, guards: Guards, chip: (formal: string) => HTML
  * no source of, so in the file it is close to the failing code rather than at it.
  */
 function failingAt(loc: string, fallback: string, home: Owner | undefined, rVersion?: string): { parts: Part[], url?: string } {
-	const parts = loc.split(':');
-	const [line, column] = loc === '' ? [] : parts.slice(-2).map(Number);
-	const fn = loc === '' ? fallback : parts.slice(0, -2).join(':');
+	const place = StoredLocation.parse(loc, fallback);
+	const { fn, line, column } = place;
 	const qualified = fn.indexOf('::');
 	const [pkg, name] = qualified < 0 ? [home?.pkg.name, fn] : [fn.slice(0, qualified), fn.slice(qualified + 2)];
 	const owner = db.ownersOf(name).split(',').map(entry => entry === '' ? undefined : Owner.parse(entry)).find(o => o?.pkg.name === pkg);
 	const shown = titled(el('code', 'fn', name), pkg === undefined ? undefined : pkg + '::' + name);
 	if(owner?.file === undefined) {
-		return { parts: [shown, ...line === undefined ? [] : [', line ' + line + ':' + column]] };
+		return { parts: [shown, ...StoredLocation.lineSuffix(place)] };
 	}
 	const at = owner.line === undefined || line === undefined ? owner.line : owner.line + line - 1;
 	const url = owner.pkg.sourceUrl(owner.file, at, owner.pkg.base ? rVersion : undefined);

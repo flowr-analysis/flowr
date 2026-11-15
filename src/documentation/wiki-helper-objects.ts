@@ -52,7 +52,7 @@ function summarize(doc: string): string {
  */
 function declaredHelperObjects(): Map<string, DeclaredHelper> {
 	const found = new Map<string, DeclaredHelper>();
-	const walk = (dir: string): void => {
+	function walk(dir: string): void {
 		for(const entry of fs.readdirSync(dir, { withFileTypes: true })) {
 			const at = path.join(dir, entry.name);
 			if(entry.isDirectory()) {
@@ -66,7 +66,7 @@ function declaredHelperObjects(): Map<string, DeclaredHelper> {
 				}
 			}
 		}
-	};
+	}
 	walk(path.join(__dirname, '..'));
 	return found;
 }

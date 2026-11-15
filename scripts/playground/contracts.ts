@@ -6,6 +6,7 @@ import type { Guards } from '../sigdb-page/database';
 import type { InspectFnGuardsQueryResult } from '../../src/queries/catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
 import { statedGuardsOf } from '../../src/dataflow/fn/guards/stated-guards';
 import type { StatedGuards } from '../../src/dataflow/fn/guards/built-in-guards';
+import { StoredLocation } from '../../src/dataflow/fn/guards/stored-location';
 import type { AstIdMap } from '../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowGraph } from '../../src/dataflow/graph/graph';
 import { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -68,11 +69,11 @@ const OpenUpTo = 4;
  */
 export function contractCard(name: string, formals: readonly string[], guards: Guards, from: { readonly program?: ProgramContract, readonly qualified?: string, readonly note?: string }, go: (place: Place) => void): HTMLElement {
 	const { program, note } = from;
-	const at = (place: Place, text: string): Part => {
+	function at(place: Place, text: string): Part {
 		const jump = link('at', text, '#', 'go to ' + text);
 		jump.addEventListener('click', event => (event.preventDefault(), go(place)));
 		return jump;
-	};
+	}
 	const updated = guards[3] ?? '';
 	const origin = program === undefined
 		? [originTag(updated), ...updated === '' ? [] : [el('span', 'rver', originWords(updated))]]
@@ -91,8 +92,8 @@ export function contractCard(name: string, formals: readonly string[], guards: G
 			if(place?.line !== undefined) {
 				return { parts: [fn(raiser), ', ', at(place, (place.file === undefined ? '' : place.file + ':') + 'L' + place.line)] };
 			}
-			const [line, column] = loc === '' ? [] : loc.split(':').slice(-2);
-			return { parts: [fn(loc === '' ? raiser : loc.split(':').slice(0, -2).join(':')), ...line === undefined ? [] : [', line ' + line + ':' + column]] };
+			const stored = StoredLocation.parse(loc, raiser);
+			return { parts: [fn(stored.fn), ...StoredLocation.lineSuffix(stored)] };
 		}
 	});
 	const why = box.querySelector('details.why');

@@ -46,13 +46,13 @@ async function lintOnDisk(setup: (root: string) => void, config: Partial<Package
 	}
 }
 
-const write = (root: string, rel: string, content: string | Buffer = '', mode?: number) => {
+function write(root: string, rel: string, content: string | Buffer = '', mode?: number) {
 	fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
 	fs.writeFileSync(path.join(root, rel), content);
 	if(mode !== undefined) {
 		fs.chmodSync(path.join(root, rel), mode);
 	}
-};
+}
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('package-structure', () => {

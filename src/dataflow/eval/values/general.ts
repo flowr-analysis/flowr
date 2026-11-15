@@ -1,8 +1,7 @@
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RValue } from './r-value';
+import { RValue, type Lift, type Value, type ValueInterval, type ValueSet, Bottom, isBottom, isTop, Top } from './r-value';
 import { intervalFrom, intervalFromValues } from './intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from './logical/logical-constants';
-import { type Lift, type Value, type ValueInterval, type ValueSet, Bottom, isBottom, isTop, Top } from './r-value';
 import { stringFrom } from './string/string-constants';
 import { vectorFrom } from './vectors/vector-constants';
 import { Resolve } from '../../environments/resolve-helper';

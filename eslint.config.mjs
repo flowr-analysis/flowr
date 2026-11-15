@@ -43,7 +43,11 @@ export default [...flowr, {
 	ignores: ['scripts/playground/empty.js', 'scripts/playground/path-shim.js', 'scripts/playground/webr-guard.js', 'scripts/prepare.js', 'scripts/test-docker.js', 'scripts/test-changed.mjs', 'scripts/test-select.mjs', 'src/data/*.generated.ts']
 }, {
 	plugins: { local },
-	rules:   { 'local/no-orphaned-doc-comment': 'error' },
+	rules:   {
+		'local/no-orphaned-doc-comment': 'error',
+		/* one statement per module, with inline `type` specifiers instead of a separate `import type` */
+		'import-x/no-duplicates':        ['error', { considerQueryString: true, 'prefer-inline': true }]
+	},
 }, {
 	/* a semantic type must not silently turn into a plain string or number */
 	files: ['src/**/*.ts', 'test/**/*.ts'],

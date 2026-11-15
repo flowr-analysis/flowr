@@ -25,7 +25,6 @@ export interface TreeSitterInfo {
 type SyntaxAndRNode = [SyntaxNode, RNode<TreeSitterInfo>];
 
 /**
- * @param tree - The tree to normalize
  * @param lax  - Whether to use lax parsing (i.e., ignore errors) or strict parsing (i.e., fail on errors)
  */
 export function normalizeTreeSitterTreeToAst(tree: ParseStepOutputSingleFile<Tree>[], lax?: boolean): RProject<TreeSitterInfo> {

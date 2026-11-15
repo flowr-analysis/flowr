@@ -1,20 +1,26 @@
 import { guard } from '../../util/assert';
-import type { DFControlFlowEdge } from './edge';
-import { DfEdge, EdgeType } from './edge';
+import { type DFControlFlowEdge, DfEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
-import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, type DataflowGraphVertexVariableDefinition, type DataflowGraphVertices, VertexType } from './vertex';
+import {
+	type DataflowGraphVertexArgument,
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexFunctionDefinition,
+	type DataflowGraphVertexInfo,
+	type DataflowGraphVertexVariableDefinition,
+	type DataflowGraphVertices,
+	VertexType,
+	DfgVertex
+} from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { BrandedIdentifier, Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
-import { Environment, type EnvType, type REnvironmentInformation } from '../environments/environment';
+import { Environment, type EnvType, type REnvironmentInformation, REnvironment } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
-import { DfgVertex } from './vertex';
 import { activeDataflowBudget } from '../../gas';
-import { REnvironment } from '../environments/environment';
 import { AmbientAccess, type AmbientAccessNames } from './ambient-access';
 import type { LinkedFunctionResolver } from '../internal/linker';
 

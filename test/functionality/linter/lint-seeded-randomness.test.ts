@@ -9,6 +9,7 @@ import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-pro
 import { ArgProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { decorateLabelContext, label } from '../_helper/label';
+import { analyze } from '../_helper/analyzer';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('R3 seeded randomness', () => {
@@ -42,7 +43,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('without any package database', parser, 'library(stats)\nrunif(1)', 'seeded-randomness',
 				[{ loc: [2, 1, 2, 8], function: 'runif', certainty: LintingResultCertainty.Certain }],
 				{ consumerCalls: 1, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 },
-				{ noSigDb: true });
+				{ sigDb: false });
 		});
 
 		describe('loops', () => {
@@ -162,8 +163,7 @@ describe('flowR linter', withTreeSitter(parser => {
 					'the configured built-in has to be a randomness consumer');
 			});
 			test('and it does not leak into an analyzer that does not state it', async() => {
-				const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-				analyzer.addRequest('rollIt(1)');
+				const analyzer = await analyze(parser, 'rollIt(1)');
 				const found = LintingResults.unpackSuccess(await executeLintingRule('seeded-randomness', analyzer, undefined));
 				assert.isEmpty(found.results);
 			});

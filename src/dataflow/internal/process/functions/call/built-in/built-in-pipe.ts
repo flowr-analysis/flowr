@@ -4,8 +4,11 @@ import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { Unquote } from '../nse';
 import { guard } from '../../../../../../util/assert';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	type PotentiallyEmptyRArgument,
+	EmptyArgument,
+	RFunctionCall
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -15,10 +18,9 @@ import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType, type BrandedIdentifier } from '../../../../../environments/identifier';
 import { toUnnamedArgument } from '../argument/make-argument';
 import { processAssignment } from './built-in-assignment';
-import type { BrandedIdentifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { log } from '../../../../../../util/log';
 import type { DataflowGraph } from '../../../../../graph/graph';

@@ -16,10 +16,7 @@ export interface ShowSearchOptions {
 /** Visualizes a search and its results in markdown format. */
 export async function showSearch(shell: RShell, code: string, search: FlowrSearchLike, { collapseResult = true }: ShowSearchOptions = {}): Promise<string> {
 	const now = performance.now();
-	const analyzer = await new FlowrAnalyzerBuilder()
-		.setParser(shell)
-		.build();
-	analyzer.addRequest(code);
+	const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).buildFor(code);
 	const result = await analyzer.runSearch(search);
 	const duration = performance.now() - now;
 

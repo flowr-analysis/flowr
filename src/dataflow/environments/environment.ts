@@ -4,17 +4,22 @@
  */
 import { builtInEnvJsonReplacer, isDefaultBuiltInEnvironment } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
-import type { BrandedNamespace, BrandedIdentifier, IdentifierDefinition, ReferenceType } from './identifier';
+import {
+	type BrandedNamespace,
+	type BrandedIdentifier,
+	type IdentifierDefinition,
+	type ReferenceType,
+	Identifier,
+	PkgName
+} from './identifier';
 import { anyRemovalMarker, removalMarkerOf } from './removal-marker';
-import { Identifier, PkgName } from './identifier';
-import { ControlDependency, happensInEveryBranch  } from '../info';
+import { ControlDependency, happensInEveryBranch } from '../info';
 import { appendEnvironment, uniqueMergeValuesInDefinitions } from './append';
 import { define as defineInEnvironment } from './define';
 import { overwriteEnvironment } from './overwrite';
 import { cloneEnvironmentInformation } from './clone';
 import { cleanEnvOf, framesVisibleTo, popLocalEnvironment, pushLocalEnvironment } from './scoping';
-import { Frame, LazyBindings } from './frame-memory';
-import type { MemoryView } from './frame-memory';
+import { Frame, LazyBindings, type MemoryView } from './frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { log } from '../../util/log';
 import { DefaultMap } from '../../util/collections/defaultmap';
@@ -408,8 +413,7 @@ export class Environment implements IEnvironment {
 	private mergePackageBlocks(other: Environment, append: boolean, applyCds: readonly ControlDependency[] | undefined): Environment {
 		const [thisLayers, thisBase] = splitLibraryLayers(this);
 		const [otherLayers, otherBase] = splitLibraryLayers(other);
-		const oneSided = (layer: Environment, fromOther: boolean): Environment | undefined =>
-			append ? maybeLayer(layer) : fromOther && applyCds !== undefined ? maybeLayer(layer, applyCds) : undefined;
+		const oneSided = (layer: Environment, fromOther: boolean): Environment | undefined => append ? maybeLayer(layer) : fromOther && applyCds !== undefined ? maybeLayer(layer, applyCds) : undefined;
 
 		/* One block is the other plus the packages attached since (blocks grow at the front), so their union is the longer one and it is already in R's order: the most recently attached package is searched first, `library(a); library(b)` resolves `b` before `a`. */
 		const keep = layersEndWith(thisLayers, otherLayers) ? thisLayers

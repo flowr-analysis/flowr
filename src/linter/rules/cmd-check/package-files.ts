@@ -97,7 +97,7 @@ export function packageFiles(ctx: ReadOnlyFlowrAnalyzerContext, pkgName?: string
 	}
 	const root = path.dirname(desc.path());
 	const known = new Map(ctx.files.getAllFiles().map(f => [RPath.normalize(f.path()), f]));
-	const readKnownOrDisk = (absolute: string): string | undefined => {
+	function readKnownOrDisk(absolute: string): string | undefined {
 		const file = known.get(RPath.normalize(absolute));
 		try {
 			if(file !== undefined) {
@@ -107,7 +107,7 @@ export function packageFiles(ctx: ReadOnlyFlowrAnalyzerContext, pkgName?: string
 		} catch{
 			return undefined;
 		}
-	};
+	}
 	const patterns = excludePatterns(readKnownOrDisk(path.join(root, '.Rbuildignore')));
 	const toRelative = (absolute: string) => path.relative(root, absolute).split(path.sep).join('/');
 	const entries: PackageEntry[] = [];

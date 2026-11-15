@@ -8,16 +8,21 @@ import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/
 import { MatchArgs } from '../../../../graph/match-args';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { NodesByName, BrandedIdentifier, IdentifierReference } from '../../../../environments/identifier';
-import { hasEnvState, Identifier, ReferenceType } from '../../../../environments/identifier';
+import {
+	type NodesByName,
+	type BrandedIdentifier,
+	type IdentifierReference,
+	hasEnvState,
+	Identifier,
+	ReferenceType
+} from '../../../../environments/identifier';
 import { Resolve } from '../../../../environments/resolve-helper';
 import { ProgramOrder } from '../../../program-order';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { isBuiltInProcName, BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../../../../graph/edge';
 import { Dataflow } from '../../../../graph/df-helper';
-import type { DataflowGraph } from '../../../../graph/graph';
-import { FunctionArgument, UnknownSideEffect } from '../../../../graph/graph';
+import { type DataflowGraph, FunctionArgument, UnknownSideEffect } from '../../../../graph/graph';
 import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../../graph/vertex';
 import { linkExpressionIn, linkInputs } from '../../../linker';
 import { type MaskingCall, Nse } from './nse';
@@ -96,7 +101,7 @@ export const Quoted = {
 		const namesOnce = () => names ??= Deferred.indexOf(graph, idMap);
 		let bindings: NodesByName | undefined;
 		let cfg: ControlFlowGraph | undefined | null = null;
-		const cfgOnce = () => (cfg === null ? (cfg = controlFlow()) : cfg);
+		const cfgOnce = () => cfg === null ? (cfg = controlFlow()) : cfg;
 		const masking: MaskingCall[] = [];
 		const evaluated: NodeId[] = [];
 		const promises: [binding: NodeId, promise: NodeId][] = [];

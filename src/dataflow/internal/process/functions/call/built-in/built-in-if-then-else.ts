@@ -14,15 +14,13 @@ import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { makeAmbientWritesMaybe } from './built-in-ambient-state';
 import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { type REnvironmentInformation, REnvironment } from '../../../../../environments/environment';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
-import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { RLoopConstructs } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { type RNode, RLoopConstructs } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { REnvironment } from '../../../../../environments/environment';
 
 /** `if(<cond>) <then> else <else>` built-in function configuration, make sure to not reuse indices */
 export interface IfThenElseConfig {
@@ -123,8 +121,7 @@ export function processIfThenElse<OtherInfo>(
 		makeAmbientWritesMaybe(otherwise.environment, cond.environment, finalEnvironment, cdFalse);
 	}
 	/* we assign all branch references with a maybe marker; we do not merge even if they appear in both branches because the maybe links will refer to different ids */
-	const maybe = (refs: readonly IdentifierReference[] | undefined, cds: ControlDependency[], includeDefs = false) =>
-		uncertain ? makeAllMaybe(refs, nextGraph, finalEnvironment, includeDefs, cds) : refs ?? [];
+	const maybe = (refs: readonly IdentifierReference[] | undefined, cds: ControlDependency[], includeDefs = false) => uncertain ? makeAllMaybe(refs, nextGraph, finalEnvironment, includeDefs, cds) : refs ?? [];
 	const ingoing: IdentifierReference[] = cond.in.concat(
 		maybe(then?.in, cdTrue),
 		maybe(otherwise?.in, cdFalse),

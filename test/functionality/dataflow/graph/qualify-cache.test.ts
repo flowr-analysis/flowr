@@ -10,10 +10,10 @@ import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/n
  * These pin that the cache never outlives the resolution it stands for.
  */
 describe('Dataflow qualify cache', () => {
-	const qualify = (graph: Parameters<typeof Dataflow.qualify>[1], id: number, baseR = true) => {
+	function qualify(graph: Parameters<typeof Dataflow.qualify>[1], id: number, baseR = true) {
 		const q = Dataflow.qualify(id, graph, baseR);
 		return q === undefined ? undefined : Identifier.toString(q);
-	};
+	}
 
 	test('answers the same on a repeated ask', () => {
 		const graph = emptyGraph().call(1, 'sd', []);
@@ -51,10 +51,10 @@ describe('Dataflow qualify cache', () => {
 });
 
 describe('Dataflow qualify of aliased calls', () => {
-	const qualify = (graph: Parameters<typeof Dataflow.qualify>[1], id: number) => {
+	function qualify(graph: Parameters<typeof Dataflow.qualify>[1], id: number) {
 		const q = Dataflow.qualify(id, graph);
 		return q === undefined ? undefined : Identifier.toString(q);
-	};
+	}
 	const aliased = () => emptyGraph().defineVariable(0, 'f').call(1, 'f', []).reads(1, 0).calls(1, NodeId.toBuiltIn('read.csv'));
 
 	test('a call reaching only a built-in under another name is that built-in', () => {

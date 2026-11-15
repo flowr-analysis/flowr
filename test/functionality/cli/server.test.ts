@@ -13,8 +13,6 @@ import type {
 } from '../../../src/cli/repl/server/messages/message-analysis';
 import { jsonReplacer } from '../../../src/util/json';
 import { extractCfg } from '../../../src/control-flow/control-flow-graph';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection';
 import type { QueryRequestMessage, QueryResponseMessage } from '../../../src/cli/repl/server/messages/message-query';
 import type { SliceRequestMessage, SliceResponseMessage } from '../../../src/cli/repl/server/messages/message-slice';
@@ -25,6 +23,7 @@ import { getPlatform } from '../../../src/util/os';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { retrieveVersionInformation } from '../../../src/util/version';
 import { FlowrFile } from '../../../src/project/context/flowr-file';
+import { analyze } from '../_helper/analyzer';
 
 describe('flowr', () => {
 	const skip = getPlatform() !== 'linux';
@@ -167,9 +166,7 @@ describe('flowr', () => {
 			const gotCfg = response.cfg;
 			assert.isDefined(gotCfg, 'Expected the cfg to be defined as we requested it');
 			/* the response carries the analysis as plain json, so the graph to compare against is analyzed here */
-			const context = contextFromInput('a;b');
-			const local = await createDataflowPipeline(shell, { context }).allRemainingSteps();
-			const expectedCfg = extractCfg(local.dataflow);
+			const expectedCfg = extractCfg(await (await analyze(shell, 'a;b')).dataflow());
 			assert.equal(JSON.stringify(gotCfg?.graph, jsonReplacer), JSON.stringify(expectedCfg.graph, jsonReplacer), 'Expected the cfg to be the same as the one extracted from the results');
 		}));
 

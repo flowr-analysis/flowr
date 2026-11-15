@@ -378,8 +378,7 @@ describe('Benchmark page helpers', () => {
 	});
 
 	test('merge the counters back into the suite they belong to', () => {
-		const run = (id: string, date: number, benches: { name: string, unit: string, value: number }[]) =>
-			({ commit: { id }, date, benches });
+		const run = (id: string, date: number, benches: { name: string, unit: string, value: number }[]) => ({ commit: { id }, date, benches });
 		const entries = {
 			'"real-world" Benchmark Suite':        [run('a', 1, [{ name: 'Parse', unit: 'ms', value: 3 }])],
 			'"real-world" Benchmark Suite [info]': [

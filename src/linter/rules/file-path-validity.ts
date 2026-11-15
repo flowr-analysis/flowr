@@ -17,7 +17,7 @@ import { Enrichment } from '../../search/search-executor/search-enrichers';
 import { WorkingDirectory } from '../../dataflow/eval/resolve/resolve-working-directory';
 import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } from '../../config';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
-import { RFunctionCall, EmptyArgument  } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -116,13 +116,13 @@ export const FILE_PATH_VALIDITY = {
 			const { id, file } = element.node.info;
 			const loc = SourceLocation.fromNode(element.node);
 			const referenceChain = file ? [file] : [];
-			const verdict = (valid: boolean, filePath: string, certainty: LintingResultCertainty, quickFix?: LintQuickFixReplacement[]): FilePathValidityResult[] => {
+			function verdict(valid: boolean, filePath: string, certainty: LintingResultCertainty, quickFix?: LintQuickFixReplacement[]): FilePathValidityResult[] {
 				if(valid) {
 					metadata.totalValid++;
 					return [];
 				}
 				return [{ involvedId: nodeId, loc: loc as SourceLocation, filePath, certainty, ...(quickFix ? { quickFix } : {}) }];
-			};
+			}
 			if(namesOnly.has(Identifier.getName(matchingRead.functionName))) {
 				if(!loc || typeof value !== 'string' || value === Unknown || librariesLoadedBefore(id) || BaseDatasets.has(value) || namesPackage(element.node)) {
 					return [];

@@ -1,12 +1,9 @@
-import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { type RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import { FunctionSemantics } from '../dataflow/fn/function-semantics';
-import { ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
-import type { VertexType } from '../dataflow/graph/vertex';
-import { DfgVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
+import { type VertexType, DfgVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
-import type { Enrichment } from './search-executor/search-enrichers';
-import { enrichmentContent, EnrichmentElementContent } from './search-executor/search-enrichers';
+import { type Enrichment, enrichmentContent, EnrichmentElementContent } from './search-executor/search-enrichers';
 import type { DataflowInformation } from '../dataflow/info';
 import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';

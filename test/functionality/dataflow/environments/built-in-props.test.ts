@@ -2,10 +2,24 @@ import { assert, describe, test } from 'vitest';
 import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
 import type { DecodedFunction } from '../../../../src/project/sigdb/decode';
 import type { PackageSignatureSource } from '../../../../src/project/sigdb/reader';
-import type { BaseBuiltInDefinition, BuiltInDefinitions, BuiltInFunctionDefinition } from '../../../../src/dataflow/environments/built-in-config';
-import { getDefaultBuiltInDefinitions } from '../../../../src/dataflow/environments/built-in-config';
-import type { BuiltInFnInfo, StatedProps, CallProps, FnSig } from '../../../../src/dataflow/environments/built-in-props';
-import { ArgProp, CallProp, ExclusiveCallProps, fnInfoFromSignature, InputProps, SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
+import {
+	type BaseBuiltInDefinition,
+	type BuiltInDefinitions,
+	type BuiltInFunctionDefinition,
+	getDefaultBuiltInDefinitions
+} from '../../../../src/dataflow/environments/built-in-config';
+import {
+	type BuiltInFnInfo,
+	type StatedProps,
+	type CallProps,
+	type FnSig,
+	ArgProp,
+	CallProp,
+	ExclusiveCallProps,
+	fnInfoFromSignature,
+	InputProps,
+	SemanticCallTag
+} from '../../../../src/dataflow/environments/built-in-props';
 import { builtInNames, BuiltInIndex, inferFnProps, queryFnProps } from '../../../../src/dataflow/environments/query-fn-props';
 import type { BuiltInIdentifierDefinition } from '../../../../src/dataflow/environments/built-in';
 import { DefaultBuiltinConfig, WrittenBuiltinDefinitions } from '../../../../src/dataflow/environments/default-builtin-config';
@@ -169,7 +183,7 @@ describe('Built-in properties', () => {
 			assert.strictEqual((info?.props ?? 0) & CallProp.Pure, CallProp.Pure);
 			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Forced | ArgProp.Shape], ['type', ArgProp.Forced | ArgProp.Value],
 				['allowNA', ArgProp.Forced | ArgProp.Flag], ['keepNA', ArgProp.Forced | ArgProp.Flag]]);
-			const env = defaultEnv().defineFunction('nchar', '0', '0');
+			const env = defaultEnv().defineFunction('nchar', 0, 0);
 			assert.isUndefined(queryFnProps('nchar', { environment: env }));
 		});
 	});
@@ -367,8 +381,7 @@ describe('Built-in properties', () => {
 
 describe('Functions several packages export', () => {
 	const builtIns = getDefaultBuiltInDefinitions();
-	const defOf = (pkg: string, name: string) =>
-		builtIns.forPackage(pkg)?.get(name as never)?.[0] as BuiltInIdentifierDefinition | undefined;
+	const defOf = (pkg: string, name: string) => builtIns.forPackage(pkg)?.get(name as never)?.[0] as BuiltInIdentifierDefinition | undefined;
 
 	/** a name, the package owning it, and the packages re-exporting that very function */
 	const ReExported: readonly (readonly [string, string, readonly string[]])[] = [

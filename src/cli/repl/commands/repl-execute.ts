@@ -3,10 +3,7 @@ import { ColorEffect, Colors, FontStyles, italic } from '../../../util/text/ansi
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import { type RShellInformation, ParserName } from '../../../r-bridge/parser';
 
-/**
- * Tries to execute the given R shell command.
- * If not allowed, an error message is printed to the output.
- */
+/** Tries to execute the given R shell command. If not allowed, an error message is printed to the output. */
 export async function tryExecuteRShellCommand({ output, analyzer, allowRSessionAccess, remainingLine }: ReplCommandInformation) {
 	const parserInfo = analyzer.parserInformation();
 	if(!allowRSessionAccess) {

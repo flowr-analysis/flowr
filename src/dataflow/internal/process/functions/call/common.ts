@@ -5,26 +5,23 @@
 import { type DataflowInformation, happensInEveryBranch } from '../../../../info';
 import { FunctionSemantics } from '../../../../fn/function-semantics';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
-import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
-import { RConstant } from '../../../../../r-bridge/lang-4.x/ast/model/model';
+import { type RNode, RConstant } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Resolve } from '../../../../environments/resolve-helper';
-import type { REnvironmentInformation } from '../../../../environments/environment';
+import { type REnvironmentInformation, REnvironment } from '../../../../environments/environment';
 import { hasEnvState, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { AmbientStateName } from '../../../../environments/ambient-state-name';
 import { resolveByName, scopeOf } from '../../../../environments/resolve-by-name';
 import { readRemovals } from '../../../../environments/apply-kill';
 import { type EnvironmentLookups, readEnvironmentContents } from './built-in/built-in-envir-utils';
 import { processFunctionArgument } from '../process-argument';
-import { type DataflowGraphVertexAstLink, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
+import { type DataflowGraphVertexAstLink, type FunctionOriginInformation, VertexType, DfgVertex } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { DfgVertex } from '../../../../graph/vertex';
-import { REnvironment } from '../../../../environments/environment';
 
 export interface ProcessAllArgumentInput<OtherInfo> {
 	/** which of the arguments the call evaluates, as {@link FunctionSemantics.call.signature.forced} answers it for the signature */

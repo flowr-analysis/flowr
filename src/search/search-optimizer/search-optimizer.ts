@@ -7,10 +7,7 @@ function fingerPrintTransformer(transformer: readonly FlowrSearchTransformerNode
 	return JSON.stringify(transformer);
 }
 
-/**
- * Optimizations are currently not reflected
- * in an update of the search object.
- */
+/** Optimizations are currently not reflected in an update of the search object. */
 export function optimize<
 	Info,
 	Generator extends GeneratorNames,

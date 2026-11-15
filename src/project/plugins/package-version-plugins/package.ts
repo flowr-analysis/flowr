@@ -1,8 +1,7 @@
 import { type Range, minVersion } from 'semver';
 import { guard } from '../../../util/assert';
 import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
-import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
-import { FlowrNamespaceFile, setCallable } from '../file-plugins/files/flowr-namespace-file';
+import { type NamespaceInfo, FlowrNamespaceFile, setCallable } from '../file-plugins/files/flowr-namespace-file';
 import { FlowrInlineTextFile } from '../../context/flowr-file';
 import { RRange } from '../../../util/r-version';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';

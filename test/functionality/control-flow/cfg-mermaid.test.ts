@@ -1,11 +1,10 @@
 import { withTreeSitter } from '../_helper/shell';
 import { assert, describe, test } from 'vitest';
 import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { CfgSimplificationPassName } from '../../../src/control-flow/cfg-simplification';
 import { cfgToMermaid, cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { isNotUndefined } from '../../../src/util/assert';
+import { analyze } from '../_helper/analyzer';
 
 describe('CFG Mermaid Visualization', withTreeSitter(parser => {
 	function assertMermaidVisualization(
@@ -18,8 +17,7 @@ describe('CFG Mermaid Visualization', withTreeSitter(parser => {
 		} = {}
 	): void {
 		test(`Mermaid visualization for:\n${code}`, async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(requestFromInput(code));
+			const analyzer = await analyze(parser, code);
 			const cfg = await analyzer.controlflow(simplifications);
 			const norm = await analyzer.normalize();
 			const translateIds = selectedVertices?.map(v =>

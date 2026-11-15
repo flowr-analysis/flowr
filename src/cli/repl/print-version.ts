@@ -20,7 +20,7 @@ export async function versionReplString(parser: KnownParser): Promise<string> {
 function sigDbSummaryString(): string {
 	const it = (s: string) => italic(s, formatter);
 	const entries: { label: string, file: string, date?: string }[] = [];
-	const add = (label: string, file: string | undefined): void => {
+	function add(label: string, file: string | undefined): void {
 		if(file === undefined) {
 			return;
 		}
@@ -29,7 +29,7 @@ function sigDbSummaryString(): string {
 			date = readManifestDate(file);
 		} catch{ /* a corrupt/unreadable manifest must not break --version */ }
 		entries.push({ label, file, date });
-	};
+	}
 	add('current', defaultSigDbPath('current'));
 	add('base', defaultSigDbPath('base'));
 	add('full-history', defaultSigDbPath('full') ?? defaultSigDbPath('history'));

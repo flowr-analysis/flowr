@@ -1,8 +1,6 @@
-import type { PathLike } from 'fs';
-import fs from 'fs';
+import fs, { type PathLike } from 'fs';
 import type { RParseRequest } from '../../r-bridge/retriever';
-import type { InvalidationEventHandler } from '../cache/flowr-cache';
-import { InvalidationEventType } from '../cache/flowr-cache';
+import { type InvalidationEventHandler, InvalidationEventType } from '../cache/flowr-cache';
 
 /**
  * Just a readable alias for file paths, mostly for documentation purposes.

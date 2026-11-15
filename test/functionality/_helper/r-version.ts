@@ -1,7 +1,7 @@
 import semver from 'semver/preload';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { minRVersionOf } from '../../../src/r-bridge/lang-4.x/ast/model/syntax-version';
+import { analyze } from './analyzer';
 
 let sharedParser: TreeSitterExecutor | undefined;
 
@@ -9,8 +9,7 @@ let sharedParser: TreeSitterExecutor | undefined;
 export async function minRVersionOfCode(code: string): Promise<string | undefined> {
 	/* one parser for all calls, as every parser holds on to memory of the tree-sitter module until it is closed */
 	sharedParser ??= new TreeSitterExecutor();
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(sharedParser).build();
-	analyzer.addRequest(code);
+	const analyzer = await analyze(sharedParser, code);
 	return minRVersionOf((await analyzer.normalize()).ast.files.map(f => f.root))?.version;
 }
 

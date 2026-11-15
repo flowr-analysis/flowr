@@ -18,12 +18,7 @@ import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 export const loopyFunctions = new Set<BuiltInProcName>([BuiltInProcName.ForLoop, BuiltInProcName.WhileLoop, BuiltInProcName.RepeatLoop]);
 
 /**
- * Checks whether a loop only loops once
  * @param loop        - nodeid of the loop to analyse
- * @param dataflow    - dataflow graph
- * @param controlflow - control flow graph
- * @param ast         - normalized ast
- * @param ctx         - current flowr analyzer context
  * @returns           true if the given loop only iterates once, `undefined` if we cannot tell
  */
 export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow: ControlFlowInformation, ast: NormalizedAst, ctx: ReadOnlyFlowrAnalyzerContext): boolean | undefined {

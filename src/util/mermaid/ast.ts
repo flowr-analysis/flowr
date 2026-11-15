@@ -2,8 +2,7 @@ import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role'
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { FlowrFile } from '../../project/context/flowr-file';
-import type { MermaidGraphPrinterInfo } from './info';
-import { MermaidDefaultMarkStyle } from './info';
+import { type MermaidGraphPrinterInfo, MermaidDefaultMarkStyle } from './info';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Mermaid } from './mermaid';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';

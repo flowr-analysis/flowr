@@ -7,24 +7,30 @@ import { FunctionSemantics } from '../fn/function-semantics';
 import { RLoopConstructs, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace } from '../../util/log';
-import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type BrandedIdentifier, type InGraphIdentifierDefinition, hasEnvState, Identifier, type IdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
 import type { DataflowFunctionFlowInformation, DataflowGraph } from '../graph/graph';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
 import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../graph/edge';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, type DeferredEnvOp, EnvOpKind, VertexType, FunctionDispatch } from '../graph/vertex';
+import {
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexFunctionDefinition,
+	type DataflowGraphVertexInfo,
+	type DeferredEnvOp,
+	EnvOpKind,
+	VertexType,
+	FunctionDispatch,
+	DfgVertex
+} from '../graph/vertex';
 import { type Environment, REnvironment, type REnvironmentInformation } from '../environments/environment';
-import type { ExitPoint } from '../info';
-import { ControlDependency, negateControlDependency, doesExitPointPropagateCalls, withCds } from '../info';
+import { type ExitPoint, ControlDependency, negateControlDependency, doesExitPointPropagateCalls, withCds } from '../info';
 import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';
 import { readEnvironmentContents } from './process/functions/call/built-in/built-in-envir-utils';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
-import { DfgVertex } from '../graph/vertex';
 import { Resolve } from '../environments/resolve-helper';
 import { scopeOf } from '../environments/resolve-by-name';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -534,13 +540,13 @@ export function getAllLinkedFunctionDefinitions(
 	const expanded = [new Map<NodeId, Set<NodeId | undefined>>(), new Map<NodeId, Set<NodeId | undefined>>()] as const;
 	const scopes: CallScopes = new Map();
 	let steps = 0;
-	const next = (id: NodeId, viaAccess: boolean, call: NodeId | undefined) => {
+	function next(id: NodeId, viaAccess: boolean, call: NodeId | undefined) {
 		/* past the budget, the walk forgets the calls it is in, which only lets it reach more (see `MaxContextSensitiveSteps`) */
 		const kept = steps < MaxContextSensitiveSteps ? call : undefined;
 		if(expanded[viaAccess ? 1 : 0].get(id)?.has(kept) !== true) {
 			potential.push([id, viaAccess, kept]);
 		}
-	};
+	}
 
 	for(let item = potential.pop(); item !== undefined; item = potential.pop(), steps++) {
 		const [cid, viaAccess, call] = item;

@@ -34,20 +34,14 @@ export interface ReplCommandInformation {
 	remainingLine:       string,
 }
 
-/**
- * Information passed to each {@link ReplCodeCommand#fn}.
- * The {@link analyzer} has the {@link RParseRequest}.
- */
+/** Information passed to each {@link ReplCodeCommand#fn}. The {@link analyzer} has the {@link RParseRequest}. */
 export interface ReplCodeCommandInformation {
 	output:        ReplOutput,
 	analyzer:      FlowrAnalysisProvider
 	remainingArgs: string[]
 }
 
-/**
- * Content of a single command in the repl.
- * The command may execute an external script or simply call *flowR* functions.
- */
+/** Content of a single command in the repl. The command may execute an external script or simply call *flowR* functions. */
 export interface ReplBaseCommand {
 	/** Aliases of the command (without the leading colon), every alias must be unique (this is checked at runtime) */
 	aliases:      string[]

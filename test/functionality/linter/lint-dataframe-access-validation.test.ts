@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
-import type { DataFrameAccessValidationResult } from '../../../src/linter/rules/dataframe-access-validation';
+import type { DataframeAccessValidationResult } from '../../../src/linter/rules/dataframe-access-validation';
 import { assertLinter, assertLintedLines } from '../_helper/linter';
 import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { SourceRange } from '../../../src/util/range';
@@ -95,7 +95,7 @@ print(df3${access})
 			}
 		});
 		describe('Invalid data frame access', () => {
-			type ExpectedLinterResult = Omit<DataFrameAccessValidationResult, 'certainty' | 'quickFix' | 'involvedId'>;
+			type ExpectedLinterResult = Omit<DataframeAccessValidationResult, 'certainty' | 'quickFix' | 'involvedId'>;
 
 			const testCases: [string, ExpectedLinterResult][] = [
 				['df <- data.frame(id = 1:5, name = "A")\ndf$score', { type: 'column', accessed: 'score', access: '$', operand: 'df', loc: SourceRange.from(2, 1, 2, 8) }],

@@ -14,13 +14,13 @@ const meta = { date: '2026-05-23', generated: 0 };
 
 describe('The generic call property', () => {
 	/** the decoded view of one function, which is what flowR reads its properties off */
-	const decoded = (props: number, callees: string[] = []) => {
+	function decoded(props: number, callees: string[] = []) {
 		const b = new SigDbBuilder();
 		b.addPackage('p', { latest: '1.0' });
 		b.addVersion('p', '1.0', ver([{ name: 'f', props: FnProp.Exported | props, params: [], callees }]));
 		const db = b.build(meta);
 		return decodeFunction(SigDict.of(db.strings), db.blobs[db.pkgs['p']], 0);
-	};
+	}
 
 	test('the generic bit is stored and read back as a property', () => {
 		expect(decoded(FnProp.Generic).props).toContain('generic');

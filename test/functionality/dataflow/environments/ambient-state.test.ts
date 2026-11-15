@@ -18,14 +18,14 @@ import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-
 import { SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
 import type { BuiltInDefinition } from '../../../../src/dataflow/environments/built-in-config';
 import type { AmbientAccess } from '../../../../src/dataflow/graph/ambient-access';
+import { analyze } from '../../_helper/analyzer';
 
 describe('Ambient state summaries', withTreeSitter(ts => {
 	type Kind = 'writes' | 'assumed' | 'kills' | 'variables';
 
 	/** what each function, named by what it is assigned to, may leave changed (sorted) */
 	async function summaries(code: string, kind: Kind): Promise<Record<BrandedIdentifier, BrandedIdentifier[]>> {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-		analyzer.addRequest(requestFromInput(code));
+		const analyzer = await analyze(ts, code);
 		const dfi = await analyzer.dataflow();
 		const idMap = (await analyzer.normalize()).idMap;
 		const result: Record<BrandedIdentifier, BrandedIdentifier[]> = {};
@@ -181,8 +181,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
 			c.semantics.ambient = { drawingWritesDevice: drawing };
 		});
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).setConfig(config).build();
-		analyzer.addRequest(requestFromInput(code));
+		const analyzer = await analyze(ts, code, { config: config });
 		const info = await analyzer.dataflow();
 		const root = (await analyzer.normalize()).ast.files[0].root;
 		return { graph: info.graph, info, root };
@@ -221,8 +220,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 
 	describe('scopes as nodes', () => {
 		test(label('a project, a file root, and a node id count the code they span', ['name-normal'], ['dataflow']), async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-			analyzer.addRequest(requestFromInput('x <- 1\noptions(digits = 3)'));
+			const analyzer = await analyze(ts, 'x <- 1\noptions(digits = 3)');
 			const info = await analyzer.dataflow();
 			const { ast } = await analyzer.normalize();
 			const root = ast.files[0].root;
@@ -332,8 +330,7 @@ describe('Ambient access of code', withTreeSitter(ts => {
 			['the state written before', 'setwd("a")\n`#wd` <- 1\nfile.exists("b")', 'setwd("a")'],
 			['an option', '`#option:digits` <- 5\noptions(digits = 3)\nprint(`#option:digits`)', '`#option:digits` <- 5']
 		])('%s', async(_, code, kept) => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-			analyzer.addRequest(requestFromInput(code));
+			const analyzer = await analyze(ts, code);
 			const { results } = (await analyzer.query([{ type: 'static-slice', criteria: [`${code.split('\n').length}:1`] }]))['static-slice'];
 			assert.include(Object.values(results)[0].reconstruct?.code, kept);
 		});

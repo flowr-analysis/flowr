@@ -3,8 +3,7 @@ import { BranchPathDomain, BranchPaths, type BranchStep, type Paths } from './br
 import type { MultiValueStateDomain } from './domains/multi-value-state-domain';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RTrue, type RFalse } from '../r-bridge/lang-4.x/convert-values';
-import type { DataflowGraphVertexArgument, DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
-import { DfgVertex } from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, DfgVertex } from '../dataflow/graph/vertex';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 

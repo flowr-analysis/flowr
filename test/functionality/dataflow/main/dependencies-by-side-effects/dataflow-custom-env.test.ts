@@ -29,7 +29,6 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 					origin:      [BuiltInProcName.NewEnv],
 					reads:       [NodeId.toBuiltIn('new.env')]
 				})
-				.calls('1@new.env', NodeId.toBuiltIn('new.env'))
 				.defineVariable('1@e', 'e', { definedBy: ['1@<-', '1@new.env'] })
 				.call('1@<-', '<-', [argumentInCall('1@e'), argumentInCall('1@new.env')], {
 					returns:     ['1@e'],
@@ -363,7 +362,6 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 					reads:       [getName('3@get'), '3@nm', NodeId.toBuiltIn('get')],
 					onlyBuiltIn: true
 				})
-				.calls('3@get', NodeId.toBuiltIn('get'))
 				.reads(getName('3@get'), '1@x')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);

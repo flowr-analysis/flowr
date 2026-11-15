@@ -1,6 +1,6 @@
 import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -192,9 +192,9 @@ export const DEPENDENCY_DECLARATION = {
 		const used = new Set<BrandedNamespace>();
 		const ignoreWithin = new Set(config.ignoreWithin);
 		const ignored = (id: NodeId): boolean => RNode.findEnclosing(id, idMap, n => RFunctionCall.isNamed(n, ignoreWithin)) !== undefined;
-		const add = (id: NodeId, kind: DependencyDeclarationKind, name: BrandedNamespace, message: string, certain = true) => {
+		function add(id: NodeId, kind: DependencyDeclarationKind, name: BrandedNamespace, message: string, certain = true) {
 			results.push({ ...at(idMap.get(id), certain), involvedId: id, kind, package: name, message });
-		};
+		}
 
 		/* library(), require(), requireNamespace(), ... as the dependencies query resolves them, a package name in a variable included */
 		const loads = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'].library;

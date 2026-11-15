@@ -21,7 +21,7 @@ import {
 } from './messages/message-repl';
 import { replProcessAnswer } from '../core';
 import { LogLevel } from '../../../util/log';
-import { cfg2quads } from '../../../control-flow/control-flow-graph';
+import { cfg2quads, type ControlFlowInformation } from '../../../control-flow/control-flow-graph';
 import { defaultQuadIdGenerator, type QuadSerializationConfiguration } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';
 import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
@@ -38,7 +38,6 @@ import type { RParseRequests } from '../../../r-bridge/retriever';
 import { type QueryRequestMessage, type QueryResponseMessage, requestQueryMessage } from './messages/message-query';
 import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import { compact } from './compact';
-import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
 import type { FlowrConfig } from '../../../config';
 import { FlowrAnalyzerBuilder } from '../../../project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';

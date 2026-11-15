@@ -1,5 +1,4 @@
-import type { RAstNodeBase, Location, NoInfo } from '../model';
-import { RNode } from '../model';
+import { type RAstNodeBase, type Location, type NoInfo, RNode } from '../model';
 import { RType } from '../type';
 import { NamedAccessOperators } from '../../../../../dataflow/environments/built-in-kinds';
 import type { RArgument, RUnnamedArgument } from './r-argument';

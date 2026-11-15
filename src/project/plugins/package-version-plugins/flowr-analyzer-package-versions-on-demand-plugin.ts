@@ -3,7 +3,7 @@ import { SemVer } from 'semver';
 import { FlowrAnalyzerPackageVersionsPlugin } from './flowr-analyzer-package-versions-plugin';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import type { FlowrConfig, TreeSitterEngineConfig } from '../../../config';
-import type { NormalizedAst, ParentInformation  } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PackageSignatureSource } from '../../sigdb/reader';
 import { MemorySignatureSource } from '../../sigdb/memory-source';
 import { packageFromExports } from './flowr-analyzer-package-versions-sigdb-plugin';

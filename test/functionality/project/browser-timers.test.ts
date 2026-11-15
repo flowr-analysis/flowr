@@ -1,7 +1,6 @@
 import { afterEach, assert, describe, test, vi } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
+import { analyze } from '../_helper/analyzer';
 
 describe('Analyzer in a browser', withTreeSitter(parser => {
 	afterEach(() => {
@@ -12,8 +11,7 @@ describe('Analyzer in a browser', withTreeSitter(parser => {
 	test('queries work with timers that cannot be unreferenced', async() => {
 		const native = setTimeout;
 		vi.stubGlobal('setTimeout', (fn: () => void, ms?: number) => Number(native(fn, ms)));
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest(requestFromInput('library(dplyr)\nf <- function() 1\nf()'));
+		const analyzer = await analyze(parser, 'library(dplyr)\nf <- function() 1\nf()');
 		const result = await analyzer.query({ type: 'dependencies' });
 		assert.notProperty(result, 'error');
 		assert.lengthOf(result.library, 1);

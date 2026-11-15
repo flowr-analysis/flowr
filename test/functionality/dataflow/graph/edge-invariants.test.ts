@@ -1,10 +1,9 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { label } from '../../_helper/label';
-import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge } from '../../../../src/dataflow/graph/edge';
+import { analyze } from '../../_helper/analyzer';
 
 /** Every shape whose processing takes a type off an edge, so a leftover typeless edge shows up here. */
 const Corpus = [
@@ -34,7 +33,7 @@ const Dangling = [
 describe('Dataflow', withTreeSitter(ts => {
 	describe('edge invariants', () => {
 		test.each(Corpus)('an edge always states a type: %s', async(code) => {
-			const graph = (await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps()).dataflow.graph;
+			const graph = (await (await analyze(ts, code)).dataflow()).graph;
 			const typeless: string[] = [];
 			for(const [from, targets] of graph.edges()) {
 				for(const [to, edge] of targets) {
@@ -47,15 +46,16 @@ describe('Dataflow', withTreeSitter(ts => {
 		});
 
 		test.each(Dangling)('every edge connects vertices: %s', async(code) => {
-			const graph = (await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps()).dataflow.graph;
+			const graph = (await (await analyze(ts, code)).dataflow()).graph;
 			const dangling = [...graph.edges()].flatMap(([from, targets]) => [...targets.keys()]
 				.filter(to => !graph.hasVertex(from) || (!graph.hasVertex(to) && !NodeId.isBuiltIn(to))).map(to => `${from} -> ${to}`));
 			assert.deepStrictEqual(dangling, []);
 		});
 
 		test(label('the reverse index forgets a removed edge as well', ['name-normal'], ['dataflow']), async() => {
-			const analysis = await createDataflowPipeline(ts, { context: contextFromInput('x <- 1\nprint(x)') }).allRemainingSteps();
-			const graph = analysis.dataflow.graph;
+			const analyzer = await analyze(ts, 'x <- 1\nprint(x)');
+			const dataflow = await analyzer.dataflow();
+			const graph = dataflow.graph;
 			const [from, targets] = [...graph.edges()][0];
 			const [to, edge] = [...targets][0];
 			graph.ingoingEdges(to);   /* build the reverse index before the removal */

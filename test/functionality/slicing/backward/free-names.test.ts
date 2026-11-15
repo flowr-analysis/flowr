@@ -1,14 +1,13 @@
 import { assert, describe, test } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { withTreeSitter } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import type { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { analyze } from '../../_helper/analyzer';
 
 describe('The names a slice leaves undefined', withTreeSitter(parser => {
 	function testFreeNames(name: string, code: string, criterion: SlicingCriterion, expected: readonly string[]) {
 		test(label(name, ['name-normal'], ['other']), async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(code);
+			const analyzer = await analyze(parser, code);
 			const sliced = await analyzer.query([{ type: 'static-slice', criteria: [criterion], noReconstruction: true }]);
 			const result = Object.values(sliced['static-slice'].results)[0] as { slice: { freeNames?: readonly string[] } };
 			assert.deepStrictEqual(result.slice.freeNames, expected);

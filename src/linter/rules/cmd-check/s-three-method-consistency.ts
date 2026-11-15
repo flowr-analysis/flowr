@@ -186,7 +186,7 @@ export const S3_METHOD_CONSISTENCY = {
 		const results: S3MethodConsistencyResult[] = [];
 		let methods = 0;
 		let replacements = 0;
-		const report = (def: RFunctionDefinition<ParentInformation>, kind: S3MethodIssue, name: BrandedIdentifier, generic: BrandedIdentifier | undefined, certain: boolean, message: string) => {
+		function report(def: RFunctionDefinition<ParentInformation>, kind: S3MethodIssue, name: BrandedIdentifier, generic: BrandedIdentifier | undefined, certain: boolean, message: string) {
 			results.push({
 				...at(nameNodeOf(def, idMap), certain),
 				kind,
@@ -194,20 +194,20 @@ export const S3_METHOD_CONSISTENCY = {
 				...(generic === undefined ? {} : { generic }),
 				message
 			});
-		};
+		}
 		const registered = (generic: BrandedIdentifier, name: BrandedIdentifier) => ns?.exportS3Generics.get(generic)?.includes(name.slice(generic.length + 1)) ?? false;
 		/* a function flowR knows as ordinary function of a package (`t.test`) is no method of the generic it starts with */
-		const ordinary = (name: BrandedIdentifier) => {
+		function ordinary(name: BrandedIdentifier) {
 			const known = fnInfo(Identifier.make(name), ctx);
 			return known !== undefined && known.entry?.props.includes('s3-method') !== true;
-		};
-		const replacementCheck = (def: RFunctionDefinition<ParentInformation>, name: BrandedIdentifier, generic: BrandedIdentifier | undefined, certain: boolean) => {
+		}
+		function replacementCheck(def: RFunctionDefinition<ParentInformation>, name: BrandedIdentifier, generic: BrandedIdentifier | undefined, certain: boolean) {
 			replacements++;
 			const formals = formalNames(def);
 			if(formals.length > 0 && formals[formals.length - 1] !== 'value') {
 				report(def, 'replacement-value', name, generic, certain, `Replacement function ${name} should have 'value' as its last argument`);
 			}
-		};
+		}
 		for(const { name, def } of defs) {
 			/* the longest generic wins: `t.test.default` is a method of `t.test`, not of `t` */
 			const generic = notMethods.has(name) ? undefined : byLength.find(g => name.length > g.length + 1 && name.startsWith(g + '.'));

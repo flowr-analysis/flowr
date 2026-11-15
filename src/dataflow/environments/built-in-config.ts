@@ -1,7 +1,6 @@
 import type { OperatorFacts, BuiltInOperators } from './default-builtin-config/base-operators';
-import type { ConfigOfProcessor, BuiltInProcessorMapper } from './built-in';
+import { type ConfigOfProcessor, type BuiltInProcessorMapper, BuiltIns } from './built-in';
 import type { BuiltInEvalName } from './built-in-eval-name';
-import { BuiltIns } from './built-in';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { Identifier } from './identifier';
 import type { BuiltInFnInfo } from './built-in-props';

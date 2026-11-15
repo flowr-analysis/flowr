@@ -1,13 +1,12 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { Query } from '../../../src/queries/query';
 import { DfgVertex } from '../../../src/dataflow/graph/vertex';
+import { analyze } from '../_helper/analyzer';
 
 describe('Dataflow Lens Query', withTreeSitter(parser => {
 	test('hides operators and keywords without dropping names that merely contain one', async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest('identifier <- 1\nifelse(identifier > 0, 1, 2)\nres <- identifier + 2\nprint(res)');
+		const analyzer = await analyze(parser, 'identifier <- 1\nifelse(identifier > 0, 1, 2)\nres <- identifier + 2\nprint(res)');
 		const result = await Query.one({ analyzer }, { type: 'dataflow-lens' });
 		const graph = result.simplifiedGraph;
 

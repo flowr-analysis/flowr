@@ -11,14 +11,14 @@ import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { Identifier } from '../../dataflow/environments/identifier';
 
-export interface RoxygenArgsResult extends LintingResult {
+export interface RoxygenArgumentsResult extends LintingResult {
 	readonly overDocumented?:  string[]
 	readonly underDocumented?: string[]
 }
 
-export type RoxygenArgsConfig = MergeableRecord;
+export type RoxygenArgumentsConfig = MergeableRecord;
 
-export type RoxygenArgsMetadata = MergeableRecord;
+export type RoxygenArgumentsMetadata = MergeableRecord;
 
 function calculateArgumentDiff(inheritedParams: readonly string[], functionParam: readonly string[], roxygenParam: readonly string[]): false | { under: string[], over: string[] } {
 	//match documented against existing params
@@ -37,7 +37,7 @@ function calculateArgumentDiff(inheritedParams: readonly string[], functionParam
 	return underDocumented.size === 0 && overDocumented.size === 0 ? false : { under: Array.from(underDocumented), over: Array.from(overDocumented) };
 }
 
-export const ROXYGEN_ARGS = {
+export const ROXYGEN_ARGUMENTS = {
 	createSearch: () => Q.all()
 		.filter(VertexType.FunctionDefinition)
 		.with(Enrichment.Roxygen),
@@ -75,7 +75,7 @@ export const ROXYGEN_ARGS = {
 		description:   'Finds function parameters the roxygen documentation leaves out, and documented parameters the function does not have.',
 		defaultConfig: () => ({})
 	}
-} as const satisfies LintingRule<RoxygenArgsResult, RoxygenArgsMetadata, RoxygenArgsConfig>;
+} as const satisfies LintingRule<RoxygenArgumentsResult, RoxygenArgumentsMetadata, RoxygenArgumentsConfig>;
 
 function getParameters(node: RNode): readonly RParameter[] {
 	return RFunctionDefinition.is(node) ? node.parameters : [];
@@ -86,7 +86,7 @@ function quoteAll(names: readonly string[]): string {
 }
 
 /** Describes the concrete mismatch between roxygen `@param` documentation and the actual function arguments. */
-function describeArgumentDiff(result: RoxygenArgsResult): string {
+function describeArgumentDiff(result: RoxygenArgumentsResult): string {
 	const parts: string[] = [];
 	const under = result.underDocumented ?? [];
 	const over = result.overDocumented ?? [];

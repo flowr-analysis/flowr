@@ -1,21 +1,23 @@
 import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
-import type { DataflowInformation } from '../../../../../info';
-import { ExitPointType } from '../../../../../info';
+import { type DataflowInformation, ExitPointType } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '../known-call-handling';
 import { NseArguments, NseKind } from '../nse-kind';
 import { Unquote } from '../nse';
 import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
-import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RArgument, type RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { log, LogLevel } from '../../../../../../util/log';
 import { toUnnamedArgument, wrapArgumentsUnnamed } from '../argument/make-argument';
 import { type Location, type RAstNodeBase, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { PotentiallyEmptyRArgument, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	type PotentiallyEmptyRArgument,
+	type EmptyArgument,
+	RFunctionCall
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { type NamedInGraphIdentifierDefinition, type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, isInGraphDefinition, ReferenceType } from '../../../../../environments/identifier';
@@ -24,13 +26,11 @@ import { bindsUnknownNames, noteOwnMethod } from './built-in-expression-list';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 import { uniqueArray } from '../../../../../../util/collections/arrays';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
-import { DfgVertex, VertexType } from '../../../../../graph/vertex';
+import { type DataflowGraphVertexFunctionDefinition, DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { ControlFlow } from '../../../../control-flow';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { type REnvironmentInformation, REnvironment } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { closureFrameResolution, type EnvirResolution, EnvironmentProducers, EnvirPositionFormals, findReturnsEnvState, suppliesArg, resolveConstantString, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, resolveSymbolToEnvir, rebindHolders, routeWrittenToEnvir } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
@@ -47,7 +47,6 @@ import { frameNamedBy, returnsStackEnv, stackEnvStateFromSource } from './built-
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { Dataflow } from '../../../../../graph/df-helper';
-import { REnvironment } from '../../../../../environments/environment';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: Identifier, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -640,7 +639,7 @@ export function processDefineArgument<OtherInfo>(
 	const info = res.information;
 	const formals = config.sig ?? [];
 	const bound = matchArgumentsToParameters(args.map(a => RArgument.isEmpty(a) ? undefined : a.name?.content), formals.map(([f]) => f));
-	const defineByCall = (node: NamedInGraphIdentifierDefinition) => {
+	function defineByCall(node: NamedInGraphIdentifierDefinition) {
 		info.environment = REnvironment.define(besideAmbientState(node), config.superAssignment, info.environment);
 		noteOwnMethod(node.name, info.environment, data.ctx);
 		/* defined by the call; the read edge is left intact */
@@ -648,7 +647,7 @@ export function processDefineArgument<OtherInfo>(
 			info.graph.setDefinitionOfVertex(node, [rootId]);
 			info.graph.addEdge(node.nodeId, rootId, EdgeType.DefinedBy);
 		}
-	};
+	}
 	for(let i = 0; i < args.length; i++) {
 		const arg = args[i], targetArg = res.processedArguments[i], param = bound[i];
 		if(RArgument.isEmpty(arg) || targetArg === undefined || param === undefined) {

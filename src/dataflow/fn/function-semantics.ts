@@ -1,5 +1,5 @@
 import { inferFunctions } from './function-props';
-import { exceptionsOfFunction } from './exceptions-of-function';
+import { exceptionsOfFunction, exceptionsOfFunctions } from './exceptions-of-function';
 import { promiseDependencies, promiseForcing, promiseForcingPoints, promiseRaises, settleDefinitionsInPromises, settleJumpsInPromises, strictnessOfEach } from './strict-function';
 import { isHigherOrder } from './higher-order-function';
 import { argumentRolesOfFunctions } from './argument-roles';
@@ -28,6 +28,8 @@ export const FunctionSemantics = {
 	props:           inferFunctions,
 	/** The exceptions a definition may raise. */
 	exceptions:      exceptionsOfFunction,
+	/** The exceptions each of several definitions of one call graph may raise, summarized once for all of them. */
+	exceptionsOfAll: exceptionsOfFunctions,
 	/** The strictness of several definitions, sharing the work between them. */
 	strictness:      strictnessOfEach,
 	/** Settles what a jump within a promise does, once the calls are linked. */

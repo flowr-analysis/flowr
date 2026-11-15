@@ -78,6 +78,16 @@ export interface FunctionExceptionsOptions {
  * @useInstead {@link FunctionSemantics.exceptions}
  */
 export function exceptionsOfFunction(this: void, id: NodeId, graph: CallGraph, { knownThrower = {} }: FunctionExceptionsOptions = {}): ExceptionsByFunction {
+	return exceptionsOfFunctions([id], graph, { knownThrower });
+}
+
+/**
+ * {@link exceptionsOfFunction} for several definitions of one call graph at once: what a call raises is summarized once and
+ * shared by every definition reaching it, rather than walked again per definition. Answers for the `ids` and every
+ * definition the walk passed.
+ * @useInstead {@link FunctionSemantics.exceptionsOfAll}
+ */
+export function exceptionsOfFunctions(this: void, ids: Iterable<NodeId>, graph: CallGraph, { knownThrower = {} }: FunctionExceptionsOptions = {}): ExceptionsByFunction {
 	const info = builtInLookup();
 	const isGuarded = memoize((n: NodeId) => guarded(n, graph, info));
 	const own = new Map<NodeId, Raised>();
@@ -99,9 +109,12 @@ export function exceptionsOfFunction(this: void, id: NodeId, graph: CallGraph, {
 		/* a guarded call is only ever reached through the construct guarding it, which ends the walk of its own */
 		return graph.edgesFrom(current).keys().filter(n => !isGuarded(n));
 	}, n => own.get(n), { empty: RaisesNothing, concat: joinRaised });
-	const result: ExceptionsByFunction = { [id]: [...raised.of(id).values()] };
+	const result: ExceptionsByFunction = {};
+	for(const id of ids) {
+		result[id] = [...raised.of(id).values()];
+	}
 	for(const def of defs) {
-		result[def] = [...raised.of(def).values()];
+		result[def] ??= [...raised.of(def).values()];
 	}
 	return result;
 }

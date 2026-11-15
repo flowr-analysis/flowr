@@ -7,7 +7,7 @@ import type { QueryResults, SupportedQuery } from '../../query';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
-import type { ExceptionsByFunction, ExceptionPoint } from '../../../dataflow/fn/exceptions-of-function';
+import type { ExceptionsByFunction } from '../../../dataflow/fn/exceptions-of-function';
 import { happensInEveryBranch } from '../../../dataflow/info';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { metaSince } from '../../query-meta';
@@ -18,19 +18,7 @@ import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 export async function executeExceptionQuery({ analyzer }: BasicQueryData, queries: readonly InspectExceptionQuery[]): Promise<InspectExceptionQueryResult> {
 	const start = Date.now();
 	const { cg, fns } = await QueryFunctionFilter.inCallGraph(queries, analyzer);
-	const result: ExceptionsByFunction = {};
-
-	for(const [id] of fns) {
-		if(result[id]) {
-			continue;
-		}
-		const res = FunctionSemantics.exceptions(id, cg, { knownThrower: result });
-		for(const [k, v] of Object.entries(res) as [NodeId, ExceptionPoint[]][]) {
-			if(!result[k]) {
-				result[k] = v;
-			}
-		}
-	}
+	const result: ExceptionsByFunction = FunctionSemantics.exceptionsOfAll(fns.map(([id]) => id), cg);
 
 	return {
 		...metaSince(start),

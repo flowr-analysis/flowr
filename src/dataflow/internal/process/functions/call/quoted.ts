@@ -116,6 +116,8 @@ export const Quoted = {
 		let enclosing: ReadonlyMap<NodeId, readonly NodeId[]> | undefined;
 		/* every call of a function lists the arguments of all its calls, so each is linked once per forces it meets */
 		const linkedWith = new DefaultMap<NodeId, Set<ForceSites>>(() => new Set());
+		/* per parameter, the forces all of its arguments were linked with */
+		const settled = new Map<NodeId, { readonly forces: ForceSites, readonly arguments: number }>();
 		for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 			const masks = Nse.dropResolvedMask(graph, id, vertex.name);
 			if(masks !== undefined) {
@@ -163,13 +165,25 @@ export const Quoted = {
 					continue;
 				}
 				for(const parameter of Dataflow.calleesOf(graph, id).flatMap(Dataflow.parametersOf)) {
-					for(const argument of Dataflow.argumentsBoundTo(graph, parameter)) {
+					const bound = [...Dataflow.argumentsBoundTo(graph, parameter)];
+					/* every call of the function comes here with the same parameter and the same arguments, which are done once they all met these forces */
+					const first = forcesOf(graph, parameter, flow, forcing, reachOf);
+					const done = settled.get(parameter);
+					if(first !== undefined && done?.forces === first && done.arguments === bound.length) {
+						continue;
+					}
+					let stable = true;
+					for(const argument of bound) {
 						const index = namesOnce();
 						const forces = forcesOf(graph, parameter, flow, forcing, reachOf);
+						stable &&= forces === first;
 						if(forces !== undefined && !linkedWith.get(argument).has(forces)) {
 							linkedWith.get(argument).add(forces);
 							Deferred.link(graph, argument, index, idMap, forces, true);
 						}
+					}
+					if(stable && first !== undefined) {
+						settled.set(parameter, { forces: first, arguments: bound.length });
 					}
 				}
 			}

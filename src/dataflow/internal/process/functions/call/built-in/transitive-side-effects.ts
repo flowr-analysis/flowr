@@ -866,11 +866,18 @@ function linkReadsAfter(graph: DataflowGraph, call: NodeId, def: NamedDefinition
 	/* a write of the call that escapes under another name (`par` beside `plot` in the body) replaces nothing of this one */
 	const sameName = (id: NodeId) => escaped.get(id)?.some(d => d.name === def.name) ?? true;
 	const replaced = new Set([...visible, ...Dataflow.sourcesOf(graph, call, EdgeType.SideEffectOnCall).filter(sameName)]);
-	const readers = new Set(open.filter(r => r.name === def.name).map(r => r.nodeId));
-	for(const [id] of graph.vertices(true)) {
-		/* an argument reads the value of a call, not a name the call may define (an ambient state is defined at its call) */
-		if((readers.has(id) || graph.edgesFrom(id).entries().some(([target, edge]) => DfEdge.includesType(edge, EdgeType.Reads) && DfEdge.doesNotIncludeType(edge, EdgeType.Argument) && replaced.has(target)))
-			&& !ProgramOrder.definedLater(call, ProgramOrder.runsOnceAt(id, graph), graph)) {
+	const candidates = new Set(open.filter(r => r.name === def.name).map(r => r.nodeId));
+	/* the reads of a replaced definition are its incoming edges, so only those vertices are asked, not every vertex of the graph */
+	for(const target of replaced) {
+		for(const [id, edge] of graph.edgesTo(target)) {
+			/* an argument reads the value of a call, not a name the call may define (an ambient state is defined at its call) */
+			if(DfEdge.includesType(edge, EdgeType.Reads) && DfEdge.doesNotIncludeType(edge, EdgeType.Argument)) {
+				candidates.add(id);
+			}
+		}
+	}
+	for(const id of candidates) {
+		if(graph.hasVertex(id) && !ProgramOrder.definedLater(call, ProgramOrder.runsOnceAt(id, graph), graph)) {
 			graph.addEdge(id, def.nodeId, EdgeType.Reads);
 		}
 	}

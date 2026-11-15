@@ -1,4 +1,4 @@
-import { type Mergeable, deepMergeObject, isObjectOrArray } from '../../../src/util/objects';
+import { type Mergeable, deepMergeObject, isObjectOrArray, setOnPath } from '../../../src/util/objects';
 import { describe, assert, test } from 'vitest';
 
 describe('Objects', () => {
@@ -117,6 +117,19 @@ describe('Objects', () => {
 		});
 		describe('with undefined', () => {
 			merged({ a: 3, b: 4 }, { a: undefined, b: 7 }, { a: 3, b: 7 }, 'do not overwrite on undefined');
+		});
+	});
+	describe('setOnPath', () => {
+		for(const path of ['__proto__.polluted', 'a.__proto__.polluted', 'constructor.prototype.polluted']) {
+			test(`refuses ${path}`, () => {
+				assert.throws(() => setOnPath({ a: {} }, path, true));
+				assert.isUndefined(({} as Record<string, unknown>).polluted);
+			});
+		}
+		test('writes a plain path', () => {
+			const obj = {};
+			setOnPath(obj, 'a.b', 3);
+			assert.deepStrictEqual(obj, { a: { b: 3 } });
 		});
 	});
 });

@@ -299,10 +299,15 @@ export function getOnPath(obj: unknown, path: string): unknown {
 /**
  * Writes `value` at the given dot-separated `path` of `obj`, creating the intermediate steps that do not exist yet.
  * An intermediate is created as an array if the segment indexing it is a number, and as an object otherwise.
+ * A path naming the prototype (`__proto__`, `constructor`, `prototype`) is refused.
  * @see {@link getOnPath} for the counterpart that reads such a path
  */
 export function setOnPath(obj: object, path: string, value: unknown): void {
 	const segments = pathSegments(path);
+	/* a segment naming the prototype would write into every object */
+	if(segments.some(s => s === '__proto__' || s === 'constructor' || s === 'prototype')) {
+		throw new Error(`the path '${path}' names the prototype of an object`);
+	}
 	let at = obj as Record<string | number, unknown>;
 	for(let i = 0; i < segments.length - 1; i++) {
 		const segment = segments[i];

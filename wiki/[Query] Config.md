@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 09:20:10 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6), do not edit directly._
 <h2 id="Config Query">Config Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the current configuration of flowR.\
@@ -39,7 +39,7 @@ Please note that, in the REPL, a special syntax starting with `+` (which should 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.17.6, R v4.6.1 (r-shell engine)
+flowR repl v2.17.6, R v4.5.0 (r-shell engine)
 R> :query @config +solver.slicer.threshold=10000
 ```
 
@@ -62,7 +62,7 @@ one path segment, `**` any number. This only reads: setting a value still names 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.17.6, R v4.6.1 (r-shell engine)
+flowR repl v2.17.6, R v4.5.0 (r-shell engine)
 R> :query @config **.enabled
 ```
 

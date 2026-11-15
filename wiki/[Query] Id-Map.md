@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 09:20:10 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6), do not edit directly._
 <h2 id="Id-Map Query">Id-Map Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the id-map of the normalized AST of the given code.\

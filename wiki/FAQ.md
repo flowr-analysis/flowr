@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-11-15, 09:20:10 UTC (v2.17.6, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6, R v4.5.0), do not edit directly._
 
 Is your question not answered below? Please [ask it as an issue](https://github.com/flowr-analysis/flowr/issues/new?template=question.yaml) and we will answer it.
 Answers regularly end up on this page, so asking helps everyone who wonders the same thing later.

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-11-15, 09:20:10 UTC (v2.17.6, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6, R v4.5.0), do not edit directly._
 
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) and the
 [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) of a given R code (the search will always consider both, with respect to your search query).
@@ -377,7 +377,7 @@ Added enrichments can later be retrieved using the
 <code>enrichmentContent</code>
 function.
 
-Every search (and consequently the search pipeline) works with an array of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search.ts#L16"><code><span title="Yes, for now we do technically not need a wrapper around the RNode, but this allows us to attach caches etc. just for the respective search.">FlowrSearchElement</span></code></a> (neatly wrapped in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search.ts#L70"><code><span title="Intentionally, we abstract away from an array to avoid the use of conventional typescript operations">FlowrSearchElements</span></code></a>).
+Every search (and consequently the search pipeline) works with an array of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search.ts#L16"><code><span title="Yes, for now we do technically not need a wrapper around the RNode, but this allows us to attach caches etc. just for the respective search.">FlowrSearchElement</span></code></a> (neatly wrapped in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search.ts#L73"><code><span title="Intentionally, we abstract away from an array to avoid the use of conventional typescript operations">FlowrSearchElements</span></code></a>).
 Hence, even operations such as `.first` or `.last` return an array of elements (albeit with a single or no element).
 The search API does its best to stay typesafe wrt. to the return type and the transformers in use. 
 In addition, it offers optimizer passes to optimize the search pipeline before execution.

@@ -43,6 +43,9 @@ function copySelectedMarks(graph: DataflowGraph, df: DataflowGraph, select: Read
 	return df;
 }
 
+/** The edges a provenance follows by default, see {@link Dataflow.provenance}. */
+export const ProvenanceEdges = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
+
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
  * @helper dataflow This is the root helper object to work with the DataflowGraph.
@@ -297,7 +300,7 @@ export const Dataflow = {
 	},
 
 	/** Given the id of a vertex (usually a variable use), this returns a reachable provenance set by calculating a non-interprocedural and non-context sensitive backward slice, but stopping at the given ids! */
-	provenance(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>, followEdges: number | undefined = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.DefinedByOnCall): Set<NodeId> {
+	provenance(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>, followEdges: number | undefined = ProvenanceEdges): Set<NodeId> {
 		return Dataflow.reachable(graph, id, { follow: followEdges, consider, cds: true });
 	},
 	/** A simple visitor akin to {@link RNode.visitAst} to traverse the dataflow graph starting from the start id and only respecting edge direction. */

@@ -45,7 +45,8 @@ import { SourceRange } from '../util/range';
 import { dataflowLogger } from './logger';
 import { type DataflowBudgetTracker, GasFeatureKey, GasLevel, GasWikiRef, withDataflowBudget } from '../gas';
 import { DefaultTransitiveSideEffectRounds } from '../config';
-import { Dataflow } from './graph/df-helper';
+import { Dataflow, ProvenanceEdges } from './graph/df-helper';
+import { ReachSummaries, unionOfSets } from '../util/fixpoint';
 import { mayForce } from './internal/process/functions/call/built-in/built-in-ambient-state';
 import { AmbientStateName, MessageSinks, OutputSinks } from './environments/ambient-state-name';
 import { AmbientAccess, AmbientAccessKind } from './graph/ambient-access';
@@ -514,9 +515,6 @@ function resourceArgs(vertex: DataflowGraphVertexFunctionCall, info: BuiltInFnIn
 	return info?.sig === undefined ? [] : MatchArgs.findWithProps(vertex.args, FnSig.resources(info.sig, writes), ArgProp.Resource);
 }
 
-function definitionsReachedBy(node: NodeId, graph: DataflowGraph): ReadonlySet<NodeId> {
-	return Dataflow.reachable(graph, node, { follow: EdgeType.Reads, stopAt: id => DfgVertex.isVariableDefinition(graph.getVertex(id)) });
-}
 
 function fileCallNames(index: BuiltInIndex): ReadonlySet<BrandedIdentifier> {
 	return new Set(index.with(SemanticCallTag.File).map(Identifier.getName));
@@ -563,16 +561,51 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 	if(readers.length === 0 || writers.length === 0) {
 		return;
 	}
-	const reachedBy = memoize((id: NodeId) => definitionsReachedBy(id, graph));
+	/* the variables a resource is made from, and what reads lead there: the walks from every resource share their vertices, so each vertex's reads are picked out of its edges once */
+	const readsOf = memoize((id: NodeId): readonly NodeId[] => DfgVertex.isVariableDefinition(graph.getVertex(id)) ? [] : Dataflow.targetsOf(graph, id, EdgeType.Reads));
+	const reachedBy = memoize((id: NodeId): ReadonlySet<NodeId> => {
+		const reached = new Set<NodeId>();
+		const pending = [id];
+		for(let current = pending.pop(); current !== undefined; current = pending.pop()) {
+			if(reached.has(current)) {
+				continue;
+			}
+			reached.add(current);
+			for(const next of readsOf(current)) {
+				pending.push(next);
+			}
+		}
+		return reached;
+	});
 	const where = { graph, idMap: graph.idMap, resolve: ctx.config.solver.variables, ctx, environment };
 	const pathOf = memoize((id: NodeId) => Resolve.toSingleString(id, where));
-	/* every `tempfile()` call names a file of its own, so paths made from different ones differ */
-	const tempFiles = memoize((id: NodeId) => new Set([...Dataflow.provenance(RArgument.valueOf(graph.idMap?.get(id))?.info.id ?? id, graph)]
-		.filter(v => {
-			const call = graph.getVertex(v);
-			return DfgVertex.isFunctionCall(call) && call.name !== undefined && Identifier.getName(call.name) === 'tempfile'
-				&& FunctionSemantics.call.props.hasAll(callFnProps(v, { graph, environment }), [SemanticCallTag.TempFile]);
-		})));
+	/*
+	 * every `tempfile()` call names a file of its own, so paths made from different ones differ; which ones a path is made from is
+	 * its provenance, summarized once for all resources (see `Dataflow.provenance` for the edges it follows) rather than walked per resource
+	 */
+	const isTempFile = memoize((v: NodeId) => {
+		const call = graph.getVertex(v);
+		return DfgVertex.isFunctionCall(call) && call.name !== undefined && Identifier.getName(call.name) === 'tempfile'
+			&& FunctionSemantics.call.props.hasAll(callFnProps(v, { graph, environment }), [SemanticCallTag.TempFile]);
+	});
+	const noTempFiles: ReadonlySet<NodeId> = new Set();
+	const tempFilesBehind = new ReachSummaries<NodeId, ReadonlySet<NodeId>>(current => {
+		const vertex = graph.get(current);
+		if(vertex === undefined) {
+			return [];
+		}
+		const next: NodeId[] = [];
+		for(const [to, types] of vertex[1]) {
+			if(DfEdge.includesType(types, ProvenanceEdges)) {
+				next.push(to);
+			}
+		}
+		for(const cd of vertex[0].cds ?? []) {
+			next.push(cd.id);
+		}
+		return next;
+	}, v => isTempFile(v) ? new Set([v]) : undefined, { empty: noTempFiles, concat: unionOfSets });
+	const tempFiles = (id: NodeId) => tempFilesBehind.of(RArgument.valueOf(graph.idMap?.get(id))?.info.id ?? id);
 	function sameResource(a: NodeId, b: NodeId): boolean {
 		if(a === b) {
 			return true;
@@ -645,12 +678,24 @@ function fileWriteLevels(writer: NodeId, graph: DataflowGraph, idMap: AstIdMap, 
 	if(first === undefined || affected.size === 0) {
 		return undefined;
 	}
+	/* per definition, the affected calls calling it, in the order of `affected`, worked out once rather than per level */
+	const callsOf = new Map<NodeId, NodeId[]>();
+	for(const call of affected) {
+		for(const target of new Set(Dataflow.targetsOf(graph, call, EdgeType.Calls))) {
+			const known = callsOf.get(target);
+			if(known === undefined) {
+				callsOf.set(target, [call]);
+			} else {
+				known.push(call);
+			}
+		}
+	}
 	const levels: FileWriteLevel[] = [];
 	const covered = new Set<NodeId>();
 	const queue: { at: NodeId, definition: NodeId, context: CallContext }[] = [{ at: writer, definition: first, context: new Map() }];
 	for(let item = queue.shift(); item !== undefined; item = queue.shift()) {
 		const { at, definition, context } = item;
-		const calls = [...affected].filter(c => Dataflow.targetsOf(graph, c, EdgeType.Calls).includes(definition));
+		const calls = callsOf.get(definition) ?? [];
 		if(calls.length === 0 || context.has(definition)) {
 			return undefined;
 		}

@@ -15,6 +15,7 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Resolve } from '../environments/resolve-helper';
 import { argumentRolesOfFunctions } from './argument-roles';
+import { ReachSummaries } from '../../util/fixpoint';
 import { ArgProp } from '../environments/built-in-props';
 
 function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
@@ -94,97 +95,39 @@ function behindSuccessors(current: NodeId, graph: DataflowGraph): NodeId[] {
  * tell none, one and several apart.
  */
 export class DefinitionsBehind {
-	private readonly memo = new Map<NodeId, ReadonlySet<NodeId>>();
+	private readonly summaries: ReachSummaries<NodeId, ReadonlySet<NodeId>>;
 
-	constructor(private readonly graph: DataflowGraph, private readonly cap = 2) {}
+	constructor(graph: DataflowGraph, cap = 2) {
+		const none: ReadonlySet<NodeId> = new Set();
+		const leaf = (id: NodeId) => NodeId.isBuiltIn(id) || DfgVertex.isFunctionDefinition(graph.getVertex(id));
+		this.summaries = new ReachSummaries<NodeId, ReadonlySet<NodeId>>(
+			id => leaf(id) ? [] : behindSuccessors(id, graph),
+			id => !NodeId.isBuiltIn(id) && DfgVertex.isFunctionDefinition(graph.getVertex(id)) ? new Set([id]) : undefined,
+			{ empty: none, concat: (a, b) => cappedUnion(a, b, cap) }
+		);
+	}
 
 	/** the definitions `id` can hand over, at most `cap` of them */
 	public of(id: NodeId): ReadonlySet<NodeId> {
-		const known = this.memo.get(id);
-		return known ?? this.solve(id);
+		return this.summaries.of(id);
 	}
+}
 
-	/** Tarjan's algorithm, iteratively, from `root`: each finished component gets the union of what its members reach. */
-	private solve(root: NodeId): ReadonlySet<NodeId> {
-		const index = new Map<NodeId, number>();
-		const low = new Map<NodeId, number>();
-		const onStack = new Set<NodeId>();
-		const stack: NodeId[] = [];
-		const frames: { id: NodeId, succ: NodeId[], next: number }[] = [];
-		let counter = 0;
-		const open = (id: NodeId): void => {
-			index.set(id, counter);
-			low.set(id, counter);
-			counter++;
-			stack.push(id);
-			onStack.add(id);
-			const leaf = NodeId.isBuiltIn(id) || DfgVertex.isFunctionDefinition(this.graph.getVertex(id));
-			frames.push({ id, succ: leaf ? [] : behindSuccessors(id, this.graph), next: 0 });
-		};
-		open(root);
-		while(frames.length > 0) {
-			const frame = frames[frames.length - 1];
-			if(frame.next < frame.succ.length) {
-				const s = frame.succ[frame.next++];
-				if(this.memo.has(s)) {
-					continue;
-				}
-				if(!index.has(s)) {
-					open(s);
-				} else if(onStack.has(s)) {
-					low.set(frame.id, Math.min(low.get(frame.id) as number, index.get(s) as number));
-				}
-				continue;
-			}
-			frames.pop();
-			const parent = frames[frames.length - 1];
-			if(parent !== undefined) {
-				low.set(parent.id, Math.min(low.get(parent.id) as number, low.get(frame.id) as number));
-			}
-			if(low.get(frame.id) !== index.get(frame.id)) {
-				continue;
-			}
-			// `frame.id` roots a component: pop it, and give every member the same answer
-			const members: NodeId[] = [];
-			for(let m = stack.pop(); m !== undefined; m = stack.pop()) {
-				onStack.delete(m);
-				members.push(m);
-				if(m === frame.id) {
-					break;
-				}
-			}
-			const found = new Set<NodeId>();
-			const inside = new Set(members);
-			for(const member of members) {
-				if(found.size >= this.cap) {
-					break;
-				}
-				if(NodeId.isBuiltIn(member)) {
-					continue;
-				}
-				if(DfgVertex.isFunctionDefinition(this.graph.getVertex(member))) {
-					found.add(member);
-					continue;
-				}
-				for(const s of behindSuccessors(member, this.graph)) {
-					if(found.size >= this.cap) {
-						break;
-					}
-					if(!inside.has(s)) {
-						for(const d of this.memo.get(s) ?? []) {
-							if(found.size < this.cap) {
-								found.add(d);
-							}
-						}
-					}
-				}
-			}
-			for(const member of members) {
-				this.memo.set(member, found);
-			}
-		}
-		return this.memo.get(root) as ReadonlySet<NodeId>;
+/** The union of both sets, but no more than `cap` elements of it; one of them where it already is the answer. */
+function cappedUnion(a: ReadonlySet<NodeId>, b: ReadonlySet<NodeId>, cap: number): ReadonlySet<NodeId> {
+	if(a.size >= cap || b.size === 0 || b.isSubsetOf(a)) {
+		return a;
+	} else if(b.size >= cap || a.size === 0 || a.isSubsetOf(b)) {
+		return b;
 	}
+	const union = new Set(a);
+	for(const x of b) {
+		if(union.size >= cap) {
+			break;
+		}
+		union.add(x);
+	}
+	return union;
 }
 
 /** What an argument is, which no definition it is looked at for changes. */

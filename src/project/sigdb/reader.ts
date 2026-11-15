@@ -161,7 +161,7 @@ export interface PackageSignatureSource {
 	releaseDate(pkg: BrandedNamespace, version?: string): Date | undefined;
 	/** every known release of a package (version + date), ascending by R-version order */
 	releaseDates(pkg: BrandedNamespace): VersionRelease[];
-	/** the newest version of a package by release date (falling back to the recorded latest, then SemVer order) */
+	/** the version a package's latest stands for, see {@link newestVersion} */
 	latestVersion(pkg: BrandedNamespace): RVersion | undefined;
 	/** release any held file handles */
 	close(): void;
@@ -507,7 +507,7 @@ abstract class HistorySource {
 		return day === undefined ? undefined : new Date(dayToMillis(day));
 	}
 
-	/** the newest version of a package by release date (falling back to the recorded latest, then SemVer order) */
+	/** the version a package's latest stands for, see {@link newestVersion} */
 	public latestVersion(pkg: BrandedNamespace): RVersion | undefined {
 		const ver = this.dated(pkg)?.ver;
 		return ver === undefined ? undefined : RVersion.parseOrZero(ver);

@@ -22,7 +22,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { dataflowLogger } from '../../../../../logger';
 import { ClosureRefs } from '../../../../linker';
 import { VertexType, DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../../../graph/vertex';
-import { type DataflowGraph, FunctionArgument, type NamedFunctionArgument } from '../../../../../graph/graph';
+import { type DataflowGraph, FunctionArgument, type NamedFunctionArgument, PendingEdges } from '../../../../../graph/graph';
 import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
@@ -287,6 +287,8 @@ export function linkLateWarningsAsErrors(graph: DataflowGraph, environment: REnv
 /** Links what a handler of a condition class other than an error changes outside its frame, which is a side effect on the call running it, to every site of the block that may signal that class, as the handler runs only then. */
 export function linkHandlersToSignalSites<OtherInfo>(graph: DataflowGraph, environment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): void {
 	const idMap = data.completeAst.idMap;
+	/* added once every handler is looked at: any change to the graph drops the call targets resolved over it */
+	const edges = new PendingEdges();
 	for(const [, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const config = DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) ? tryConfigOf(vertex, environment) : undefined;
 		if(config === undefined) {
@@ -305,15 +307,16 @@ export function linkHandlersToSignalSites<OtherInfo>(graph: DataflowGraph, envir
 				const sites = (writes.length === 0 && runs.length === 0) || at === undefined ? [] : blocks.flatMap(b => signalSites(b as RNode<OtherInfo & ParentInformation>, Identifier.getName(condition), graph, { ...data, environment: at }, false));
 				for(const site of sites) {
 					for(const write of writes) {
-						graph.addEdge(write, site, EdgeType.Reads);
+						edges.add(write, site, EdgeType.Reads);
 					}
 					for(const definition of runs) {
-						graph.addEdge(site, definition, EdgeType.Calls);
+						edges.add(site, definition, EdgeType.Calls);
 					}
 				}
 			}
 		}
 	}
+	edges.applyTo(graph);
 }
 
 /** The top-level statements after the one holding `id`, which a call within a function body may run in any of once the function is defined. */

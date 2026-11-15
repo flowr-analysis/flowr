@@ -568,10 +568,15 @@ export class DataflowGraph<
 		if(fromId === toId) {
 			return this;
 		}
-		this.dropQualifications();
 		this.countRead(toId, type);
 		const fromEdges = this.edgeInformation.get(fromId);
 		const existing = fromEdges?.get(toId);
+		/* an edge the graph already has changes nothing, so what was resolved over the graph still holds */
+		if(existing !== undefined && data === undefined && (existing.types & type) === type) {
+			guard(!this.consumed, 'this graph was consumed by a merge and must not be changed any more');
+			return this;
+		}
+		this.dropQualifications();
 		if(existing !== undefined) {
 			/* the reverse index holds this very object, so a widened type is already visible through it */
 			existing.types |= type;
@@ -810,4 +815,32 @@ function envFromJson(json: IEnvironmentJson): Environment {
 
 function renvFromJson(json: REnvironmentInformationJson): REnvironmentInformation {
 	return { current: envFromJson(json.current), level: json.level };
+}
+
+/**
+ * Edges a pass collects while it still asks questions of the graph, added in one go at its end: every change to the graph drops
+ * what was resolved over it (the qualified call names, the shared target walks), so adding them as found would resolve the same
+ * calls again after each one. The same edge found twice is kept once.
+ */
+export class PendingEdges {
+	private readonly edges = new Map<NodeId, Map<NodeId, number>>();
+
+	/** Notes the edge `from -> to` of the given type. */
+	public add(from: NodeId, to: NodeId, type: EdgeType | number): void {
+		const targets = this.edges.get(from);
+		if(targets === undefined) {
+			this.edges.set(from, new Map([[to, type]]));
+		} else {
+			targets.set(to, (targets.get(to) ?? 0) | type);
+		}
+	}
+
+	/** Adds every noted edge to `graph`. */
+	public applyTo(graph: DataflowGraph): void {
+		for(const [from, targets] of this.edges) {
+			for(const [to, type] of targets) {
+				graph.addEdge(from, to, type);
+			}
+		}
+	}
 }

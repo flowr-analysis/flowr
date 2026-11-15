@@ -17,7 +17,7 @@ import type { AstIdMap, NormalizedAst, ParentInformation } from '../r-bridge/lan
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import { attachProject } from './internal/process/functions/call/built-in/built-in-library';
-import { type DataflowGraph, FunctionArgument, UnknownSideEffect } from './graph/graph';
+import { type DataflowGraph, FunctionArgument, PendingEdges, UnknownSideEffect } from './graph/graph';
 import { handleUnknownSideEffect } from './graph/unknown-side-effect';
 import { ControlFlowGraph } from '../control-flow/control-flow-graph';
 import { DfEdge, EdgeType } from './graph/edge';
@@ -157,13 +157,17 @@ function callsUnseenBody(id: NodeId, graph: DataflowGraph): boolean {
 	if(!DfgVertex.isFunctionCall(call) || Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)))) {
 		return false;
 	}
+	if(call.origin === 'unnamed' || (Array.isArray(call.origin) && call.origin.every(o => o === 'function' || o === 'unnamed'))) {
+		return true;
+	}
+	/* resolving the name is the expensive part, so it comes last */
 	const ns = Identifier.getNamespace(Dataflow.qualify(id, graph, false));
-	return call.origin === 'unnamed' || (Array.isArray(call.origin) && call.origin.every(o => o === 'function' || o === 'unnamed')) || (ns !== undefined && !isBaseRPackage(ns));
+	return ns !== undefined && !isBaseRPackage(ns);
 }
 
 /** Whether the node creates or names an environment, as `new.env()`, `globalenv()` or `.GlobalEnv` do, or may return one, as a function whose body flowR does not see (`R6` objects are environments) */
-function producesEnvironment(id: NodeId, graph: DataflowGraph): boolean {
-	return EnvironmentProducers.some(o => DfgVertex.hasOrigin(graph.getVertex(id), o)) || namesStackEnvironment(id, graph) || callsUnseenBody(id, graph);
+function producesEnvironment(id: NodeId, graph: DataflowGraph, callsUnseen: (id: NodeId) => boolean): boolean {
+	return EnvironmentProducers.some(o => DfgVertex.hasOrigin(graph.getVertex(id), o)) || namesStackEnvironment(id, graph) || callsUnseen(id);
 }
 
 /** Whether the node names an environment of the search path or the call stack, as `globalenv()` or `.GlobalEnv` do, whose names no variable holds */
@@ -177,7 +181,7 @@ function namesStackEnvironment(id: NodeId, graph: DataflowGraph): boolean {
  * The environments the value at `id` may be: the vertices creating them, followed through the parameters of the functions
  * of the program to the arguments of their calls, and these calls, which hand the environment on.
  */
-function environmentsAt(id: NodeId, graph: DataflowGraph, parameters: ReadonlySet<NodeId>): { producers: NodeId[], via: NodeId[] } {
+function environmentsAt(id: NodeId, graph: DataflowGraph, parameters: ReadonlySet<NodeId>, produces: (id: NodeId) => boolean): { producers: NodeId[], via: NodeId[] } {
 	const producers: NodeId[] = [];
 	const via: NodeId[] = [];
 	const seen = new Set<NodeId>();
@@ -187,8 +191,8 @@ function environmentsAt(id: NodeId, graph: DataflowGraph, parameters: ReadonlySe
 			continue;
 		}
 		seen.add(at);
-		for(const source of producesEnvironment(at, graph) ? [at] : Dataflow.valueSources(at, graph) ?? []) {
-			if(producesEnvironment(source, graph)) {
+		for(const source of produces(at) ? [at] : Dataflow.valueSources(at, graph) ?? []) {
+			if(produces(source)) {
 				producers.push(source);
 			} else if(parameters.has(source)) {
 				for(const argument of Dataflow.argumentsBoundTo(graph, source)) {
@@ -220,28 +224,57 @@ function linkEnvironmentsHandedToUnseenBodies(graph: DataflowGraph, environment:
 		}
 		return holders.get(producer);
 	}
+	/* both are asked of the same vertices over and over (every value an argument may hold), and the edges added below change neither */
+	const unseen = new Map<NodeId, boolean>();
+	const callsUnseen = (id: NodeId): boolean => {
+		let known = unseen.get(id);
+		if(known === undefined) {
+			known = callsUnseenBody(id, graph);
+			unseen.set(id, known);
+		}
+		return known;
+	};
+	const producing = new Map<NodeId, boolean>();
+	const produces = (id: NodeId): boolean => {
+		let known = producing.get(id);
+		if(known === undefined) {
+			known = producesEnvironment(id, graph, callsUnseen);
+			producing.set(id, known);
+		}
+		return known;
+	};
+	/*
+	 * an unknown side effect forgets every value the environment holds, so a writer only needs it once; the effects and edges
+	 * are applied once every call is looked at, as any change to the graph drops what was resolved over it
+	 */
+	const written = new Set<NodeId>();
+	const reads = new PendingEdges();
 	for(const [id, call] of graph.verticesOfType(VertexType.FunctionCall)) {
-		if(!callsUnseenBody(id, graph)) {
+		if(!callsUnseen(id)) {
 			continue;
 		}
 		for(const arg of call.args) {
 			const ref = FunctionArgument.getReference(arg);
-			const { producers, via } = ref === undefined ? { producers: [], via: [] } : environmentsAt(ref, graph, parameters);
+			const { producers, via } = ref === undefined ? { producers: [], via: [] } : environmentsAt(ref, graph, parameters, produces);
 			for(const producer of producers) {
 				if(namesStackEnvironment(producer, graph)) {
 					for(const writer of [id, ...via]) {
-						handleUnknownSideEffect(graph, environment, writer);
+						written.add(writer);
 					}
 					continue;
 				}
 				for(const holder of holdersOf(producer)) {
 					for(const writer of [id, ...via]) {
-						graph.addEdge(holder, writer, EdgeType.Reads);
+						reads.add(holder, writer, EdgeType.Reads);
 					}
 				}
 			}
 		}
 	}
+	for(const writer of written) {
+		handleUnknownSideEffect(graph, environment, writer);
+	}
+	reads.applyTo(graph);
 }
 
 function tracksAnyEnvironment(environment: REnvironmentInformation): boolean {
@@ -688,6 +721,8 @@ function linkReadsOfDivertedOutput(graph: DataflowGraph, environment: REnvironme
 	const printsOf = memoize((id: NodeId) => FunctionSemantics.call.props.hasAll(callFnProps(id, { graph, environment }), [SemanticCallTag.Prints]));
 	const printingCall = (writer: NodeId) => DfgVertex.isFunctionCall(graph.getVertex(writer)) && printsOf(writer);
 	const writersOf = memoize((target: NodeId) => Dataflow.sourcesOf(graph, target, EdgeType.Reads).filter(printingCall));
+	/* added once every read is looked at: any change to the graph drops the call targets resolved over it */
+	const reads = new PendingEdges();
 	for(const [id] of graph.verticesOfType(VertexType.Use)) {
 		for(const target of Dataflow.targetsOf(graph, id, EdgeType.Reads)) {
 			const diverting = graph.getVertex(target);
@@ -696,11 +731,12 @@ function linkReadsOfDivertedOutput(graph: DataflowGraph, environment: REnvironme
 			}
 			for(const writer of writersOf(target)) {
 				if(writer !== id) {
-					graph.addEdge(id, writer, EdgeType.Reads);
+					reads.add(id, writer, EdgeType.Reads);
 				}
 			}
 		}
 	}
+	reads.applyTo(graph);
 }
 
 function resolveLinkToSideEffects(graph: DataflowGraph, ctx: FlowrAnalyzerContext): void {

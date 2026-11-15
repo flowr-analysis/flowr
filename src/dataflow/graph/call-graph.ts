@@ -32,11 +32,33 @@ export interface State {
 	resolver:   LinkedFunctionResolver
 }
 
-function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: CallGraph, state: State): void {
+/**
+ * A step of the walk building the call graph: the vertex to process next, as {@link processUnknown} or as {@link processFunctionDefinition}.
+ * The walk is as deep as the longest chain of reads and calls, which in a large package is deeper than the stack, so a step does not
+ * call the next one but hands it to {@link walk}, which keeps the pending ones on a stack of its own.
+ */
+type Visit = readonly [kind: 'unknown' | 'definition', vtx: DataflowGraphVertexInfo, from: NodeId | undefined];
+type Walk = Generator<Visit, void, void>;
+
+/** Runs a walk of {@link Visit}s depth first, in the order the recursive walk would take: each visit completes before its caller goes on. */
+function walk(first: Walk, graph: DataflowGraph, result: CallGraph, state: State): void {
+	const pending: Walk[] = [first];
+	while(pending.length > 0) {
+		const step = (pending[pending.length - 1]).next();
+		if(step.done) {
+			pending.pop();
+			continue;
+		}
+		const [kind, vtx, from] = step.value;
+		pending.push(kind === 'unknown' ? processUnknown(vtx, from, graph, result, state) : processFunctionDefinition(vtx as Required<DataflowGraphVertexFunctionDefinition>, from, graph, result, state));
+	}
+}
+
+function* processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph): Walk {
 	for(const tar of vtx.cds ?? []) {
 		const targetVtx = graph.getVertex(tar.id);
 		if(targetVtx) {
-			processUnknown(targetVtx, undefined, graph, result, state);
+			yield ['unknown', targetVtx, undefined];
 		}
 	}
 }
@@ -78,7 +100,7 @@ export function fallbackUntargetedCall(vtx: Pick<DataflowGraphVertexFunctionCall
 	return collected;
 }
 
-function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, state: State): void {
+function* processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, state: State): Walk {
 	const vid = vtx.id;
 	if(from) {
 		result.addEdge(from, vid, EdgeType.Calls);
@@ -88,7 +110,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 	}
 	state.visited.add(vid);
 	result.addVertex(vtx, undefined, true);
-	processCds(vtx, graph, result, state);
+	yield* processCds(vtx, graph);
 
 	let addedTarget = false;
 	let addedBiTarget = false;
@@ -100,7 +122,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 			addedBiTarget = true;
 		} else if(DfgVertex.isFunctionDefinition(targetVtx)) {
 			addedTarget = true;
-			processFunctionDefinition(targetVtx, vid, graph, result, state);
+			yield ['definition', targetVtx, vid];
 		}
 	}
 	if(!addedBiTarget && vtx.origin !== 'unnamed') {
@@ -139,20 +161,20 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 		}
 		const tVtx = graph.getVertex(tar);
 		if(tVtx) {
-			processUnknown(tVtx, vid, graph, result, state);
+			yield ['unknown', tVtx, vid];
 		}
 	}
 }
 
-function processUnknown(vtx: DataflowGraphVertexInfo, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, state: State): void {
+function* processUnknown(vtx: DataflowGraphVertexInfo, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, state: State): Walk {
 	if(DfgVertex.isFunctionCall(vtx)) {
-		processCall(vtx, from, graph, result, state);
+		yield* processCall(vtx, from, graph, result, state);
 	} else if(DfgVertex.isFunctionDefinition(vtx) && from) {
 		result.addEdge(from, NodeId.toBuiltIn('function'), EdgeType.Calls);
 	}
 }
 
-function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefinition>, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, state: State): void {
+function* processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefinition>, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, state: State): Walk {
 	if(from) {
 		result.addEdge(from, vtx.id, EdgeType.Calls);
 	}
@@ -161,7 +183,7 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 	}
 	state.visited.add(vtx.id);
 	result.addVertex(vtx, undefined, true);
-	processCds(vtx, graph, result, state);
+	yield* processCds(vtx, graph);
 
 	const exits = new Set(vtx.exitPoints);
 	state.potentials.push([vtx.id, vtx.subflow.graph.difference(exits)]);
@@ -169,7 +191,7 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 	for(const { nodeId } of exits) {
 		const v = graph.getVertex(nodeId);
 		if(v) {
-			processUnknown(v, vtx.id, graph, result, state);
+			yield ['unknown', v, vtx.id];
 		}
 	}
 }
@@ -347,9 +369,9 @@ export const CallGraph = {
 		const state: State = { visited: new Set(), potentials: [], resolver: new LinkedFunctionResolver(graph) };
 		for(const [,vert] of graph.vertices(false)) {
 			if(DfgVertex.isFunctionCall(vert)) {
-				processCall(vert, undefined, graph, result, state);
+				walk(processCall(vert, undefined, graph, result, state), graph, result, state);
 			} else if(DfgVertex.isFunctionDefinition(vert)) {
-				processFunctionDefinition(vert, undefined, graph, result, state);
+				walk(processFunctionDefinition(vert, undefined, graph, result, state), graph, result, state);
 			}
 		}
 		for(const [from, tos] of state.potentials) {
@@ -357,9 +379,9 @@ export const CallGraph = {
 				if(!result.hasVertex(to)) {
 					const v = graph.getVertex(to);
 					if(v) {
-						processUnknown(v, from, graph, result, state);
+						walk(processUnknown(v, from, graph, result, state), graph, result, state);
 						if(DfgVertex.isFunctionDefinition(v)) {
-							processFunctionDefinition(v, callerOfBodyDefinition(from, to), graph, result, state);
+							walk(processFunctionDefinition(v, callerOfBodyDefinition(from, to), graph, result, state), graph, result, state);
 						}
 					}
 				} else if(callerOfBodyDefinition(from, to) !== undefined || !DfgVertex.isFunctionDefinition(graph.getVertex(to))) {

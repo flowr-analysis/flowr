@@ -16,7 +16,7 @@ export function guardsTuple(stated: StatedGuards | undefined): Guards | undefine
 		[requires, kind, fails, via?.join(', ') ?? '', message ?? '', reads ?? '', brief ?? '', loc === undefined ? '' : `${loc.fn}:${loc.line}:${loc.column}`]);
 	const result = returnConditions(stated?.returns, stated?.passes);
 	const named = [...new Set([...stated?.required ?? [], ...claims.map(([formal]) => formal), ...(stated?.relations ?? []).flatMap(r => r.formals), ...(stated?.because ?? []).flatMap(b => b.formals ?? [])])];
-	if(stated === undefined || (stated.requires === '' && claims.length === 0 && (stated.required ?? []).length === 0 && result.length === 0)) {
+	if(stated === undefined || (!stated.requires && claims.length === 0 && (stated.required ?? []).length === 0 && result.length === 0)) {
 		return undefined;
 	}
 	const calls = (stated.calls ?? []).map(qualified => Identifier.parse(qualified));
@@ -29,7 +29,7 @@ export function guardsTuple(stated: StatedGuards | undefined): Guards | undefine
 		relations: (stated.relations ?? []).map(r => r.formals),
 		returns:   stated.returns
 	});
-	return [stated.requires, claims, because, stated.origin === undefined || stated.origin.source === 'builtin' ? '' : stated.origin.r + (stated.origin.date === undefined ? '' : '@' + stated.origin.date), mergedRelations((stated.relations ?? []).map(({ holds, unless, unlessClaim }) => ({ holds, unless: unlessClaim === undefined ? unless : allOf(claimConditions(unlessClaim.formal, unlessClaim.claim)) }))).map(({ holds, unless }): [string, string] => [holds, unless ?? '']), [...stated.required ?? []], result, named,
+	return [stated.requires ?? '', claims, because, stated.origin === undefined || stated.origin.source === 'builtin' ? '' : stated.origin.r + (stated.origin.date === undefined ? '' : '@' + stated.origin.date), mergedRelations((stated.relations ?? []).map(({ holds, unless, unlessClaim }) => ({ holds, unless: unlessClaim === undefined ? unless : allOf(claimConditions(unlessClaim.formal, unlessClaim.claim)) }))).map(({ holds, unless }): [string, string] => [holds, unless ?? '']), [...stated.required ?? []], result, named,
 		stated.dispatches === undefined ? [] : [stated.dispatches, stated.methods ?? []], stated.methodOf === undefined ? [] : [stated.methodOf.generic, stated.methodOf.class],
 		calls.map(id => [Identifier.toPreludeString(id), Identifier.toString(id)]), tokens];
 }

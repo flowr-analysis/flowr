@@ -110,7 +110,7 @@ function sameRelease(this: void, a: string, b: string): boolean {
 
 /** The conditions of the guards stated without a program, read back into terms over the formals. */
 function statedClauses(this: void, name: BrandedIdentifier, stated: StatedGuards, formals: readonly BrandedIdentifier[], scope: ContractScope): GuardTerm[] {
-	const texts = stated.because?.map(b => b.requires) ?? [stated.requires];
+	const texts = stated.because?.map(b => b.requires) ?? [stated.requires ?? ''];
 	const terms = texts.flatMap(text => {
 		const term = text === '' ? undefined : parseGuardTerm(text, formals, scope.facts);
 		return term === undefined ? [] : GuardTerm.conjuncts(term);

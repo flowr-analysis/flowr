@@ -38,7 +38,7 @@ export interface GuardOrigin {
 }
 
 /** What is known about a function without a program to read it from: {@link FunctionGuards} without the clauses, which point at code. */
-export interface StatedGuards extends Pick<FunctionGuards, 'requires'>, Partial<Pick<FunctionGuards, 'relations' | 'conditional' | 'returns' | 'passes'>> {
+export interface StatedGuards extends Partial<Pick<FunctionGuards, 'requires' | 'relations' | 'conditional' | 'returns' | 'passes'>> {
 	/** see {@link FunctionGuards.required} */
 	readonly required?:   readonly BrandedIdentifier[]
 	/** see {@link FunctionGuards.formals} */

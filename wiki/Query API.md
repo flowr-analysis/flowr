@@ -1,8 +1,8 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 13:32:41 UTC (v2.17.6, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
-In code, you run queries with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L363"><code>FlowrAnalyzer::<b>query</b></code></a>.
+In code, you run queries with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L362"><code>FlowrAnalyzer::<b>query</b></code></a>.
 Pass it a single query object, and it answers with the result of that query directly, which is the most common case and also the fastest, as there is nothing to group.
 For queries that report one entry per query (e.g., the [Static Slice Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice)), the result is just that entry.
 A failing single query throws an error.
@@ -722,184 +722,23 @@ library`"]
     %% 1----------------------------------------
     %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
     %% 2----------------------------------------
-    %%   filter:             {**dplyr::filter** (id: built-in:filter, type: BuiltInFunction, def. @built-in:filter)}
-    %%   filter_out:         {**dplyr::filter_out** (id: built-in:filter_out, type: BuiltInFunction, def. @built-in:filter_out)}
-    %%   slice:              {**dplyr::slice** (id: built-in:slice, type: BuiltInFunction, def. @built-in:slice)}
-    %%   mutate:             {**dplyr::mutate** (id: built-in:mutate, type: BuiltInFunction, def. @built-in:mutate)}
-    %%   transmute:          {**dplyr::transmute** (id: built-in:transmute, type: BuiltInFunction, def. @built-in:transmute)}
-    %%   rename:             {**dplyr::rename** (id: built-in:rename, type: BuiltInFunction, def. @built-in:rename)}
-    %%   select:             {**dplyr::select** (id: built-in:select, type: BuiltInFunction, def. @built-in:select)}
-    %%   summarise:          {**dplyr::summarise** (id: built-in:summarise, type: BuiltInFunction, def. @built-in:summarise)}
-    %%   summarize:          {**dplyr::summarize** (id: built-in:summarize, type: BuiltInFunction, def. @built-in:summarize)}
-    %%   arrange:            {**dplyr::arrange** (id: built-in:arrange, type: BuiltInFunction, def. @built-in:arrange)}
-    %%   group_by:           {**dplyr::group_by** (id: built-in:group_by, type: BuiltInFunction, def. @built-in:group_by)}
-    %%   distinct:           {**dplyr::distinct** (id: built-in:distinct, type: BuiltInFunction, def. @built-in:distinct)}
-    %%   count:              {**dplyr::count** (id: built-in:count, type: BuiltInFunction, def. @built-in:count)}
-    %%   tally:              {**dplyr::tally** (id: built-in:tally, type: BuiltInFunction, def. @built-in:tally)}
-    %%   add_tally:          {**dplyr::add_tally** (id: built-in:add_tally, type: BuiltInFunction, def. @built-in:add_tally)}
-    %%   reframe:            {**dplyr::reframe** (id: built-in:reframe, type: BuiltInFunction, def. @built-in:reframe)}
-    %%   slice_head:         {**dplyr::slice_head** (id: built-in:slice_head, type: BuiltInFunction, def. @built-in:slice_head)}
-    %%   slice_tail:         {**dplyr::slice_tail** (id: built-in:slice_tail, type: BuiltInFunction, def. @built-in:slice_tail)}
-    %%   slice_min:          {**dplyr::slice_min** (id: built-in:slice_min, type: BuiltInFunction, def. @built-in:slice_min)}
-    %%   slice_max:          {**dplyr::slice_max** (id: built-in:slice_max, type: BuiltInFunction, def. @built-in:slice_max)}
-    %%   slice_sample:       {**dplyr::slice_sample** (id: built-in:slice_sample, type: BuiltInFunction, def. @built-in:slice_sample)}
-    %%   pull:               {**dplyr::pull** (id: built-in:pull, type: BuiltInFunction, def. @built-in:pull)}
-    %%   relocate:           {**dplyr::relocate** (id: built-in:relocate, type: BuiltInFunction, def. @built-in:relocate)}
-    %%   group_split:        {**dplyr::group_split** (id: built-in:group_split, type: BuiltInFunction, def. @built-in:group_split)}
-    %%   add_count:          {**dplyr::add_count** (id: built-in:add_count, type: BuiltInFunction, def. @built-in:add_count)}
-    %%   nest_by:            {**dplyr::nest_by** (id: built-in:nest_by, type: BuiltInFunction, def. @built-in:nest_by)}
-    %%   rowwise:            {**dplyr::rowwise** (id: built-in:rowwise, type: BuiltInFunction, def. @built-in:rowwise)}
-    %%   with_groups:        {**dplyr::with_groups** (id: built-in:with_groups, type: BuiltInFunction, def. @built-in:with_groups)}
-    %%   ungroup:            {**dplyr::ungroup** (id: built-in:ungroup, type: BuiltInFunction, def. @built-in:ungroup)}
-    %%   left_join:          {**dplyr::left_join** (id: built-in:left_join, type: BuiltInFunction, def. @built-in:left_join)}
-    %%   right_join:         {**dplyr::right_join** (id: built-in:right_join, type: BuiltInFunction, def. @built-in:right_join)}
-    %%   inner_join:         {**dplyr::inner_join** (id: built-in:inner_join, type: BuiltInFunction, def. @built-in:inner_join)}
-    %%   full_join:          {**dplyr::full_join** (id: built-in:full_join, type: BuiltInFunction, def. @built-in:full_join)}
-    %%   semi_join:          {**dplyr::semi_join** (id: built-in:semi_join, type: BuiltInFunction, def. @built-in:semi_join)}
-    %%   anti_join:          {**dplyr::anti_join** (id: built-in:anti_join, type: BuiltInFunction, def. @built-in:anti_join)}
-    %%   nest_join:          {**dplyr::nest_join** (id: built-in:nest_join, type: BuiltInFunction, def. @built-in:nest_join)}
-    %%   cross_join:         {**dplyr::cross_join** (id: built-in:cross_join, type: BuiltInFunction, def. @built-in:cross_join)}
-    %%   bind_rows:          {**dplyr::bind_rows** (id: built-in:bind_rows, type: BuiltInFunction, def. @built-in:bind_rows)}
-    %%   bind_cols:          {**dplyr::bind_cols** (id: built-in:bind_cols, type: BuiltInFunction, def. @built-in:bind_cols)}
-    %%   mutate_all:         {**dplyr::mutate_all** (id: built-in:mutate_all, type: BuiltInFunction, def. @built-in:mutate_all)}
-    %%   transmute_all:      {**dplyr::transmute_all** (id: built-in:transmute_all, type: BuiltInFunction, def. @built-in:transmute_all)}
-    %%   select_all:         {**dplyr::select_all** (id: built-in:select_all, type: BuiltInFunction, def. @built-in:select_all)}
-    %%   rename_all:         {**dplyr::rename_all** (id: built-in:rename_all, type: BuiltInFunction, def. @built-in:rename_all)}
-    %%   summarise_all:      {**dplyr::summarise_all** (id: built-in:summarise_all, type: BuiltInFunction, def. @built-in:summarise_all)}
-    %%   summarize_all:      {**dplyr::summarize_all** (id: built-in:summarize_all, type: BuiltInFunction, def. @built-in:summarize_all)}
-    %%   mutate_at:          {**dplyr::mutate_at** (id: built-in:mutate_at, type: BuiltInFunction, def. @built-in:mutate_at)}
-    %%   transmute_at:       {**dplyr::transmute_at** (id: built-in:transmute_at, type: BuiltInFunction, def. @built-in:transmute_at)}
-    %%   summarise_at:       {**dplyr::summarise_at** (id: built-in:summarise_at, type: BuiltInFunction, def. @built-in:summarise_at)}
-    %%   summarize_at:       {**dplyr::summarize_at** (id: built-in:summarize_at, type: BuiltInFunction, def. @built-in:summarize_at)}
-    %%   mutate_if:          {**dplyr::mutate_if** (id: built-in:mutate_if, type: BuiltInFunction, def. @built-in:mutate_if)}
-    %%   transmute_if:       {**dplyr::transmute_if** (id: built-in:transmute_if, type: BuiltInFunction, def. @built-in:transmute_if)}
-    %%   select_if:          {**dplyr::select_if** (id: built-in:select_if, type: BuiltInFunction, def. @built-in:select_if)}
-    %%   rename_if:          {**dplyr::rename_if** (id: built-in:rename_if, type: BuiltInFunction, def. @built-in:rename_if)}
-    %%   summarise_if:       {**dplyr::summarise_if** (id: built-in:summarise_if, type: BuiltInFunction, def. @built-in:summarise_if)}
-    %%   summarize_if:       {**dplyr::summarize_if** (id: built-in:summarize_if, type: BuiltInFunction, def. @built-in:summarize_if)}
-    %%   filter_all:         {**dplyr::filter_all** (id: built-in:filter_all, type: BuiltInFunction, def. @built-in:filter_all)}
-    %%   filter_at:          {**dplyr::filter_at** (id: built-in:filter_at, type: BuiltInFunction, def. @built-in:filter_at)}
-    %%   filter_if:          {**dplyr::filter_if** (id: built-in:filter_if, type: BuiltInFunction, def. @built-in:filter_if)}
-    %%   select_at:          {**dplyr::select_at** (id: built-in:select_at, type: BuiltInFunction, def. @built-in:select_at)}
-    %%   rename_at:          {**dplyr::rename_at** (id: built-in:rename_at, type: BuiltInFunction, def. @built-in:rename_at)}
-    %%   arrange_all:        {**dplyr::arrange_all** (id: built-in:arrange_all, type: BuiltInFunction, def. @built-in:arrange_all)}
-    %%   arrange_at:         {**dplyr::arrange_at** (id: built-in:arrange_at, type: BuiltInFunction, def. @built-in:arrange_at)}
-    %%   arrange_if:         {**dplyr::arrange_if** (id: built-in:arrange_if, type: BuiltInFunction, def. @built-in:arrange_if)}
-    %%   group_by_all:       {**dplyr::group_by_all** (id: built-in:group_by_all, type: BuiltInFunction, def. @built-in:group_by_all)}
-    %%   group_by_at:        {**dplyr::group_by_at** (id: built-in:group_by_at, type: BuiltInFunction, def. @built-in:group_by_at)}
-    %%   group_by_if:        {**dplyr::group_by_if** (id: built-in:group_by_if, type: BuiltInFunction, def. @built-in:group_by_if)}
-    %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
-    %%   distinct_at:        {**dplyr::distinct_at** (id: built-in:distinct_at, type: BuiltInFunction, def. @built-in:distinct_at)}
-    %%   distinct_if:        {**dplyr::distinct_if** (id: built-in:distinct_if, type: BuiltInFunction, def. @built-in:distinct_if)}
-    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
-    %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
-    %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
-    %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
-    %%   rename_with:        {**dplyr::rename_with** (id: built-in:rename_with, type: BuiltInFunction, def. @built-in:rename_with)}
-    %%   quo:                {**dplyr::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
-    %%   expr:               {**dplyr::expr** (id: built-in:expr, type: BuiltInFunction, def. @built-in:expr)}
-    %%   quos:               {**dplyr::quos** (id: built-in:quos, type: BuiltInFunction, def. @built-in:quos)}
-    %%   enexpr:             {**dplyr::enexpr** (id: built-in:enexpr, type: BuiltInFunction, def. @built-in:enexpr)}
-    %%   enquo:              {**dplyr::enquo** (id: built-in:enquo, type: BuiltInFunction, def. @built-in:enquo)}
-    %%   ensym:              {**dplyr::ensym** (id: built-in:ensym, type: BuiltInFunction, def. @built-in:ensym)}
-    %%   enexprs:            {**dplyr::enexprs** (id: built-in:enexprs, type: BuiltInFunction, def. @built-in:enexprs)}
-    %%   enquos:             {**dplyr::enquos** (id: built-in:enquos, type: BuiltInFunction, def. @built-in:enquos)}
-    %%   ensyms:             {**dplyr::ensyms** (id: built-in:ensyms, type: BuiltInFunction, def. @built-in:ensyms)}
-    %%   sym:                {**dplyr::sym** (id: built-in:sym, type: BuiltInFunction, def. @built-in:sym)}
-    %%   syms:               {**dplyr::syms** (id: built-in:syms, type: BuiltInFunction, def. @built-in:syms)}
-    %%   as_label:           {**dplyr::as_label** (id: built-in:as_label, type: BuiltInFunction, def. @built-in:as_label)}
-    %%   quo_name:           {**dplyr::quo_name** (id: built-in:quo_name, type: BuiltInFunction, def. @built-in:quo_name)}
-    %%   sql:                {**dplyr::sql** (id: built-in:sql, type: BuiltInFunction, def. @built-in:sql)}
-    %%   id:                 {**dplyr::id** (id: built-in:id, type: BuiltInFunction, def. @built-in:id)}
-    %%   select_vars_:       {**dplyr::select_vars_** (id: built-in:select_vars_, type: BuiltInFunction, def. @built-in:select_vars_)}
-    %%   rename_vars_:       {**dplyr::rename_vars_** (id: built-in:rename_vars_, type: BuiltInFunction, def. @built-in:rename_vars_)}
-    %%   changes:            {**dplyr::changes** (id: built-in:changes, type: BuiltInFunction, def. @built-in:changes)}
-    %%   location:           {**dplyr::location** (id: built-in:location, type: BuiltInFunction, def. @built-in:location)}
-    %%   eval_tbls2:         {**dplyr::eval_tbls2** (id: built-in:eval_tbls2, type: BuiltInFunction, def. @built-in:eval_tbls2)}
-    %%   eval_tbls:          {**dplyr::eval_tbls** (id: built-in:eval_tbls, type: BuiltInFunction, def. @built-in:eval_tbls)}
-    %%   compare_tbls2:      {**dplyr::compare_tbls2** (id: built-in:compare_tbls2, type: BuiltInFunction, def. @built-in:compare_tbls2)}
-    %%   compare_tbls:       {**dplyr::compare_tbls** (id: built-in:compare_tbls, type: BuiltInFunction, def. @built-in:compare_tbls)}
-    %%   bench_tbls:         {**dplyr::bench_tbls** (id: built-in:bench_tbls, type: BuiltInFunction, def. @built-in:bench_tbls)}
-    %%   current_vars:       {**dplyr::current_vars** (id: built-in:current_vars, type: BuiltInFunction, def. @built-in:current_vars)}
-    %%   select_var:         {**dplyr::select_var** (id: built-in:select_var, type: BuiltInFunction, def. @built-in:select_var)}
-    %%   rename_vars:        {**dplyr::rename_vars** (id: built-in:rename_vars, type: BuiltInFunction, def. @built-in:rename_vars)}
-    %%   select_vars:        {**dplyr::select_vars** (id: built-in:select_vars, type: BuiltInFunction, def. @built-in:select_vars)}
-    %%   failwith:           {**dplyr::failwith** (id: built-in:failwith, type: BuiltInFunction, def. @built-in:failwith)}
-    %%   progress_estimated: {**dplyr::progress_estimated** (id: built-in:progress_estimated, type: BuiltInFunction, def. @built-in:progress_estimated)}
-    %%   add_rownames:       {**dplyr::add_rownames** (id: built-in:add_rownames, type: BuiltInFunction, def. @built-in:add_rownames)}
-    %%   tbl_df:             {**dplyr::tbl_df** (id: built-in:tbl_df, type: BuiltInFunction, def. @built-in:tbl_df)}
-    %%   src_local:          {**dplyr::src_local** (id: built-in:src_local, type: BuiltInFunction, def. @built-in:src_local)}
-    %%   summarise_each:     {**dplyr::summarise_each** (id: built-in:summarise_each, type: BuiltInFunction, def. @built-in:summarise_each)}
-    %%   summarize_:         {**dplyr::summarize_** (id: built-in:summarize_, type: BuiltInFunction, def. @built-in:summarize_)}
-    %%   summarise_:         {**dplyr::summarise_** (id: built-in:summarise_, type: BuiltInFunction, def. @built-in:summarise_)}
-    %%   slice_:             {**dplyr::slice_** (id: built-in:slice_, type: BuiltInFunction, def. @built-in:slice_)}
-    %%   select_:            {**dplyr::select_** (id: built-in:select_, type: BuiltInFunction, def. @built-in:select_)}
-    %%   rename_:            {**dplyr::rename_** (id: built-in:rename_, type: BuiltInFunction, def. @built-in:rename_)}
-    %%   transmute_:         {**dplyr::transmute_** (id: built-in:transmute_, type: BuiltInFunction, def. @built-in:transmute_)}
-    %%   mutate_:            {**dplyr::mutate_** (id: built-in:mutate_, type: BuiltInFunction, def. @built-in:mutate_)}
-    %%   group_indices_:     {**dplyr::group_indices_** (id: built-in:group_indices_, type: BuiltInFunction, def. @built-in:group_indices_)}
-    %%   filter_:            {**dplyr::filter_** (id: built-in:filter_, type: BuiltInFunction, def. @built-in:filter_)}
-    %%   do_:                {**dplyr::do_** (id: built-in:do_, type: BuiltInFunction, def. @built-in:do_)}
-    %%   arrange_:           {**dplyr::arrange_** (id: built-in:arrange_, type: BuiltInFunction, def. @built-in:arrange_)}
-    %%   tally_:             {**dplyr::tally_** (id: built-in:tally_, type: BuiltInFunction, def. @built-in:tally_)}
-    %%   add_tally_:         {**dplyr::add_tally_** (id: built-in:add_tally_, type: BuiltInFunction, def. @built-in:add_tally_)}
-    %%   group_by_:          {**dplyr::group_by_** (id: built-in:group_by_, type: BuiltInFunction, def. @built-in:group_by_)}
-    %%   funs_:              {**dplyr::funs_** (id: built-in:funs_, type: BuiltInFunction, def. @built-in:funs_)}
-    %%   distinct_:          {**dplyr::distinct_** (id: built-in:distinct_, type: BuiltInFunction, def. @built-in:distinct_)}
-    %%   count_:             {**dplyr::count_** (id: built-in:count_, type: BuiltInFunction, def. @built-in:count_)}
-    %%   add_count_:         {**dplyr::add_count_** (id: built-in:add_count_, type: BuiltInFunction, def. @built-in:add_count_)}
-    %%   funs:               {**dplyr::funs** (id: built-in:funs, type: BuiltInFunction, def. @built-in:funs)}
-    %%   combine:            {**dplyr::combine** (id: built-in:combine, type: BuiltInFunction, def. @built-in:combine)}
-    %%   all_equal:          {**dplyr::all_equal** (id: built-in:all_equal, type: BuiltInFunction, def. @built-in:all_equal)}
-    %%   top_n:              {**dplyr::top_n** (id: built-in:top_n, type: BuiltInFunction, def. @built-in:top_n)}
-    %%   sample_n:           {**dplyr::sample_n** (id: built-in:sample_n, type: BuiltInFunction, def. @built-in:sample_n)}
-    %%   recode:             {**dplyr::recode** (id: built-in:recode, type: BuiltInFunction, def. @built-in:recode)}
-    %%   group_nest:         {**dplyr::group_nest** (id: built-in:group_nest, type: BuiltInFunction, def. @built-in:group_nest)}
-    %%   do:                 {**dplyr::do** (id: built-in:do, type: BuiltInFunction, def. @built-in:do)}
-    %%   all_vars:           {**dplyr::all_vars** (id: built-in:all_vars, type: BuiltInFunction, def. @built-in:all_vars)}
-    %%   vars:               {**dplyr::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
-    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
-    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
-    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
-    %%   sample_frac:        {**dplyr::sample_frac** (id: built-in:sample_frac, type: BuiltInFunction, def. @built-in:sample_frac)}
-    %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
+    %%   and what generics, magrittr, pillar, rlang, tibble, tidyselect attach
     %% 3----------------------------------------
-    %%   read_csv:           {**readr::read_csv** (id: built-in:read_csv, type: BuiltInFunction, def. @built-in:read_csv)}
-    %%   read_csv2:          {**readr::read_csv2** (id: built-in:read_csv2, type: BuiltInFunction, def. @built-in:read_csv2)}
-    %%   read_tsv:           {**readr::read_tsv** (id: built-in:read_tsv, type: BuiltInFunction, def. @built-in:read_tsv)}
-    %%   read_lines:         {**readr::read_lines** (id: built-in:read_lines, type: BuiltInFunction, def. @built-in:read_lines)}
-    %%   read_delim:         {**readr::read_delim** (id: built-in:read_delim, type: BuiltInFunction, def. @built-in:read_delim)}
-    %%   read_fwf:           {**readr::read_fwf** (id: built-in:read_fwf, type: BuiltInFunction, def. @built-in:read_fwf)}
-    %%   read_table:         {**readr::read_table** (id: built-in:read_table, type: BuiltInFunction, def. @built-in:read_table)}
-    %%   read_log:           {**readr::read_log** (id: built-in:read_log, type: BuiltInFunction, def. @built-in:read_log)}
-    %%   read_lines_raw:     {**readr::read_lines_raw** (id: built-in:read_lines_raw, type: BuiltInFunction, def. @built-in:read_lines_raw)}
-    %%   read_lines_chunked: {**readr::read_lines_chunked** (id: built-in:read_lines_chunked, type: BuiltInFunction, def. @built-in:read_lines_chunked)}
-    %%   read_rds:           {**readr::read_rds** (id: built-in:read_rds, type: BuiltInFunction, def. @built-in:read_rds)}
-    %%   write_csv:          {**readr::write_csv** (id: built-in:write_csv, type: BuiltInFunction, def. @built-in:write_csv)}
-    %%   write_csv2:         {**readr::write_csv2** (id: built-in:write_csv2, type: BuiltInFunction, def. @built-in:write_csv2)}
-    %%   write_tsv:          {**readr::write_tsv** (id: built-in:write_tsv, type: BuiltInFunction, def. @built-in:write_tsv)}
-    %%   write_delim:        {**readr::write_delim** (id: built-in:write_delim, type: BuiltInFunction, def. @built-in:write_delim)}
-    %%   write_excel_csv:    {**readr::write_excel_csv** (id: built-in:write_excel_csv, type: BuiltInFunction, def. @built-in:write_excel_csv)}
-    %%   write_excel_csv2:   {**readr::write_excel_csv2** (id: built-in:write_excel_csv2, type: BuiltInFunction, def. @built-in:write_excel_csv2)}
-    %%   write_file:         {**readr::write_file** (id: built-in:write_file, type: BuiltInFunction, def. @built-in:write_file)}
-    %%   write_lines:        {**readr::write_lines** (id: built-in:write_lines, type: BuiltInFunction, def. @built-in:write_lines)}
-    %%   write_rds:          {**readr::write_rds** (id: built-in:write_rds, type: BuiltInFunction, def. @built-in:write_rds)}
-    %%   read_table2:        {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
-    %%   melt_table:         {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
-    %%   melt_fwf:           {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
-    %%   melt_delim:         {**readr::melt_delim** (id: built-in:melt_delim, type: BuiltInFunction, def. @built-in:melt_delim)}
-    %%    library-load:      {**readr:: library-load** (id: 11, type: Function, def. @11)}
+    %%   and what dplyr attach
     %% 4----------------------------------------
+    %% 5----------------------------------------
+    %%   and what readr attach
+    %% 6----------------------------------------
     %%   #search-path:ggplot: {**#search-path:ggplot** (id: 3, type: Variable, def. @3)}
     %%   #search-path:        {**#search-path** (id: 3, type: Variable, cds: {}, def. @3), **#search-path** (id: 7, type: Variable, cds: {}, def. @7), **#search-path** (id: 11, type: Variable, cds: {}, def. @11)}
     %%   #search-path:dplyr:  {**#search-path:dplyr** (id: 7, type: Variable, def. @7)}
     %%   #search-path:readr:  {**#search-path:readr** (id: 11, type: Variable, def. @11)}
-    16[["`*#91;RFunctionCall#93;* **read#95;csv**
+    16[["`*#91;RFunctionCall#93;* readr#58;#58;**read#95;csv**
       *6.9-28* (**id: 16**)
     arg: (14)`"]]
-    built-in:read_csv["`Built-In:
-read#95;csv`"]
-    style built-in:read_csv stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    built-in:readr:read_csv["`Built-In:
+readr#58;#58;read#95;csv`"]
+    style built-in:readr:read_csv stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     12["`*#91;RSymbol#93;* **data**
       *6.1-4* (**id: 12**, v: 16)`"]
     17[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -915,180 +754,19 @@ read#95;csv`"]
     %% 1----------------------------------------
     %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
     %% 2----------------------------------------
-    %%   filter:             {**dplyr::filter** (id: built-in:filter, type: BuiltInFunction, def. @built-in:filter)}
-    %%   filter_out:         {**dplyr::filter_out** (id: built-in:filter_out, type: BuiltInFunction, def. @built-in:filter_out)}
-    %%   slice:              {**dplyr::slice** (id: built-in:slice, type: BuiltInFunction, def. @built-in:slice)}
-    %%   mutate:             {**dplyr::mutate** (id: built-in:mutate, type: BuiltInFunction, def. @built-in:mutate)}
-    %%   transmute:          {**dplyr::transmute** (id: built-in:transmute, type: BuiltInFunction, def. @built-in:transmute)}
-    %%   rename:             {**dplyr::rename** (id: built-in:rename, type: BuiltInFunction, def. @built-in:rename)}
-    %%   select:             {**dplyr::select** (id: built-in:select, type: BuiltInFunction, def. @built-in:select)}
-    %%   summarise:          {**dplyr::summarise** (id: built-in:summarise, type: BuiltInFunction, def. @built-in:summarise)}
-    %%   summarize:          {**dplyr::summarize** (id: built-in:summarize, type: BuiltInFunction, def. @built-in:summarize)}
-    %%   arrange:            {**dplyr::arrange** (id: built-in:arrange, type: BuiltInFunction, def. @built-in:arrange)}
-    %%   group_by:           {**dplyr::group_by** (id: built-in:group_by, type: BuiltInFunction, def. @built-in:group_by)}
-    %%   distinct:           {**dplyr::distinct** (id: built-in:distinct, type: BuiltInFunction, def. @built-in:distinct)}
-    %%   count:              {**dplyr::count** (id: built-in:count, type: BuiltInFunction, def. @built-in:count)}
-    %%   tally:              {**dplyr::tally** (id: built-in:tally, type: BuiltInFunction, def. @built-in:tally)}
-    %%   add_tally:          {**dplyr::add_tally** (id: built-in:add_tally, type: BuiltInFunction, def. @built-in:add_tally)}
-    %%   reframe:            {**dplyr::reframe** (id: built-in:reframe, type: BuiltInFunction, def. @built-in:reframe)}
-    %%   slice_head:         {**dplyr::slice_head** (id: built-in:slice_head, type: BuiltInFunction, def. @built-in:slice_head)}
-    %%   slice_tail:         {**dplyr::slice_tail** (id: built-in:slice_tail, type: BuiltInFunction, def. @built-in:slice_tail)}
-    %%   slice_min:          {**dplyr::slice_min** (id: built-in:slice_min, type: BuiltInFunction, def. @built-in:slice_min)}
-    %%   slice_max:          {**dplyr::slice_max** (id: built-in:slice_max, type: BuiltInFunction, def. @built-in:slice_max)}
-    %%   slice_sample:       {**dplyr::slice_sample** (id: built-in:slice_sample, type: BuiltInFunction, def. @built-in:slice_sample)}
-    %%   pull:               {**dplyr::pull** (id: built-in:pull, type: BuiltInFunction, def. @built-in:pull)}
-    %%   relocate:           {**dplyr::relocate** (id: built-in:relocate, type: BuiltInFunction, def. @built-in:relocate)}
-    %%   group_split:        {**dplyr::group_split** (id: built-in:group_split, type: BuiltInFunction, def. @built-in:group_split)}
-    %%   add_count:          {**dplyr::add_count** (id: built-in:add_count, type: BuiltInFunction, def. @built-in:add_count)}
-    %%   nest_by:            {**dplyr::nest_by** (id: built-in:nest_by, type: BuiltInFunction, def. @built-in:nest_by)}
-    %%   rowwise:            {**dplyr::rowwise** (id: built-in:rowwise, type: BuiltInFunction, def. @built-in:rowwise)}
-    %%   with_groups:        {**dplyr::with_groups** (id: built-in:with_groups, type: BuiltInFunction, def. @built-in:with_groups)}
-    %%   ungroup:            {**dplyr::ungroup** (id: built-in:ungroup, type: BuiltInFunction, def. @built-in:ungroup)}
-    %%   left_join:          {**dplyr::left_join** (id: built-in:left_join, type: BuiltInFunction, def. @built-in:left_join)}
-    %%   right_join:         {**dplyr::right_join** (id: built-in:right_join, type: BuiltInFunction, def. @built-in:right_join)}
-    %%   inner_join:         {**dplyr::inner_join** (id: built-in:inner_join, type: BuiltInFunction, def. @built-in:inner_join)}
-    %%   full_join:          {**dplyr::full_join** (id: built-in:full_join, type: BuiltInFunction, def. @built-in:full_join)}
-    %%   semi_join:          {**dplyr::semi_join** (id: built-in:semi_join, type: BuiltInFunction, def. @built-in:semi_join)}
-    %%   anti_join:          {**dplyr::anti_join** (id: built-in:anti_join, type: BuiltInFunction, def. @built-in:anti_join)}
-    %%   nest_join:          {**dplyr::nest_join** (id: built-in:nest_join, type: BuiltInFunction, def. @built-in:nest_join)}
-    %%   cross_join:         {**dplyr::cross_join** (id: built-in:cross_join, type: BuiltInFunction, def. @built-in:cross_join)}
-    %%   bind_rows:          {**dplyr::bind_rows** (id: built-in:bind_rows, type: BuiltInFunction, def. @built-in:bind_rows)}
-    %%   bind_cols:          {**dplyr::bind_cols** (id: built-in:bind_cols, type: BuiltInFunction, def. @built-in:bind_cols)}
-    %%   mutate_all:         {**dplyr::mutate_all** (id: built-in:mutate_all, type: BuiltInFunction, def. @built-in:mutate_all)}
-    %%   transmute_all:      {**dplyr::transmute_all** (id: built-in:transmute_all, type: BuiltInFunction, def. @built-in:transmute_all)}
-    %%   select_all:         {**dplyr::select_all** (id: built-in:select_all, type: BuiltInFunction, def. @built-in:select_all)}
-    %%   rename_all:         {**dplyr::rename_all** (id: built-in:rename_all, type: BuiltInFunction, def. @built-in:rename_all)}
-    %%   summarise_all:      {**dplyr::summarise_all** (id: built-in:summarise_all, type: BuiltInFunction, def. @built-in:summarise_all)}
-    %%   summarize_all:      {**dplyr::summarize_all** (id: built-in:summarize_all, type: BuiltInFunction, def. @built-in:summarize_all)}
-    %%   mutate_at:          {**dplyr::mutate_at** (id: built-in:mutate_at, type: BuiltInFunction, def. @built-in:mutate_at)}
-    %%   transmute_at:       {**dplyr::transmute_at** (id: built-in:transmute_at, type: BuiltInFunction, def. @built-in:transmute_at)}
-    %%   summarise_at:       {**dplyr::summarise_at** (id: built-in:summarise_at, type: BuiltInFunction, def. @built-in:summarise_at)}
-    %%   summarize_at:       {**dplyr::summarize_at** (id: built-in:summarize_at, type: BuiltInFunction, def. @built-in:summarize_at)}
-    %%   mutate_if:          {**dplyr::mutate_if** (id: built-in:mutate_if, type: BuiltInFunction, def. @built-in:mutate_if)}
-    %%   transmute_if:       {**dplyr::transmute_if** (id: built-in:transmute_if, type: BuiltInFunction, def. @built-in:transmute_if)}
-    %%   select_if:          {**dplyr::select_if** (id: built-in:select_if, type: BuiltInFunction, def. @built-in:select_if)}
-    %%   rename_if:          {**dplyr::rename_if** (id: built-in:rename_if, type: BuiltInFunction, def. @built-in:rename_if)}
-    %%   summarise_if:       {**dplyr::summarise_if** (id: built-in:summarise_if, type: BuiltInFunction, def. @built-in:summarise_if)}
-    %%   summarize_if:       {**dplyr::summarize_if** (id: built-in:summarize_if, type: BuiltInFunction, def. @built-in:summarize_if)}
-    %%   filter_all:         {**dplyr::filter_all** (id: built-in:filter_all, type: BuiltInFunction, def. @built-in:filter_all)}
-    %%   filter_at:          {**dplyr::filter_at** (id: built-in:filter_at, type: BuiltInFunction, def. @built-in:filter_at)}
-    %%   filter_if:          {**dplyr::filter_if** (id: built-in:filter_if, type: BuiltInFunction, def. @built-in:filter_if)}
-    %%   select_at:          {**dplyr::select_at** (id: built-in:select_at, type: BuiltInFunction, def. @built-in:select_at)}
-    %%   rename_at:          {**dplyr::rename_at** (id: built-in:rename_at, type: BuiltInFunction, def. @built-in:rename_at)}
-    %%   arrange_all:        {**dplyr::arrange_all** (id: built-in:arrange_all, type: BuiltInFunction, def. @built-in:arrange_all)}
-    %%   arrange_at:         {**dplyr::arrange_at** (id: built-in:arrange_at, type: BuiltInFunction, def. @built-in:arrange_at)}
-    %%   arrange_if:         {**dplyr::arrange_if** (id: built-in:arrange_if, type: BuiltInFunction, def. @built-in:arrange_if)}
-    %%   group_by_all:       {**dplyr::group_by_all** (id: built-in:group_by_all, type: BuiltInFunction, def. @built-in:group_by_all)}
-    %%   group_by_at:        {**dplyr::group_by_at** (id: built-in:group_by_at, type: BuiltInFunction, def. @built-in:group_by_at)}
-    %%   group_by_if:        {**dplyr::group_by_if** (id: built-in:group_by_if, type: BuiltInFunction, def. @built-in:group_by_if)}
-    %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
-    %%   distinct_at:        {**dplyr::distinct_at** (id: built-in:distinct_at, type: BuiltInFunction, def. @built-in:distinct_at)}
-    %%   distinct_if:        {**dplyr::distinct_if** (id: built-in:distinct_if, type: BuiltInFunction, def. @built-in:distinct_if)}
-    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
-    %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
-    %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
-    %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
-    %%   rename_with:        {**dplyr::rename_with** (id: built-in:rename_with, type: BuiltInFunction, def. @built-in:rename_with)}
-    %%   quo:                {**dplyr::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
-    %%   expr:               {**dplyr::expr** (id: built-in:expr, type: BuiltInFunction, def. @built-in:expr)}
-    %%   quos:               {**dplyr::quos** (id: built-in:quos, type: BuiltInFunction, def. @built-in:quos)}
-    %%   enexpr:             {**dplyr::enexpr** (id: built-in:enexpr, type: BuiltInFunction, def. @built-in:enexpr)}
-    %%   enquo:              {**dplyr::enquo** (id: built-in:enquo, type: BuiltInFunction, def. @built-in:enquo)}
-    %%   ensym:              {**dplyr::ensym** (id: built-in:ensym, type: BuiltInFunction, def. @built-in:ensym)}
-    %%   enexprs:            {**dplyr::enexprs** (id: built-in:enexprs, type: BuiltInFunction, def. @built-in:enexprs)}
-    %%   enquos:             {**dplyr::enquos** (id: built-in:enquos, type: BuiltInFunction, def. @built-in:enquos)}
-    %%   ensyms:             {**dplyr::ensyms** (id: built-in:ensyms, type: BuiltInFunction, def. @built-in:ensyms)}
-    %%   sym:                {**dplyr::sym** (id: built-in:sym, type: BuiltInFunction, def. @built-in:sym)}
-    %%   syms:               {**dplyr::syms** (id: built-in:syms, type: BuiltInFunction, def. @built-in:syms)}
-    %%   as_label:           {**dplyr::as_label** (id: built-in:as_label, type: BuiltInFunction, def. @built-in:as_label)}
-    %%   quo_name:           {**dplyr::quo_name** (id: built-in:quo_name, type: BuiltInFunction, def. @built-in:quo_name)}
-    %%   sql:                {**dplyr::sql** (id: built-in:sql, type: BuiltInFunction, def. @built-in:sql)}
-    %%   id:                 {**dplyr::id** (id: built-in:id, type: BuiltInFunction, def. @built-in:id)}
-    %%   select_vars_:       {**dplyr::select_vars_** (id: built-in:select_vars_, type: BuiltInFunction, def. @built-in:select_vars_)}
-    %%   rename_vars_:       {**dplyr::rename_vars_** (id: built-in:rename_vars_, type: BuiltInFunction, def. @built-in:rename_vars_)}
-    %%   changes:            {**dplyr::changes** (id: built-in:changes, type: BuiltInFunction, def. @built-in:changes)}
-    %%   location:           {**dplyr::location** (id: built-in:location, type: BuiltInFunction, def. @built-in:location)}
-    %%   eval_tbls2:         {**dplyr::eval_tbls2** (id: built-in:eval_tbls2, type: BuiltInFunction, def. @built-in:eval_tbls2)}
-    %%   eval_tbls:          {**dplyr::eval_tbls** (id: built-in:eval_tbls, type: BuiltInFunction, def. @built-in:eval_tbls)}
-    %%   compare_tbls2:      {**dplyr::compare_tbls2** (id: built-in:compare_tbls2, type: BuiltInFunction, def. @built-in:compare_tbls2)}
-    %%   compare_tbls:       {**dplyr::compare_tbls** (id: built-in:compare_tbls, type: BuiltInFunction, def. @built-in:compare_tbls)}
-    %%   bench_tbls:         {**dplyr::bench_tbls** (id: built-in:bench_tbls, type: BuiltInFunction, def. @built-in:bench_tbls)}
-    %%   current_vars:       {**dplyr::current_vars** (id: built-in:current_vars, type: BuiltInFunction, def. @built-in:current_vars)}
-    %%   select_var:         {**dplyr::select_var** (id: built-in:select_var, type: BuiltInFunction, def. @built-in:select_var)}
-    %%   rename_vars:        {**dplyr::rename_vars** (id: built-in:rename_vars, type: BuiltInFunction, def. @built-in:rename_vars)}
-    %%   select_vars:        {**dplyr::select_vars** (id: built-in:select_vars, type: BuiltInFunction, def. @built-in:select_vars)}
-    %%   failwith:           {**dplyr::failwith** (id: built-in:failwith, type: BuiltInFunction, def. @built-in:failwith)}
-    %%   progress_estimated: {**dplyr::progress_estimated** (id: built-in:progress_estimated, type: BuiltInFunction, def. @built-in:progress_estimated)}
-    %%   add_rownames:       {**dplyr::add_rownames** (id: built-in:add_rownames, type: BuiltInFunction, def. @built-in:add_rownames)}
-    %%   tbl_df:             {**dplyr::tbl_df** (id: built-in:tbl_df, type: BuiltInFunction, def. @built-in:tbl_df)}
-    %%   src_local:          {**dplyr::src_local** (id: built-in:src_local, type: BuiltInFunction, def. @built-in:src_local)}
-    %%   summarise_each:     {**dplyr::summarise_each** (id: built-in:summarise_each, type: BuiltInFunction, def. @built-in:summarise_each)}
-    %%   summarize_:         {**dplyr::summarize_** (id: built-in:summarize_, type: BuiltInFunction, def. @built-in:summarize_)}
-    %%   summarise_:         {**dplyr::summarise_** (id: built-in:summarise_, type: BuiltInFunction, def. @built-in:summarise_)}
-    %%   slice_:             {**dplyr::slice_** (id: built-in:slice_, type: BuiltInFunction, def. @built-in:slice_)}
-    %%   select_:            {**dplyr::select_** (id: built-in:select_, type: BuiltInFunction, def. @built-in:select_)}
-    %%   rename_:            {**dplyr::rename_** (id: built-in:rename_, type: BuiltInFunction, def. @built-in:rename_)}
-    %%   transmute_:         {**dplyr::transmute_** (id: built-in:transmute_, type: BuiltInFunction, def. @built-in:transmute_)}
-    %%   mutate_:            {**dplyr::mutate_** (id: built-in:mutate_, type: BuiltInFunction, def. @built-in:mutate_)}
-    %%   group_indices_:     {**dplyr::group_indices_** (id: built-in:group_indices_, type: BuiltInFunction, def. @built-in:group_indices_)}
-    %%   filter_:            {**dplyr::filter_** (id: built-in:filter_, type: BuiltInFunction, def. @built-in:filter_)}
-    %%   do_:                {**dplyr::do_** (id: built-in:do_, type: BuiltInFunction, def. @built-in:do_)}
-    %%   arrange_:           {**dplyr::arrange_** (id: built-in:arrange_, type: BuiltInFunction, def. @built-in:arrange_)}
-    %%   tally_:             {**dplyr::tally_** (id: built-in:tally_, type: BuiltInFunction, def. @built-in:tally_)}
-    %%   add_tally_:         {**dplyr::add_tally_** (id: built-in:add_tally_, type: BuiltInFunction, def. @built-in:add_tally_)}
-    %%   group_by_:          {**dplyr::group_by_** (id: built-in:group_by_, type: BuiltInFunction, def. @built-in:group_by_)}
-    %%   funs_:              {**dplyr::funs_** (id: built-in:funs_, type: BuiltInFunction, def. @built-in:funs_)}
-    %%   distinct_:          {**dplyr::distinct_** (id: built-in:distinct_, type: BuiltInFunction, def. @built-in:distinct_)}
-    %%   count_:             {**dplyr::count_** (id: built-in:count_, type: BuiltInFunction, def. @built-in:count_)}
-    %%   add_count_:         {**dplyr::add_count_** (id: built-in:add_count_, type: BuiltInFunction, def. @built-in:add_count_)}
-    %%   funs:               {**dplyr::funs** (id: built-in:funs, type: BuiltInFunction, def. @built-in:funs)}
-    %%   combine:            {**dplyr::combine** (id: built-in:combine, type: BuiltInFunction, def. @built-in:combine)}
-    %%   all_equal:          {**dplyr::all_equal** (id: built-in:all_equal, type: BuiltInFunction, def. @built-in:all_equal)}
-    %%   top_n:              {**dplyr::top_n** (id: built-in:top_n, type: BuiltInFunction, def. @built-in:top_n)}
-    %%   sample_n:           {**dplyr::sample_n** (id: built-in:sample_n, type: BuiltInFunction, def. @built-in:sample_n)}
-    %%   recode:             {**dplyr::recode** (id: built-in:recode, type: BuiltInFunction, def. @built-in:recode)}
-    %%   group_nest:         {**dplyr::group_nest** (id: built-in:group_nest, type: BuiltInFunction, def. @built-in:group_nest)}
-    %%   do:                 {**dplyr::do** (id: built-in:do, type: BuiltInFunction, def. @built-in:do)}
-    %%   all_vars:           {**dplyr::all_vars** (id: built-in:all_vars, type: BuiltInFunction, def. @built-in:all_vars)}
-    %%   vars:               {**dplyr::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
-    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
-    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
-    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
-    %%   sample_frac:        {**dplyr::sample_frac** (id: built-in:sample_frac, type: BuiltInFunction, def. @built-in:sample_frac)}
-    %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
+    %%   and what generics, magrittr, pillar, rlang, tibble, tidyselect attach
     %% 3----------------------------------------
-    %%   read_csv:           {**readr::read_csv** (id: built-in:read_csv, type: BuiltInFunction, def. @built-in:read_csv)}
-    %%   read_csv2:          {**readr::read_csv2** (id: built-in:read_csv2, type: BuiltInFunction, def. @built-in:read_csv2)}
-    %%   read_tsv:           {**readr::read_tsv** (id: built-in:read_tsv, type: BuiltInFunction, def. @built-in:read_tsv)}
-    %%   read_lines:         {**readr::read_lines** (id: built-in:read_lines, type: BuiltInFunction, def. @built-in:read_lines)}
-    %%   read_delim:         {**readr::read_delim** (id: built-in:read_delim, type: BuiltInFunction, def. @built-in:read_delim)}
-    %%   read_fwf:           {**readr::read_fwf** (id: built-in:read_fwf, type: BuiltInFunction, def. @built-in:read_fwf)}
-    %%   read_table:         {**readr::read_table** (id: built-in:read_table, type: BuiltInFunction, def. @built-in:read_table)}
-    %%   read_log:           {**readr::read_log** (id: built-in:read_log, type: BuiltInFunction, def. @built-in:read_log)}
-    %%   read_lines_raw:     {**readr::read_lines_raw** (id: built-in:read_lines_raw, type: BuiltInFunction, def. @built-in:read_lines_raw)}
-    %%   read_lines_chunked: {**readr::read_lines_chunked** (id: built-in:read_lines_chunked, type: BuiltInFunction, def. @built-in:read_lines_chunked)}
-    %%   read_rds:           {**readr::read_rds** (id: built-in:read_rds, type: BuiltInFunction, def. @built-in:read_rds)}
-    %%   write_csv:          {**readr::write_csv** (id: built-in:write_csv, type: BuiltInFunction, def. @built-in:write_csv)}
-    %%   write_csv2:         {**readr::write_csv2** (id: built-in:write_csv2, type: BuiltInFunction, def. @built-in:write_csv2)}
-    %%   write_tsv:          {**readr::write_tsv** (id: built-in:write_tsv, type: BuiltInFunction, def. @built-in:write_tsv)}
-    %%   write_delim:        {**readr::write_delim** (id: built-in:write_delim, type: BuiltInFunction, def. @built-in:write_delim)}
-    %%   write_excel_csv:    {**readr::write_excel_csv** (id: built-in:write_excel_csv, type: BuiltInFunction, def. @built-in:write_excel_csv)}
-    %%   write_excel_csv2:   {**readr::write_excel_csv2** (id: built-in:write_excel_csv2, type: BuiltInFunction, def. @built-in:write_excel_csv2)}
-    %%   write_file:         {**readr::write_file** (id: built-in:write_file, type: BuiltInFunction, def. @built-in:write_file)}
-    %%   write_lines:        {**readr::write_lines** (id: built-in:write_lines, type: BuiltInFunction, def. @built-in:write_lines)}
-    %%   write_rds:          {**readr::write_rds** (id: built-in:write_rds, type: BuiltInFunction, def. @built-in:write_rds)}
-    %%   read_table2:        {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
-    %%   melt_table:         {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
-    %%   melt_fwf:           {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
-    %%   melt_delim:         {**readr::melt_delim** (id: built-in:melt_delim, type: BuiltInFunction, def. @built-in:melt_delim)}
-    %%    library-load:      {**readr:: library-load** (id: 11, type: Function, def. @11)}
+    %%   and what dplyr attach
     %% 4----------------------------------------
+    %% 5----------------------------------------
+    %%   and what readr attach
+    %% 6----------------------------------------
     %%   #search-path:ggplot: {**#search-path:ggplot** (id: 3, type: Variable, def. @3)}
     %%   #search-path:        {**#search-path** (id: 3, type: Variable, cds: {}, def. @3), **#search-path** (id: 7, type: Variable, cds: {}, def. @7), **#search-path** (id: 11, type: Variable, cds: {}, def. @11)}
     %%   #search-path:dplyr:  {**#search-path:dplyr** (id: 7, type: Variable, def. @7)}
     %%   #search-path:readr:  {**#search-path:readr** (id: 11, type: Variable, def. @11)}
     %%   data:                {**data** (id: 12, type: Unknown, def. @17)}
-    22[["`*#91;RFunctionCall#93;* **read#95;csv**
+    22[["`*#91;RFunctionCall#93;* readr#58;#58;**read#95;csv**
       *7.10-30* (**id: 22**)
     arg: (20)`"]]
     18["`*#91;RSymbol#93;* **data2**
@@ -1140,174 +818,13 @@ print`"]
     %% 1----------------------------------------
     %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
     %% 2----------------------------------------
-    %%   filter:             {**dplyr::filter** (id: built-in:filter, type: BuiltInFunction, def. @built-in:filter)}
-    %%   filter_out:         {**dplyr::filter_out** (id: built-in:filter_out, type: BuiltInFunction, def. @built-in:filter_out)}
-    %%   slice:              {**dplyr::slice** (id: built-in:slice, type: BuiltInFunction, def. @built-in:slice)}
-    %%   mutate:             {**dplyr::mutate** (id: built-in:mutate, type: BuiltInFunction, def. @built-in:mutate)}
-    %%   transmute:          {**dplyr::transmute** (id: built-in:transmute, type: BuiltInFunction, def. @built-in:transmute)}
-    %%   rename:             {**dplyr::rename** (id: built-in:rename, type: BuiltInFunction, def. @built-in:rename)}
-    %%   select:             {**dplyr::select** (id: built-in:select, type: BuiltInFunction, def. @built-in:select)}
-    %%   summarise:          {**dplyr::summarise** (id: built-in:summarise, type: BuiltInFunction, def. @built-in:summarise)}
-    %%   summarize:          {**dplyr::summarize** (id: built-in:summarize, type: BuiltInFunction, def. @built-in:summarize)}
-    %%   arrange:            {**dplyr::arrange** (id: built-in:arrange, type: BuiltInFunction, def. @built-in:arrange)}
-    %%   group_by:           {**dplyr::group_by** (id: built-in:group_by, type: BuiltInFunction, def. @built-in:group_by)}
-    %%   distinct:           {**dplyr::distinct** (id: built-in:distinct, type: BuiltInFunction, def. @built-in:distinct)}
-    %%   count:              {**dplyr::count** (id: built-in:count, type: BuiltInFunction, def. @built-in:count)}
-    %%   tally:              {**dplyr::tally** (id: built-in:tally, type: BuiltInFunction, def. @built-in:tally)}
-    %%   add_tally:          {**dplyr::add_tally** (id: built-in:add_tally, type: BuiltInFunction, def. @built-in:add_tally)}
-    %%   reframe:            {**dplyr::reframe** (id: built-in:reframe, type: BuiltInFunction, def. @built-in:reframe)}
-    %%   slice_head:         {**dplyr::slice_head** (id: built-in:slice_head, type: BuiltInFunction, def. @built-in:slice_head)}
-    %%   slice_tail:         {**dplyr::slice_tail** (id: built-in:slice_tail, type: BuiltInFunction, def. @built-in:slice_tail)}
-    %%   slice_min:          {**dplyr::slice_min** (id: built-in:slice_min, type: BuiltInFunction, def. @built-in:slice_min)}
-    %%   slice_max:          {**dplyr::slice_max** (id: built-in:slice_max, type: BuiltInFunction, def. @built-in:slice_max)}
-    %%   slice_sample:       {**dplyr::slice_sample** (id: built-in:slice_sample, type: BuiltInFunction, def. @built-in:slice_sample)}
-    %%   pull:               {**dplyr::pull** (id: built-in:pull, type: BuiltInFunction, def. @built-in:pull)}
-    %%   relocate:           {**dplyr::relocate** (id: built-in:relocate, type: BuiltInFunction, def. @built-in:relocate)}
-    %%   group_split:        {**dplyr::group_split** (id: built-in:group_split, type: BuiltInFunction, def. @built-in:group_split)}
-    %%   add_count:          {**dplyr::add_count** (id: built-in:add_count, type: BuiltInFunction, def. @built-in:add_count)}
-    %%   nest_by:            {**dplyr::nest_by** (id: built-in:nest_by, type: BuiltInFunction, def. @built-in:nest_by)}
-    %%   rowwise:            {**dplyr::rowwise** (id: built-in:rowwise, type: BuiltInFunction, def. @built-in:rowwise)}
-    %%   with_groups:        {**dplyr::with_groups** (id: built-in:with_groups, type: BuiltInFunction, def. @built-in:with_groups)}
-    %%   ungroup:            {**dplyr::ungroup** (id: built-in:ungroup, type: BuiltInFunction, def. @built-in:ungroup)}
-    %%   left_join:          {**dplyr::left_join** (id: built-in:left_join, type: BuiltInFunction, def. @built-in:left_join)}
-    %%   right_join:         {**dplyr::right_join** (id: built-in:right_join, type: BuiltInFunction, def. @built-in:right_join)}
-    %%   inner_join:         {**dplyr::inner_join** (id: built-in:inner_join, type: BuiltInFunction, def. @built-in:inner_join)}
-    %%   full_join:          {**dplyr::full_join** (id: built-in:full_join, type: BuiltInFunction, def. @built-in:full_join)}
-    %%   semi_join:          {**dplyr::semi_join** (id: built-in:semi_join, type: BuiltInFunction, def. @built-in:semi_join)}
-    %%   anti_join:          {**dplyr::anti_join** (id: built-in:anti_join, type: BuiltInFunction, def. @built-in:anti_join)}
-    %%   nest_join:          {**dplyr::nest_join** (id: built-in:nest_join, type: BuiltInFunction, def. @built-in:nest_join)}
-    %%   cross_join:         {**dplyr::cross_join** (id: built-in:cross_join, type: BuiltInFunction, def. @built-in:cross_join)}
-    %%   bind_rows:          {**dplyr::bind_rows** (id: built-in:bind_rows, type: BuiltInFunction, def. @built-in:bind_rows)}
-    %%   bind_cols:          {**dplyr::bind_cols** (id: built-in:bind_cols, type: BuiltInFunction, def. @built-in:bind_cols)}
-    %%   mutate_all:         {**dplyr::mutate_all** (id: built-in:mutate_all, type: BuiltInFunction, def. @built-in:mutate_all)}
-    %%   transmute_all:      {**dplyr::transmute_all** (id: built-in:transmute_all, type: BuiltInFunction, def. @built-in:transmute_all)}
-    %%   select_all:         {**dplyr::select_all** (id: built-in:select_all, type: BuiltInFunction, def. @built-in:select_all)}
-    %%   rename_all:         {**dplyr::rename_all** (id: built-in:rename_all, type: BuiltInFunction, def. @built-in:rename_all)}
-    %%   summarise_all:      {**dplyr::summarise_all** (id: built-in:summarise_all, type: BuiltInFunction, def. @built-in:summarise_all)}
-    %%   summarize_all:      {**dplyr::summarize_all** (id: built-in:summarize_all, type: BuiltInFunction, def. @built-in:summarize_all)}
-    %%   mutate_at:          {**dplyr::mutate_at** (id: built-in:mutate_at, type: BuiltInFunction, def. @built-in:mutate_at)}
-    %%   transmute_at:       {**dplyr::transmute_at** (id: built-in:transmute_at, type: BuiltInFunction, def. @built-in:transmute_at)}
-    %%   summarise_at:       {**dplyr::summarise_at** (id: built-in:summarise_at, type: BuiltInFunction, def. @built-in:summarise_at)}
-    %%   summarize_at:       {**dplyr::summarize_at** (id: built-in:summarize_at, type: BuiltInFunction, def. @built-in:summarize_at)}
-    %%   mutate_if:          {**dplyr::mutate_if** (id: built-in:mutate_if, type: BuiltInFunction, def. @built-in:mutate_if)}
-    %%   transmute_if:       {**dplyr::transmute_if** (id: built-in:transmute_if, type: BuiltInFunction, def. @built-in:transmute_if)}
-    %%   select_if:          {**dplyr::select_if** (id: built-in:select_if, type: BuiltInFunction, def. @built-in:select_if)}
-    %%   rename_if:          {**dplyr::rename_if** (id: built-in:rename_if, type: BuiltInFunction, def. @built-in:rename_if)}
-    %%   summarise_if:       {**dplyr::summarise_if** (id: built-in:summarise_if, type: BuiltInFunction, def. @built-in:summarise_if)}
-    %%   summarize_if:       {**dplyr::summarize_if** (id: built-in:summarize_if, type: BuiltInFunction, def. @built-in:summarize_if)}
-    %%   filter_all:         {**dplyr::filter_all** (id: built-in:filter_all, type: BuiltInFunction, def. @built-in:filter_all)}
-    %%   filter_at:          {**dplyr::filter_at** (id: built-in:filter_at, type: BuiltInFunction, def. @built-in:filter_at)}
-    %%   filter_if:          {**dplyr::filter_if** (id: built-in:filter_if, type: BuiltInFunction, def. @built-in:filter_if)}
-    %%   select_at:          {**dplyr::select_at** (id: built-in:select_at, type: BuiltInFunction, def. @built-in:select_at)}
-    %%   rename_at:          {**dplyr::rename_at** (id: built-in:rename_at, type: BuiltInFunction, def. @built-in:rename_at)}
-    %%   arrange_all:        {**dplyr::arrange_all** (id: built-in:arrange_all, type: BuiltInFunction, def. @built-in:arrange_all)}
-    %%   arrange_at:         {**dplyr::arrange_at** (id: built-in:arrange_at, type: BuiltInFunction, def. @built-in:arrange_at)}
-    %%   arrange_if:         {**dplyr::arrange_if** (id: built-in:arrange_if, type: BuiltInFunction, def. @built-in:arrange_if)}
-    %%   group_by_all:       {**dplyr::group_by_all** (id: built-in:group_by_all, type: BuiltInFunction, def. @built-in:group_by_all)}
-    %%   group_by_at:        {**dplyr::group_by_at** (id: built-in:group_by_at, type: BuiltInFunction, def. @built-in:group_by_at)}
-    %%   group_by_if:        {**dplyr::group_by_if** (id: built-in:group_by_if, type: BuiltInFunction, def. @built-in:group_by_if)}
-    %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
-    %%   distinct_at:        {**dplyr::distinct_at** (id: built-in:distinct_at, type: BuiltInFunction, def. @built-in:distinct_at)}
-    %%   distinct_if:        {**dplyr::distinct_if** (id: built-in:distinct_if, type: BuiltInFunction, def. @built-in:distinct_if)}
-    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
-    %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
-    %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
-    %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
-    %%   rename_with:        {**dplyr::rename_with** (id: built-in:rename_with, type: BuiltInFunction, def. @built-in:rename_with)}
-    %%   quo:                {**dplyr::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
-    %%   expr:               {**dplyr::expr** (id: built-in:expr, type: BuiltInFunction, def. @built-in:expr)}
-    %%   quos:               {**dplyr::quos** (id: built-in:quos, type: BuiltInFunction, def. @built-in:quos)}
-    %%   enexpr:             {**dplyr::enexpr** (id: built-in:enexpr, type: BuiltInFunction, def. @built-in:enexpr)}
-    %%   enquo:              {**dplyr::enquo** (id: built-in:enquo, type: BuiltInFunction, def. @built-in:enquo)}
-    %%   ensym:              {**dplyr::ensym** (id: built-in:ensym, type: BuiltInFunction, def. @built-in:ensym)}
-    %%   enexprs:            {**dplyr::enexprs** (id: built-in:enexprs, type: BuiltInFunction, def. @built-in:enexprs)}
-    %%   enquos:             {**dplyr::enquos** (id: built-in:enquos, type: BuiltInFunction, def. @built-in:enquos)}
-    %%   ensyms:             {**dplyr::ensyms** (id: built-in:ensyms, type: BuiltInFunction, def. @built-in:ensyms)}
-    %%   sym:                {**dplyr::sym** (id: built-in:sym, type: BuiltInFunction, def. @built-in:sym)}
-    %%   syms:               {**dplyr::syms** (id: built-in:syms, type: BuiltInFunction, def. @built-in:syms)}
-    %%   as_label:           {**dplyr::as_label** (id: built-in:as_label, type: BuiltInFunction, def. @built-in:as_label)}
-    %%   quo_name:           {**dplyr::quo_name** (id: built-in:quo_name, type: BuiltInFunction, def. @built-in:quo_name)}
-    %%   sql:                {**dplyr::sql** (id: built-in:sql, type: BuiltInFunction, def. @built-in:sql)}
-    %%   id:                 {**dplyr::id** (id: built-in:id, type: BuiltInFunction, def. @built-in:id)}
-    %%   select_vars_:       {**dplyr::select_vars_** (id: built-in:select_vars_, type: BuiltInFunction, def. @built-in:select_vars_)}
-    %%   rename_vars_:       {**dplyr::rename_vars_** (id: built-in:rename_vars_, type: BuiltInFunction, def. @built-in:rename_vars_)}
-    %%   changes:            {**dplyr::changes** (id: built-in:changes, type: BuiltInFunction, def. @built-in:changes)}
-    %%   location:           {**dplyr::location** (id: built-in:location, type: BuiltInFunction, def. @built-in:location)}
-    %%   eval_tbls2:         {**dplyr::eval_tbls2** (id: built-in:eval_tbls2, type: BuiltInFunction, def. @built-in:eval_tbls2)}
-    %%   eval_tbls:          {**dplyr::eval_tbls** (id: built-in:eval_tbls, type: BuiltInFunction, def. @built-in:eval_tbls)}
-    %%   compare_tbls2:      {**dplyr::compare_tbls2** (id: built-in:compare_tbls2, type: BuiltInFunction, def. @built-in:compare_tbls2)}
-    %%   compare_tbls:       {**dplyr::compare_tbls** (id: built-in:compare_tbls, type: BuiltInFunction, def. @built-in:compare_tbls)}
-    %%   bench_tbls:         {**dplyr::bench_tbls** (id: built-in:bench_tbls, type: BuiltInFunction, def. @built-in:bench_tbls)}
-    %%   current_vars:       {**dplyr::current_vars** (id: built-in:current_vars, type: BuiltInFunction, def. @built-in:current_vars)}
-    %%   select_var:         {**dplyr::select_var** (id: built-in:select_var, type: BuiltInFunction, def. @built-in:select_var)}
-    %%   rename_vars:        {**dplyr::rename_vars** (id: built-in:rename_vars, type: BuiltInFunction, def. @built-in:rename_vars)}
-    %%   select_vars:        {**dplyr::select_vars** (id: built-in:select_vars, type: BuiltInFunction, def. @built-in:select_vars)}
-    %%   failwith:           {**dplyr::failwith** (id: built-in:failwith, type: BuiltInFunction, def. @built-in:failwith)}
-    %%   progress_estimated: {**dplyr::progress_estimated** (id: built-in:progress_estimated, type: BuiltInFunction, def. @built-in:progress_estimated)}
-    %%   add_rownames:       {**dplyr::add_rownames** (id: built-in:add_rownames, type: BuiltInFunction, def. @built-in:add_rownames)}
-    %%   tbl_df:             {**dplyr::tbl_df** (id: built-in:tbl_df, type: BuiltInFunction, def. @built-in:tbl_df)}
-    %%   src_local:          {**dplyr::src_local** (id: built-in:src_local, type: BuiltInFunction, def. @built-in:src_local)}
-    %%   summarise_each:     {**dplyr::summarise_each** (id: built-in:summarise_each, type: BuiltInFunction, def. @built-in:summarise_each)}
-    %%   summarize_:         {**dplyr::summarize_** (id: built-in:summarize_, type: BuiltInFunction, def. @built-in:summarize_)}
-    %%   summarise_:         {**dplyr::summarise_** (id: built-in:summarise_, type: BuiltInFunction, def. @built-in:summarise_)}
-    %%   slice_:             {**dplyr::slice_** (id: built-in:slice_, type: BuiltInFunction, def. @built-in:slice_)}
-    %%   select_:            {**dplyr::select_** (id: built-in:select_, type: BuiltInFunction, def. @built-in:select_)}
-    %%   rename_:            {**dplyr::rename_** (id: built-in:rename_, type: BuiltInFunction, def. @built-in:rename_)}
-    %%   transmute_:         {**dplyr::transmute_** (id: built-in:transmute_, type: BuiltInFunction, def. @built-in:transmute_)}
-    %%   mutate_:            {**dplyr::mutate_** (id: built-in:mutate_, type: BuiltInFunction, def. @built-in:mutate_)}
-    %%   group_indices_:     {**dplyr::group_indices_** (id: built-in:group_indices_, type: BuiltInFunction, def. @built-in:group_indices_)}
-    %%   filter_:            {**dplyr::filter_** (id: built-in:filter_, type: BuiltInFunction, def. @built-in:filter_)}
-    %%   do_:                {**dplyr::do_** (id: built-in:do_, type: BuiltInFunction, def. @built-in:do_)}
-    %%   arrange_:           {**dplyr::arrange_** (id: built-in:arrange_, type: BuiltInFunction, def. @built-in:arrange_)}
-    %%   tally_:             {**dplyr::tally_** (id: built-in:tally_, type: BuiltInFunction, def. @built-in:tally_)}
-    %%   add_tally_:         {**dplyr::add_tally_** (id: built-in:add_tally_, type: BuiltInFunction, def. @built-in:add_tally_)}
-    %%   group_by_:          {**dplyr::group_by_** (id: built-in:group_by_, type: BuiltInFunction, def. @built-in:group_by_)}
-    %%   funs_:              {**dplyr::funs_** (id: built-in:funs_, type: BuiltInFunction, def. @built-in:funs_)}
-    %%   distinct_:          {**dplyr::distinct_** (id: built-in:distinct_, type: BuiltInFunction, def. @built-in:distinct_)}
-    %%   count_:             {**dplyr::count_** (id: built-in:count_, type: BuiltInFunction, def. @built-in:count_)}
-    %%   add_count_:         {**dplyr::add_count_** (id: built-in:add_count_, type: BuiltInFunction, def. @built-in:add_count_)}
-    %%   funs:               {**dplyr::funs** (id: built-in:funs, type: BuiltInFunction, def. @built-in:funs)}
-    %%   combine:            {**dplyr::combine** (id: built-in:combine, type: BuiltInFunction, def. @built-in:combine)}
-    %%   all_equal:          {**dplyr::all_equal** (id: built-in:all_equal, type: BuiltInFunction, def. @built-in:all_equal)}
-    %%   top_n:              {**dplyr::top_n** (id: built-in:top_n, type: BuiltInFunction, def. @built-in:top_n)}
-    %%   sample_n:           {**dplyr::sample_n** (id: built-in:sample_n, type: BuiltInFunction, def. @built-in:sample_n)}
-    %%   recode:             {**dplyr::recode** (id: built-in:recode, type: BuiltInFunction, def. @built-in:recode)}
-    %%   group_nest:         {**dplyr::group_nest** (id: built-in:group_nest, type: BuiltInFunction, def. @built-in:group_nest)}
-    %%   do:                 {**dplyr::do** (id: built-in:do, type: BuiltInFunction, def. @built-in:do)}
-    %%   all_vars:           {**dplyr::all_vars** (id: built-in:all_vars, type: BuiltInFunction, def. @built-in:all_vars)}
-    %%   vars:               {**dplyr::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
-    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
-    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
-    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
-    %%   sample_frac:        {**dplyr::sample_frac** (id: built-in:sample_frac, type: BuiltInFunction, def. @built-in:sample_frac)}
-    %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
+    %%   and what generics, magrittr, pillar, rlang, tibble, tidyselect attach
     %% 3----------------------------------------
-    %%   read_csv:           {**readr::read_csv** (id: built-in:read_csv, type: BuiltInFunction, def. @built-in:read_csv)}
-    %%   read_csv2:          {**readr::read_csv2** (id: built-in:read_csv2, type: BuiltInFunction, def. @built-in:read_csv2)}
-    %%   read_tsv:           {**readr::read_tsv** (id: built-in:read_tsv, type: BuiltInFunction, def. @built-in:read_tsv)}
-    %%   read_lines:         {**readr::read_lines** (id: built-in:read_lines, type: BuiltInFunction, def. @built-in:read_lines)}
-    %%   read_delim:         {**readr::read_delim** (id: built-in:read_delim, type: BuiltInFunction, def. @built-in:read_delim)}
-    %%   read_fwf:           {**readr::read_fwf** (id: built-in:read_fwf, type: BuiltInFunction, def. @built-in:read_fwf)}
-    %%   read_table:         {**readr::read_table** (id: built-in:read_table, type: BuiltInFunction, def. @built-in:read_table)}
-    %%   read_log:           {**readr::read_log** (id: built-in:read_log, type: BuiltInFunction, def. @built-in:read_log)}
-    %%   read_lines_raw:     {**readr::read_lines_raw** (id: built-in:read_lines_raw, type: BuiltInFunction, def. @built-in:read_lines_raw)}
-    %%   read_lines_chunked: {**readr::read_lines_chunked** (id: built-in:read_lines_chunked, type: BuiltInFunction, def. @built-in:read_lines_chunked)}
-    %%   read_rds:           {**readr::read_rds** (id: built-in:read_rds, type: BuiltInFunction, def. @built-in:read_rds)}
-    %%   write_csv:          {**readr::write_csv** (id: built-in:write_csv, type: BuiltInFunction, def. @built-in:write_csv)}
-    %%   write_csv2:         {**readr::write_csv2** (id: built-in:write_csv2, type: BuiltInFunction, def. @built-in:write_csv2)}
-    %%   write_tsv:          {**readr::write_tsv** (id: built-in:write_tsv, type: BuiltInFunction, def. @built-in:write_tsv)}
-    %%   write_delim:        {**readr::write_delim** (id: built-in:write_delim, type: BuiltInFunction, def. @built-in:write_delim)}
-    %%   write_excel_csv:    {**readr::write_excel_csv** (id: built-in:write_excel_csv, type: BuiltInFunction, def. @built-in:write_excel_csv)}
-    %%   write_excel_csv2:   {**readr::write_excel_csv2** (id: built-in:write_excel_csv2, type: BuiltInFunction, def. @built-in:write_excel_csv2)}
-    %%   write_file:         {**readr::write_file** (id: built-in:write_file, type: BuiltInFunction, def. @built-in:write_file)}
-    %%   write_lines:        {**readr::write_lines** (id: built-in:write_lines, type: BuiltInFunction, def. @built-in:write_lines)}
-    %%   write_rds:          {**readr::write_rds** (id: built-in:write_rds, type: BuiltInFunction, def. @built-in:write_rds)}
-    %%   read_table2:        {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
-    %%   melt_table:         {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
-    %%   melt_fwf:           {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
-    %%   melt_delim:         {**readr::melt_delim** (id: built-in:melt_delim, type: BuiltInFunction, def. @built-in:melt_delim)}
-    %%    library-load:      {**readr:: library-load** (id: 11, type: Function, def. @11)}
+    %%   and what dplyr attach
     %% 4----------------------------------------
+    %% 5----------------------------------------
+    %%   and what readr attach
+    %% 6----------------------------------------
     %%   #search-path:ggplot: {**#search-path:ggplot** (id: 3, type: Variable, def. @3)}
     %%   #search-path:        {**#search-path** (id: 3, type: Variable, cds: {}, def. @3), **#search-path** (id: 7, type: Variable, cds: {}, def. @7), **#search-path** (id: 11, type: Variable, cds: {}, def. @11)}
     %%   #search-path:dplyr:  {**#search-path:dplyr** (id: 7, type: Variable, def. @7)}
@@ -1324,174 +841,13 @@ print`"]
     %% 1----------------------------------------
     %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
     %% 2----------------------------------------
-    %%   filter:             {**dplyr::filter** (id: built-in:filter, type: BuiltInFunction, def. @built-in:filter)}
-    %%   filter_out:         {**dplyr::filter_out** (id: built-in:filter_out, type: BuiltInFunction, def. @built-in:filter_out)}
-    %%   slice:              {**dplyr::slice** (id: built-in:slice, type: BuiltInFunction, def. @built-in:slice)}
-    %%   mutate:             {**dplyr::mutate** (id: built-in:mutate, type: BuiltInFunction, def. @built-in:mutate)}
-    %%   transmute:          {**dplyr::transmute** (id: built-in:transmute, type: BuiltInFunction, def. @built-in:transmute)}
-    %%   rename:             {**dplyr::rename** (id: built-in:rename, type: BuiltInFunction, def. @built-in:rename)}
-    %%   select:             {**dplyr::select** (id: built-in:select, type: BuiltInFunction, def. @built-in:select)}
-    %%   summarise:          {**dplyr::summarise** (id: built-in:summarise, type: BuiltInFunction, def. @built-in:summarise)}
-    %%   summarize:          {**dplyr::summarize** (id: built-in:summarize, type: BuiltInFunction, def. @built-in:summarize)}
-    %%   arrange:            {**dplyr::arrange** (id: built-in:arrange, type: BuiltInFunction, def. @built-in:arrange)}
-    %%   group_by:           {**dplyr::group_by** (id: built-in:group_by, type: BuiltInFunction, def. @built-in:group_by)}
-    %%   distinct:           {**dplyr::distinct** (id: built-in:distinct, type: BuiltInFunction, def. @built-in:distinct)}
-    %%   count:              {**dplyr::count** (id: built-in:count, type: BuiltInFunction, def. @built-in:count)}
-    %%   tally:              {**dplyr::tally** (id: built-in:tally, type: BuiltInFunction, def. @built-in:tally)}
-    %%   add_tally:          {**dplyr::add_tally** (id: built-in:add_tally, type: BuiltInFunction, def. @built-in:add_tally)}
-    %%   reframe:            {**dplyr::reframe** (id: built-in:reframe, type: BuiltInFunction, def. @built-in:reframe)}
-    %%   slice_head:         {**dplyr::slice_head** (id: built-in:slice_head, type: BuiltInFunction, def. @built-in:slice_head)}
-    %%   slice_tail:         {**dplyr::slice_tail** (id: built-in:slice_tail, type: BuiltInFunction, def. @built-in:slice_tail)}
-    %%   slice_min:          {**dplyr::slice_min** (id: built-in:slice_min, type: BuiltInFunction, def. @built-in:slice_min)}
-    %%   slice_max:          {**dplyr::slice_max** (id: built-in:slice_max, type: BuiltInFunction, def. @built-in:slice_max)}
-    %%   slice_sample:       {**dplyr::slice_sample** (id: built-in:slice_sample, type: BuiltInFunction, def. @built-in:slice_sample)}
-    %%   pull:               {**dplyr::pull** (id: built-in:pull, type: BuiltInFunction, def. @built-in:pull)}
-    %%   relocate:           {**dplyr::relocate** (id: built-in:relocate, type: BuiltInFunction, def. @built-in:relocate)}
-    %%   group_split:        {**dplyr::group_split** (id: built-in:group_split, type: BuiltInFunction, def. @built-in:group_split)}
-    %%   add_count:          {**dplyr::add_count** (id: built-in:add_count, type: BuiltInFunction, def. @built-in:add_count)}
-    %%   nest_by:            {**dplyr::nest_by** (id: built-in:nest_by, type: BuiltInFunction, def. @built-in:nest_by)}
-    %%   rowwise:            {**dplyr::rowwise** (id: built-in:rowwise, type: BuiltInFunction, def. @built-in:rowwise)}
-    %%   with_groups:        {**dplyr::with_groups** (id: built-in:with_groups, type: BuiltInFunction, def. @built-in:with_groups)}
-    %%   ungroup:            {**dplyr::ungroup** (id: built-in:ungroup, type: BuiltInFunction, def. @built-in:ungroup)}
-    %%   left_join:          {**dplyr::left_join** (id: built-in:left_join, type: BuiltInFunction, def. @built-in:left_join)}
-    %%   right_join:         {**dplyr::right_join** (id: built-in:right_join, type: BuiltInFunction, def. @built-in:right_join)}
-    %%   inner_join:         {**dplyr::inner_join** (id: built-in:inner_join, type: BuiltInFunction, def. @built-in:inner_join)}
-    %%   full_join:          {**dplyr::full_join** (id: built-in:full_join, type: BuiltInFunction, def. @built-in:full_join)}
-    %%   semi_join:          {**dplyr::semi_join** (id: built-in:semi_join, type: BuiltInFunction, def. @built-in:semi_join)}
-    %%   anti_join:          {**dplyr::anti_join** (id: built-in:anti_join, type: BuiltInFunction, def. @built-in:anti_join)}
-    %%   nest_join:          {**dplyr::nest_join** (id: built-in:nest_join, type: BuiltInFunction, def. @built-in:nest_join)}
-    %%   cross_join:         {**dplyr::cross_join** (id: built-in:cross_join, type: BuiltInFunction, def. @built-in:cross_join)}
-    %%   bind_rows:          {**dplyr::bind_rows** (id: built-in:bind_rows, type: BuiltInFunction, def. @built-in:bind_rows)}
-    %%   bind_cols:          {**dplyr::bind_cols** (id: built-in:bind_cols, type: BuiltInFunction, def. @built-in:bind_cols)}
-    %%   mutate_all:         {**dplyr::mutate_all** (id: built-in:mutate_all, type: BuiltInFunction, def. @built-in:mutate_all)}
-    %%   transmute_all:      {**dplyr::transmute_all** (id: built-in:transmute_all, type: BuiltInFunction, def. @built-in:transmute_all)}
-    %%   select_all:         {**dplyr::select_all** (id: built-in:select_all, type: BuiltInFunction, def. @built-in:select_all)}
-    %%   rename_all:         {**dplyr::rename_all** (id: built-in:rename_all, type: BuiltInFunction, def. @built-in:rename_all)}
-    %%   summarise_all:      {**dplyr::summarise_all** (id: built-in:summarise_all, type: BuiltInFunction, def. @built-in:summarise_all)}
-    %%   summarize_all:      {**dplyr::summarize_all** (id: built-in:summarize_all, type: BuiltInFunction, def. @built-in:summarize_all)}
-    %%   mutate_at:          {**dplyr::mutate_at** (id: built-in:mutate_at, type: BuiltInFunction, def. @built-in:mutate_at)}
-    %%   transmute_at:       {**dplyr::transmute_at** (id: built-in:transmute_at, type: BuiltInFunction, def. @built-in:transmute_at)}
-    %%   summarise_at:       {**dplyr::summarise_at** (id: built-in:summarise_at, type: BuiltInFunction, def. @built-in:summarise_at)}
-    %%   summarize_at:       {**dplyr::summarize_at** (id: built-in:summarize_at, type: BuiltInFunction, def. @built-in:summarize_at)}
-    %%   mutate_if:          {**dplyr::mutate_if** (id: built-in:mutate_if, type: BuiltInFunction, def. @built-in:mutate_if)}
-    %%   transmute_if:       {**dplyr::transmute_if** (id: built-in:transmute_if, type: BuiltInFunction, def. @built-in:transmute_if)}
-    %%   select_if:          {**dplyr::select_if** (id: built-in:select_if, type: BuiltInFunction, def. @built-in:select_if)}
-    %%   rename_if:          {**dplyr::rename_if** (id: built-in:rename_if, type: BuiltInFunction, def. @built-in:rename_if)}
-    %%   summarise_if:       {**dplyr::summarise_if** (id: built-in:summarise_if, type: BuiltInFunction, def. @built-in:summarise_if)}
-    %%   summarize_if:       {**dplyr::summarize_if** (id: built-in:summarize_if, type: BuiltInFunction, def. @built-in:summarize_if)}
-    %%   filter_all:         {**dplyr::filter_all** (id: built-in:filter_all, type: BuiltInFunction, def. @built-in:filter_all)}
-    %%   filter_at:          {**dplyr::filter_at** (id: built-in:filter_at, type: BuiltInFunction, def. @built-in:filter_at)}
-    %%   filter_if:          {**dplyr::filter_if** (id: built-in:filter_if, type: BuiltInFunction, def. @built-in:filter_if)}
-    %%   select_at:          {**dplyr::select_at** (id: built-in:select_at, type: BuiltInFunction, def. @built-in:select_at)}
-    %%   rename_at:          {**dplyr::rename_at** (id: built-in:rename_at, type: BuiltInFunction, def. @built-in:rename_at)}
-    %%   arrange_all:        {**dplyr::arrange_all** (id: built-in:arrange_all, type: BuiltInFunction, def. @built-in:arrange_all)}
-    %%   arrange_at:         {**dplyr::arrange_at** (id: built-in:arrange_at, type: BuiltInFunction, def. @built-in:arrange_at)}
-    %%   arrange_if:         {**dplyr::arrange_if** (id: built-in:arrange_if, type: BuiltInFunction, def. @built-in:arrange_if)}
-    %%   group_by_all:       {**dplyr::group_by_all** (id: built-in:group_by_all, type: BuiltInFunction, def. @built-in:group_by_all)}
-    %%   group_by_at:        {**dplyr::group_by_at** (id: built-in:group_by_at, type: BuiltInFunction, def. @built-in:group_by_at)}
-    %%   group_by_if:        {**dplyr::group_by_if** (id: built-in:group_by_if, type: BuiltInFunction, def. @built-in:group_by_if)}
-    %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
-    %%   distinct_at:        {**dplyr::distinct_at** (id: built-in:distinct_at, type: BuiltInFunction, def. @built-in:distinct_at)}
-    %%   distinct_if:        {**dplyr::distinct_if** (id: built-in:distinct_if, type: BuiltInFunction, def. @built-in:distinct_if)}
-    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
-    %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
-    %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
-    %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
-    %%   rename_with:        {**dplyr::rename_with** (id: built-in:rename_with, type: BuiltInFunction, def. @built-in:rename_with)}
-    %%   quo:                {**dplyr::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
-    %%   expr:               {**dplyr::expr** (id: built-in:expr, type: BuiltInFunction, def. @built-in:expr)}
-    %%   quos:               {**dplyr::quos** (id: built-in:quos, type: BuiltInFunction, def. @built-in:quos)}
-    %%   enexpr:             {**dplyr::enexpr** (id: built-in:enexpr, type: BuiltInFunction, def. @built-in:enexpr)}
-    %%   enquo:              {**dplyr::enquo** (id: built-in:enquo, type: BuiltInFunction, def. @built-in:enquo)}
-    %%   ensym:              {**dplyr::ensym** (id: built-in:ensym, type: BuiltInFunction, def. @built-in:ensym)}
-    %%   enexprs:            {**dplyr::enexprs** (id: built-in:enexprs, type: BuiltInFunction, def. @built-in:enexprs)}
-    %%   enquos:             {**dplyr::enquos** (id: built-in:enquos, type: BuiltInFunction, def. @built-in:enquos)}
-    %%   ensyms:             {**dplyr::ensyms** (id: built-in:ensyms, type: BuiltInFunction, def. @built-in:ensyms)}
-    %%   sym:                {**dplyr::sym** (id: built-in:sym, type: BuiltInFunction, def. @built-in:sym)}
-    %%   syms:               {**dplyr::syms** (id: built-in:syms, type: BuiltInFunction, def. @built-in:syms)}
-    %%   as_label:           {**dplyr::as_label** (id: built-in:as_label, type: BuiltInFunction, def. @built-in:as_label)}
-    %%   quo_name:           {**dplyr::quo_name** (id: built-in:quo_name, type: BuiltInFunction, def. @built-in:quo_name)}
-    %%   sql:                {**dplyr::sql** (id: built-in:sql, type: BuiltInFunction, def. @built-in:sql)}
-    %%   id:                 {**dplyr::id** (id: built-in:id, type: BuiltInFunction, def. @built-in:id)}
-    %%   select_vars_:       {**dplyr::select_vars_** (id: built-in:select_vars_, type: BuiltInFunction, def. @built-in:select_vars_)}
-    %%   rename_vars_:       {**dplyr::rename_vars_** (id: built-in:rename_vars_, type: BuiltInFunction, def. @built-in:rename_vars_)}
-    %%   changes:            {**dplyr::changes** (id: built-in:changes, type: BuiltInFunction, def. @built-in:changes)}
-    %%   location:           {**dplyr::location** (id: built-in:location, type: BuiltInFunction, def. @built-in:location)}
-    %%   eval_tbls2:         {**dplyr::eval_tbls2** (id: built-in:eval_tbls2, type: BuiltInFunction, def. @built-in:eval_tbls2)}
-    %%   eval_tbls:          {**dplyr::eval_tbls** (id: built-in:eval_tbls, type: BuiltInFunction, def. @built-in:eval_tbls)}
-    %%   compare_tbls2:      {**dplyr::compare_tbls2** (id: built-in:compare_tbls2, type: BuiltInFunction, def. @built-in:compare_tbls2)}
-    %%   compare_tbls:       {**dplyr::compare_tbls** (id: built-in:compare_tbls, type: BuiltInFunction, def. @built-in:compare_tbls)}
-    %%   bench_tbls:         {**dplyr::bench_tbls** (id: built-in:bench_tbls, type: BuiltInFunction, def. @built-in:bench_tbls)}
-    %%   current_vars:       {**dplyr::current_vars** (id: built-in:current_vars, type: BuiltInFunction, def. @built-in:current_vars)}
-    %%   select_var:         {**dplyr::select_var** (id: built-in:select_var, type: BuiltInFunction, def. @built-in:select_var)}
-    %%   rename_vars:        {**dplyr::rename_vars** (id: built-in:rename_vars, type: BuiltInFunction, def. @built-in:rename_vars)}
-    %%   select_vars:        {**dplyr::select_vars** (id: built-in:select_vars, type: BuiltInFunction, def. @built-in:select_vars)}
-    %%   failwith:           {**dplyr::failwith** (id: built-in:failwith, type: BuiltInFunction, def. @built-in:failwith)}
-    %%   progress_estimated: {**dplyr::progress_estimated** (id: built-in:progress_estimated, type: BuiltInFunction, def. @built-in:progress_estimated)}
-    %%   add_rownames:       {**dplyr::add_rownames** (id: built-in:add_rownames, type: BuiltInFunction, def. @built-in:add_rownames)}
-    %%   tbl_df:             {**dplyr::tbl_df** (id: built-in:tbl_df, type: BuiltInFunction, def. @built-in:tbl_df)}
-    %%   src_local:          {**dplyr::src_local** (id: built-in:src_local, type: BuiltInFunction, def. @built-in:src_local)}
-    %%   summarise_each:     {**dplyr::summarise_each** (id: built-in:summarise_each, type: BuiltInFunction, def. @built-in:summarise_each)}
-    %%   summarize_:         {**dplyr::summarize_** (id: built-in:summarize_, type: BuiltInFunction, def. @built-in:summarize_)}
-    %%   summarise_:         {**dplyr::summarise_** (id: built-in:summarise_, type: BuiltInFunction, def. @built-in:summarise_)}
-    %%   slice_:             {**dplyr::slice_** (id: built-in:slice_, type: BuiltInFunction, def. @built-in:slice_)}
-    %%   select_:            {**dplyr::select_** (id: built-in:select_, type: BuiltInFunction, def. @built-in:select_)}
-    %%   rename_:            {**dplyr::rename_** (id: built-in:rename_, type: BuiltInFunction, def. @built-in:rename_)}
-    %%   transmute_:         {**dplyr::transmute_** (id: built-in:transmute_, type: BuiltInFunction, def. @built-in:transmute_)}
-    %%   mutate_:            {**dplyr::mutate_** (id: built-in:mutate_, type: BuiltInFunction, def. @built-in:mutate_)}
-    %%   group_indices_:     {**dplyr::group_indices_** (id: built-in:group_indices_, type: BuiltInFunction, def. @built-in:group_indices_)}
-    %%   filter_:            {**dplyr::filter_** (id: built-in:filter_, type: BuiltInFunction, def. @built-in:filter_)}
-    %%   do_:                {**dplyr::do_** (id: built-in:do_, type: BuiltInFunction, def. @built-in:do_)}
-    %%   arrange_:           {**dplyr::arrange_** (id: built-in:arrange_, type: BuiltInFunction, def. @built-in:arrange_)}
-    %%   tally_:             {**dplyr::tally_** (id: built-in:tally_, type: BuiltInFunction, def. @built-in:tally_)}
-    %%   add_tally_:         {**dplyr::add_tally_** (id: built-in:add_tally_, type: BuiltInFunction, def. @built-in:add_tally_)}
-    %%   group_by_:          {**dplyr::group_by_** (id: built-in:group_by_, type: BuiltInFunction, def. @built-in:group_by_)}
-    %%   funs_:              {**dplyr::funs_** (id: built-in:funs_, type: BuiltInFunction, def. @built-in:funs_)}
-    %%   distinct_:          {**dplyr::distinct_** (id: built-in:distinct_, type: BuiltInFunction, def. @built-in:distinct_)}
-    %%   count_:             {**dplyr::count_** (id: built-in:count_, type: BuiltInFunction, def. @built-in:count_)}
-    %%   add_count_:         {**dplyr::add_count_** (id: built-in:add_count_, type: BuiltInFunction, def. @built-in:add_count_)}
-    %%   funs:               {**dplyr::funs** (id: built-in:funs, type: BuiltInFunction, def. @built-in:funs)}
-    %%   combine:            {**dplyr::combine** (id: built-in:combine, type: BuiltInFunction, def. @built-in:combine)}
-    %%   all_equal:          {**dplyr::all_equal** (id: built-in:all_equal, type: BuiltInFunction, def. @built-in:all_equal)}
-    %%   top_n:              {**dplyr::top_n** (id: built-in:top_n, type: BuiltInFunction, def. @built-in:top_n)}
-    %%   sample_n:           {**dplyr::sample_n** (id: built-in:sample_n, type: BuiltInFunction, def. @built-in:sample_n)}
-    %%   recode:             {**dplyr::recode** (id: built-in:recode, type: BuiltInFunction, def. @built-in:recode)}
-    %%   group_nest:         {**dplyr::group_nest** (id: built-in:group_nest, type: BuiltInFunction, def. @built-in:group_nest)}
-    %%   do:                 {**dplyr::do** (id: built-in:do, type: BuiltInFunction, def. @built-in:do)}
-    %%   all_vars:           {**dplyr::all_vars** (id: built-in:all_vars, type: BuiltInFunction, def. @built-in:all_vars)}
-    %%   vars:               {**dplyr::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
-    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
-    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
-    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
-    %%   sample_frac:        {**dplyr::sample_frac** (id: built-in:sample_frac, type: BuiltInFunction, def. @built-in:sample_frac)}
-    %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
+    %%   and what generics, magrittr, pillar, rlang, tibble, tidyselect attach
     %% 3----------------------------------------
-    %%   read_csv:           {**readr::read_csv** (id: built-in:read_csv, type: BuiltInFunction, def. @built-in:read_csv)}
-    %%   read_csv2:          {**readr::read_csv2** (id: built-in:read_csv2, type: BuiltInFunction, def. @built-in:read_csv2)}
-    %%   read_tsv:           {**readr::read_tsv** (id: built-in:read_tsv, type: BuiltInFunction, def. @built-in:read_tsv)}
-    %%   read_lines:         {**readr::read_lines** (id: built-in:read_lines, type: BuiltInFunction, def. @built-in:read_lines)}
-    %%   read_delim:         {**readr::read_delim** (id: built-in:read_delim, type: BuiltInFunction, def. @built-in:read_delim)}
-    %%   read_fwf:           {**readr::read_fwf** (id: built-in:read_fwf, type: BuiltInFunction, def. @built-in:read_fwf)}
-    %%   read_table:         {**readr::read_table** (id: built-in:read_table, type: BuiltInFunction, def. @built-in:read_table)}
-    %%   read_log:           {**readr::read_log** (id: built-in:read_log, type: BuiltInFunction, def. @built-in:read_log)}
-    %%   read_lines_raw:     {**readr::read_lines_raw** (id: built-in:read_lines_raw, type: BuiltInFunction, def. @built-in:read_lines_raw)}
-    %%   read_lines_chunked: {**readr::read_lines_chunked** (id: built-in:read_lines_chunked, type: BuiltInFunction, def. @built-in:read_lines_chunked)}
-    %%   read_rds:           {**readr::read_rds** (id: built-in:read_rds, type: BuiltInFunction, def. @built-in:read_rds)}
-    %%   write_csv:          {**readr::write_csv** (id: built-in:write_csv, type: BuiltInFunction, def. @built-in:write_csv)}
-    %%   write_csv2:         {**readr::write_csv2** (id: built-in:write_csv2, type: BuiltInFunction, def. @built-in:write_csv2)}
-    %%   write_tsv:          {**readr::write_tsv** (id: built-in:write_tsv, type: BuiltInFunction, def. @built-in:write_tsv)}
-    %%   write_delim:        {**readr::write_delim** (id: built-in:write_delim, type: BuiltInFunction, def. @built-in:write_delim)}
-    %%   write_excel_csv:    {**readr::write_excel_csv** (id: built-in:write_excel_csv, type: BuiltInFunction, def. @built-in:write_excel_csv)}
-    %%   write_excel_csv2:   {**readr::write_excel_csv2** (id: built-in:write_excel_csv2, type: BuiltInFunction, def. @built-in:write_excel_csv2)}
-    %%   write_file:         {**readr::write_file** (id: built-in:write_file, type: BuiltInFunction, def. @built-in:write_file)}
-    %%   write_lines:        {**readr::write_lines** (id: built-in:write_lines, type: BuiltInFunction, def. @built-in:write_lines)}
-    %%   write_rds:          {**readr::write_rds** (id: built-in:write_rds, type: BuiltInFunction, def. @built-in:write_rds)}
-    %%   read_table2:        {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
-    %%   melt_table:         {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
-    %%   melt_fwf:           {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
-    %%   melt_delim:         {**readr::melt_delim** (id: built-in:melt_delim, type: BuiltInFunction, def. @built-in:melt_delim)}
-    %%    library-load:      {**readr:: library-load** (id: 11, type: Function, def. @11)}
+    %%   and what dplyr attach
     %% 4----------------------------------------
+    %% 5----------------------------------------
+    %%   and what readr attach
+    %% 6----------------------------------------
     %%   #search-path:ggplot: {**#search-path:ggplot** (id: 3, type: Variable, def. @3)}
     %%   #search-path:        {**#search-path** (id: 3, type: Variable, cds: {}, def. @3), **#search-path** (id: 7, type: Variable, cds: {}, def. @7), **#search-path** (id: 11, type: Variable, cds: {}, def. @11)}
     %%   #search-path:dplyr:  {**#search-path:dplyr** (id: 7, type: Variable, def. @7)}
@@ -1503,186 +859,44 @@ print`"]
     50[["`*#91;RFunctionCall#93;* **ggplot**
       *13.9-33* (**id: 50**)
     arg: (38, 48)`"]]
-    52[["`*#91;RFunctionCall#93;* **data %#62;%
-	ggplot(aes(x = x, y = y))**
+    %% Environment of 52 [level: 0]:
+    %% Built-in
+    %% 1----------------------------------------
+    %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
+    %% 2----------------------------------------
+    %%   and what generics, magrittr, pillar, rlang, tibble, tidyselect attach
+    %% 3----------------------------------------
+    %%   and what dplyr attach
+    %% 4----------------------------------------
+    %% 5----------------------------------------
+    %%   and what readr attach
+    %% 6----------------------------------------
+    %%   #search-path:ggplot: {**#search-path:ggplot** (id: 3, type: Variable, def. @3)}
+    %%   #search-path:        {**#search-path** (id: 3, type: Variable, cds: {}, def. @3), **#search-path** (id: 7, type: Variable, cds: {}, def. @7), **#search-path** (id: 11, type: Variable, cds: {}, def. @11)}
+    %%   #search-path:dplyr:  {**#search-path:dplyr** (id: 7, type: Variable, def. @7)}
+    %%   #search-path:readr:  {**#search-path:readr** (id: 11, type: Variable, def. @11)}
+    %%   data:                {**data** (id: 12, type: Unknown, def. @17)}
+    %%   data2:               {**data2** (id: 18, type: Unknown, def. @23)}
+    %%   m:                   {**m** (id: 24, type: Unknown, def. @32)}
+    %%   #sink:output:        {**#sink:output** (id: 36, type: Variable, cds: {}, def. @36)}
+    52[["`*#91;RFunctionCall#93;* **dplyr#58;#58;%#62;%**
       *12.6-8* (**id: 52**)
     arg: (38, 50)`"]]
-    built-in:_37__62__37_["`Built-In:
-%#62;%`"]
-    style built-in:_37__62__37_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    built-in:dplyr:_37__62__37_["`Built-In:
+dplyr#58;#58;%#62;%`"]
+    style built-in:dplyr:_37__62__37_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     %% Environment of 54 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
     %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
     %% 2----------------------------------------
-    %%   filter:             {**dplyr::filter** (id: built-in:filter, type: BuiltInFunction, def. @built-in:filter)}
-    %%   filter_out:         {**dplyr::filter_out** (id: built-in:filter_out, type: BuiltInFunction, def. @built-in:filter_out)}
-    %%   slice:              {**dplyr::slice** (id: built-in:slice, type: BuiltInFunction, def. @built-in:slice)}
-    %%   mutate:             {**dplyr::mutate** (id: built-in:mutate, type: BuiltInFunction, def. @built-in:mutate)}
-    %%   transmute:          {**dplyr::transmute** (id: built-in:transmute, type: BuiltInFunction, def. @built-in:transmute)}
-    %%   rename:             {**dplyr::rename** (id: built-in:rename, type: BuiltInFunction, def. @built-in:rename)}
-    %%   select:             {**dplyr::select** (id: built-in:select, type: BuiltInFunction, def. @built-in:select)}
-    %%   summarise:          {**dplyr::summarise** (id: built-in:summarise, type: BuiltInFunction, def. @built-in:summarise)}
-    %%   summarize:          {**dplyr::summarize** (id: built-in:summarize, type: BuiltInFunction, def. @built-in:summarize)}
-    %%   arrange:            {**dplyr::arrange** (id: built-in:arrange, type: BuiltInFunction, def. @built-in:arrange)}
-    %%   group_by:           {**dplyr::group_by** (id: built-in:group_by, type: BuiltInFunction, def. @built-in:group_by)}
-    %%   distinct:           {**dplyr::distinct** (id: built-in:distinct, type: BuiltInFunction, def. @built-in:distinct)}
-    %%   count:              {**dplyr::count** (id: built-in:count, type: BuiltInFunction, def. @built-in:count)}
-    %%   tally:              {**dplyr::tally** (id: built-in:tally, type: BuiltInFunction, def. @built-in:tally)}
-    %%   add_tally:          {**dplyr::add_tally** (id: built-in:add_tally, type: BuiltInFunction, def. @built-in:add_tally)}
-    %%   reframe:            {**dplyr::reframe** (id: built-in:reframe, type: BuiltInFunction, def. @built-in:reframe)}
-    %%   slice_head:         {**dplyr::slice_head** (id: built-in:slice_head, type: BuiltInFunction, def. @built-in:slice_head)}
-    %%   slice_tail:         {**dplyr::slice_tail** (id: built-in:slice_tail, type: BuiltInFunction, def. @built-in:slice_tail)}
-    %%   slice_min:          {**dplyr::slice_min** (id: built-in:slice_min, type: BuiltInFunction, def. @built-in:slice_min)}
-    %%   slice_max:          {**dplyr::slice_max** (id: built-in:slice_max, type: BuiltInFunction, def. @built-in:slice_max)}
-    %%   slice_sample:       {**dplyr::slice_sample** (id: built-in:slice_sample, type: BuiltInFunction, def. @built-in:slice_sample)}
-    %%   pull:               {**dplyr::pull** (id: built-in:pull, type: BuiltInFunction, def. @built-in:pull)}
-    %%   relocate:           {**dplyr::relocate** (id: built-in:relocate, type: BuiltInFunction, def. @built-in:relocate)}
-    %%   group_split:        {**dplyr::group_split** (id: built-in:group_split, type: BuiltInFunction, def. @built-in:group_split)}
-    %%   add_count:          {**dplyr::add_count** (id: built-in:add_count, type: BuiltInFunction, def. @built-in:add_count)}
-    %%   nest_by:            {**dplyr::nest_by** (id: built-in:nest_by, type: BuiltInFunction, def. @built-in:nest_by)}
-    %%   rowwise:            {**dplyr::rowwise** (id: built-in:rowwise, type: BuiltInFunction, def. @built-in:rowwise)}
-    %%   with_groups:        {**dplyr::with_groups** (id: built-in:with_groups, type: BuiltInFunction, def. @built-in:with_groups)}
-    %%   ungroup:            {**dplyr::ungroup** (id: built-in:ungroup, type: BuiltInFunction, def. @built-in:ungroup)}
-    %%   left_join:          {**dplyr::left_join** (id: built-in:left_join, type: BuiltInFunction, def. @built-in:left_join)}
-    %%   right_join:         {**dplyr::right_join** (id: built-in:right_join, type: BuiltInFunction, def. @built-in:right_join)}
-    %%   inner_join:         {**dplyr::inner_join** (id: built-in:inner_join, type: BuiltInFunction, def. @built-in:inner_join)}
-    %%   full_join:          {**dplyr::full_join** (id: built-in:full_join, type: BuiltInFunction, def. @built-in:full_join)}
-    %%   semi_join:          {**dplyr::semi_join** (id: built-in:semi_join, type: BuiltInFunction, def. @built-in:semi_join)}
-    %%   anti_join:          {**dplyr::anti_join** (id: built-in:anti_join, type: BuiltInFunction, def. @built-in:anti_join)}
-    %%   nest_join:          {**dplyr::nest_join** (id: built-in:nest_join, type: BuiltInFunction, def. @built-in:nest_join)}
-    %%   cross_join:         {**dplyr::cross_join** (id: built-in:cross_join, type: BuiltInFunction, def. @built-in:cross_join)}
-    %%   bind_rows:          {**dplyr::bind_rows** (id: built-in:bind_rows, type: BuiltInFunction, def. @built-in:bind_rows)}
-    %%   bind_cols:          {**dplyr::bind_cols** (id: built-in:bind_cols, type: BuiltInFunction, def. @built-in:bind_cols)}
-    %%   mutate_all:         {**dplyr::mutate_all** (id: built-in:mutate_all, type: BuiltInFunction, def. @built-in:mutate_all)}
-    %%   transmute_all:      {**dplyr::transmute_all** (id: built-in:transmute_all, type: BuiltInFunction, def. @built-in:transmute_all)}
-    %%   select_all:         {**dplyr::select_all** (id: built-in:select_all, type: BuiltInFunction, def. @built-in:select_all)}
-    %%   rename_all:         {**dplyr::rename_all** (id: built-in:rename_all, type: BuiltInFunction, def. @built-in:rename_all)}
-    %%   summarise_all:      {**dplyr::summarise_all** (id: built-in:summarise_all, type: BuiltInFunction, def. @built-in:summarise_all)}
-    %%   summarize_all:      {**dplyr::summarize_all** (id: built-in:summarize_all, type: BuiltInFunction, def. @built-in:summarize_all)}
-    %%   mutate_at:          {**dplyr::mutate_at** (id: built-in:mutate_at, type: BuiltInFunction, def. @built-in:mutate_at)}
-    %%   transmute_at:       {**dplyr::transmute_at** (id: built-in:transmute_at, type: BuiltInFunction, def. @built-in:transmute_at)}
-    %%   summarise_at:       {**dplyr::summarise_at** (id: built-in:summarise_at, type: BuiltInFunction, def. @built-in:summarise_at)}
-    %%   summarize_at:       {**dplyr::summarize_at** (id: built-in:summarize_at, type: BuiltInFunction, def. @built-in:summarize_at)}
-    %%   mutate_if:          {**dplyr::mutate_if** (id: built-in:mutate_if, type: BuiltInFunction, def. @built-in:mutate_if)}
-    %%   transmute_if:       {**dplyr::transmute_if** (id: built-in:transmute_if, type: BuiltInFunction, def. @built-in:transmute_if)}
-    %%   select_if:          {**dplyr::select_if** (id: built-in:select_if, type: BuiltInFunction, def. @built-in:select_if)}
-    %%   rename_if:          {**dplyr::rename_if** (id: built-in:rename_if, type: BuiltInFunction, def. @built-in:rename_if)}
-    %%   summarise_if:       {**dplyr::summarise_if** (id: built-in:summarise_if, type: BuiltInFunction, def. @built-in:summarise_if)}
-    %%   summarize_if:       {**dplyr::summarize_if** (id: built-in:summarize_if, type: BuiltInFunction, def. @built-in:summarize_if)}
-    %%   filter_all:         {**dplyr::filter_all** (id: built-in:filter_all, type: BuiltInFunction, def. @built-in:filter_all)}
-    %%   filter_at:          {**dplyr::filter_at** (id: built-in:filter_at, type: BuiltInFunction, def. @built-in:filter_at)}
-    %%   filter_if:          {**dplyr::filter_if** (id: built-in:filter_if, type: BuiltInFunction, def. @built-in:filter_if)}
-    %%   select_at:          {**dplyr::select_at** (id: built-in:select_at, type: BuiltInFunction, def. @built-in:select_at)}
-    %%   rename_at:          {**dplyr::rename_at** (id: built-in:rename_at, type: BuiltInFunction, def. @built-in:rename_at)}
-    %%   arrange_all:        {**dplyr::arrange_all** (id: built-in:arrange_all, type: BuiltInFunction, def. @built-in:arrange_all)}
-    %%   arrange_at:         {**dplyr::arrange_at** (id: built-in:arrange_at, type: BuiltInFunction, def. @built-in:arrange_at)}
-    %%   arrange_if:         {**dplyr::arrange_if** (id: built-in:arrange_if, type: BuiltInFunction, def. @built-in:arrange_if)}
-    %%   group_by_all:       {**dplyr::group_by_all** (id: built-in:group_by_all, type: BuiltInFunction, def. @built-in:group_by_all)}
-    %%   group_by_at:        {**dplyr::group_by_at** (id: built-in:group_by_at, type: BuiltInFunction, def. @built-in:group_by_at)}
-    %%   group_by_if:        {**dplyr::group_by_if** (id: built-in:group_by_if, type: BuiltInFunction, def. @built-in:group_by_if)}
-    %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
-    %%   distinct_at:        {**dplyr::distinct_at** (id: built-in:distinct_at, type: BuiltInFunction, def. @built-in:distinct_at)}
-    %%   distinct_if:        {**dplyr::distinct_if** (id: built-in:distinct_if, type: BuiltInFunction, def. @built-in:distinct_if)}
-    %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
-    %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
-    %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
-    %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
-    %%   rename_with:        {**dplyr::rename_with** (id: built-in:rename_with, type: BuiltInFunction, def. @built-in:rename_with)}
-    %%   quo:                {**dplyr::quo** (id: built-in:quo, type: BuiltInFunction, def. @built-in:quo)}
-    %%   expr:               {**dplyr::expr** (id: built-in:expr, type: BuiltInFunction, def. @built-in:expr)}
-    %%   quos:               {**dplyr::quos** (id: built-in:quos, type: BuiltInFunction, def. @built-in:quos)}
-    %%   enexpr:             {**dplyr::enexpr** (id: built-in:enexpr, type: BuiltInFunction, def. @built-in:enexpr)}
-    %%   enquo:              {**dplyr::enquo** (id: built-in:enquo, type: BuiltInFunction, def. @built-in:enquo)}
-    %%   ensym:              {**dplyr::ensym** (id: built-in:ensym, type: BuiltInFunction, def. @built-in:ensym)}
-    %%   enexprs:            {**dplyr::enexprs** (id: built-in:enexprs, type: BuiltInFunction, def. @built-in:enexprs)}
-    %%   enquos:             {**dplyr::enquos** (id: built-in:enquos, type: BuiltInFunction, def. @built-in:enquos)}
-    %%   ensyms:             {**dplyr::ensyms** (id: built-in:ensyms, type: BuiltInFunction, def. @built-in:ensyms)}
-    %%   sym:                {**dplyr::sym** (id: built-in:sym, type: BuiltInFunction, def. @built-in:sym)}
-    %%   syms:               {**dplyr::syms** (id: built-in:syms, type: BuiltInFunction, def. @built-in:syms)}
-    %%   as_label:           {**dplyr::as_label** (id: built-in:as_label, type: BuiltInFunction, def. @built-in:as_label)}
-    %%   quo_name:           {**dplyr::quo_name** (id: built-in:quo_name, type: BuiltInFunction, def. @built-in:quo_name)}
-    %%   sql:                {**dplyr::sql** (id: built-in:sql, type: BuiltInFunction, def. @built-in:sql)}
-    %%   id:                 {**dplyr::id** (id: built-in:id, type: BuiltInFunction, def. @built-in:id)}
-    %%   select_vars_:       {**dplyr::select_vars_** (id: built-in:select_vars_, type: BuiltInFunction, def. @built-in:select_vars_)}
-    %%   rename_vars_:       {**dplyr::rename_vars_** (id: built-in:rename_vars_, type: BuiltInFunction, def. @built-in:rename_vars_)}
-    %%   changes:            {**dplyr::changes** (id: built-in:changes, type: BuiltInFunction, def. @built-in:changes)}
-    %%   location:           {**dplyr::location** (id: built-in:location, type: BuiltInFunction, def. @built-in:location)}
-    %%   eval_tbls2:         {**dplyr::eval_tbls2** (id: built-in:eval_tbls2, type: BuiltInFunction, def. @built-in:eval_tbls2)}
-    %%   eval_tbls:          {**dplyr::eval_tbls** (id: built-in:eval_tbls, type: BuiltInFunction, def. @built-in:eval_tbls)}
-    %%   compare_tbls2:      {**dplyr::compare_tbls2** (id: built-in:compare_tbls2, type: BuiltInFunction, def. @built-in:compare_tbls2)}
-    %%   compare_tbls:       {**dplyr::compare_tbls** (id: built-in:compare_tbls, type: BuiltInFunction, def. @built-in:compare_tbls)}
-    %%   bench_tbls:         {**dplyr::bench_tbls** (id: built-in:bench_tbls, type: BuiltInFunction, def. @built-in:bench_tbls)}
-    %%   current_vars:       {**dplyr::current_vars** (id: built-in:current_vars, type: BuiltInFunction, def. @built-in:current_vars)}
-    %%   select_var:         {**dplyr::select_var** (id: built-in:select_var, type: BuiltInFunction, def. @built-in:select_var)}
-    %%   rename_vars:        {**dplyr::rename_vars** (id: built-in:rename_vars, type: BuiltInFunction, def. @built-in:rename_vars)}
-    %%   select_vars:        {**dplyr::select_vars** (id: built-in:select_vars, type: BuiltInFunction, def. @built-in:select_vars)}
-    %%   failwith:           {**dplyr::failwith** (id: built-in:failwith, type: BuiltInFunction, def. @built-in:failwith)}
-    %%   progress_estimated: {**dplyr::progress_estimated** (id: built-in:progress_estimated, type: BuiltInFunction, def. @built-in:progress_estimated)}
-    %%   add_rownames:       {**dplyr::add_rownames** (id: built-in:add_rownames, type: BuiltInFunction, def. @built-in:add_rownames)}
-    %%   tbl_df:             {**dplyr::tbl_df** (id: built-in:tbl_df, type: BuiltInFunction, def. @built-in:tbl_df)}
-    %%   src_local:          {**dplyr::src_local** (id: built-in:src_local, type: BuiltInFunction, def. @built-in:src_local)}
-    %%   summarise_each:     {**dplyr::summarise_each** (id: built-in:summarise_each, type: BuiltInFunction, def. @built-in:summarise_each)}
-    %%   summarize_:         {**dplyr::summarize_** (id: built-in:summarize_, type: BuiltInFunction, def. @built-in:summarize_)}
-    %%   summarise_:         {**dplyr::summarise_** (id: built-in:summarise_, type: BuiltInFunction, def. @built-in:summarise_)}
-    %%   slice_:             {**dplyr::slice_** (id: built-in:slice_, type: BuiltInFunction, def. @built-in:slice_)}
-    %%   select_:            {**dplyr::select_** (id: built-in:select_, type: BuiltInFunction, def. @built-in:select_)}
-    %%   rename_:            {**dplyr::rename_** (id: built-in:rename_, type: BuiltInFunction, def. @built-in:rename_)}
-    %%   transmute_:         {**dplyr::transmute_** (id: built-in:transmute_, type: BuiltInFunction, def. @built-in:transmute_)}
-    %%   mutate_:            {**dplyr::mutate_** (id: built-in:mutate_, type: BuiltInFunction, def. @built-in:mutate_)}
-    %%   group_indices_:     {**dplyr::group_indices_** (id: built-in:group_indices_, type: BuiltInFunction, def. @built-in:group_indices_)}
-    %%   filter_:            {**dplyr::filter_** (id: built-in:filter_, type: BuiltInFunction, def. @built-in:filter_)}
-    %%   do_:                {**dplyr::do_** (id: built-in:do_, type: BuiltInFunction, def. @built-in:do_)}
-    %%   arrange_:           {**dplyr::arrange_** (id: built-in:arrange_, type: BuiltInFunction, def. @built-in:arrange_)}
-    %%   tally_:             {**dplyr::tally_** (id: built-in:tally_, type: BuiltInFunction, def. @built-in:tally_)}
-    %%   add_tally_:         {**dplyr::add_tally_** (id: built-in:add_tally_, type: BuiltInFunction, def. @built-in:add_tally_)}
-    %%   group_by_:          {**dplyr::group_by_** (id: built-in:group_by_, type: BuiltInFunction, def. @built-in:group_by_)}
-    %%   funs_:              {**dplyr::funs_** (id: built-in:funs_, type: BuiltInFunction, def. @built-in:funs_)}
-    %%   distinct_:          {**dplyr::distinct_** (id: built-in:distinct_, type: BuiltInFunction, def. @built-in:distinct_)}
-    %%   count_:             {**dplyr::count_** (id: built-in:count_, type: BuiltInFunction, def. @built-in:count_)}
-    %%   add_count_:         {**dplyr::add_count_** (id: built-in:add_count_, type: BuiltInFunction, def. @built-in:add_count_)}
-    %%   funs:               {**dplyr::funs** (id: built-in:funs, type: BuiltInFunction, def. @built-in:funs)}
-    %%   combine:            {**dplyr::combine** (id: built-in:combine, type: BuiltInFunction, def. @built-in:combine)}
-    %%   all_equal:          {**dplyr::all_equal** (id: built-in:all_equal, type: BuiltInFunction, def. @built-in:all_equal)}
-    %%   top_n:              {**dplyr::top_n** (id: built-in:top_n, type: BuiltInFunction, def. @built-in:top_n)}
-    %%   sample_n:           {**dplyr::sample_n** (id: built-in:sample_n, type: BuiltInFunction, def. @built-in:sample_n)}
-    %%   recode:             {**dplyr::recode** (id: built-in:recode, type: BuiltInFunction, def. @built-in:recode)}
-    %%   group_nest:         {**dplyr::group_nest** (id: built-in:group_nest, type: BuiltInFunction, def. @built-in:group_nest)}
-    %%   do:                 {**dplyr::do** (id: built-in:do, type: BuiltInFunction, def. @built-in:do)}
-    %%   all_vars:           {**dplyr::all_vars** (id: built-in:all_vars, type: BuiltInFunction, def. @built-in:all_vars)}
-    %%   vars:               {**dplyr::vars** (id: built-in:vars, type: BuiltInFunction, def. @built-in:vars)}
-    %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
-    %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
-    %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
-    %%   sample_frac:        {**dplyr::sample_frac** (id: built-in:sample_frac, type: BuiltInFunction, def. @built-in:sample_frac)}
-    %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
+    %%   and what generics, magrittr, pillar, rlang, tibble, tidyselect attach
     %% 3----------------------------------------
-    %%   read_csv:           {**readr::read_csv** (id: built-in:read_csv, type: BuiltInFunction, def. @built-in:read_csv)}
-    %%   read_csv2:          {**readr::read_csv2** (id: built-in:read_csv2, type: BuiltInFunction, def. @built-in:read_csv2)}
-    %%   read_tsv:           {**readr::read_tsv** (id: built-in:read_tsv, type: BuiltInFunction, def. @built-in:read_tsv)}
-    %%   read_lines:         {**readr::read_lines** (id: built-in:read_lines, type: BuiltInFunction, def. @built-in:read_lines)}
-    %%   read_delim:         {**readr::read_delim** (id: built-in:read_delim, type: BuiltInFunction, def. @built-in:read_delim)}
-    %%   read_fwf:           {**readr::read_fwf** (id: built-in:read_fwf, type: BuiltInFunction, def. @built-in:read_fwf)}
-    %%   read_table:         {**readr::read_table** (id: built-in:read_table, type: BuiltInFunction, def. @built-in:read_table)}
-    %%   read_log:           {**readr::read_log** (id: built-in:read_log, type: BuiltInFunction, def. @built-in:read_log)}
-    %%   read_lines_raw:     {**readr::read_lines_raw** (id: built-in:read_lines_raw, type: BuiltInFunction, def. @built-in:read_lines_raw)}
-    %%   read_lines_chunked: {**readr::read_lines_chunked** (id: built-in:read_lines_chunked, type: BuiltInFunction, def. @built-in:read_lines_chunked)}
-    %%   read_rds:           {**readr::read_rds** (id: built-in:read_rds, type: BuiltInFunction, def. @built-in:read_rds)}
-    %%   write_csv:          {**readr::write_csv** (id: built-in:write_csv, type: BuiltInFunction, def. @built-in:write_csv)}
-    %%   write_csv2:         {**readr::write_csv2** (id: built-in:write_csv2, type: BuiltInFunction, def. @built-in:write_csv2)}
-    %%   write_tsv:          {**readr::write_tsv** (id: built-in:write_tsv, type: BuiltInFunction, def. @built-in:write_tsv)}
-    %%   write_delim:        {**readr::write_delim** (id: built-in:write_delim, type: BuiltInFunction, def. @built-in:write_delim)}
-    %%   write_excel_csv:    {**readr::write_excel_csv** (id: built-in:write_excel_csv, type: BuiltInFunction, def. @built-in:write_excel_csv)}
-    %%   write_excel_csv2:   {**readr::write_excel_csv2** (id: built-in:write_excel_csv2, type: BuiltInFunction, def. @built-in:write_excel_csv2)}
-    %%   write_file:         {**readr::write_file** (id: built-in:write_file, type: BuiltInFunction, def. @built-in:write_file)}
-    %%   write_lines:        {**readr::write_lines** (id: built-in:write_lines, type: BuiltInFunction, def. @built-in:write_lines)}
-    %%   write_rds:          {**readr::write_rds** (id: built-in:write_rds, type: BuiltInFunction, def. @built-in:write_rds)}
-    %%   read_table2:        {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
-    %%   melt_table:         {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
-    %%   melt_fwf:           {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
-    %%   melt_delim:         {**readr::melt_delim** (id: built-in:melt_delim, type: BuiltInFunction, def. @built-in:melt_delim)}
-    %%    library-load:      {**readr:: library-load** (id: 11, type: Function, def. @11)}
+    %%   and what dplyr attach
     %% 4----------------------------------------
+    %% 5----------------------------------------
+    %%   and what readr attach
+    %% 6----------------------------------------
     %%   #search-path:ggplot: {**#search-path:ggplot** (id: 3, type: Variable, def. @3)}
     %%   #search-path:        {**#search-path** (id: 3, type: Variable, cds: {}, def. @3), **#search-path** (id: 7, type: Variable, cds: {}, def. @7), **#search-path** (id: 11, type: Variable, cds: {}, def. @11)}
     %%   #search-path:dplyr:  {**#search-path:dplyr** (id: 7, type: Variable, def. @7)}
@@ -1777,10 +991,10 @@ points`"]
     linkStyle 12 stroke:gray,color:gray;
     16 -->|"reads, arg"| 14
     16 -->|"reads"| 11
+    16 -.->|"reads, calls"| built-in:readr:read_csv
+    linkStyle 15 stroke:gray;
     16 -.->|"flow"| 12
-    linkStyle 15 stroke:gray,color:gray;
-    16 -.->|"reads, calls"| built-in:read_csv
-    linkStyle 16 stroke:gray;
+    linkStyle 16 stroke:gray,color:gray;
     12 -->|"defined-by, flow"| 17
     12 -->|"defined-by"| 16
     17 -->|"reads, arg"| 16
@@ -1793,10 +1007,10 @@ points`"]
     linkStyle 23 stroke:gray,color:gray;
     22 -->|"reads, arg"| 20
     22 -->|"reads"| 11
+    22 -.->|"reads, calls"| built-in:readr:read_csv
+    linkStyle 26 stroke:gray;
     22 -.->|"flow"| 18
-    linkStyle 26 stroke:gray,color:gray;
-    22 -.->|"reads, calls"| built-in:read_csv
-    linkStyle 27 stroke:gray;
+    linkStyle 27 stroke:gray,color:gray;
     18 -->|"defined-by, flow"| 23
     18 -->|"defined-by"| 22
     23 -->|"reads, arg"| 22
@@ -1869,7 +1083,7 @@ points`"]
     52 -->|"arg"| 38
     52 -->|"returns, arg"| 50
     52 -->|"reads"| 7
-    52 -.->|"reads, calls"| built-in:_37__62__37_
+    52 -.->|"reads, calls"| built-in:dplyr:_37__62__37_
     linkStyle 80 stroke:gray;
     52 -.->|"flow"| 54
     linkStyle 81 stroke:gray,color:gray;

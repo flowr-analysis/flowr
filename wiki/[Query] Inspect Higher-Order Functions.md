@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 13:32:41 UTC (v2.17.6), do not edit directly._
 <h2 id="Inspect Higher-Order Functions Query">Inspect Higher-Order Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions are higher-order functions\
@@ -72,6 +72,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Inspect Higher-Order Functions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/benchmark/slicer.ts#L127"><code>executor</code></a>.
+The Inspect Higher-Order Functions Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/benchmark/slicer.ts#L125"><code>executor</code></a>.
 
 </details>

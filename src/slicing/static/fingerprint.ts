@@ -1,6 +1,5 @@
 import objectHash from 'object-hash';
-import type { Environment, REnvironmentInformation } from '../../dataflow/environments/environment';
-import { isDefaultBuiltInEnvironment } from '../../dataflow/environments/environment';
+import { type Environment, type REnvironmentInformation, isDefaultBuiltInEnvironment } from '../../dataflow/environments/environment';
 import type { IdentifierDefinition } from '../../dataflow/environments/identifier';
 import { Frame, type MemoryView } from '../../dataflow/environments/frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';

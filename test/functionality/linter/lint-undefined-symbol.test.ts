@@ -223,7 +223,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('another package\'s globalVariables does not count', parser, 'other::globalVariables("mpg")\nf <- function() mpg',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'globalVariables', kind: 'function', loc: [1, 1, 1, 29] }, undefinedVar('mpg', [2, 17, 2, 19])], undefined, { sigDb: utilsDb });
 			assertLinter('the declaration itself is known without a signature database', parser, 'utils::globalVariables("mpg")\nf <- function() mpg',
-				'undefined-symbol', [], undefined, { noSigDb: true });
+				'undefined-symbol', [], undefined, { sigDb: false });
 			assertLinter('variables of the dispatch are bound in a method', parser, 'print.foo <- function(x, ...) { cat(.Generic); NextMethod() }',
 				'undefined-symbol', [], undefined, { sigDb: utilsDb });
 		});

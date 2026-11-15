@@ -6,8 +6,7 @@ import { withTreeSitter } from '../_helper/shell';
 import { label } from '../_helper/label';
 import { queryCase, runQuery } from '../_helper/query';
 import { InspectFnPropsQueryDefinition } from '../../../src/queries/catalog/inspect-fn-props-query/inspect-fn-props-query-format';
-import type { StatedProps, ArgProps } from '../../../src/dataflow/environments/built-in-props';
-import { ArgProp, CallProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
+import { type StatedProps, type ArgProps, ArgProp, CallProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
 
 describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	/**

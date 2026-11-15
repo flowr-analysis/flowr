@@ -3,10 +3,9 @@ import { label } from '../_helper/label';
 import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { boundsFrom, buildGuessAnalyzer, guessDep, guessed, runGuess, type GuessScenario } from '../_helper/guess-dep-versions';
 import { FlowrConfig } from '../../../src/config';
-import { executeQueries, SupportedQueries, Query } from '../../../src/queries/query';
+import { executeQueries, SupportedQueries, Query, asciiSummaryOfQueryResult } from '../../../src/queries/query';
 import { discardingReplOutput } from '../_helper/repl';
 import { explodeDependencyVersions } from '../../../src/project/dependency-version-space';
-import { asciiSummaryOfQueryResult } from '../../../src/queries/query-print';
 import { ansiFormatter } from '../../../src/util/text/ansi';
 import { Package } from '../../../src/project/plugins/package-version-plugins/package';
 import { FlowrNamespaceFile } from '../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
@@ -953,7 +952,7 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 					pkgB: { downloads: 9000, versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } } } }
 				}
 			});
-			const run = async() => (await Query.one({ analyzer }, { type: 'guess-dep-versions' }));
+			const run = async() => await Query.one({ analyzer }, { type: 'guess-dep-versions' });
 			const first = await run();
 			const second = await run();
 			expect(second.dependencies).toEqual(first.dependencies);

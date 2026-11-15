@@ -3,8 +3,7 @@ import { SourceRange } from '../../../../../../util/range';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { type RUnnamedArgument, RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { FunctionArgument } from '../../../../../graph/graph';
 

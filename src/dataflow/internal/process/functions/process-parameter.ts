@@ -23,7 +23,6 @@ function definedByDefault<OtherInfo>(parameter: RParameter<OtherInfo & ParentInf
 /**
  * The dataflow of one function parameter: its name becomes a definition in the function's frame, and its
  * default value, if it has one, is processed in the same frame so it may read the parameters before it.
- * @param parameter - the parameter to process
  * @param data      - what the surrounding function definition is being processed with
  */
 export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {

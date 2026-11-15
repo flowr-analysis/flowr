@@ -18,7 +18,7 @@ import type { DataflowGraph, ReadonlyOutgoingEdges } from '../../dataflow/graph/
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { SliceDirection } from '../../util/slice-direction';
-import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
+import { RRole } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -41,10 +41,7 @@ export interface StaticSliceOptions {
 	readonly ids:             readonly NodeId[]
 	/** Whether to slice forward or backward. Defaults to {@link SliceDirection.Backward}. */
 	readonly direction?:      SliceDirection
-	/**
-	 * Maximum BFS visits before the algorithm switches to over-approximation (includes everything).
-	 * Defaults to 75.
-	 */
+	/** Maximum BFS visits before the algorithm switches to over-approximation (includes everything). Defaults to 75. */
 	readonly threshold?:      number
 	/** Memoization cache that can be shared across multiple slices on the same graph. */
 	readonly cache?:          Map<Fingerprint, Set<NodeId>>
@@ -86,11 +83,11 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const resolvedCalleeBoundaries = new Set<NodeId>();
 	/* a body entered through a call gets its arguments from that call, so only bodies the slice starts in open their callers */
 	const openedBodies = new Set<NodeId>();
-	const openBodiesAround = (from: NodeId): void => {
+	function openBodiesAround(from: NodeId): void {
 		for(let fn = RNode.findEnclosing(from, idMap, RFunctionDefinition.is); fn !== undefined; fn = RNode.strictlyEnclosingFunction(fn, idMap)) {
 			openedBodies.add(fn);
 		}
-	};
+	}
 	const graph = sliceGraph ?? (direction === SliceDirection.Forward ? Dataflow.invertGraph(info.graph, ctx.env.makeCleanEnv()) : info.graph);
 	const emptyEnv = ctx.env.makeCleanEnv();
 	const basePrint = ctx.env.getCleanEnvFingerprint();
@@ -108,11 +105,11 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	/* the dispatches within functions decided per call, as visited, and per call of such a function the dispatches it decides */
 	const dispatchVisits = new Map<NodeId, NodeToSlice>();
 	const dispatchesOfCall = new Map<NodeId, NodeId[]>();
-	const enqueue = (id: NodeId, env: REnvironmentInformation, print: Fingerprint): void => {
+	function enqueue(id: NodeId, env: REnvironmentInformation, print: Fingerprint): void {
 		if(!queue.hasId(id)) {
 			queue.add(id, env, print, true);
 		}
-	};
+	}
 
 	let minNesting = Number.MAX_SAFE_INTEGER;
 	const sliceSeedIds = new Set<NodeId>();
@@ -594,7 +591,7 @@ export function staticDice(
 function extendSlices(results: ReadonlySet<NodeId>, ast: AstIdMap): Set<NodeId> {
 	const res = new Set(results);
 	for(const id of results) {
-		const statement = RNode.findEnclosing(id, ast, n => n.info.role === RoleInParent.Root || n.info.role === RoleInParent.ExpressionListChild);
+		const statement = RNode.findEnclosing(id, ast, RRole.isStatement);
 		for(const inner of statement === undefined ? [] : RNode.collectAllIds(ast.get(statement))) {
 			res.add(inner);
 		}

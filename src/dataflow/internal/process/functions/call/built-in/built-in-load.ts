@@ -4,18 +4,26 @@ import { noteOwnMethod, bindsUnknownNames } from './built-in-expression-list';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
-import { happensInEveryBranch } from '../../../../../info';
-import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { happensInEveryBranch, type ControlDependency, type DataflowInformation } from '../../../../../info';
+import {
+	RFunctionCall,
+	EmptyArgument,
+	type PotentiallyEmptyRArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { ControlDependency, DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import type { NamedInGraphIdentifierDefinition, BrandedIdentifier, InGraphReferenceType } from '../../../../../environments/identifier';
-import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
-import type { RObjectData } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
-import { FlowrRDAFile, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
+import {
+	type NamedInGraphIdentifierDefinition,
+	type BrandedIdentifier,
+	type InGraphReferenceType,
+	Identifier,
+	PkgName,
+	ReferenceType
+} from '../../../../../environments/identifier';
+import { type RObjectData, FlowrRDAFile, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { findSource } from './built-in-source';
 import { VertexType } from '../../../../../graph/vertex';
@@ -30,7 +38,6 @@ import { SourceRange } from '../../../../../../util/range';
 import type { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, signatureParamNames, type EnvirResolution } from './built-in-envir-utils';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 

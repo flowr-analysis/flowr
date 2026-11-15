@@ -1,13 +1,17 @@
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { bindsUnknownNames } from './built-in-expression-list';
-import type { DataflowProcessorInformation } from '../../../../../processor';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { DataflowInformation, ExitPointType } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { requestFromInput } from '../../../../../../r-bridge/retriever';
 import { type ParentInformation, sourcedDeterministicCountingIdGenerator } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	type PotentiallyEmptyRArgument,
+	RFunctionCall,
+	EmptyArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -18,20 +22,22 @@ import { isUndefined } from '../../../../../../util/assert';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { cartesianProduct } from '../../../../../../util/collections/arrays';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import type { NamedInGraphIdentifierDefinition, BrandedIdentifier } from '../../../../../environments/identifier';
+import {
+	Identifier,
+	ReferenceType,
+	type NamedInGraphIdentifierDefinition,
+	type BrandedIdentifier
+} from '../../../../../environments/identifier';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { envirOf, pipedCall, resolveArgToEnvirOrAmbiguous, resolveConstantString, routeWrittenToStackEnv, unknownIfAmbiguous } from './built-in-envir-utils';
 import { evaluateInEnvir, exitsPassingReturn } from './built-in-local';
-import { processDataflowFor } from '../../../../../processor';
 import { REnvironment } from '../../../../../environments/environment';
 import { CapturingCalls } from '../quoted';
 import { ControlFlow } from '../../../../control-flow';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { evaluatesCapturedCode } from './built-in-ambient-state';
 import { callNamedFunction, resolveFunctionArgument, type ResolvedFunctionArgument } from './built-in-apply';
 import type { FunctionArgument } from '../../../../../graph/graph';
@@ -53,7 +59,7 @@ export function processEvalCall<OtherInfo>(
 	config: {
 		/** should this produce an explicit source function call in the graph? */
 		includeFunctionCall?: boolean
-		/** if selected processes evalText function call, else processes eval*/
+		/** if selected processes evalText function call, else processes eval */
 		supportFunctionCall?: boolean
 		parameterNames?:      readonly string[]
 		parentFrame?:         boolean

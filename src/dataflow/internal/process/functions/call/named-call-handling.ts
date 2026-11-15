@@ -14,9 +14,15 @@ import { RBinaryOp } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-bi
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Identifier, isReferenceType, ReferenceType } from '../../../../environments/identifier';
+import {
+	Identifier,
+	isReferenceType,
+	ReferenceType,
+	type BrandedIdentifier,
+	type IdentifierDefinition,
+	type InGraphIdentifierDefinition
+} from '../../../../environments/identifier';
 import { baseRExportOwner, isBaseRPackage } from '../../../../../util/r-base-packages';
-import type { BrandedIdentifier, IdentifierDefinition, InGraphIdentifierDefinition } from '../../../../environments/identifier';
 import type { AttachedBuiltIn } from '../../../../environments/built-in';
 import { EdgeType } from '../../../../graph/edge';
 import { attachExportVertex, loadNodesForNamespace } from './built-in/built-in-library';
@@ -175,11 +181,11 @@ export function processNamedCall<OtherInfo>(
 	/* flowR models what a package function does with its arguments, but not which of its options it reads */
 	let packageFn = false;
 	const alternatives: DataflowInformation[] = [];
-	const processDefault = () => {
+	function processDefault() {
 		/* if we do not know where we land, we force! reuse `resolved`, data.environment did not change above */
 		const sig = resolved.length > 0 ? undefined : FunctionSemantics.call.signature.every;
 		alternatives.push(processKnownFunctionCall({ name, args, rootId, data, sig, origin: 'default' }).information);
-	};
+	}
 	/* first, so the arguments keep the promise the shadowing function makes of them, which holds for a forcing built-in, too */
 	if(shadowable) {
 		processDefault();

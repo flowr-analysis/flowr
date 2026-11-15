@@ -20,7 +20,6 @@ import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ControlFlowGraph } from '../control-flow/control-flow-graph';
 import { Identifier, ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
 import { applyKills } from '../dataflow/environments/apply-kill';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -30,7 +29,6 @@ import { UnnamedFunctionCallPrefix } from '../dataflow/internal/process/function
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { DataflowInformation } from '../dataflow/info';
-import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import type { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -159,7 +157,7 @@ ${
 }
 		`,
 		code:             '42',
-		expectedSubgraph: emptyGraph().constant('0')
+		expectedSubgraph: emptyGraph().constant(0)
 	}, []]);
 
 	vertexExplanations.set(VertexType.Use, [{
@@ -594,7 +592,7 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 
 `,
 		code:             'function() 1',
-		expectedSubgraph: emptyGraph().defineFunction('1@function', [0], { hooks: [], graph: new Set('0'), in: [{ nodeId: 0, cds: [], type: ReferenceType.Constant, name: undefined }], out: [], unknownReferences: [], entryPoint: 0, environment: defaultEnv() })
+		expectedSubgraph: emptyGraph().defineFunction('1@function', [0], { hooks: [], graph: new Set([0]), in: [{ nodeId: 0, cds: [], type: ReferenceType.Constant, name: undefined }], out: [], unknownReferences: [], entryPoint: 0, environment: defaultEnv() })
 	}, []]);
 
 	return explainAll(parser, ctx, 'vertex', getAllVertices(), vertexExplanations);
@@ -1291,8 +1289,8 @@ ${await printDfGraphForCode(treeSitter, 'print(x)', { mark: new Set(['3->1']), c
 
 Retrieving the _types_ of the edge from the print call to its argument returns:
 ${await (async() => {
-			const dfg =  await createDataflowPipeline(treeSitter, { context: contextFromInput('print(x)') }).allRemainingSteps();
-			const edge = dfg.dataflow.graph.outgoingEdges(3);
+			const dfg = await (await new FlowrAnalyzerBuilder().setParser(treeSitter).buildFor('print(x)')).dataflow();
+			const edge = dfg.graph.outgoingEdges(3);
 			if(edge) {
 				const wanted = edge.get(1);
 				if(wanted) {

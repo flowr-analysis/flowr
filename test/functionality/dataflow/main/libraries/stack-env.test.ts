@@ -11,9 +11,9 @@ import { label } from '../../../_helper/label';
 // `get("x", envir=e)` resolve into that environment. Expectations verified against real R.
 describe('Env builtins point into the search-path stack', withTreeSitter(ts => {
 	const opts = { expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;
-	const registerPkgA = (a: FlowrAnalyzer): void => {
+	function registerPkgA(a: FlowrAnalyzer): void {
 		a.context().deps.addDependency(Package.fromConstants('pkgA', 'export(fa)', ['fa']));
-	};
+	}
 	const withPkgA = { ...opts, modifyAnalyzer: registerPkgA } as const;
 
 	assertDataflow(label('globalenv() lets $ resolve into the global env', ['search-path', 'dynamic-environment-resolution']), ts,

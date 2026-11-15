@@ -13,6 +13,7 @@ import { Ternary } from '../../../../src/util/logic';
 import { SourceRange } from '../../../../src/util/range';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { analyze } from '../../_helper/analyzer';
 
 describe('Ambient contracts of calls', withTreeSitter(ts => {
 	/** per definition the call of `fn` in line `line` (`2@map`) may reach, its effects as `happens family access [keys] (open condition) @ deciders` */
@@ -25,10 +26,10 @@ describe('Ambient contracts of calls', withTreeSitter(ts => {
 		const idMap = (await analyzer.normalize()).idMap;
 		const call = [...info.graph?.vertices(true) ?? []].find(([id, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === fn && SourceRange.getStartLine(idMap.get(id)?.location) === Number(line))?.[0];
 		assert.isDefined(call, criterion);
-		const shown = (id: NodeId) => {
+		function shown(id: NodeId) {
 			const node = idMap.get(id);
 			return `${SourceRange.getStartLine(node?.location) ?? '?'}@${node?.lexeme ?? '?'}`;
-		};
+		}
 		return Object.fromEntries(AmbientContract.ofCall(call, info).map(c => [Identifier.toString(c.definition), [
 			...c.effects.map(({ happens, effect, keys, decidedBy }) => [happens, effect.family, effect.access,
 				...keys === undefined ? [] : [`[${keys.join(', ')}]`],
@@ -82,8 +83,7 @@ describe('Ambient contracts of calls', withTreeSitter(ts => {
 	});
 	describe('a contract states its decisions as data', () => {
 		async function contractsOf(code: string, line: number, fn: string) {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-			analyzer.addRequest(requestFromInput(code));
+			const analyzer = await analyze(ts, code);
 			const info = await Resolve.infoOf(analyzer);
 			const idMap = (await analyzer.normalize()).idMap;
 			const call = [...info.graph?.vertices(true) ?? []].find(([id, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === fn && SourceRange.getStartLine(idMap.get(id)?.location) === line)?.[0];

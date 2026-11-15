@@ -211,17 +211,19 @@ function collectTypeHierarchy(sourceFiles: readonly ts.SourceFile[], options: Ge
 		}
 		const nameOf = (n: { readonly name?: ts.Node }) => n.name?.getText(sourceFile) ?? '';
 		const membersOf = (members: readonly NamedDeclaration[]) => members.map(member => formatNode(member, sourceFile, typeChecker));
-		const add = (name: string, kind: TypeElementKind, extendsTypes: string[], generics: string[] = [], properties?: string[]) => hierarchyList.push({
-			name:       dropGenericsFromTypeName(name),
-			node,
-			kind,
-			extends:    extendsTypes,
-			generics,
-			comments:   getTextualCommentsFromTypeScript(node),
-			filePath:   sourceFile.fileName,
-			lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
-			properties
-		});
+		const add = (name: string, kind: TypeElementKind, extendsTypes: string[], generics: string[] = [], properties?: string[]) => {
+			return hierarchyList.push({
+				name:       dropGenericsFromTypeName(name),
+				node,
+				kind,
+				extends:    extendsTypes,
+				generics,
+				comments:   getTextualCommentsFromTypeScript(node),
+				filePath:   sourceFile.fileName,
+				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
+				properties
+			});
+		};
 
 		if(ts.isInterfaceDeclaration(node)) {
 			add(nameOf(node), 'interface', heritageTypeNames(node, sourceFile), genericNames(node, sourceFile), membersOf(node.members));

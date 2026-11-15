@@ -226,10 +226,10 @@ export const GLOBAL_ENVIRONMENT_MODIFICATION = {
 		for(const { name, node, vertex: call } of packageCalls(df.graph, idMap, pkg, WriterNames)) {
 			consideredCalls++;
 			const args = FunctionSemantics.call.match.toSpec(call.args, EnvironmentWriters[name as keyof typeof EnvironmentWriters]);
-			const arg = (formal: string) => {
+			function arg(formal: string) {
 				const ids = (args as ReadonlyMap<string, readonly NodeId[]>).get(formal);
 				return ids?.length === 1 ? idMap.get(ids[0]) : undefined;
-			};
+			}
 			const env = call.environment ?? df.environment;
 			const valueOf = (n: RNode<ParentInformation> | undefined) => RArgument.is(n) ? n.value : n;
 			switch(name) {

@@ -54,7 +54,7 @@ export function serveWiki(page = '', port = 8000, live = false): () => void {
 		});
 	});
 	/* a busy port (often an earlier preview) moves on to the next one instead of failing */
-	const listen = (at: number): void => {
+	function listen(at: number): void {
 		server.once('error', (e: NodeJS.ErrnoException) => {
 			if(e.code !== 'EADDRINUSE') {
 				throw e;
@@ -63,7 +63,7 @@ export function serveWiki(page = '', port = 8000, live = false): () => void {
 			listen(at + 1);
 		});
 		server.listen(at, '127.0.0.1');
-	};
+	}
 	server.on('listening', () => {
 		server.removeAllListeners('error');
 		console.log(`serving wiki/ on http://localhost:${(server.address() as { port: number }).port}/${page}${live ? ', reloading on every rebuild' : ''}`);

@@ -24,13 +24,13 @@ import { OtherPathFunctions } from '../../queries/catalog/dependencies-query/fun
 import { Identifier } from '../../dataflow/environments/identifier';
 import { pathArgStringNode } from './file-path-validity';
 
-export interface AbsoluteFilePathResult extends LintingResult {
+export interface AbsoluteFilePathsResult extends LintingResult {
 	filePath: string,
 }
 
 type SupportedWd = '@script' | '@home' | '@project' | string;
 
-export interface AbsoluteFilePathConfig extends MergeableRecord {
+export interface AbsoluteFilePathsConfig extends MergeableRecord {
 	/** Include paths that are built by functions, e.g., `file.path()` */
 	include: {
 		/** Whether to include paths that are constructed by functions */
@@ -54,7 +54,7 @@ export interface AbsoluteFilePathConfig extends MergeableRecord {
 	ignoreUrls:              boolean
 }
 
-export interface AbsoluteFilePathMetadata extends MergeableRecord {
+export interface AbsoluteFilePathsMetadata extends MergeableRecord {
 	totalConsidered: number
 	totalUnknown:    number
 }
@@ -120,12 +120,12 @@ function resolvePathForAbsoluteCheck(value: string, ignoreUrls: boolean): string
 }
 
 /** A path built within a call that already reports it, as `file.path` within `read.csv`, is one finding. */
-function withoutNested(results: readonly AbsoluteFilePathResult[]): AbsoluteFilePathResult[] {
+function withoutNested(results: readonly AbsoluteFilePathsResult[]): AbsoluteFilePathsResult[] {
 	return results.filter((r, i) => !results.some((o, j) => i !== j && o.filePath === r.filePath
 		&& (SourceRange.isStrictSubsetOf(r.loc, o.loc) || (j < i && SourceRange.equals(r.loc, o.loc)))));
 }
 
-export const ABSOLUTE_PATH = {
+export const ABSOLUTE_FILE_PATHS = {
 	/* this can be done better once we have types */
 	createSearch: (config, data) => {
 		const ctx = data.inspectContext();
@@ -141,24 +141,26 @@ export const ABSOLUTE_PATH = {
 		}
 		return q.unique();
 	},
-	processSearchResult: async(elements, config, data): Promise<{ results: AbsoluteFilePathResult[], '.meta': AbsoluteFilePathMetadata }> => {
-		const metadata: AbsoluteFilePathMetadata = { totalConsidered: 0, totalUnknown: 0 };
+	processSearchResult: async(elements, config, data): Promise<{ results: AbsoluteFilePathsResult[], '.meta': AbsoluteFilePathsMetadata }> => {
+		const metadata: AbsoluteFilePathsMetadata = { totalConsidered: 0, totalUnknown: 0 };
 		const queryResults = elements.enrichmentContent(Enrichment.QueryData)?.queries;
 		const regex = config.absolutePathRegex ? new RegExp(config.absolutePathRegex) : undefined;
 		const { idMap } = await data.normalize();
 		const { graph } = await data.dataflow();
 		const ctx = data.inspectContext();
-		const absolute = (value: string): string | undefined => {
+		function absolute(value: string): string | undefined {
 			const path = resolvePathForAbsoluteCheck(value, config.ignoreUrls);
 			return path !== undefined && isAbsolutePath(path, regex) ? path : undefined;
-		};
+		}
 		/* the fix rewrites the string spelling the path, which may sit inside the reported call */
-		const finding = (certainty: LintingResultCertainty, filePath: string, node: RNode | undefined, wd?: string, str: RNode | undefined = node): AbsoluteFilePathResult => compactRecord({
-			certainty,
-			filePath,
-			loc:      SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
-			quickFix: quickFixForPath(str, filePath, wd)
-		}) as AbsoluteFilePathResult;
+		function finding(certainty: LintingResultCertainty, filePath: string, node: RNode | undefined, wd?: string, str: RNode | undefined = node): AbsoluteFilePathsResult {
+			return compactRecord({
+				certainty,
+				filePath,
+				loc:      SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
+				quickFix: quickFixForPath(str, filePath, wd)
+			}) as AbsoluteFilePathsResult;
+		}
 		return {
 			results: withoutNested(elements.getElements().flatMap(element => {
 				metadata.totalConsidered++;
@@ -213,4 +215,4 @@ export const ABSOLUTE_PATH = {
 			ignoreUrls:              true
 		})
 	}
-} as const satisfies LintingRule<AbsoluteFilePathResult, AbsoluteFilePathMetadata, AbsoluteFilePathConfig>;
+} as const satisfies LintingRule<AbsoluteFilePathsResult, AbsoluteFilePathsMetadata, AbsoluteFilePathsConfig>;

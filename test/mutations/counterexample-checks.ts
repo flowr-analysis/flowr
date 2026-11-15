@@ -8,8 +8,18 @@ import { Counterexamples, type Counterexample } from './counterexample-corpus';
 import { MutationShardsDir, type MutationShardDetails } from './mutation-details';
 import { mutants, originalKey, type Mutants } from './mutants';
 import { rIsAtLeast } from '../functionality/_helper/r-version';
-import type { MutationPass, QueryObservation, ReplObservation } from '../functionality/_helper/r-mutations';
-import { DeadCodeMarker, markDeadCode, MutationPasses, observeQueries, observeRepl, removalSlice, slice } from '../functionality/_helper/r-mutations';
+import {
+	type MutationPass,
+	type QueryObservation,
+	type ReplObservation,
+	DeadCodeMarker,
+	markDeadCode,
+	MutationPasses,
+	observeQueries,
+	observeRepl,
+	removalSlice,
+	slice
+} from '../functionality/_helper/r-mutations';
 
 
 /** what a shard exercised, kept per shard as the shards of one worker share this module */

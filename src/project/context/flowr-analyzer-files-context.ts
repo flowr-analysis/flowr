@@ -132,10 +132,7 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	exists(path: string, ignoreCase: boolean): string | undefined;
 	/** The project root folder (common directory of the requested roots), or `undefined` if none was requested. */
 	root(): string | undefined;
-	/**
-	 * Until parsers support multiple request types from the virtual context system,
-	 * we resolve their contents.
-	 */
+	/** Until parsers support multiple request types from the virtual context system, we resolve their contents. */
 	resolveRequest(r: RParseRequest): { r: RParseRequestFromText, path?: string };
 	/** Get all files that have been considered during dataflow analysis. */
 	consideredFilesList(): readonly string[];

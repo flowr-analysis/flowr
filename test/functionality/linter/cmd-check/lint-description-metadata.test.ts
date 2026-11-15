@@ -23,8 +23,7 @@ const E = String.fromCharCode(233);
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('description-metadata', () => {
-		const lint = (name: string, over: Readonly<Record<string, string | null>>, expected: Record<string, unknown>[], config: Record<string, unknown> = {}) =>
-			assertLinterPackage(name, parser, 'x <- 1', 'description-metadata', expected, { files: desc(over), ...config });
+		const lint = (name: string, over: Readonly<Record<string, string | null>>, expected: Record<string, unknown>[], config: Record<string, unknown> = {}) => assertLinterPackage(name, parser, 'x <- 1', 'description-metadata', expected, { files: desc(over), ...config });
 
 		describe('no findings', () => {
 			lint('valid DESCRIPTION', {}, []);

@@ -636,7 +636,7 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 
 	// we use a wrapper to count the number of lines for which the autoSelectIf predicate triggered
 	const linesWithAutoSelected = new Set<Line>();
-	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
+	function autoSelectIfWrapper(node: RNode<ParentInformation>) {
 		const result = autoSelectIf(node, ast);
 		if(result && node.location) {
 			for(let i = node.location[0]; i <= node.location[2]; i++) {
@@ -644,7 +644,7 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 			}
 		}
 		return result;
-	};
+	}
 
 	// both inlinings splice every resolvable `source()` in place, overriding `reconstructFiles`: `inlineSources`
 	// emits the main file alone, `inlineFull` every file flowR loads, minus the ones already spliced into a call.

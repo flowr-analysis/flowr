@@ -1,9 +1,8 @@
 import type { JsonEntry, NamedJsonEntry } from '../json/format';
-import { ParseError } from './normalizer-data';
+import { ParseError, type NormalizerData } from './normalizer-data';
 import { SourceRange } from '../../../../../util/range';
 import { type RawRType, RType } from '../../model/type';
 import type { RNode, Source } from '../../model/model';
-import type { NormalizerData } from './normalizer-data';
 import { RExpressionList } from '../../model/nodes/r-expression-list';
 
 /** Given a JSON element, extract the source location of the corresponding element in the R-ast */

@@ -16,11 +16,11 @@ describe('Reading serialized R files runs no R', () => {
 
 	/** an XDR (version 2) serialization stream of a single namespace reference named `name` */
 	function namespaceReference(name: string): Buffer {
-		const int = (v: number) => {
+		function int(v: number) {
 			const b = Buffer.alloc(4);
 			b.writeInt32BE(v);
 			return b;
-		};
+		}
 		const bytes = Buffer.from(name, 'utf8');
 		return Buffer.concat([
 			Buffer.from('X\n'), int(2), int(0x040400), int(0x020300),

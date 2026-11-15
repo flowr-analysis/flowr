@@ -53,13 +53,12 @@ export interface GuessScenario {
 	readonly config?:   FlowrConfig;
 }
 
-const dayMs = (date: string): number => {
+function dayMs(date: string): number {
 	const [y, m, d] = date.split('-').map(Number);
 	return Date.UTC(y, m - 1, d);
-};
+}
 
-const fnInfo = (name: string, params: readonly string[], s3Owner: boolean): SigFunctionInfo =>
-	({ ...expFn(name), props: FnProp.Exported | (s3Owner ? FnProp.S3Owner : 0), params: params.map(p => ({ name: p })) });
+const fnInfo = (name: string, params: readonly string[], s3Owner: boolean): SigFunctionInfo => ({ ...expFn(name), props: FnProp.Exported | (s3Owner ? FnProp.S3Owner : 0), params: params.map(p => ({ name: p })) });
 
 function versionInfo(v: ScenarioVersion): SigVersionInfo {
 	const owned = new Set(v.s3Classes ?? []);
@@ -80,7 +79,7 @@ function versionInfo(v: ScenarioVersion): SigVersionInfo {
 }
 
 /** turn a declarative scenario into an in-memory {@link SigDb} */
-export function buildGuessDb(packages: Readonly<Record<string, ScenarioPackage>>): SigDb {
+function buildGuessDb(packages: Readonly<Record<string, ScenarioPackage>>): SigDb {
 	const b = new SigDbBuilder();
 	for(const [name, spec] of Object.entries(packages)) {
 		const versions = Object.keys(spec.versions);

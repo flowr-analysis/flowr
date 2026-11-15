@@ -145,10 +145,7 @@ export function describeSchema(schema: Joi.Schema, f: OutputFormatter = formatte
 	return lines.map(line => `${indent.repeat(line.level - 1)}${line.text}`).join('\n');
 }
 
-/**
- * Provides a generic description for any Joi schema.
- * You probably want to use {@link describeSchema}.
- */
+/** Provides a generic description for any Joi schema. You probably want to use {@link describeSchema}. */
 export function genericDescription(level: number, formatter: OutputFormatter, name: string, desc: Joi.Description | undefined): SchemaLine[] {
 	if(!desc) {
 		return [];

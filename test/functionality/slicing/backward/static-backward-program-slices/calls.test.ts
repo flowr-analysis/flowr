@@ -9,13 +9,12 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { Ternary } from '../../../../../src/util/logic';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { canReach } from '../../../../../src/control-flow/simple-visitor';
-import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
 import { extractCfg } from '../../../../../src/control-flow/control-flow-graph';
-import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
+import { analyze } from '../../../_helper/analyzer';
 
 assumeLoadedPackages('dplyr', 'magrittr', 'maps', 'plyr', 'inferference');
 
@@ -1204,11 +1203,11 @@ describe('Calls run in R', withShell(shell => {
 }));
 
 describe('Calls checked against R', withTreeSitter(parser => {
-	const check = (cases: readonly (readonly [string, string, string?])[]) => {
+	function check(cases: readonly (readonly [string, string, string?])[]) {
 		for(const [name, code, dropped] of cases) {
 			assertSliceMatchesR(parser, name, code, { dropped });
 		}
-	};
+	}
 	describe('soundness of slices', () => check([
 		['R5 only', 'Counter <- function() { self <- environment(); n <- 0; inc <- function() n <<- n + 1; self }\nc1 <- Counter()\nc1$inc()\nprint(c1$n)'],
 		['local env', 'x <- 1\nlocal({ x <<- 2 })\nprint(x)'],
@@ -1450,9 +1449,9 @@ describe('Primer', { concurrent: false }, withShell(shell => {
 	function assertReaches(code: string, target: SlicingCriterion, expected: boolean) {
 		describe(code, () => {
 			test.each([shell, new TreeSitterExecutor()])('reaches %s', async parser => {
-				const result = await createDataflowPipeline(parser, { context: contextFromInput(code) }).allRemainingSteps();
-				const cfg = extractCfg(result.dataflow);
-				assert.strictEqual(canReach(cfg.graph, cfg.entryPoints, SlicingCriterion.parse(target, result.normalize.idMap)), expected);
+				const analyzer = await analyze(parser, code);
+				const cfg = extractCfg(await analyzer.dataflow());
+				assert.strictEqual(canReach(cfg.graph, cfg.entryPoints, SlicingCriterion.parse(target, (await analyzer.normalize()).idMap)), expected);
 			});
 		});
 	}
@@ -1472,10 +1471,12 @@ describe('Primer', { concurrent: false }, withShell(shell => {
 		assertSliced(sec('primer:env assign parent.frame'), shell, code, ['6@print'], 'f <- function() {\n        var_name <- "x"\n        assign(var_name, 42, envir = parent.frame())\n    }\nf()\nprint(x)', { expectedOutput: '[1] 42', expectedSliceOutput: '[1] 42' });
 		/* the name `var_name` evaluates to is defined, `var_name` itself is only read (#2811) */
 		test(decorateLabelContext(sec('primer:env use of x reads the assign'), ['dataflow']), async() => {
-			const result = await createDataflowPipeline(new TreeSitterExecutor(), { context: contextFromInput(code) }).allRemainingSteps();
-			const graph = result.dataflow.graph;
-			const varName = SlicingCriterion.parse('3@var_name', result.normalize.idMap);
-			const reads = Dataflow.targetsOf(graph, SlicingCriterion.parse('6@x', result.normalize.idMap), EdgeType.Reads);
+			const analyzer = await analyze(new TreeSitterExecutor(), code);
+			const dataflow = await analyzer.dataflow();
+			const normalize = await analyzer.normalize();
+			const graph = dataflow.graph;
+			const varName = SlicingCriterion.parse('3@var_name', normalize.idMap);
+			const reads = Dataflow.targetsOf(graph, SlicingCriterion.parse('6@x', normalize.idMap), EdgeType.Reads);
 			assert.deepStrictEqual(reads, [`${varName}:assigned`]);
 			assert.isTrue(DfgVertex.isUse(graph.getVertex(varName)));
 		});

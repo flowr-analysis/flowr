@@ -1,11 +1,10 @@
-import { createNormalizePipeline } from '../../core/steps/pipeline/default-pipelines';
+import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { normalizedAstToMermaid } from '../../util/mermaid/ast';
 import { docTook } from './doc-timings';
 import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
 import type { GeneralDocContext } from '../wiki-mk/doc-context';
-import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 import type { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 /**
@@ -32,12 +31,12 @@ export interface PrintNormalizedAstOptions {
  */
 export async function printNormalizedAstForCode(parser: KnownParser, code: string, { showCode = true, prefix = 'flowchart TD\n', ctx }: PrintNormalizedAstOptions = {}) {
 	const now = performance.now();
-	const result = await createNormalizePipeline(parser, { context: contextFromInput(code) }).allRemainingSteps();
+	const { ast } = await (await new FlowrAnalyzerBuilder().setParser(parser).buildFor(code)).normalize();
 	const duration = performance.now() - now;
 
 	const metaInfo = `The analysis${docTook(duration)} ran (including parsing with the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment.`;
 
-	return '\n\n' +  printNormalizedAst(result.normalize.ast, prefix) + (showCode ? `
+	return '\n\n' +  printNormalizedAst(ast, prefix) + (showCode ? `
 <details>
 
 <summary style="color:gray">R Code of the Normalized AST</summary>
@@ -53,7 +52,7 @@ ${code}
 <summary style="color:gray">Mermaid Code</summary>
 
 \`\`\`
-${normalizedAstToMermaid(result.normalize.ast, { prefix })}
+${normalizedAstToMermaid(ast, { prefix })}
 \`\`\`
 
 </details>

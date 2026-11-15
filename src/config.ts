@@ -562,7 +562,7 @@ function specialize(current: unknown, base: unknown, overwrite: unknown): unknow
  * default one instead of being appended to it, so options such as `defaultPlugins` can be reduced and not just extended.
  */
 function mergeConfigOntoDefaults(base: FlowrConfig, addon: DeepPartial<FlowrConfig>): FlowrConfig {
-	const merge = (b: unknown, a: unknown): unknown => {
+	function merge(b: unknown, a: unknown): unknown {
 		if(a === undefined) {
 			return b;
 		}
@@ -574,7 +574,7 @@ function mergeConfigOntoDefaults(base: FlowrConfig, addon: DeepPartial<FlowrConf
 			out[key] = merge(out[key], value);
 		}
 		return out;
-	};
+	}
 	return merge(base, addon) as FlowrConfig;
 }
 
@@ -1017,7 +1017,7 @@ export const FlowrConfig = {
 	 */
 	changedPaths(this: void, config: FlowrConfig): string[] {
 		const found: string[] = [];
-		const walk = (current: unknown, base: unknown, path: string[], siblings: readonly string[][]): void => {
+		function walk(current: unknown, base: unknown, path: string[], siblings: readonly string[][]): void {
 			if(current !== null && base !== null && typeof current === 'object' && typeof base === 'object'
 				&& !Array.isArray(current) && !Array.isArray(base)) {
 				const keys = uniqueArray([...Object.keys(current), ...Object.keys(base)]);
@@ -1029,7 +1029,7 @@ export const FlowrConfig = {
 				const short = path.map((key, at) => shortestPrefix(key, siblings[at]));
 				found.push(`${short.join('.')}=${JSON.stringify(current)}`);
 			}
-		};
+		}
 		walk(config, FlowrConfig.default(), [], []);
 		return found;
 	},

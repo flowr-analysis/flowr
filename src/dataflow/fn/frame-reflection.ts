@@ -1,12 +1,9 @@
-import type { DataflowGraph } from '../graph/graph';
-import { FunctionArgument } from '../graph/graph';
+import { type DataflowGraph, FunctionArgument } from '../graph/graph';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { EdgeType } from '../graph/edge';
 import { Dataflow } from '../graph/df-helper';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
-import { DfgVertex } from '../graph/vertex';
-import type { ArgProps, BuiltInFnInfo } from '../environments/built-in-props';
-import { ArgProp, FnSig as Sig } from '../environments/built-in-props';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, DfgVertex } from '../graph/vertex';
+import { type ArgProps, type BuiltInFnInfo, ArgProp, FnSig as Sig } from '../environments/built-in-props';
 import { Identifier, type BrandedIdentifier } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReachSummaries } from '../../util/fixpoint';

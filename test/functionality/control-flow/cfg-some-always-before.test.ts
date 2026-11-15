@@ -1,11 +1,10 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { extractCfg } from '../../../src/control-flow/control-flow-graph';
 import { happensBefore, someAlwaysBefore } from '../../../src/control-flow/happens-before';
-import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import { Ternary } from '../../../src/util/logic';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { analyze } from '../_helper/analyzer';
 
 const programs = [
 	'x <- 1\ny <- x\nprint(x)',
@@ -20,8 +19,9 @@ const programs = [
 describe('someAlwaysBefore', withTreeSitter(parser => {
 	for(const code of programs) {
 		test(`agrees with happensBefore on ${JSON.stringify(code.slice(0, 40))}`, async() => {
-			const result = await createDataflowPipeline(parser, { context: contextFromInput(code) }).allRemainingSteps();
-			const cfg = extractCfg(result.dataflow).graph;
+			const analyzer = await analyze(parser, code);
+			const dataflow = await analyzer.dataflow();
+			const cfg = extractCfg(dataflow).graph;
 			const ids = [...cfg.vertices().keys()] as NodeId[];
 			/* a spread of candidate sets, built the same on every run */
 			const sets: ReadonlySet<NodeId>[] = [new Set(ids)];

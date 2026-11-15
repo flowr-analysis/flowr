@@ -58,20 +58,20 @@ export function installGhostHint(
 	const fits = (text: string) => getLine().length + text.length + 6 < (io.stdout.columns ?? 80);
 
 	let shown = false;
-	const clear = () => {
+	function clear() {
 		if(shown) {
 			io.stdout.write(ghostHintClearSequence);
 			shown = false;
 		}
-	};
-	const render = (text: string) => {
+	}
+	function render(text: string) {
 		clear();
 		if(text && fits(text)) {
 			io.stdout.write(ghostHintShowSequence(text));
 			shown = true;
 		}
-	};
-	const update = () => {
+	}
+	function update() {
 		if(!config.repl.hints) {
 			clear();
 			return;
@@ -84,7 +84,7 @@ export function installGhostHint(
 		} else {
 			clear();
 		}
-	};
+	}
 
 	io.stdin.prependListener('keypress', clear);
 	io.stdin.on('keypress', (_s: string, key?: { name?: string }) => {

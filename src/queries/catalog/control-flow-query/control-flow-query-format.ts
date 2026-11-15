@@ -23,10 +23,7 @@ export async function executeControlFlowQuery({ analyzer }: BasicQueryData, quer
 export interface ControlFlowQuery extends BaseQueryFormat {
 	readonly type:    'control-flow';
 	readonly config?: {
-		/**
-		 * If set, the control flow graph will be simplified using the given passes.
-		 * Defaults to the default simplification order.
-		 */
+		/** If set, the control flow graph will be simplified using the given passes. Defaults to the default simplification order. */
 		simplificationPasses?: readonly CfgSimplificationPassName[];
 	}
 }

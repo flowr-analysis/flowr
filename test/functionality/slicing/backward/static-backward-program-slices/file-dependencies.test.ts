@@ -4,8 +4,7 @@ import { describe } from 'vitest';
 import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 
 describe('File Dependencies', withTreeSitter(parser => {
-	const keeps = (name: string, code: string, expected: { kept?: readonly string[], dropped?: readonly string[] }, criterion?: SlicingCriterion) =>
-		assertSliceKeeps(label(name, ['file-dependencies', 'i-o'], ['slice']), parser, code, criterion ?? `${code.split('\n').length}@print`, expected);
+	const keeps = (name: string, code: string, expected: { kept?: readonly string[], dropped?: readonly string[] }, criterion?: SlicingCriterion) => assertSliceKeeps(label(name, ['file-dependencies', 'i-o'], ['slice']), parser, code, criterion ?? `${code.split('\n').length}@print`, expected);
 
 	describe('a download writes the file it is saved to, and reads only its source', () => {
 		const read = 'd <- read.csv("b.csv")\nprint(d)';

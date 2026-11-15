@@ -15,8 +15,7 @@ import type { DefaultBuiltInProcessorConfiguration } from '../built-in';
 const SinkSig = sig({ file: ArgProp.Resource });
 /** `sink(file)` diverts the output of the `type`, `sink()` ends the diversion */
 const SinkArg = (arg: string, is: readonly (string | null)[]) => ({ arg, formals: ['file', 'append', 'type', 'split'], is }) as const;
-const SinkStack = (family: typeof Ambient.sink, types: readonly (string | null)[], others: readonly (string | null)[]) =>
-	[{ ...family.opens, when: SinkArg('type', types), unless: SinkArg('file', [null]) }, { ...family.closes, when: SinkArg('file', [null]), unless: SinkArg('type', others) }] as const;
+const SinkStack = (family: typeof Ambient.sink, types: readonly (string | null)[], others: readonly (string | null)[]) => [{ ...family.opens, when: SinkArg('type', types), unless: SinkArg('file', [null]) }, { ...family.closes, when: SinkArg('file', [null]), unless: SinkArg('type', others) }] as const;
 
 /** a kind among the arguments (`set.seed(1, "Wichmann-Hill")`) reseeds the generator from its current state, which changes the stream as well */
 const SetsRngKind = (formals: readonly string[]) => [{ ...Ambient.rng.adds, when: { besides: formals } }, { ...Ambient.rngKind.writes, when: { besides: formals } }] as const;

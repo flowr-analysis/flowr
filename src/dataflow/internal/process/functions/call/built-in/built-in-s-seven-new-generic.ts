@@ -21,9 +21,8 @@ import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { VertexType, DfgVertex, FunctionDispatch } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import type { ClassDeclarationConfig } from '../../../../../fn/class-declaration';
+import { type ClassDeclarationConfig, argForImpl } from '../../../../../fn/class-declaration';
 import { linkS4Declaration, linkS4Generic } from './built-in-s-four';
-import { argForImpl } from '../../../../../fn/class-declaration';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
@@ -185,9 +184,7 @@ export const S7SyntheticFunArgSuffix = '-s7-new-generic-fun-arg';
 /** Synthesizes the argument `fun = function([dispatch_args], ...) S7_dispatch()`, returning it and the id of its value. */
 function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: (string | undefined)[], rootId: NodeId, args: number, idMap: AstIdMap): [RArgument<OtherInfo & ParentInformation>, NodeId] {
 	const r = name.location ?? SourceRange.invalid();
-	const info = (id: NodeId, role: RoleInParent, parent: NodeId, index = 0) => (
-		{ id, nest: name.info.nest, role, fullRange: r, adToks: undefined, file: name.info.file, parent, index }
-	);
+	const info = (id: NodeId, role: RoleInParent, parent: NodeId, index = 0) => ({ id, nest: name.info.nest, role, fullRange: r, adToks: undefined, file: name.info.file, parent, index });
 	const symbol = (id: NodeId, lexeme: BrandedIdentifier, role: RoleInParent, parent: NodeId, index = 0) => (
 		{ type: RType.Symbol, lexeme: lexeme as string, content: lexeme as string, info: info(id, role, parent, index), location: r }
 	) satisfies RSymbol<ParentInformation, string>;

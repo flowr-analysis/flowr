@@ -1,10 +1,18 @@
-import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
-import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch, leaveThrough } from '../../../../../info';
+import {
+	type ControlDependency,
+	type DataflowInformation,
+	type ExitPoint,
+	type KillReference,
+	addNonDefaultExitPoints,
+	ExitPointType,
+	happensInEveryBranch,
+	leaveThrough
+} from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { bindAccessedField, type CalledFunctions, errorEscapes, getAllLinkedFunctionDefinitions, linkFunctionCalls, linkFunctionCallWithSingleTarget, linkWritesCarriedByLoop } from '../../../../linker';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { patchFunctionCall } from '../common';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { type REnvironmentInformation, REnvironment } from '../../../../../environments/environment';
 import type { MemoryView } from '../../../../../environments/frame-memory';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataLoadNodesForNamespace, loadNodesForNamespace } from './built-in-library';
@@ -15,17 +23,21 @@ import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effec
 import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, isInGraphDefinition, type IdentifierReference, ReferenceType, type ClassName } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
-import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, EnvOpKind, VertexType } from '../../../../../graph/vertex';
+import {
+	type DataflowGraphVertexFunctionDefinition,
+	type DataflowGraphVertexInfo,
+	EnvOpKind,
+	VertexType,
+	DfgVertex
+} from '../../../../../graph/vertex';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { readRemovals, cancelRevivedKills, dropKilledWrites, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { valueFromTsValue } from '../../../../../eval/values/general';
-import { DfgVertex } from '../../../../../graph/vertex';
 import { addEnvironmentWrites, linkClosureFrameReads } from './built-in-envir-utils';
 import { instantiateEnvOps } from './built-in-deferred-env-ops';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
@@ -41,7 +53,6 @@ import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { RValueType } from '../../../../../environments/guard-facts';
 import { type ClassFlowInfo, s3Dispatch, s3DispatchClassesOf } from '../../../../../fn/dispatch';
 import { internalGenericMethods, linkedFunctionIds } from '../../../../dispatch-linking';
-import { REnvironment } from '../../../../../environments/environment';
 import { isGroupGeneric, s3MethodPrefixesOf } from '../../../../../environments/group-generics';
 import { InternalGenerics } from '../../../../../environments/default-builtin-config';
 import { CallProp, CallProps } from '../../../../../environments/built-in-props';
@@ -90,7 +101,7 @@ function writtenActiveFields(holder: BrandedIdentifier, before: REnvironmentInfo
 function callActiveBindingsAccessed(processed: DataflowInformation, before: REnvironmentInformation, graph: DataflowGraph, activeReads: IdentifierReference[]): NodeId[] {
 	const calls: NodeId[] = [];
 	const readIds = new Set(activeReads.map(r => r.nodeId));
-	const call = (id: NodeId, fns: readonly NodeId[], binding: NodeId) => {
+	function call(id: NodeId, fns: readonly NodeId[], binding: NodeId) {
 		const vertex = graph.getVertex(id);
 		if(DfgVertex.isUse(vertex)) {
 			const node = graph.idMap?.get(id);
@@ -109,7 +120,7 @@ function callActiveBindingsAccessed(processed: DataflowInformation, before: REnv
 			}
 			calls.push(id);
 		}
-	};
+	}
 	for(const [id] of processed.graph.vertices(true)) {
 		for(const target of Dataflow.targetsOf(graph, id, EdgeType.Reads)) {
 			const fns = activeFunctionsOf(target, graph);
@@ -157,13 +168,13 @@ function bindingsCalledThroughCallees(processed: DataflowInformation, before: RE
 /** The active bindings the calls `linked` access through the environments their callees read or write once the calls ran those operations (see {@link instantiateEnvOps}): `g <- function(env) assign("s", 3, envir = env); g(e)`. */
 function bindingsAccessedByEnvOps(linked: readonly CalledFunctions[], processed: DataflowInformation, before: REnvironmentInformation, after: REnvironmentInformation, graph: DataflowGraph): CalledFunctions[] {
 	const found: CalledFunctions[] = [];
-	const runs = (functionCall: NodeId, binding: NodeId, fns: readonly NodeId[], access?: NodeId) => {
+	function runs(functionCall: NodeId, binding: NodeId, fns: readonly NodeId[], access?: NodeId) {
 		graph.addEdge(functionCall, binding, EdgeType.Reads);
 		if(access !== undefined) {
 			graph.addEdge(functionCall, access, EdgeType.Reads);
 		}
 		found.push({ functionCall, called: fns.map(f => graph.getVertex(f)).filter(v => DfgVertex.isFunctionDefinition(v)), propagateExitPoints: [], alternatives: true });
-	};
+	}
 	for(const { functionCall, called } of linked) {
 		for(const { fn } of transitivelyCalledDefinitions(called, graph, before)) {
 			for(const op of fn.envOps?.filter(o => o.kind === EnvOpKind.Read) ?? []) {
@@ -188,7 +199,7 @@ function bindingsAccessedByEnvOps(linked: readonly CalledFunctions[], processed:
 /** The active bindings the body of `fn` reads, which the call `functionCall` running it runs: those its reads are linked to, and those its free reads see where the call is (`environment`). */
 function activeBindingsReadIn(fn: DataflowGraphVertexFunctionDefinition, functionCall: NodeId, environment: REnvironmentInformation, graph: DataflowGraph): CalledFunctions[] {
 	const found: CalledFunctions[] = [];
-	const read = (id: NodeId, binding: NodeId) => {
+	function read(id: NodeId, binding: NodeId) {
 		const called = activeFunctionsOf(binding, graph).map(f => graph.getVertex(f)).filter(v => DfgVertex.isFunctionDefinition(v));
 		if(called.length > 0) {
 			/* the access runs the binding only as the call does */
@@ -197,7 +208,7 @@ function activeBindingsReadIn(fn: DataflowGraphVertexFunctionDefinition, functio
 			/* the body may not reach the access */
 			found.push({ functionCall, called, propagateExitPoints: [], alternatives: true });
 		}
-	};
+	}
 	for(const id of fn.subflow.graph) {
 		/* a free read of the body is bound where the function is called */
 		const bindings = Dataflow.targetsOf(graph, id, EdgeType.Reads | EdgeType.DefinedByOnCall);

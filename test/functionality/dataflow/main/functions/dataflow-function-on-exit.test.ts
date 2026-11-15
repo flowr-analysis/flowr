@@ -31,13 +31,11 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 			graph = graph.calls('1@function', id);
 		}
 		graph = graph.defineFunction('1@function', exits, {
-			hooks:             [...hooks],
-			in:                [...ins],
-			out:               [],
-			unknownReferences: [],
-			entryPoint:        '1@{',
-			environment:       defaultEnv().pushEnv(),
-			graph:             new Set([])
+			hooks:       [...hooks],
+			in:          [...ins],
+			entryPoint:  '1@{',
+			environment: defaultEnv().pushEnv(),
+			graph:       new Set([])
 		});
 		assertDataflow(label(name, ['normal-definition', 'implicit-return', 'name-normal', 'hooks']), shell, code,
 			readsLater ? graph.reads('2@x', '3@x') : graph,
@@ -69,27 +67,27 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 			readsLater:       true, mustNotHaveEdges: [['2@x', '1@x']]
 		});
 		assertOnExit('by default, on.exit overwrite each other', 'function() { x <- 2;\non.exit(return(x));\nx <- 3;\non.exit(return(y)); }', {
-			exits:            [returns('21')], hooks:            [hook('21-hook-fn')],
+			exits:            [returns(21)], hooks:            [hook('21-hook-fn')],
 			in:               [fn(4, '<-'), fn(11, 'on.exit'), fn(15, '<-'), fn(23, 'on.exit'), fn(25, '{'), variable(19, 'y')],
 			readsLater:       true, mustNotHaveEdges: [['2@x', '1@x'], ['1@function', '9-hook-fn']] // do not call first hook
 		});
 		assertOnExit('with add, on.exit\'s append', 'function() { x <- 2;\non.exit(x);\nx <- 3;\non.exit(return(y), add=TRUE); }', {
-			exits:            [returns('18')], hooks:            [hook('6-hook-fn'), hook('18-hook-fn', true)],
+			exits:            [returns(18)], hooks:            [hook('6-hook-fn'), hook('18-hook-fn', true)],
 			in:               [fn(4, '<-'), fn(12, '<-'), fn(8, 'on.exit'), fn(23, 'on.exit'), fn(25, '{'), variable(16, 'y')],
 			readsLater:       true, mustNotHaveEdges: [['2@x', '1@x']]
 		});
 		assertOnExit('with add and before, on.exit\'s prepend', 'function() { x <- 2;\non.exit(x);\nx <- 3;\non.exit(return(y), add=TRUE, after=FALSE); }', {
-			exits:            [returns('18')], hooks:            [hook('18-hook-fn', true, false), hook('6-hook-fn')],
+			exits:            [returns(18)], hooks:            [hook('18-hook-fn', true, false), hook('6-hook-fn')],
 			in:               [fn(4, '<-'), fn(12, '<-'), fn(8, 'on.exit'), fn(26, 'on.exit'), fn(28, '{'), variable(16, 'y')],
 			readsLater:       true, mustNotHaveEdges: [['2@x', '1@x']]
 		});
 		assertOnExit('with add and before, on.exit\'s prepend (with exit points)', 'function() { x <- 2;\non.exit(return(x));\nx <- 3;\non.exit(return(y), add=TRUE, after=FALSE); }', {
-			exits:            [returns('9')], hooks:            [hook('21-hook-fn', true, false), hook('9-hook-fn')],
+			exits:            [returns(9)], hooks:            [hook('21-hook-fn', true, false), hook('9-hook-fn')],
 			in:               [fn(4, '<-'), fn(15, '<-'), fn(11, 'on.exit'), fn(29, 'on.exit'), fn(31, '{'), variable(19, 'y')],
 			readsLater:       true, mustNotHaveEdges: [['2@x', '1@x']]
 		});
 		assertOnExit('with add and before, on.exit\'s append (with exit points)', 'function() { x <- 2;\non.exit(return(x));\nx <- 3;\non.exit(return(y), add=TRUE, after=TRUE); }', {
-			exits:            [returns('21')], hooks:            [hook('9-hook-fn'), hook('21-hook-fn', true)], uncalled:         ['9-hook-fn'],
+			exits:            [returns(21)], hooks:            [hook('9-hook-fn'), hook('21-hook-fn', true)], uncalled:         ['9-hook-fn'],
 			in:               [fn(4, '<-'), fn(15, '<-'), fn(11, 'on.exit'), fn(29, 'on.exit'), fn(31, '{'), variable(19, 'y')],
 			readsLater:       true, mustNotHaveEdges: [['2@x', '1@x']]
 		});

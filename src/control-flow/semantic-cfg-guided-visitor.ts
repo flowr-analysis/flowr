@@ -1,6 +1,5 @@
-import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
+import { type CfgExpressionVertex, type CfgStatementVertex, type ControlFlowInformation, CfgVertex } from './control-flow-graph';
 import { Resolve } from '../dataflow/environments/resolve-helper';
-import { CfgVertex } from './control-flow-graph';
 import { DataflowAwareCfgGuidedVisitor, type DataflowCfgGuidedVisitorConfiguration } from './dfg-cfg-guided-visitor';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';

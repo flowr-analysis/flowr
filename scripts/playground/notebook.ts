@@ -10,6 +10,7 @@ import { button, el } from '../page-lib/dom';
 import { codeOfInput, isRSession, parseRSession, PromptWidth } from './r-session';
 import { jupyterRecordedRuns } from '../../src/project/plugins/file-plugins/files/flowr-jupyter-file';
 
+/** Whether the file is an R Markdown or Quarto document. */
 export const isMarkdownDocument = (name: string): boolean => /\.(rmd|rmarkdown|qmd)$/i.test(name);
 
 const CellMarker = /^#\s?%%/;
@@ -305,11 +306,11 @@ class Inserter extends WidgetType {
 
 /** the inserters after every cell and at the end of the document */
 function inserters(markdown: boolean): Extension {
-	const build = (state: EditorState) => {
+	function build(state: EditorState) {
 		const doc = state.doc;
 		const ends = new Set([...cellsOf(state, markdown).map(c => doc.line(Math.min(doc.lines, c.tail ?? c.to)).to), doc.length]);
 		return Decoration.set([...ends].map(at => Decoration.widget({ widget: new Inserter(at, markdown), block: true, side: 1 }).range(at)), true);
-	};
+	}
 	return StateField.define<DecorationSet>({
 		create:  build,
 		update:  (found, tr) => tr.docChanged ? build(tr.state) : found,
@@ -403,10 +404,10 @@ export function writesR(state: EditorState, name: string, line: number): boolean
 	return markdown || state.facet(SessionFile) ? kind === 'code' : kind !== 'text';
 }
 
-const codeOf = (state: EditorState, cell: Cell) => {
+function codeOf(state: EditorState, cell: Cell) {
 	const code = cell.from > cell.to ? '' : state.sliceDoc(state.doc.line(cell.from).from, state.doc.line(cell.to).to);
 	return cell.prompt ? code.split(LineBreak).map(codeOfInput).join('\n') : code;
-};
+}
 
 const outputLines = (text: string): string[] => text.split(LineBreak).map(l => l.trimEnd());
 const sameOutput = (a: string, b: string) => outputLines(a).join('\n').trim() === outputLines(b).join('\n').trim();
@@ -460,12 +461,12 @@ function compareWithRecorded(body: HTMLElement, recorded: Recorded): void {
 		}
 		return;
 	}
-	const side = (label: string, text: string, count: number | undefined, images: readonly string[] = []) => {
+	function side(label: string, text: string, count: number | undefined, images: readonly string[] = []) {
 		const box = el('div', 'cm-output-side');
 		const shown = [text.trim() === '' ? '(nothing)' : text.trimEnd(), ...count === undefined ? [] : [`${count} plot${count === 1 ? '' : 's'}`]];
 		box.append(el('div', 'cm-output-label', label), el('div', undefined, shown.join('\n')), ...images.map(src => Object.assign(el('img', 'cm-output-recorded'), { src, alt: 'recorded plot' })));
 		return box;
-	};
+	}
 	body.classList.add('differs');
 	body.prepend(el('div', 'cm-output-differs', 'Differs from the recorded output'), side('recorded', recorded.output, recorded.plots, recorded.images), side('now', got, recorded.plots === undefined ? undefined : plots));
 }
@@ -490,7 +491,7 @@ const outputsChanged = StateEffect.define<null>();
 function cellRunning(file: string, markdown: boolean, run: CellRunner): { readonly runs: CellRuns, readonly shown: Extension, readonly took: ReadonlyMap<number, number> } {
 	const took = new Map<number, number>();
 	const outputs = new Map<number, HTMLElement>();
-	const outputOf = (view: EditorView, index: number): HTMLElement => {
+	function outputOf(view: EditorView, index: number): HTMLElement {
 		let box = outputs.get(index);
 		if(box === undefined) {
 			const shown = el('div', 'cm-cell-output');
@@ -499,7 +500,7 @@ function cellRunning(file: string, markdown: boolean, run: CellRunner): { readon
 			view.dispatch({ effects: outputsChanged.of(null) });
 		}
 		return box.lastElementChild as HTMLElement;
-	};
+	}
 	const runs: CellRuns = (view, picked, cells, fresh = false) => {
 		return picked.filter(c => c.kind === 'code' && c.runs).reduce((before, cell, at) => before.then(async() => {
 			const body = outputOf(view, codeIndex(cell, cells));
@@ -514,13 +515,13 @@ function cellRunning(file: string, markdown: boolean, run: CellRunner): { readon
 			}
 		}), Promise.resolve());
 	};
-	const blocks = (state: EditorState): DecorationSet => {
+	function blocks(state: EditorState): DecorationSet {
 		const code = cellsOf(state, markdown).filter(c => c.kind === 'code');
 		return Decoration.set([...outputs].filter(([index]) => code[index] !== undefined).map(([index, box]) => {
 			const cell = code[index];
 			return Decoration.widget({ widget: new CellOutput(box), block: true, side: 1 }).range(state.doc.line(Math.min(cell.tail ?? cell.to, state.doc.lines)).to);
 		}), true);
-	};
+	}
 	const shown = StateField.define<DecorationSet>({
 		create:  blocks,
 		update:  (deco, tr) => tr.docChanged || tr.effects.some(e => e.is(outputsChanged)) ? blocks(tr.state) : deco,
@@ -614,11 +615,11 @@ function decorate(view: EditorView, markdown: boolean, editable: boolean, runs: 
 	const doc = view.state.doc;
 	const cells = cellsOf(view.state, markdown);
 	const found: Range<Decoration>[] = [];
-	const at = (line: number, deco: Decoration) => {
+	function at(line: number, deco: Decoration) {
 		if(line >= 1 && line <= doc.lines) {
 			found.push(deco.range(doc.line(line).from));
 		}
-	};
+	}
 	const inCell = new Set<number>();
 	for(const cell of cells) {
 		const kind = `cm-cell cm-cell-${cell.kind}${cell.runs ? '' : ' cm-cell-off'}${cell.output ? ' cm-session-out' : ''}`;

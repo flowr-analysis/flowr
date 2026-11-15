@@ -2,11 +2,11 @@ import { assertQuery } from '../_helper/query';
 import { label } from '../_helper/label';
 import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { assert, describe, test } from 'vitest';
-import type {
-	InputSourcesQuery,
-	InputSourcesQueryResult
+import {
+	type InputSourcesQuery,
+	type InputSourcesQueryResult,
+	defaultInputClassifierConfig
 } from '../../../src/queries/catalog/input-sources-query/input-sources-query-format';
-import { defaultInputClassifierConfig } from '../../../src/queries/catalog/input-sources-query/input-sources-query-format';
 import { contentFreeFunctions } from '../../../src/queries/catalog/input-sources-query/input-source-functions';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';

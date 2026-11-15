@@ -1,8 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { assertLinter } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
-import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
-import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
+import { type SlicingCriteria, SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { guard } from '../../../src/util/assert';
 import { SourceLocation, SourceRange } from '../../../src/util/range';

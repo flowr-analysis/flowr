@@ -4,7 +4,6 @@ import { ArrayQueue } from '../util/collections/queue';
 
 /**
  * Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies but ignoring cycles.
- * @param graph      - The control flow graph.
  * @param startNodes - The nodes to start the traversal from.
  * @param visitor    - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
  * @see {@link visitCfgInOrder} for a traversal in order
@@ -41,7 +40,6 @@ export function visitCfgInReverseOrder(
 
 /**
  * Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies in execution order but ignoring cycles.
- * @param graph      - The control flow graph.
  * @param startNodes - The nodes to start the traversal from.
  * @param visitor    - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
  * @see {@link visitCfgInReverseOrder} for a traversal in reversed order

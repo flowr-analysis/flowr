@@ -42,7 +42,8 @@ const allJobs: Job[] = [
 	{ id: 'mutations', label: 'mutation tests',       argv: [npm, 'run', 'test:mutations', '--', '--run'], summary: true, weight: 4 },
 	{ id: 'wiki',      label: 'wiki generation',      argv: [npm, 'run', 'wiki'] },
 	{ id: 'labels',    label: 'generic labels',       argv: [npm, 'run', 'check:generic-labels'] },
-	{ id: 'load',      label: 'standalone loading',   argv: [npm, 'run', 'check:standalone-load'] },
+	/* the check loads the compiled modules, so it builds them first rather than trusting whatever dist holds */
+	{ id: 'load',      label: 'standalone loading',   argv: [npm, 'run', 'check:standalone-load:fresh'] },
 	{ id: 'pages',     label: 'landing pages',        argv: [npm, 'run', 'gen:landing'], needs: ['tests', 'mutations'] },
 	{ id: 'docker',    label: 'docker build + smoke', argv: [npm, 'run', 'test:docker'] }
 ];
@@ -159,27 +160,27 @@ function run(job: Job): Promise<JobResult> {
 	const begin = Date.now();
 	state.begin = begin;
 	console.log(`${dim('->')} ${bold(job.label)} started`);
-	const note = (chunk: Buffer | string) => {
+	function note(chunk: Buffer | string) {
 		log.write(chunk);
 		// keep the last non-empty line for the heartbeat (strip ansi so the ticker stays tidy)
 		const line = stripAnsi(chunk.toString()).split('\n').map(l => l.trim()).filter(Boolean).pop();
 		if(line) {
 			state.last = line.length > 80 ? line.slice(0, 79) + '…' : line;
 		}
-	};
+	}
 	return new Promise<JobResult>(resolve => {
 		const child = spawn(job.argv[0], job.argv.slice(1), { shell: false });
 		lowerPriority(child.pid);
 		child.stdout.on('data', note);
 		child.stderr.on('data', note);
-		const finish = (code: number) => {
+		function finish(code: number) {
 			log.end();
 			state.done = true;
 			const ms = Date.now() - begin;
 			const ok = code === 0;
 			console.log(`${ok ? green('PASS') : red('FAIL')} ${bold(job.label)} ${dim(`(${(ms / 1000).toFixed(1)}s)`)}`);
 			resolve({ job, ok, code, ms, logPath });
-		};
+		}
 		child.on('error', err => {
 			note(`\nfailed to spawn: ${err.message}\n`);
 			finish(1);
@@ -214,7 +215,7 @@ heartbeat.unref?.();
 
 void (async() => {
 	const scheduled = new Map<string, Promise<JobResult>>();
-	const schedule = (job: Job): Promise<JobResult> => {
+	function schedule(job: Job): Promise<JobResult> {
 		const known = scheduled.get(job.id);
 		if(known !== undefined) {
 			return known;
@@ -225,7 +226,7 @@ void (async() => {
 		});
 		scheduled.set(job.id, result);
 		return result;
-	};
+	}
 	const results = await Promise.all(jobs.map(schedule));
 	clearInterval(heartbeat);
 

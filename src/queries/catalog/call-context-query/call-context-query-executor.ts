@@ -12,9 +12,8 @@ import type {
 } from './call-context-query-format';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { memoize } from '../../../util/collections/defaultmap';
-import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
@@ -310,10 +309,10 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			patterns.push(query);
 		}
 	}
-	const queriesFor = (name: BrandedIdentifier): readonly PromotedQuery[] => {
+	function queriesFor(name: BrandedIdentifier): readonly PromotedQuery[] {
 		const exact = byName.get(name) ?? [];
 		return patterns.length === 0 ? exact : [...exact, ...patterns.filter(q => q.callName(name))];
-	};
+	}
 	const aliasQueries = promotedQueries.filter(q => q.includeAliases);
 	/* an alias of a function needs the function used as a value somewhere, like `read.csv` in `f <- read.csv` */
 	const followAliases = aliasQueries.length > 0 && dataflow.graph.verticesOfType(VertexType.Use).some(([id]) => {

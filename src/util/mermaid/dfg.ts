@@ -3,8 +3,7 @@ import { type DataflowFunctionFlowInformation, type DataflowGraph, FunctionArgum
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceTypeReverseMapping } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { DFControlFlowEdge } from '../../dataflow/graph/edge';
-import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../../dataflow/graph/edge';
+import { type DFControlFlowEdge, ControlFlowEdgeTypes, DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { DfgVertex, type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { MermaidDefaultMarkStyle, type MermaidMarkdownMark, type MermaidMarkStyle } from './info';

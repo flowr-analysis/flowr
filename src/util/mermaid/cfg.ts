@@ -9,8 +9,7 @@ import {
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { reconstructToCode } from '../../reconstruct/reconstruct';
 import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
-import type { MermaidMarkStyle, MermaidGraphPrinterInfo, MermaidMarkdownMark } from './info';
-import { MermaidDefaultMarkStyle } from './info';
+import { type MermaidMarkStyle, type MermaidGraphPrinterInfo, type MermaidMarkdownMark, MermaidDefaultMarkStyle } from './info';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Mermaid } from './mermaid';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -170,7 +169,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 	const bodies = cfg.graph.mayHaveBasicBlocks() ? new Map<NodeId, NodeId[]>() : collectBodies(cfg.graph);
 	const partOfBody = new Set<NodeId>(bodies.values().flatMap(body => body));
 
-	const emitBody = (defId: NodeId): void => {
+	function emitBody(defId: NodeId): void {
 		const body = bodies.get(defId)?.filter(v => !includeOnlyIds || includeOnlyIds.has(v));
 		if(body === undefined || body.length === 0) {
 			return;
@@ -189,7 +188,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 			emitBody(vertexId);
 		}
 		output += '    end\n';
-	};
+	}
 
 	for(const [id, vertex] of cfg.graph.vertices(false)) {
 		const normalizedVertex = normalizedAst?.idMap.get(id);

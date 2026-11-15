@@ -1,34 +1,29 @@
 import { escapeRegex } from '../../../../src/util/text/strings';
+import { joinedCode, staticSliceOf, analyze } from '../analyzer';
 import { RString } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../../src/project/flowr-analyzer';
 import type { DependenciesQueryResult, DependencyInfo } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import { UnnamedFunctionCallPrefix } from '../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
-import { createSlicePipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
-import { deterministicCountingIdGenerator } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { replProcessAnswer } from '../../../../src/cli/repl/core';
 import { voidFormatter } from '../../../../src/util/text/ansi';
 import { analyzerFor, MutationProgram, type MutationTarget } from './mutation-program';
 import type { MutationPass } from './mutation-passes';
 import type { Column, Line } from '../../../../src/util/range';
 import { RoleInParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/role';
-import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RExpressionList } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 /** the slice of `code` for `criterion`, which is empty where the criterion resolves to nothing */
 export async function slice(parser: KnownParser, { code, criterion }: MutationTarget): Promise<string> {
-	const result = await createSlicePipeline(parser, { getId: deterministicCountingIdGenerator(0), context: contextFromInput(code), criterion: [criterion] }).allRemainingSteps();
-	const reconstructed = result.reconstruct.code;
-	return Array.isArray(reconstructed) ? reconstructed.join('\n') : reconstructed;
+	return joinedCode((await staticSliceOf(parser, code, [criterion])).reconstruct);
 }
 
 /** what is left of `code` once the removal slice of `criterion` is removed, see {@link staticRemovalSlice} */
 export async function removalSlice(parser: KnownParser, { code, criterion }: MutationTarget): Promise<string> {
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-	analyzer.addRequest(code);
+	const analyzer = await analyze(parser, code);
 	const { 'static-slice': slices } = await analyzer.query([{ type: 'static-slice', criteria: [criterion], removal: true }]);
 	const left = (Object.values(slices.results)[0] as { reconstruct?: { code: string | string[] } } | undefined)?.reconstruct?.code;
 	return Array.isArray(left) ? left.join('\n') : left ?? '';

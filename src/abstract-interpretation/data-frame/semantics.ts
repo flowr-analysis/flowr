@@ -396,19 +396,19 @@ function applyJoinSemantics(
 	options?: { join?: JoinType, natural?: boolean }
 ): DataFrameDomain {
 	// Merge two intervals by creating the maximum of the lower bounds and adding the upper bounds
-	const mergeInterval = (interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
+	function mergeInterval(interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain {
 		if(interval1.isValue() && interval2.isValue()) {
 			return new PosIntervalDomain([Math.max(interval1.lower, interval2.lower), interval1.upper + interval2.upper]);
 		}
 		return interval1.bottom();
-	};
+	}
 	// Creating the Cartesian product of two intervals by keeping the lower bound and multiplying the upper bounds (but never below the upper bound of the rows kept anyway)
-	const productInterval = (lower: PosIntervalDomain, interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
+	function productInterval(lower: PosIntervalDomain, interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain {
 		if(lower.isValue() && interval1.isValue() && interval2.isValue()) {
 			return new PosIntervalDomain([lower.lower, Math.max(lower.upper, interval1.upper * interval2.upper)]);
 		}
 		return lower.bottom();
-	};
+	}
 	let duplicateCols: string[] | undefined;  // columns that may be renamed due to occurring in both data frames
 
 	if(options?.natural) {

@@ -11,8 +11,7 @@ const AllOptIn = { optIn: [SecretLeak.Url, SecretLeak.Files, SecretLeak.Process,
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('secret exfiltration', () => {
-		const lint = (name: string, code: string, expected: Record<string, unknown>[], config?: object) =>
-			assertLinterLines(name, parser, code, 'secret-exfiltration', expected, config);
+		const lint = (name: string, code: string, expected: Record<string, unknown>[], config?: object) => assertLinterLines(name, parser, code, 'secret-exfiltration', expected, config);
 
 		describe('the examples of the feature request', () => {
 			const example = `key <- Sys.getenv("API_KEY")

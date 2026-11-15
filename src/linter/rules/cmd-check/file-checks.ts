@@ -14,11 +14,11 @@ export interface FileResult<K extends string> extends CmdCheckResult {
 /** Collects findings located at package files; findings of the kinds in `skip` are dropped. */
 export function fileFindings<K extends string>(pf: PackageFiles, skip: readonly K[] = []) {
 	const results: FileResult<K>[] = [];
-	const add = (kind: K, file: string, message: string, line?: Line, certainty = LintingResultCertainty.Certain) => {
+	function add(kind: K, file: string, message: string, line?: Line, certainty = LintingResultCertainty.Certain) {
 		if(!skip.includes(kind)) {
 			results.push({ certainty, involvedId: undefined, loc: pf.locate(file, line), kind, file, message });
 		}
-	};
+	}
 	return { results, add };
 }
 

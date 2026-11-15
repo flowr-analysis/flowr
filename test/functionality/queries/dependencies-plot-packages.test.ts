@@ -1,13 +1,12 @@
 import { assert, describe, test } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { withTreeSitter } from '../_helper/shell';
 import { label } from '../_helper/label';
 import type { DependencyInfo } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import { analyze } from '../_helper/analyzer';
 
 describe('Dependencies Query: plots of further packages', withTreeSitter(parser => {
 	async function visualized(code: string): Promise<readonly DependencyInfo[]> {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest(code);
+		const analyzer = await analyze(parser, code);
 		return (await analyzer.query({ type: 'dependencies' })).visualize;
 	}
 	const fn = (d: DependencyInfo) => Array.isArray(d.functionName) ? d.functionName[0] : d.functionName;

@@ -4,10 +4,7 @@ import { RawRType } from '../../model/type';
 
 export const RootId = 0;
 
-/**
- * Entry type - shared between CSV and JSON entries.
- * These include position, token, and text.
- */
+/** Entry type - shared between CSV and JSON entries. These include position, token, and text. */
 interface Entry extends Record<string, unknown> {
 	readonly line1: number,
 	readonly col1:  number,
@@ -28,10 +25,7 @@ export interface CsvEntry extends Entry {
 	children?:         CsvEntry[]
 }
 
-/**
- * Type-safe object structure that we work with during normalization.
- * Has Children (empty list indicates no children).
- */
+/** Type-safe object structure that we work with during normalization. Has Children (empty list indicates no children). */
 export interface JsonEntry extends Entry {
 	readonly children: JsonEntry[]
 }

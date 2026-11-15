@@ -1,11 +1,9 @@
-import type { RAstNodeBase, Location, NoInfo } from '../model';
-import { RNode } from '../model';
+import { type RAstNodeBase, type Location, type NoInfo, RNode } from '../model';
 import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { ParentInformation } from '../processing/decorate';
 import type { NodeId } from '../processing/node-id';
-import type { PotentiallyEmptyRArgument } from './r-function-call';
-import { EmptyArgument } from './r-function-call';
+import { type PotentiallyEmptyRArgument, EmptyArgument } from './r-function-call';
 import type { BrandedIdentifier } from '../../../../../dataflow/environments/identifier';
 
 /** Represents a named or unnamed argument of a function definition in R. */

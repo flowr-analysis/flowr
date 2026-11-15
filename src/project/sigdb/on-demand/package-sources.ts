@@ -162,7 +162,7 @@ interface NamespaceDirectives {
 /** the directives of a `NAMESPACE`, read as the R code it is, so a directive spanning lines or a conditional one counts as well */
 function namespaceDirectives(root: Parser.SyntaxNode): NamespaceDirectives {
 	const found: NamespaceDirectives = { exports: [], patterns: [], classes: [] };
-	const visit = (node: Parser.SyntaxNode): void => {
+	function visit(node: Parser.SyntaxNode): void {
 		if(node.type === TreeSitterType.Call) {
 			const args = node.childForFieldName('arguments')?.namedChildren.filter(a => a.type === TreeSitterType.Argument && a.childForFieldName('name') === null)
 				.flatMap(a => {
@@ -176,7 +176,7 @@ function namespaceDirectives(root: Parser.SyntaxNode): NamespaceDirectives {
 		} else {
 			node.namedChildren.forEach(visit);
 		}
-	};
+	}
 	visit(root);
 	return found;
 }

@@ -1,7 +1,6 @@
-import type { DataflowProcessorInformation } from '../../../../../processor';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { updateNestedFunctionClosures } from './built-in-function-definition';
-import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation, type ExitPoint, ExitPointType, withCds } from '../../../../../info';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
@@ -120,13 +119,13 @@ export function evaluateInEnvir<OtherInfo>(
 		const own = envir.envirData.environment.current;
 		const idMap = data.completeAst.idMap;
 		/* a function the environment binds itself, as an active binding is, is looked up there: `evalq(a, e)` runs the `a` of `e` */
-		const boundInEnvir = (ref: IdentifierReference) => {
+		function boundInEnvir(ref: IdentifierReference) {
 			const defs = (ref.name === undefined ? undefined : own.lookup(Identifier.getName(ref.name)))?.filter(d => isInGraphDefinition(d) && d.value?.some(v => RFunctionDefinition.is(idMap.get(v))));
 			for(const def of defs ?? []) {
 				dfExpr.graph.addEdge(ref.nodeId, def.nodeId, EdgeType.Reads);
 			}
 			return defs !== undefined && defs.length > 0;
-		};
+		}
 		const linked = { ...dfExpr, environment, in: dfExpr.in.filter(r => !boundInEnvir(r)), unknownReferences: dfExpr.unknownReferences.filter(r => !boundInEnvir(r)) };
 		const routed = routeWrittenToEnvir(linked, envir, rootId, data.environment);
 		return { ...routed, environment: sessionStateWrittenBy(dfExpr, routed.environment) };

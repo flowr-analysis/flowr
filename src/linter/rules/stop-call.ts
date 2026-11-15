@@ -6,8 +6,7 @@ import { Q } from '../../search/flowr-search-builder';
 import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
 import type { Writable } from 'ts-essentials';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -34,7 +33,7 @@ function isConditionObject(signaled: RNamedFunctionCall<ParentInformation>, grap
 	return classes?.values().some(c => c.has('condition')) ?? false;
 }
 
-export type StopWithCallResult = LintingResult;
+export type StopCallResult = LintingResult;
 
 /** `call. = FALSE` added before the closing parenthesis, or a literal `call. = TRUE` turned into it */
 function callFalseFix(call: RFunctionCall<ParentInformation>): LintQuickFixReplacement[] | undefined {
@@ -52,17 +51,17 @@ function callFalseFix(call: RFunctionCall<ParentInformation>): LintQuickFixRepla
 	return [{ type: 'replace', loc: SourceLocation.from([endLine, endColumn, endLine, endColumn - 1], SourceLocation.getFile(loc)), description: 'Add `call. = FALSE`', replacement: args.length === 0 ? 'call. = FALSE' : ', call. = FALSE' }];
 }
 
-export type StopWithCallConfig = MergeableRecord;
+export type StopCallConfig = MergeableRecord;
 
-export interface StopWithCallMetadata extends MergeableRecord {
+export interface StopCallMetadata extends MergeableRecord {
 	consideredNodes: number
 }
 
-export const STOP_WITH_CALL_ARG = {
+export const STOP_CALL = {
 	createSearch:        () => Q.all().filter(VertexType.FunctionCall),
 	processSearchResult: async(elements, _config, data) => {
 		const dataflow = await data.dataflow();
-		const meta: StopWithCallMetadata = { consideredNodes: 0 };
+		const meta: StopCallMetadata = { consideredNodes: 0 };
 		return {
 			results:
 				elements.getElements()
@@ -98,7 +97,7 @@ export const STOP_WITH_CALL_ARG = {
 						loc:        SourceLocation.fromNode(element.node),
 						quickFix:   callFalseFix(element.node as RFunctionCall<ParentInformation>)
 					}))
-					.filter(element => isNotUndefined(element.loc)) as Writable<StopWithCallResult>[],
+					.filter(element => isNotUndefined(element.loc)) as Writable<StopCallResult>[],
 			'.meta': meta
 		};
 	},
@@ -113,4 +112,4 @@ export const STOP_WITH_CALL_ARG = {
 		description:   'Finds `stop()` calls that do not set `call.` to `FALSE`.',
 		defaultConfig: () => ({})
 	}
-} as const satisfies LintingRule<StopWithCallResult, StopWithCallMetadata, StopWithCallConfig>;
+} as const satisfies LintingRule<StopCallResult, StopCallMetadata, StopCallConfig>;

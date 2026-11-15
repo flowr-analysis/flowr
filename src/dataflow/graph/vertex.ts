@@ -50,7 +50,7 @@ export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
 /** Arguments required to construct a vertex which represents the usage of a variable in the {@link DataflowGraph|dataflow graph}. */
 export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Use
-	/** Does not require an environment to be attached. If we promote the use to a function call, we attach the environment later.  */
+	/** Does not require an environment to be attached. If we promote the use to a function call, we attach the environment later. */
 	readonly environment?: undefined
 	constantFallback?:     true
 }

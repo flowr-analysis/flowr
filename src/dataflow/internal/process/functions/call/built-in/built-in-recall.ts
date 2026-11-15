@@ -20,10 +20,7 @@ interface RecallConfig {
 	unknownOnNonZeroArg?: boolean;
 }
 
-/**
- * Processes a built-in 'Recall' function call, linking
- * the recall to the enveloping function closure.
- */
+/** Processes a built-in 'Recall' function call, linking the recall to the enveloping function closure. */
 export function processRecall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],

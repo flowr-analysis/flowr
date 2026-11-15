@@ -180,10 +180,7 @@ export interface DoesCallQueryResult extends BaseQueryResult {
 }
 
 const FormatError = 'Invalid constraint format, expected format "(left:$id/"regex")"';
-/**
- * Parses a constraint from a string argument.
- * Returns the constraint or an error message.
- */
+/** Parses a constraint from a string argument. Returns the constraint or an error message. */
 function constraintParser(argument: string | undefined): { call: SlicingCriterion, constraint: CallsWithNameConstraint | CallsIdConstraint } | string {
 	if(!argument?.startsWith('(') || !argument.includes(')')) {
 		return FormatError + ` (got: "${argument}")`;

@@ -3,18 +3,18 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
-import { asciiSummaryOfQueryResult } from '../../../src/queries/query-print';
+import { asciiSummaryOfQueryResult } from '../../../src/queries/query';
 import { ansiFormatter } from '../../../src/util/text/ansi';
 import { AmbientProjectKey } from '../../../src/queries/catalog/ambient-access-query/ambient-access-query-format';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import { withTreeSitter } from '../_helper/shell';
 import { label } from '../_helper/label';
+import { analyze } from '../_helper/analyzer';
+import { requestFromInput } from '../../../src/r-bridge/retriever';
 
 describe('Ambient Access Query', withTreeSitter(parser => {
 	async function analyzerFor(code: string) {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest(requestFromInput(code));
+		const analyzer = await analyze(parser, code);
 		return analyzer;
 	}
 
@@ -32,8 +32,7 @@ describe('Ambient Access Query', withTreeSitter(parser => {
 		fs.writeFileSync(a, 'f <- function() { options(digits = 3); g <<- 1 }\n');
 		fs.writeFileSync(b, 'f()\nsink("o.txt")\n');
 		try {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(requestFromInput([`file://${a}`, `file://${b}`]));
+			const analyzer = await analyze(parser, requestFromInput([`file://${a}`, `file://${b}`]));
 			const { results, functions } = await analyzer.query({ type: 'ambient-access', functions: true });
 			assert.deepStrictEqual(results[a].writes, [], 'defining f changes nothing');
 			assert.includeMembers([...results[b].writes], ['#option:digits', '#sink']);

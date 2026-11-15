@@ -68,10 +68,10 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 		rows.push(['assumed R', `${ctx.resolvedRVersion} ${dim(`(solver.sigdb.assumedRVersion = "${setting}")`)}`]);
 		const dbs = ctx.deps.loadedSignatureDatabases();
 		const sigDbUrl = sigDbRemoteRelease()?.url;
-		const describe = (d: typeof dbs[number]) => {
+		function describe(d: typeof dbs[number]) {
 			const entry = `${d.scope} (v${d.version}, ${d.date}${d.format ? `, ${d.format}` : ''})`;
 			return sigDbUrl ? output.formatter.hyperlink(entry, sigDbUrl, true) : entry;
-		};
+		}
 		rows.push(['databases', dbs.length === 0 ? 'none' : dbs.map(describe).join(', '), dbs.length === 0]);
 		// the registered plugins, grouped by prefix; collected here and printed after the table (below) so the
 		// longer labels do not widen the version rows. The header links (once) to the plugin wiki section

@@ -10,7 +10,7 @@ import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
+import { RRole } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { LocalFunctionConfiguration } from './built-in-local';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, type DeferredEnvOp, DfgVertex, EnvOpKind } from '../../../../../graph/vertex';
@@ -146,7 +146,7 @@ const FieldAccess: ReadonlySet<BrandedIdentifier> = new Set(['$', '[[']);
 function heldByParameter(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): boolean {
 	const closure = frameOf(idMap.get(id));
 	const held = readBindings(closure?.info.id ?? id, graph);
-	return held.length === 1 && idMap.get(held[0])?.info.role === RoleInParent.ParameterName;
+	return held.length === 1 && RRole.isParameterName(held[0], idMap);
 }
 
 /** What `id` reads, the target of a replacement (`env$x <- v`) reads the variable it rebinds besides the replacement itself. */
@@ -355,7 +355,7 @@ function changeInPlaceAt(op: DeferredEnvOp, run: Run, call: NodeId, environment:
 }
 
 function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly BrandedIdentifier[], at: EnvAtCall, environment: REnvironmentInformation, cds: IdentifierDefinition['cds'], call: NodeId, graph: DataflowGraph): REnvironmentInformation {
-	const update = (state: REnvironmentInformation, global: boolean, closureFrame = false): REnvironmentInformation => {
+	function update(state: REnvironmentInformation, global: boolean, closureFrame = false): REnvironmentInformation {
 		switch(op.kind) {
 			case EnvOpKind.Define:
 			case EnvOpKind.Replace: {
@@ -386,7 +386,7 @@ function applyOp(op: DeferredEnvOp, value: NodeId | undefined, names: readonly B
 				/* replayed by `changeInPlaceAt`, it names no environment */
 				return state;
 		}
-	};
+	}
 	if(at === StackEnvKind.Global || at === StackEnvKind.CallerFrame) {
 		return update(environment, at === StackEnvKind.Global);
 	}

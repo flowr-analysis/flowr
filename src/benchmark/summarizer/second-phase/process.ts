@@ -46,10 +46,10 @@ function summarizeShapes<T, S>(shapes: readonly (SummarizedDfShapeStats<T> | und
 	if(present.length === 0) {
 		return undefined;
 	}
-	const field = (k: typeof DfShapeKeys[number]) => {
+	function field(k: typeof DfShapeKeys[number]) {
 		const values = present.map(p => p[k]).filter(isNotUndefined);
 		return SummedShapeKeys.has(k) ? arraySum(values as number[]) : SummaryShapeKeys.has(k) ? summarizeSummarizedMeasurement(values as SummarizedMeasurement[]) : measure(values as T[]);
-	};
+	}
 	return { ...Object.fromEntries(DfShapeKeys.map(k => [k, field(k)])), ...rest } as SummarizedDfShapeStats<S>;
 }
 
@@ -70,10 +70,10 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		}
 	}
 	const perSlice = stats.map(s => s.perSliceMeasurements);
-	const optional = <T, R>(values: readonly (T | undefined)[], summarize: (present: T[]) => R): R | undefined => {
+	function optional<T, R>(values: readonly (T | undefined)[], summarize: (present: T[]) => R): R | undefined {
 		const present = values.filter(isNotUndefined);
 		return present.length > 0 ? summarize(present) : undefined;
-	};
+	}
 	const inputs = stats.map(s => s.input);
 	const dataflows = stats.map(s => s.dataflow);
 	const sum = (f: (s: SummarizedSlicerStats['perSliceMeasurements']) => number) => arraySum(perSlice.map(f));

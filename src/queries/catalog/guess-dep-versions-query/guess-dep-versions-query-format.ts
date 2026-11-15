@@ -277,8 +277,7 @@ export async function executeGuessDepVersionsQuery(
 	// date/available narrowing alone must not promote an otherwise any-version package into the product, or a tighter
 	// date cutoff could paradoxically grow the count by turning more packages into factors. A partial constraint does
 	// count: it does not narrow the package on its own, but it does couple it to the package that declares it
-	const reallyConstrained = (g: typeof guessedAll[number]): boolean =>
-		g.evidence.list.some(e => e.source === 'declared' || e.source === 'transitive' || e.source === 'signature' || e.source === 'indirect');
+	const reallyConstrained = (g: typeof guessedAll[number]): boolean => g.evidence.list.some(e => e.source === 'declared' || e.source === 'transitive' || e.source === 'signature' || e.source === 'indirect');
 	// one factor per linked group (its members share a version) plus every other constrained package
 	const grouped = new Set(linkedGroups.flat());
 	const representatives = [
@@ -303,19 +302,18 @@ export async function executeGuessDepVersionsQuery(
 	// does not turn them into dependencies of the project; built only when an orphan actually had a choice
 	const altSpace = orphans.alternativeUsage.size > 0
 		? new VersionSpace({ deps, usage: orphans.alternativeUsage, cutoff, rVersion, disabled }) : undefined;
-	const orphanAlternatives = (pkg: BrandedNamespace): OrphanAlternativeView[] =>
-		(orphans.alternatives.get(pkg) ?? []).map(alt => {
-			const s = (altSpace as VersionSpace).survivors(alt, []);
-			const versions = s.survivors.map(e => e.ver);
-			return compactRecord({
-				package:        alt,
-				range:          rangeString(versions, { nonContiguous: false, unsatisfiable: s.unsatisfiable }, s.declaredRange, s.declaredConstraints, cap),
-				minVersion:     versions[0],
-				maxVersion:     versions[versions.length - 1],
-				candidateCount: versions.length,
-				totalVersions:  s.total
-			});
+	const orphanAlternatives = (pkg: BrandedNamespace): OrphanAlternativeView[] => (orphans.alternatives.get(pkg) ?? []).map(alt => {
+		const s = (altSpace as VersionSpace).survivors(alt, []);
+		const versions = s.survivors.map(e => e.ver);
+		return compactRecord({
+			package:        alt,
+			range:          rangeString(versions, { nonContiguous: false, unsatisfiable: s.unsatisfiable }, s.declaredRange, s.declaredConstraints, cap),
+			minVersion:     versions[0],
+			maxVersion:     versions[versions.length - 1],
+			candidateCount: versions.length,
+			totalVersions:  s.total
 		});
+	});
 
 	const dependencies: GuessedDependency[] = [];
 	const ordered: OrderedCandidates[] = [];

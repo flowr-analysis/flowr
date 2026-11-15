@@ -14,12 +14,12 @@ import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE_BIND } from './versions';
  */
 export function minRVersionOf<Info>(ast: RNode<Info> | readonly RNode<Info>[]): SemVer | undefined {
 	let needed: SemVer | undefined;
-	const atLeast = (version: SemVer | string) => {
+	function atLeast(version: SemVer | string) {
 		const v = new SemVer(version);
 		if(needed === undefined || v.compare(needed) > 0) {
 			needed = v;
 		}
-	};
+	}
 	const placeholders = (rhs: RNode<Info>) => RNode.visitAst(rhs, n => {
 		if(RAccess.is(n) && RSymbol.is(n.accessed) && n.accessed.lexeme === '_') {
 			atLeast(RPipe.hasAccessPlaceHolderFromRVersion());

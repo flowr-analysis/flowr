@@ -189,7 +189,6 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	taint<Names extends readonly string[] = []>(): TaintAnalysisBuilder<Names>;
 	/**
 	 * Run a search on the current analysis.
-	 * @param search  - The search to run.
 	 * @param options - Bounds for this call, see {@link FlowrAnalysisOptions}.
 	 */
 	runSearch<Search extends FlowrSearchLike>(search: Search, options?: FlowrAnalysisOptions): Promise<GetSearchElements<SearchOutput<Search>>>;
@@ -389,14 +388,14 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 function qualifyInBackground(graph: DataflowGraph): void {
 	const calls = Array.from(graph.verticesOfType(VertexType.FunctionCall), ([id]) => id);
 	let next = 0;
-	const step = () => {
+	function step() {
 		for(const end = Math.min(next + 256, calls.length); next < end; next++) {
 			Dataflow.qualify(calls[next], graph, false);
 		}
 		if(next < calls.length) {
 			later(step);
 		}
-	};
+	}
 	later(step);
 }
 

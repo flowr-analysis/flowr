@@ -184,10 +184,7 @@ export const LintingResults = {
 		}
 		throw new Error(LintingResults.stringifyError(o));
 	},
-	/**
-	 * Gets all involved node IDs from the given linting results.
-	 * If the results represent an error, an empty set is returned.
-	 */
+	/** Gets all involved node IDs from the given linting results. If the results represent an error, an empty set is returned. */
 	allInvolvedIds<L extends LintingRuleNames>(this: void, res: LintingResults<L> | undefined): Set<NodeId> {
 		if(!res || LintingResults.isError(res)) {
 			return new Set();

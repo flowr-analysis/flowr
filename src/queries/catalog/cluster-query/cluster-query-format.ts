@@ -2,11 +2,10 @@ import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../bas
 import { markdownFormatter } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
-import type { DataflowGraphClusters } from '../../../dataflow/cluster';
+import { type DataflowGraphClusters, findAllClusters } from '../../../dataflow/cluster';
 import { queryHeader, summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
-import { findAllClusters } from '../../../dataflow/cluster';
 import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
 /** Executes the given dataflow cluster queries using the provided analyzer. */

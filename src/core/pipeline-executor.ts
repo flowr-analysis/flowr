@@ -209,7 +209,6 @@ export class PipelineExecutor<P extends Pipeline> {
 	/**
 	 * This only makes sense if you have already run a request and want to re-use the per-file results for a new one.
 	 * (or if for whatever reason, you did not pass information for the pipeline with the constructor).
-	 * @param newRequestData - Data for the new request
 	 */
 	public updateRequest(newRequestData: PipelinePerRequestInput<P>): void {
 		const requestStep = this.pipeline.firstStepPerRequest;

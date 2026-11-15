@@ -50,7 +50,7 @@ function hasEntries(record: Readonly<Record<string, unknown>> | undefined): bool
  * A {@link PkgBlob} in its compact on-disk tuple form, dropping the trailing fields it has nothing to say about
  * (the length says what is there, so no flag needs writing/reading), so a reader that stops earlier keeps working.
  */
-export const blobTuple = (b: Readonly<PkgBlob>): PkgBlobTuple => {
+export function blobTuple(b: Readonly<PkgBlob>): PkgBlobTuple {
 	const head = [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion] as const;
 	if(b.contracts?.length) {
 		return [...head, b.dates, b.sources ?? {}, b.classes ?? [], b.classesByVersion ?? {}, b.contracts, b.contractOf ?? {}];
@@ -62,7 +62,7 @@ export const blobTuple = (b: Readonly<PkgBlob>): PkgBlobTuple => {
 		return [...head, b.dates, b.sources];
 	}
 	return hasEntries(b.dates) ? [...head, b.dates] : [...head];
-};
+}
 /** the inverse of {@link blobTuple}: rebuild a {@link PkgBlob} from its on-disk tuple */
 export function tupleToBlob(t: PkgBlobTuple): PkgBlob {
 	return { sigs: t[0], cgs: t[1], fns: t[2], versions: t[3], noncran: t[4]?.length ? t[4] : undefined, deps: t[5] ?? [], depsByVersion: t[6] ?? {}, dates: t[7] ?? {}, sources: t[8], classes: t[9]?.length ? t[9] : undefined, classesByVersion: t[10], contracts: t[11]?.length ? t[11] : undefined, contractOf: t[12] };

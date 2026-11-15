@@ -9,8 +9,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		const code = 'x <- 1';
 		/** a valid page with the given extra sections */
 		const rd = (extra = '', head = '\\name{f}\n\\alias{f}\n\\title{F}\n\\description{D}\n') => ({ 'man/f.Rd': head + extra });
-		const kinds = (name: string, files: Record<string, string>, expected: string[], config = {}) =>
-			assertLinterPackage(name, parser, code, rule, expected.map(kind => ({ kind })), { files, ...config });
+		const kinds = (name: string, files: Record<string, string>, expected: string[], config = {}) => assertLinterPackage(name, parser, code, rule, expected.map(kind => ({ kind })), { files, ...config });
 
 		describe('checking Rd files', () => {
 			kinds('a valid page', rd('\\usage{f(x)}\n\\arguments{\\item{x}{an x}}\n\\value{v}\n\\examples{f(1)}\n'), []);

@@ -8,8 +8,7 @@ import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../..
 import type { DecodedFunction } from '../sigdb/decode';
 import type { Range } from 'semver';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
-import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
-import { resetOnFullInvalidation } from '../cache/flowr-cache';
+import { type InvalidationEvent, type InvalidationEventReceiver, resetOnFullInvalidation } from '../cache/flowr-cache';
 import { isSigDbEnabled } from '../../config';
 import { RRange } from '../../util/r-version';
 import { uniqueArray } from '../../util/collections/arrays';

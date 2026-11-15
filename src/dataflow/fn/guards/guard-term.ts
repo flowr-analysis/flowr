@@ -161,13 +161,13 @@ function firstOnly(this: void, facts: GuardFactsLookup, fn: BrandedIdentifier, o
  * The result is in negation normal form and spells the vector case out with `all`, so it reads the way it is meant.
  */
 function truth(this: void, term: GuardTerm, holds: boolean, facts: GuardFactsLookup, vector = false, leading = false): GuardTerm {
-	const leaf = (of: GuardTerm, as: boolean, whole: boolean): GuardTerm => {
+	function leaf(of: GuardTerm, as: boolean, whole: boolean): GuardTerm {
 		const negated = as ? of : known('!', of);
 		if(isCall(of) && isScalar(of, facts)) {
 			return negated;
 		}
 		return whole ? known('all', negated) : leading ? known('[', negated, numberConstant(1, false)) : negated;
-	};
+	}
 	const operand = (fn: BrandedIdentifier, of: GuardTerm) => truth(of, holds, facts, false, firstOnly(facts, fn, 'x'));
 	if(term.kind === 'constant' && typeof term.value === 'boolean') {
 		return term.value === holds ? True : False;

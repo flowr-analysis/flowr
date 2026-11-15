@@ -1,5 +1,4 @@
-import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
-import { FlowrFile } from '../../../context/flowr-file';
+import { type FileRole, type FlowrFileProvider, FlowrFile } from '../../../context/flowr-file';
 import fs from 'fs';
 import { assertUnreachable } from '../../../../util/assert';
 import { RFunTabOffsets } from './r-fun-tab';
@@ -505,7 +504,7 @@ export class RDAParser {
 		}
 	}
 
-	/**. Throws error if `value` is {@link RValues.NaInteger}. */
+	/** . Throws error if `value` is {@link RValues.NaInteger}. */
 	assertInteger(value: number | RValues.NaInteger): number {
 		if(value === RValues.NaInteger) {
 			throw new Error('Unexpected NA integer');
@@ -513,7 +512,7 @@ export class RDAParser {
 		return value;
 	}
 
-	/**. Throws error if `obj` is {@link RValues.NilValue}. */
+	/** . Throws error if `obj` is {@link RValues.NilValue}. */
 	assertRObjectData(obj: RObject): RObjectData {
 		if(obj === RValues.NilValue) {
 			throw new Error('Unexpected NilValue');
@@ -549,7 +548,7 @@ export class RDAParser {
 		this.inWord(RDAParser.WORD_SIZE);
 	}
 
-	/**. Answers the next character, or `-1` on EOF. */
+	/** . Answers the next character, or `-1` on EOF. */
 	inChar(): number {
 		return this.offset >= this.buffer.length ? -1 : this.buffer[this.offset++];
 	}

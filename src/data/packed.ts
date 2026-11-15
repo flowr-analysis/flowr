@@ -11,7 +11,7 @@ export type Packed = readonly (string | number | boolean | null | readonly numbe
 export function unpack<T>(nodes: Packed): T {
 	const done: unknown[] = [];
 	const at = (i: number): unknown => i in done ? done[i] : (done[i] = build(nodes[i]));
-	const build = (node: Packed[number]): unknown => {
+	function build(node: Packed[number]): unknown {
 		if(!Array.isArray(node)) {
 			return node;
 		} else if(node.length === 0 || (node[0] as number) >= 0) {
@@ -19,7 +19,7 @@ export function unpack<T>(nodes: Packed): T {
 		}
 		const keys = at(-1 - (node[0] as number)) as string[];
 		return Object.fromEntries(keys.map((k, j) => [k, at(node[j + 1] as number)]));
-	};
+	}
 	return at(nodes.length - 1) as T;
 }
 

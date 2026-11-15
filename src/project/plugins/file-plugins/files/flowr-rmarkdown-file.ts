@@ -1,5 +1,4 @@
-import type { FlowrFileProvider } from '../../../context/flowr-file';
-import { FileRole, FlowrFile } from '../../../context/flowr-file';
+import { type FlowrFileProvider, FileRole, FlowrFile } from '../../../context/flowr-file';
 import { guard } from '../../../../util/assert';
 import { type Node, Parser } from 'commonmark';
 import { load as loadYaml } from 'js-yaml';
@@ -203,7 +202,6 @@ function parseFrontmatter(raw: string): unknown {
 
 /**
  * Parse the contents of a RMarkdown file into complete code and blocks
- * @param raw - the raw file content
  * @returns   Rmd Info
  */
 export function parseRMarkdownFile(raw: string): RmdInfo {
@@ -260,11 +258,11 @@ export function restoreBlocksWithoutMd(blocks: readonly CodeBlock[], totalLines:
 	let line = 1;
 	let output = '';
 
-	const goToLine = (n: number) => {
+	function goToLine(n: number) {
 		const diff = Math.max(n - line, 0);
 		line += diff;
 		output += '\n'.repeat(diff);
-	};
+	}
 
 	for(const block of blocks) {
 		goToLine(block.startpos.line);

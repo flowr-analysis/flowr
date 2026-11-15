@@ -1,11 +1,17 @@
 import { satisfies as semverSatisfies, validRange } from 'semver';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import type { BasicQueryData } from '../../base-query-format';
-import type {
-	SignatureQuery, SignatureQueryResult, SignaturePackageView, SignatureFunctionView, SignatureDatabaseView,
-	SignatureMatchView, SignaturePackageMatch, SignatureFlowrView
+import {
+	type SignatureQuery,
+	type SignatureQueryResult,
+	type SignaturePackageView,
+	type SignatureFunctionView,
+	type SignatureDatabaseView,
+	type SignatureMatchView,
+	type SignaturePackageMatch,
+	type SignatureFlowrView,
+	DefaultCallGraphMaxNodes
 } from './signature-query-format';
-import { DefaultCallGraphMaxNodes } from './signature-query-format';
 import { availableVersionEntries, getSharedSigSourceSync, SigDatabaseSet, type AvailableVersion, type PackageSignatureSource, type ShardStatus } from '../../../project/sigdb/reader';
 import { isDateBound, releaseDateBound } from '../../../project/sigdb/sigdb-version';
 import { DepType, DepTypeNames, type LibraryExports } from '../../../project/sigdb/schema';
@@ -13,10 +19,8 @@ import { attachedAlongside } from '../../../project/attached-packages';
 import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
-import type { BuiltInIndex } from '../../../dataflow/environments/query-fn-props';
-import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
-import type { BuiltInFnInfo, FnSig } from '../../../dataflow/environments/built-in-props';
-import { ArgProp } from '../../../dataflow/environments/built-in-props';
+import { type BuiltInIndex, queryFnProps } from '../../../dataflow/environments/query-fn-props';
+import { type BuiltInFnInfo, type FnSig, ArgProp } from '../../../dataflow/environments/built-in-props';
 import { Identifier, PkgName, ReferenceType, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { globOf, matchArgs, norm, parseSpec } from '../../../project/sigdb/spec-query';
 import { RVersion } from '../../../util/r-version';
@@ -338,18 +342,17 @@ function s3MethodParts(src: PackageSignatureSource, pkg: BrandedNamespace, fns: 
 function signatureCallGraphUrl(src: PackageSignatureSource, pkg: BrandedNamespace, version: string | undefined, root: BrandedIdentifier, maxNodes: number): string {
 	const bases = new Set(baseRPackages());
 	const exportsCache = new Map<string, ReadonlySet<BrandedIdentifier>>();
-	const exportsOf = (p: BrandedNamespace, v?: string): ReadonlySet<BrandedIdentifier> => {
+	function exportsOf(p: BrandedNamespace, v?: string): ReadonlySet<BrandedIdentifier> {
 		const key = `${p}\0${v ?? ''}`;
 		let s = exportsCache.get(key);
 		if(s === undefined) {
 			exportsCache.set(key, s = new Set(src.functions(p, v)?.map(f => f.name) ?? src.lookup(p, v)?.exported ?? []));
 		}
 		return s;
-	};
-	const attachedDeps = (p: BrandedNamespace, v?: string): BrandedNamespace[] =>
-		(src.dependencies(p, v) ?? []).filter(d => d.type === DepType.Depends || d.type === DepType.Imports).map(d => d.name);
+	}
+	const attachedDeps = (p: BrandedNamespace, v?: string): BrandedNamespace[] => (src.dependencies(p, v) ?? []).filter(d => d.type === DepType.Depends || d.type === DepType.Imports).map(d => d.name);
 	/** resolve a callee named in `p@v` to its owning `{ owner, name }`, or undefined when no loaded namespace exports it */
-	const resolve = (p: BrandedNamespace, v: string | undefined, callee: BrandedIdentifier): { owner: BrandedNamespace, name: BrandedIdentifier } | undefined => {
+	function resolve(p: BrandedNamespace, v: string | undefined, callee: BrandedIdentifier): { owner: BrandedNamespace, name: BrandedIdentifier } | undefined {
 		const q = /^([A-Za-z][\w.]*):::?(.+)$/.exec(callee);
 		if(q) {
 			return { owner: q[1], name: q[2] };
@@ -365,18 +368,18 @@ function signatureCallGraphUrl(src: PackageSignatureSource, pkg: BrandedNamespac
 		// base R (incl. C-level primitives absent from the sigdb: `c`, `is.na`, ...) via flowR's base export/primitive store
 		const base = baseRExportOwner(callee);
 		return base !== undefined ? { owner: base, name: callee } : undefined;
-	};
+	}
 
 	// each distinct node is keyed by `owner::name`, remembering its owning package (for the subgraph) and short label
 	const nodes = new Map<string, { id: string, owner: BrandedNamespace | undefined, short: BrandedIdentifier }>();
-	const node = (owner: BrandedNamespace | undefined, short: BrandedIdentifier): string => {
+	function node(owner: BrandedNamespace | undefined, short: BrandedIdentifier): string {
 		const key = owner ? `${owner}::${short}` : short;
 		let n = nodes.get(key);
 		if(n === undefined) {
 			nodes.set(key, n = { id: `n${nodes.size}`, owner, short });
 		}
 		return n.id;
-	};
+	}
 	const rootId = node(pkg, root);
 	const edges: string[] = [];
 	const seen = new Set<string>();
@@ -418,13 +421,13 @@ function signatureCallGraphUrl(src: PackageSignatureSource, pkg: BrandedNamespac
 /** what `library(pkg)` puts on the search path besides `pkg`: its `Depends` and a meta-package's core set, and theirs in turn */
 function attachedClosure(src: PackageSignatureSource, pkg: BrandedNamespace, version: string | undefined): BrandedNamespace[] {
 	const attached = new Set([pkg]);
-	const visit = (p: BrandedNamespace, at: string | undefined) => {
+	function visit(p: BrandedNamespace, at: string | undefined) {
 		const { depends, onAttach } = attachedAlongside(p, [src], at);
 		for(const next of [...depends, ...onAttach].filter(n => !attached.has(n))) {
 			attached.add(next);
 			visit(next, undefined);
 		}
-	};
+	}
 	visit(pkg, version);
 	attached.delete(pkg);
 	return [...attached];
@@ -700,8 +703,7 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 	// every source holding a package (its latest lives in `current`, its older releases in `history`)
 	const owningOf = (pkg: BrandedNamespace) => sources.filter(s => s.has(pkg));
 	// the versions of `pkg` matching the spec, unioned across all owning sources (so a `3.*`/date filter reaches history)
-	const matchingVersions = (owners: readonly PackageSignatureSource[], pkg: BrandedNamespace, m: (e: AvailableVersion) => boolean) =>
-		uniqueArray(owners.flatMap(s => availableVersionEntries(s, pkg).filter(m).map(e => e.version)));
+	const matchingVersions = (owners: readonly PackageSignatureSource[], pkg: BrandedNamespace, m: (e: AvailableVersion) => boolean) => uniqueArray(owners.flatMap(s => availableVersionEntries(s, pkg).filter(m).map(e => e.version)));
 
 	const paramPred = parameterFilter(q);
 	// a parameter filter (with no function name) still means "search functions", not "list packages"
@@ -831,7 +833,7 @@ export function signatureQueryCompleter(line: readonly string[], startingNewArg:
 	if(sources.length === 0) {
 		return { completions: [] };
 	}
-	const capped = (names: Iterable<BrandedIdentifier | BrandedNamespace>, prefix: string, decorate: (n: BrandedIdentifier | BrandedNamespace) => string): string[] => {
+	function capped(names: Iterable<BrandedIdentifier | BrandedNamespace>, prefix: string, decorate: (n: BrandedIdentifier | BrandedNamespace) => string): string[] {
 		const all: string[] = [];
 		for(const n of names) {
 			const d = decorate(n);   // filter on the offered text (e.g. `pkg::fn`), not the bare name
@@ -846,12 +848,12 @@ export function signatureQueryCompleter(line: readonly string[], startingNewArg:
 		// its head; index 0 stays first so the ghost hint still previews the true best (alphabetically first) match
 		const stride = all.length / MaxCompletions;
 		return Array.from({ length: MaxCompletions }, (_, i) => all[Math.floor(i * stride)]);
-	};
+	}
 	const packageNames = (): BrandedNamespace[] => uniqueArray(sources.flatMap(s => s.packageNames())).sort();
-	const functionsOf = (pkg: BrandedNamespace): BrandedIdentifier[] => {
+	function functionsOf(pkg: BrandedNamespace): BrandedIdentifier[] {
 		const src = sources.find(s => s.has(pkg));
 		return src ? uniqueArray((src.functions(pkg) ?? []).map(f => f.name)).sort() : [];
-	};
+	}
 
 	// first token: a package spec (`pkg`, `pkg::fn`, `pkg@ver`)
 	if(line.length === 0 || (line.length === 1 && !startingNewArg)) {

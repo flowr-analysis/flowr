@@ -33,8 +33,7 @@ import type { Range } from 'semver';
 import type { AsyncOrSync, MarkOptional } from 'ts-essentials';
 import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { TestFunctions } from './function-info/test-functions';
-import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier } from '../../../dataflow/environments/identifier';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { compactRecord } from '../../../util/objects';
@@ -59,7 +58,6 @@ export interface DependencyCategorySettings {
 	/**
 	 * An optional additional analysis step that is executed after the main function-based analysis has been performed.
 	 * To add or modify dependency info entries, simply modify the `result` array.
-	 * @param data          - The basic query data.
 	 * @param ignoreDefault - Whether the default functions were ignored.
 	 * @param functions     - The functions used for this category.
 	 * @param queryResults  - The results of the call context query.

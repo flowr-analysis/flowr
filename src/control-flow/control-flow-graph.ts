@@ -1,12 +1,13 @@
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowGraph } from '../dataflow/graph/graph';
-import { NoEdges } from '../dataflow/graph/graph';
-import type { DFControlFlowEdge } from '../dataflow/graph/edge';
-import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../dataflow/graph/edge';
-import type { ControlDependency, DataflowInformation } from '../dataflow/info';
-import { ControlDependency as ControlDependencyHelper, ExitPointType } from '../dataflow/info';
-import type { DataflowGraphVertexFunctionDefinition } from '../dataflow/graph/vertex';
-import { DfgVertex } from '../dataflow/graph/vertex';
+import { type DataflowGraph, NoEdges } from '../dataflow/graph/graph';
+import { type DFControlFlowEdge, ControlFlowEdgeTypes, DfEdge, EdgeType } from '../dataflow/graph/edge';
+import {
+	type ControlDependency,
+	type DataflowInformation,
+	ControlDependency as ControlDependencyHelper,
+	ExitPointType
+} from '../dataflow/info';
+import { type DataflowGraphVertexFunctionDefinition, DfgVertex } from '../dataflow/graph/vertex';
 import { graph2quads, type QuadSerializationConfiguration } from '../util/quads';
 import { ControlFlow } from '../dataflow/internal/control-flow';
 import type { MergeableRecord } from '../util/objects';
@@ -391,10 +392,7 @@ export interface ReadOnlyControlFlowGraph {
 	readonly hasVertex:          (id: NodeId, includeBlocks?: boolean) => boolean
 	/** Obtain the basic block associated with the given element id (i.e. if this is an element within a basic block, return the blockit belongs to). */
 	readonly getBasicBlock:      (elemId: NodeId) => CfgBasicBlockVertex | undefined
-	/**
-	 * Returns true if the graph may contain basic blocks and false if we know that it does not.
-	 * This can be used for optimizations.
-	 */
+	/** Returns true if the graph may contain basic blocks and false if we know that it does not. This can be used for optimizations. */
 	readonly mayHaveBasicBlocks: () => boolean
 	/**
 	 * The vertices control flow may reach directly from `id`, i.e. what may be evaluated next.

@@ -8,11 +8,10 @@ import type { FlowrConfig } from '../../../config';
 import type { DeepPartial } from 'ts-essentials';
 import { CloneAlgorithm, type CloneDetectionConfig, type CloneDetectionStats, type ClonePair, CloneScope, CloneUnit, DefaultCloneDetectionConfig, detectClones } from '../../../clones/clone-detector';
 import { ClonePerspective, CloneTokenization } from '../../../clones/clone-ast';
-import type { SerializedCloneIndex } from '../../../clones/clone-index';
+import { type SerializedCloneIndex, CloneIndex } from '../../../clones/clone-index';
 import { SourceLocation } from '../../../util/range';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { queryLineCode } from '../../../cli/repl/parser/slice-query-parser';
-import { CloneIndex } from '../../../clones/clone-index';
 import { deepMergeObject } from '../../../util/objects';
 import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 

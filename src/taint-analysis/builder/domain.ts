@@ -1,6 +1,5 @@
 import { Bottom, Top } from '../../abstract-interpretation/domains/lattice';
-import type { FiniteLatticeConfig, LatticeElements } from '../finite-domain';
-import { FiniteDomain } from '../finite-domain';
+import { type FiniteLatticeConfig, type LatticeElements, FiniteDomain } from '../finite-domain';
 import { guard } from '../../util/assert';
 
 export class FiniteDomainBuilder<Top extends symbol, Bottom extends symbol, Elements extends LatticeElements<Top, Bottom> = [Top, Bottom]> {

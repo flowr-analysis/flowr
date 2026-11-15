@@ -129,10 +129,7 @@ function phases2String<T>(stats: { readonly commonMeasurements: ReadonlyMap<Comm
 		+ OptionalTokenPhases.filter(([, measurement, key]) => stats.commonMeasurements.has(measurement) && stats[key] !== undefined).map(phase).join('');
 }
 
-/**
- * Converts the given stats to a human-readable string.
- * You may have to {@link summarizeSlicerStats | summarize} the stats first.
- */
+/** Converts the given stats to a human-readable string. You may have to {@link summarizeSlicerStats | summarize} the stats first. */
 export function stats2string(stats: SummarizedSlicerStats): string {
 	let result = `
 Request: ${JSON.stringify(stats.request)}${phases2String(stats, key => print(stats.commonMeasurements, key), formatNanoseconds)}`;

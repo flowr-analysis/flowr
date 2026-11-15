@@ -92,7 +92,6 @@ function splitLinesRegex(relevantLines: string[], regex: RegExp) {
 
 /**
  * Parses the given file into news chunks.
- * @param file - The file to parse
  * @see https://github.com/r-devel/r-svn/blob/44474af03ae77fd3b9a340279fa10cb698d106c3/src/library/tools/R/news.R#L91-L92
  */
 function parseNews(file: FlowrFileProvider): NewsChunk[] {

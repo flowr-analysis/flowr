@@ -137,7 +137,7 @@ export const Deferred = {
 			|| (!forces.sites.includes(use) && (reach.after ??= reachableFrom(forces.cfg, forces.sites)).has(use));
 		/* whether some force always happens before `use`, asked again by every write of the bound name */
 		let sites: ReadonlySet<NodeId> | undefined;
-		const alwaysAfterAForce = (use: NodeId): boolean => {
+		function alwaysAfterAForce(use: NodeId): boolean {
 			const known = (reach.always ??= new Map<NodeId, boolean>()).get(use);
 			if(known !== undefined || forces === undefined) {
 				return known ?? false;
@@ -146,7 +146,7 @@ export const Deferred = {
 			const always = someAlwaysBefore(forces.cfg, sites ??= new Set(forces.sites), use);
 			reach.always.set(use, always);
 			return always;
-		};
+		}
 		/* `delayedAssign` names its variable with a string literal */
 		const bindingName = forces === undefined ? undefined : NodeId.recoverBareName(forces.binding, idMap) ?? '';
 		for(const [node, name, writes] of within) {

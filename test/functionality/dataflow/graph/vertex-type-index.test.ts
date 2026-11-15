@@ -1,13 +1,10 @@
 import { describe, assert, test } from 'vitest';
-import type { DataflowGraphJson } from '../../../../src/dataflow/graph/graph';
-import { DataflowGraph } from '../../../../src/dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall } from '../../../../src/dataflow/graph/vertex';
-import { VertexType } from '../../../../src/dataflow/graph/vertex';
+import { type DataflowGraphJson, DataflowGraph } from '../../../../src/dataflow/graph/graph';
+import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../../src/dataflow/graph/vertex';
 import { EdgeType } from '../../../../src/dataflow/graph/edge';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 import { Identifier, ReferenceType } from '../../../../src/dataflow/environments/identifier';
-import { Environment } from '../../../../src/dataflow/environments/environment';
-import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
+import { Environment, type REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /**

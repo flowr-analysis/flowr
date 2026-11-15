@@ -1,9 +1,6 @@
-import type { ArgProps, CallProps } from '../dataflow/environments/built-in-props';
-import { ArgProp, CallProp } from '../dataflow/environments/built-in-props';
-import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import type { TaintConditionFunction, TaintMapping } from './taint-mapping';
-import { TaintRole } from './taint-mapping';
+import { type ArgProps, type CallProps, ArgProp, CallProp } from '../dataflow/environments/built-in-props';
+import { type AnyAbstractDomain, AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
+import { type TaintConditionFunction, type TaintMapping, TaintRole } from './taint-mapping';
 import { Top } from '../abstract-interpretation/domains/lattice';
 import { taintMappingFromBuiltInIndex } from './builtin-index-bridge';
 

@@ -86,7 +86,7 @@ export interface TaintComponent<Domain extends AnyAbstractDomain = AnyAbstractDo
 
 /** The abstract semantics of a taint component: every taintable call gets the taint its mappings resolve to. */
 function taintSemantics<Domain extends AnyAbstractDomain>({ domain, mapper }: TaintComponent<Domain>, fnCallHook?: TaintVisitorHook): AbstractSemantics<StateDomain<Domain>> {
-	const handleCall = (state: StateDomain<Domain>, call: DataflowGraphVertexFunctionCall, ctx: AbsintContext<StateDomain<Domain>>, explicitOnly: boolean): void => {
+	function handleCall(state: StateDomain<Domain>, call: DataflowGraphVertexFunctionCall, ctx: AbsintContext<StateDomain<Domain>>, explicitOnly: boolean): void {
 		const node = ctx.getAstNode(call.id);
 		const name = taintCallName(call, node);
 		const mappings = mapper.getMappings(name);
@@ -97,7 +97,7 @@ function taintSemantics<Domain extends AnyAbstractDomain>({ domain, mapper }: Ta
 		const { value, role, category } = resolveFnCallToTaint(call, mappings, domain, projectArg, ctx.dfg, ctx.context);
 		state.set(call.id, value);
 		fnCallHook?.({ node, value, wasMapped: mappings.length > 0, projectArg, call, role, category });
-	};
+	}
 	return {
 		handleFunctionCall: (state, call, ctx) => handleCall(state, call, ctx, false),
 		/* accesses are only tracked with explicit mappings */

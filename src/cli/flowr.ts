@@ -130,7 +130,7 @@ function createConfig(): FlowrConfig {
 	config = FlowrConfig.amend(config, c => {
 		(c.engines as EngineConfig[]) ??= [];
 
-		const engine = <E extends EngineConfig>(values: E): void => {
+		function engine<E extends EngineConfig>(values: E): void {
 			const engines = c.engines as EngineConfig[];
 			const at = engines.findIndex(e => e.type === values.type);
 			const given = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined));
@@ -139,7 +139,7 @@ function createConfig(): FlowrConfig {
 			} else {
 				engines[at] = { ...engines[at], ...given };
 			}
-		};
+		}
 
 		if(!options['engine.r-shell.disabled']) {
 			engine({
@@ -173,13 +173,13 @@ function createConfig(): FlowrConfig {
 }
 
 function hookSignalHandlers(engines: { engines: KnownEngines; default: keyof KnownEngines }) {
-	const end = () => {
+	function end() {
 		if(options.execute === undefined) {
 			console.log(`\n${italic('Exiting...')}`);
 		}
 		Object.values(engines.engines).forEach(e => e?.close());
 		exitSafe(0);
-	};
+	}
 
 	process.on('SIGINT', end);
 	process.on('SIGTERM', end);

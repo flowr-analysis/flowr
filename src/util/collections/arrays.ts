@@ -20,7 +20,6 @@ export type LastOfArray<T extends AnyArray> = T extends [...infer _, infer L] ? 
  *
  * `Array.isArray` is declared as `arg is any[]`, which a `readonly T[] | Something` union does not survive:
  * the array branch loses its element type and the other branch is not narrowed at all. This keeps both.
- * @param value - what to check
  */
 export function isArray<T>(value: readonly T[] | unknown): value is readonly T[] {
 	return Array.isArray(value);
@@ -79,7 +78,6 @@ export function partitionArray<T>(arr: readonly T[], predicate: (elem: T) => boo
 
 /**
  * Generate all permutations of the given array using Heap's algorithm (with its non-recursive variant).
- * @param arr - The array to permute
  * @see getUniqueCombinationsOfSize
  */
 export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
@@ -180,7 +178,6 @@ export function arrayEqual<T>(
  *
  * If the number of elements to sample is greater or equal to the number of elements in the list, the list is returned as is.
  * If the number of elements to sample is less than or equal to 0, an empty list is returned.
- * @param list        - list of elements
  * @param sampleCount - number of elements to sample
  * @param rounding    - rounding mode to use for the index calculation
  * @returns           - a list of elements equidistantly sampled from the input list

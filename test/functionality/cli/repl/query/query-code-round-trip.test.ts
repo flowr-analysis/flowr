@@ -1,7 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { FlowrConfig } from '../../../../../src/config';
-import { SupportedQueries } from '../../../../../src/queries/query';
-import type { SupportedQueryTypes } from '../../../../../src/queries/query';
+import { SupportedQueries, type SupportedQueryTypes } from '../../../../../src/queries/query';
 import { discardingReplOutput } from '../../../_helper/repl';
 import { label } from '../../../_helper/label';
 
@@ -39,8 +38,7 @@ describe('The repl hands every query its complete code', () => {
 			continue;
 		}
 		test(label(`${type} keeps the code`, ['name-normal'], ['other']), () => {
-			const parse = (line: readonly string[]) =>
-				(fromLine as (o: unknown, l: readonly string[], c: FlowrConfig) => { rCode?: string })(discardingReplOutput, line, FlowrConfig.default());
+			const parse = (line: readonly string[]) => (fromLine as (o: unknown, l: readonly string[], c: FlowrConfig) => { rCode?: string })(discardingReplOutput, line, FlowrConfig.default());
 			assert.strictEqual(parse([...prefix, ...Code]).rCode, Joined, 'with the leading arguments');
 			if(WithoutPrefix.includes(type as SupportedQueryTypes)) {
 				assert.strictEqual(parse(Code).rCode, Joined, 'without them');

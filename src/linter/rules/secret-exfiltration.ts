@@ -5,17 +5,15 @@ import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { FunctionArgument } from '../../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
-import { DfgVertex } from '../../dataflow/graph/vertex';
+import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexInfo, DfgVertex } from '../../dataflow/graph/vertex';
 import { EdgeType } from '../../dataflow/graph/edge';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { callFnProps } from '../../dataflow/environments/query-fn-props';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import type { ParentInformation, AstIdMap  } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation, AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { getFunctionArgument, getVertexArguments } from '../../abstract-interpretation/data-frame/arguments';
@@ -94,8 +92,7 @@ interface SecretSinkCall {
 	readonly secret: ReadonlyMap<NodeId, symbol>
 }
 
-const argumentAt = (call: DataflowGraphVertexFunctionCall, at: TaintParameterLocation | undefined, info: Info): NodeId | undefined =>
-	at === undefined ? undefined : RArgument.valueOf(getFunctionArgument(getVertexArguments(call, info.idMap), at, info))?.info.id;
+const argumentAt = (call: DataflowGraphVertexFunctionCall, at: TaintParameterLocation | undefined, info: Info): NodeId | undefined => at === undefined ? undefined : RArgument.valueOf(getFunctionArgument(getVertexArguments(call, info.idMap), at, info))?.info.id;
 
 function requestBuilder(vertex: DataflowGraphVertexInfo | undefined): DataflowGraphVertexFunctionCall | undefined {
 	return DfgVertex.isFunctionCall(vertex) && RequestBuilder.test(Identifier.getName(vertex.name)) ? vertex : undefined;

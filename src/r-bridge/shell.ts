@@ -92,10 +92,7 @@ export interface RShellSessionOptions extends RShellExecutionOptions {
 	readonly onRevive: (code: number, signal: string | null) => void
 }
 
-/**
- * Configuration of an {@link RShell} instance.
- * See {@link getDefaultRShellOptions} for the default values used by {@link RShell}.
- */
+/** Configuration of an {@link RShell} instance. See {@link getDefaultRShellOptions} for the default values used by {@link RShell}. */
 export interface RShellOptions extends RShellSessionOptions {
 	readonly sessionName: string
 }
@@ -198,10 +195,7 @@ export class RShell implements AsyncParser<string> {
 		});
 	}
 
-	/**
-	 * sends the given command directly to the current R session
-	 * will not do anything to alter input markers!
-	 */
+	/** sends the given command directly to the current R session will not do anything to alter input markers! */
 	public sendCommand(command: string): void {
 		if(this.log.settings.minLevel <= LogLevel.Trace) {
 			this.log.trace(`> ${JSON.stringify(command)}`);
@@ -319,10 +313,7 @@ export class RShell implements AsyncParser<string> {
 		this._sendCommand('rm(list=setdiff(ls(), "flowr_get_ast"))');
 	}
 
-	/**
-	 * Obtain the temporary directory used by R.
-	 * Additionally, this marks the directory for removal when the shell exits.
-	 */
+	/** Obtain the temporary directory used by R. Additionally, this marks the directory for removal when the shell exits. */
 	public async obtainTmpDir(): Promise<string> {
 		this.sendCommand('temp<-tempdir()');
 		const [tempdir] = await this.sendCommandWithOutput(`cat(temp,${ts2r(this.options.eol)})`);

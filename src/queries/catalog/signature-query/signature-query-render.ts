@@ -1,6 +1,5 @@
-import type { OutputFormatter } from '../../../util/text/ansi';
+import { type OutputFormatter, bold, italic, faint, color, Colors, FontStyles } from '../../../util/text/ansi';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
-import { bold, italic, faint, color, Colors, FontStyles } from '../../../util/text/ansi';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { cranPageUrl } from './signature-query-executor';
 import { baseRPackages } from '../../../util/r-base-packages';
@@ -14,7 +13,9 @@ import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../..
 /** print an in-repl usage guide for the signature query */
 export function printSignatureHelp(output: ReplOutput): void {
 	const f = output.formatter;
-	const ex = (cmd: string, desc: string): void => output.stdout(`  ${bold(cmd, f)}\n      ${italic(desc, f)}`);
+	function ex(cmd: string, desc: string): void {
+		output.stdout(`  ${bold(cmd, f)}\n      ${italic(desc, f)}`);
+	}
 	output.stdout(bold('Signature Database Query', f) + italic('  (inspects the databases that resolve library()/`::` calls)', f));
 	output.stdout('');
 	output.stdout(`${bold('Usage', f)}  :query @signature [<package>[@<version>][::<function>] [<function>]] [--param <name>]... [--required <n>] [<name>(<arg>, [<role>], *) [<prop>]] [--cg] [--cg-max <n>]`);
@@ -154,13 +155,13 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 			result.push(`      ╰ ${italic('flowR', f)}   ${italic('reads it as', f)} ${bold(fn.name, f)}(${fn.flowr.parameters.join(', ')})`);
 		}
 	}
-	const listLine = (label: string, items: readonly BrandedIdentifier[], max: number): void => {
+	function listLine(label: string, items: readonly BrandedIdentifier[], max: number): void {
 		if(!items.length) {
 			return;
 		}
 		const more = items.length > max ? italic(` (+${items.length - max} more)`, f) : '';
 		result.push(`      ╰ ${italic(label, f)} (${items.length}): ${items.slice(0, max).join(', ')}${more}`);
-	};
+	}
 	listLine('dispatches to', fn.s3methods ?? [], MaxList);
 	listLine('calls', fn.callees, MaxList);
 	if(fn.callGraph) {

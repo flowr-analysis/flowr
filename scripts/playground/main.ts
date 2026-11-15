@@ -29,14 +29,13 @@ import { SliceDirection } from '../../src/util/slice-direction';
 import { SlicingCriterion } from '../../src/slicing/criterion/parse';
 import { rankName } from '../../src/util/text/name-rank';
 import { stripAnsi, voidFormatter } from '../../src/util/text/ansi';
-import { escapeRegex, compareByCodeUnit  } from '../../src/util/text/strings';
+import { escapeRegex, compareByCodeUnit } from '../../src/util/text/strings';
 import { computeCompletions, replProcessAnswer } from '../../src/cli/repl/core';
 import { getCommand } from '../../src/cli/repl/commands/repl-commands';
 import { splitAtEscapeSensitive } from '../../src/util/text/args';
 import type { ReplOutput } from '../../src/cli/repl/commands/repl-main';
 import { packForUrl, toBase64, unpackFromUrl } from '../../src/util/text/url-encoding';
-import type { PlaygroundMark as Mark } from '../../src/util/text/playground-link';
-import { Playground, PlaygroundBox } from '../../src/util/text/playground-link';
+import { type PlaygroundMark as Mark, Playground, PlaygroundBox } from '../../src/util/text/playground-link';
 import type { ProjectQueryResult } from '../../src/queries/catalog/project-query/project-query-format';
 import { rAuthorInfoToReadable } from '../../src/util/r-author';
 import { stringifyRLicense } from '../../src/util/r-license';
@@ -55,7 +54,7 @@ import { isRSession, sessionAsScript } from './r-session';
 import { cellTitles, languageOf, loadNotebook, NotebookRun, notebookCells, rewriteCells, writesR } from './notebook';
 import { fileBanner, reconstructToCode } from '../../src/reconstruct/reconstruct';
 import { keptAfterRemoval } from '../../src/slicing/static/removal-slice';
-import { arraySum, uniqueArray  } from '../../src/util/collections/arrays';
+import { arraySum, uniqueArray } from '../../src/util/collections/arrays';
 import { cranPageUrl } from '../../src/util/r-package-urls';
 import type { DataflowGraph } from '../../src/dataflow/graph/graph';
 import { RString } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -284,14 +283,14 @@ const rLanguage = StreamLanguage.define(r);
 /** the same colours the editor uses, for code the panel shows rather than edits */
 function paint(code: string, into: HTMLElement): void {
 	let at = 0;
-	const put = (text: string, classes: string): void => {
+	function put(text: string, classes: string): void {
 		const span = document.createElement('span');
 		if(classes.length > 0) {
 			span.className = classes;
 		}
 		span.textContent = text;
 		into.append(span);
-	};
+	}
 	const tree = rLanguage.parser.parse(code);
 	highlightCode(code, tree, highlight, (text, classes) => {
 		/* the mode hands out whole unstyled runs, and a call name inside one is marked like in the editor */
@@ -439,10 +438,10 @@ const valueTips = hoverTooltip(async(view, pos) => {
 	const line = view.state.doc.lineAt(pos);
 	const found = targetAt(line.text, line.number, pos - line.from);
 	/* a finding shows wherever its squiggle is, in a string as much as on a name */
-	const lintOnly = () => {
+	function lintOnly() {
 		const over = shownLints.filter(l => l.from <= pos && pos <= l.to);
 		return over.length === 0 ? null : { pos: Math.min(...over.map(l => l.from)), end: Math.max(...over.map(l => l.to)), above: false, create: () => ({ dom: tip(undefined, undefined, over) }) };
-	};
+	}
 	if(found === undefined) {
 		return lintOnly();
 	}
@@ -639,7 +638,9 @@ function contractOf(name: string, about: Known, known: Signature | undefined): H
 /** the hover card: what the database knows about the name, then what flowR made of this script */
 function tip(known: Signature | undefined, said: string | undefined, complaints: readonly { rule: string, message: string }[] = [], contracted?: HTMLElement): HTMLElement {
 	const dom = el('div', 'cm-valuetip');
-	const line = (text: string, cls: string): void => dom.append(el('div', cls, text));
+	function line(text: string, cls: string): void {
+		dom.append(el('div', cls, text));
+	}
 	if(known !== undefined) {
 		line(known.call, 'tcall');
 		const about = [known.props.split(' ').filter(p => p.length > 0).map(p => p.replace(/-/g, ' ')).join(' · '), known.where]
@@ -987,7 +988,7 @@ const shared = (() => {
 	/* a chat client stops a link at what looks like the end of a sentence, and what arrives then no longer
 	   reads back as what was sent: the page opens on its own sample and says why */
 	let cut = false;
-	const read = (key: string) => {
+	function read(key: string) {
 		const found = params.get(key);
 		if(found === null) {
 			return undefined;
@@ -995,7 +996,7 @@ const shared = (() => {
 		const back = unpackFromUrl(found);
 		cut ||= back === undefined;
 		return back;
-	};
+	}
 	const changed = Playground.unpackConfig(params.get('k'));
 	/* everything about the view is one field, `<code width>,<repl height>,<flags>`, because four of them
 	   would be four `&`-separated names for what is really one thing: how the page was left looking */
@@ -1181,10 +1182,10 @@ function jsonStop(text: string, message: string): number {
 }
 
 function configProblems(text: string): ConfigProblem[] {
-	const near = (at: number, message: string): ConfigProblem => {
+	function near(at: number, message: string): ConfigProblem {
 		const from = Math.max(0, Math.min(at, text.length - 1));
 		return { from, to: Math.min(from + 1, text.length), message };
-	};
+	}
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(text);
@@ -1935,17 +1936,13 @@ function markRanges(mark: Mark): readonly ShownRange[] {
 		return [];
 	}
 	mark = (file === null ? mark : mark.slice(0, file.index)) as Mark;
-	/* a name may carry an `@` itself, as `object@slot` does, so only the first one separates */
-	const cut = mark.indexOf('@');
-	const [lineText, columnText] = (cut < 0 ? mark : mark.slice(0, cut)).split(':');
-	const name = cut < 0 ? undefined : mark.slice(cut + 1);
-	const number = Number(lineText);
-	if(!Number.isInteger(number) || number < 1 || number > doc.lines) {
+	const parsed = Playground.parseMark(mark);
+	if(parsed === undefined || parsed.line > doc.lines) {
 		return [];
 	}
+	const { line: number, column, name } = parsed;
 	const line = doc.line(number);
-	if(columnText !== undefined) {
-		const column = Number(columnText);
+	if(column !== undefined) {
 		const found = Number.isInteger(column) && column > 0 ? targetAt(line.text, number, column - 1) : undefined;
 		return found === undefined ? [] : [{ from: line.from + found.from, to: line.from + found.to, line: false }];
 	}
@@ -2199,9 +2196,7 @@ function revealRow(row: HTMLElement): void {
 	}
 }
 
-function linesOf(node: DepNode): number[] {
-	return allNodes([node]).flatMap(n => n.target && n.target.file === undefined && n.id !== undefined ? [n.target.span[0]] : []);
-}
+const linesOf = (node: DepNode): number[] => allNodes([node]).flatMap(n => n.target && n.target.file === undefined && n.id !== undefined ? [n.target.span[0]] : []);
 
 function revealDependency(node: DepNode): void {
 	const target = node.target;
@@ -2359,14 +2354,14 @@ function depEntry(node: DepNode, depth: number): HTMLElement {
 		event.stopPropagation();
 		toggle();
 	});
-	const activate = () => {
+	function activate() {
 		if(node.target !== undefined) {
 			revealDependency(node);
 		} else if(node.children.length > 0) {
 			toggle();
 		}
 		void focusRelated(focusedKey === node.key && node.target === undefined ? undefined : node);
-	};
+	}
 	line.addEventListener('click', activate);
 	line.addEventListener('keydown', event => {
 		if(event.key === 'Enter' || event.key === ' ') {
@@ -2507,7 +2502,7 @@ function ruleDetails(rule: string, fixes: readonly LintQuickFix[], note?: string
 	const diff = el('pre', 'diff');
 	/* the numbers are those of the script before the fix on the removed lines and after it on the added ones, as in a patch */
 	const width = String(Math.max(before.length, after.length)).length;
-	const show = (lines: readonly string[], sign: string) => {
+	function show(lines: readonly string[], sign: string) {
 		for(const [at, text] of lines.slice(0, 6).entries()) {
 			const row = el('span', sign === '-' ? 'del' : 'ins', `${String(head + at + 1).padStart(width)} ${sign} ${text}`);
 			diff.append(row, '\n');
@@ -2515,7 +2510,7 @@ function ruleDetails(rule: string, fixes: readonly LintQuickFix[], note?: string
 		if(lines.length > 6) {
 			diff.append(el('span', 'more', `${' '.repeat(width)}   … ${lines.length - 6} more`), '\n');
 		}
-	};
+	}
 	show(before.slice(head, before.length - tail), '-');
 	show(after.slice(head, after.length - tail), '+');
 	more.append(diff, fixButton(fixes, uniqueArray(fixes.map(fix => fix.description)).join('; ') || 'apply the fix', `line ${head + 1}: carry the fix out (ctrl+z takes it back)`));
@@ -2533,7 +2528,7 @@ function shapeOf(domain: unknown): string | undefined {
 	if(d?.cols === undefined || d.rows === undefined) {
 		return undefined;
 	}
-	const count = (b: Bounds, what: string): string | undefined => {
+	function count(b: Bounds, what: string): string | undefined {
 		const { lower, upper } = b;
 		if(typeof lower !== 'number' || typeof upper !== 'number') {
 			return undefined;
@@ -2542,7 +2537,7 @@ function shapeOf(domain: unknown): string | undefined {
 			return `${lower} ${lower === 1 ? what : what + 's'}`;
 		}
 		return Number.isFinite(upper) ? `${lower} to ${upper} ${what}s` : lower > 0 ? `${lower}+ ${what}s` : undefined;
-	};
+	}
 	const named = [...d.colnames?.must ?? []];
 	const more = (d.colnames?.may?.size ?? 0) > 0 || d.colnames?.isFinite?.() === false;
 	const columns = named.length > 0 ? `${named.join(', ')}${more ? ', …' : ''}` : undefined;
@@ -2827,12 +2822,12 @@ function sliceLines(kept: readonly number[], inContext: boolean): HTMLElement {
 	const cellOf = cellTitles(editor.state, files[active].name);
 	let cellShown: string | undefined;
 	let skipped = 0;
-	const gap = () => {
+	function gap() {
 		if(skipped > 0 && list.childElementCount > 0) {
 			list.append(el('div', 'sgap', `${skipped} line${skipped === 1 ? '' : 's'} not in the slice`));
 		}
 		skipped = 0;
-	};
+	}
 	for(let n = 1; n <= doc.lines; n++) {
 		const text = doc.line(n).text;
 		if(CellStart.test(text)) {
@@ -2941,10 +2936,10 @@ async function analyze(): Promise<number> {
 	const criterion = cursorCriterion();
 	const asked = cursorName();
 	const built = await analyzer();
-	const step = async<T>(run: () => Promise<T>): Promise<[T, number]> => {
+	async function step<T>(run: () => Promise<T>): Promise<[T, number]> {
 		const at = performance.now();
 		return [await run(), performance.now() - at];
-	};
+	}
 	const [, parsed] = await step(() => built.parse());
 	const [normalized, normalizing] = await step(() => built.normalize());
 	const [info, dataflow] = await step(() => built.dataflow());
@@ -3185,13 +3180,13 @@ async function analyze(): Promise<number> {
 		const lines = of.map(f => f.line);
 		const toggle = el('span', 'toggle');
 		head.append(chip, el('span', 'says', summary), toggle);
-		const fold = (open: boolean): void => {
+		function fold(open: boolean): void {
 			for(const row of rows) {
 				row.hidden = !open;
 			}
 			head.classList.toggle('open', open);
 			toggle.textContent = open ? 'hide' : 'show';
-		};
+		}
 		head.addEventListener('click', () => {
 			const open = !openedLintGroups.delete(rule);
 			if(open) {
@@ -3652,7 +3647,7 @@ const replBody = () => document.getElementById('repl')?.querySelector('.body')?.
 
 /* a pane is at least as wide as the grid lets the panel get; dragged past half of that, it folds away */
 const splitBox = document.querySelector<HTMLElement>('.split');
-const fold = (split: string): void => {
+function fold(split: string): void {
 	const at = parseFloat(split);
 	if(splitBox === null) {
 		return;
@@ -3661,7 +3656,7 @@ const fold = (split: string): void => {
 	} else {
 		delete splitBox.dataset.fold;
 	}
-};
+}
 /* where the bar was before it folded, which a click on the folded bar goes back to */
 let unfolded = '';
 draggable(document.getElementById('divider'), '--split', () => 0, at => {

@@ -71,7 +71,6 @@ export const Mermaid = {
 	},
 	/**
 	 * Converts mermaid code (potentially produced by {@link DataflowMermaid.convert}) to an url that presents the graph in the mermaid editor.
-	 * @param code - code to convert
 	 * @param edit - if true, the url will point to the editor, otherwise it will point to the viewer
 	 */
 	codeToUrl(this: void, code: string, edit = false): string {

@@ -56,15 +56,9 @@ export interface LinkToLastCall<CallName extends CallNameTypes = CallNameTypes> 
 	readonly type:       'link-to-last-call';
 	/** Regex regarding the function name of the last call. Similar to {@link DefaultCallContextQueryFormat#callName}, strings are interpreted as a `RegExp`. */
 	readonly callName:   CallName;
-	/**
-	 * Should we ignore this (source) call?
-	 * Currently, there is no well working serialization for this.
-	 */
+	/** Should we ignore this (source) call? Currently, there is no well working serialization for this. */
 	readonly ignoreIf?:  (id: NodeId, graph: DataflowGraph) => boolean;
-	/**
-	 * Should we continue searching after the link was created?
-	 * Currently, there is no well working serialization for this.
-	 */
+	/** Should we continue searching after the link was created? Currently, there is no well working serialization for this. */
 	readonly cascadeIf?: (target: DataflowGraphVertexInfo, from: NodeId, graph: DataflowGraph) => CascadeAction;
 }
 
@@ -81,10 +75,7 @@ export interface LinkToNestedCall<CallName extends CallNameTypes = CallNameTypes
 	readonly type:      'link-to-nested-call';
 	/** Regex regarding the function name of the last call. Similar to {@link DefaultCallContextQueryFormat#callName}, strings are interpreted as a `RegExp`. */
 	readonly callName:  CallName;
-	/**
-	 * Should we ignore this (source) call?
-	 * Currently, there is no well working serialization for this.
-	 */
+	/** Should we ignore this (source) call? Currently, there is no well working serialization for this. */
 	readonly ignoreIf?: (id: NodeId, graph: DataflowGraph) => boolean;
 }
 

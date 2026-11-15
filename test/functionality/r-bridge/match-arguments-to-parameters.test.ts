@@ -13,8 +13,7 @@ const named = (name: string): PotentiallyEmptyRArgument => ({ name: { content: n
 /** minimal positional (unnamed) argument */
 const pos = (): PotentiallyEmptyRArgument => ({ name: undefined } as unknown as PotentiallyEmptyRArgument);
 
-const match = (args: readonly PotentiallyEmptyRArgument[], params: readonly BrandedIdentifier[]) =>
-	FunctionSemantics.call.match.toNames(args, params);
+const match = (args: readonly PotentiallyEmptyRArgument[], params: readonly BrandedIdentifier[]) => FunctionSemantics.call.match.toNames(args, params);
 
 describe('RFunctionCall.matchArgumentsToParameters (R argument matching)', () => {
 	test('exact name match', () => {

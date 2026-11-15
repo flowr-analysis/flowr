@@ -1,8 +1,7 @@
 import { describe, test, assert } from 'vitest';
 import { withShell, withTreeSitter } from '../functionality/_helper/shell';
 import type { RShell } from '../../src/r-bridge/shell';
-import type { MutationPass, MutationTarget } from '../functionality/_helper/r-mutations';
-import { MutationPasses, mutate, slice } from '../functionality/_helper/r-mutations';
+import { type MutationPass, type MutationTarget, MutationPasses, mutate, slice } from '../functionality/_helper/r-mutations';
 import { rReadsSyntaxOf } from '../functionality/_helper/r-version';
 
 function passOf(name: string): MutationPass {

@@ -88,10 +88,7 @@ export function isUrl(p: string): boolean {
 	return UrlPattern.test(p);
 }
 
-/**
- * If `s` is a `file://` URI, return the local filesystem path it refers to.
- * Returns `undefined` for any other string.
- */
+/** If `s` is a `file://` URI, return the local filesystem path it refers to. Returns `undefined` for any other string. */
 export function fileUrlToPath(s: string): string | undefined {
 	if(!s.startsWith('file://')) {
 		return undefined;

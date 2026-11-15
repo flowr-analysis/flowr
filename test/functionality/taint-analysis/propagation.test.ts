@@ -4,10 +4,8 @@ import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { FiniteDomainBuilder } from '../../../src/taint-analysis/builder/domain';
 import { Bottom, Top } from '../../../src/abstract-interpretation/domains/lattice';
 import type { AbstractDomain } from '../../../src/abstract-interpretation/domains/abstract-domain';
-import type { TaintAnalysisExpectation } from './helper';
-import { testTaintAnalysis } from './helper';
-import type { LoopKind, LoopVariant } from './loop-helper';
-import { loopVariants, testLoopFixpoint } from './loop-helper';
+import { type TaintAnalysisExpectation, testTaintAnalysis } from './helper';
+import { type LoopKind, type LoopVariant, loopVariants, testLoopFixpoint } from './loop-helper';
 import { decorateLabelContext, label } from '../_helper/label';
 
 const TaintA = Symbol('TaintA');
@@ -28,8 +26,7 @@ const marker = TaintAnalysisDefinition.create('marker', lattice)
 	).getPartialDefinition();
 
 /** Checks whether the first argument has been tainted, returning the given constant taint or undefined */
-const toConst = (taint: symbol) =>
-	(_args: unknown[], [incoming]: AbstractDomain<symbol, symbol, symbol>[]) => incoming.isTop() ? Top : taint;
+const toConst = (taint: symbol) => (_args: unknown[], [incoming]: AbstractDomain<symbol, symbol, symbol>[]) => incoming.isTop() ? Top : taint;
 
 const conflict = TaintAnalysisDefinition.create('conflict', lattice)
 	.from(

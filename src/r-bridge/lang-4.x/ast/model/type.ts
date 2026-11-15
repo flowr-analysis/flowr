@@ -203,11 +203,7 @@ export enum RType {
 	/* ------ special types ------ */
 	/** {@link RProject} */
 	Project = 'RProject',
-	/**
-	 * {@link RDelimiter}.
-	 * Is not part of the normalized AST but can be found in
-	 * {@link Source#adToks}.
-	 */
+	/** {@link RDelimiter}. Is not part of the normalized AST but can be found in {@link Source#adToks}. */
 	Delimiter = 'RDelimiter',
 }
 

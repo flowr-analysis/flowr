@@ -15,8 +15,7 @@ import { baseRExportOwner, isBaseRPackage } from '../../../util/r-base-packages'
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { type RdMacroUse, type RdNode, type RdScan, parseRdMacros, scanRd } from '../../../project/plugins/file-plugins/files/flowr-rd-file';
-import type { packageInfo } from './cmd-check-util';
-import { DependencyFields, firstErrorRow, projectNodes } from './cmd-check-util';
+import { type packageInfo, DependencyFields, firstErrorRow, projectNodes } from './cmd-check-util';
 import type { PackageFiles } from './package-files';
 import { rdExamples } from './package-code';
 import { type FileResult, fileFindings, onPackageFiles, KindInFile } from './file-checks';
@@ -472,16 +471,18 @@ function lineWidths(p: Page, { config }: Env): Finding[] {
 /** the `\bibcitep`/`\bibcitet` keys a page cites but never shows with `\bibshow` */
 function bibentries(p: Page): Finding[] {
 	const events: { name: string, keys: string[], line: number }[] = [];
-	const visit = (nodes: readonly RdNode[]): void => nodes.forEach(n => {
-		if(n.type === 'group') {
-			visit(n.children);
-		} else if(isMacro(n)) {
-			if(n.name.startsWith('bibci') || n.name === 'bibshow') {
-				events.push({ name: n.name, keys: plain(arg(n, 0)).split(',').map(k => k.trim()).filter(k => k !== ''), line: p.scan.lineOf(n.at) });
+	function visit(nodes: readonly RdNode[]): void {
+		nodes.forEach(n => {
+			if(n.type === 'group') {
+				visit(n.children);
+			} else if(isMacro(n)) {
+				if(n.name.startsWith('bibci') || n.name === 'bibshow') {
+					events.push({ name: n.name, keys: plain(arg(n, 0)).split(',').map(k => k.trim()).filter(k => k !== ''), line: p.scan.lineOf(n.at) });
+				}
+				n.args.forEach(visit);
 			}
-			n.args.forEach(visit);
-		}
-	});
+		});
+	}
 	visit(p.scan.nodes);
 	let [cited, cache, shown, first] = [[] as string[], [] as string[], [] as string[], 0];
 	for(const e of events) {
@@ -500,13 +501,15 @@ function bibentries(p: Page): Finding[] {
 /** the S3 methods a `\usage` calls by their full name rather than with `\method` */
 function s3Names(p: Page, { methods }: Env): Finding[] {
 	const found: Finding[] = [];
-	const visit = (nodes: readonly RdNode[]): void => nodes.forEach(n => {
-		const call = n.type === 'text' ? /^\s*([A-Za-z.][A-Za-z0-9._]*)\s*\(/.exec(n.text)?.[1] : undefined;
-		if(call !== undefined && methods.has(call)) {
-			found.push(['rd-s3-method-name', p.scan.lineOf(n.at), `S3 methods shown with full name in Rd file '${p.base}': '${call}'`]);
-		}
-		visit(n.type === 'group' ? n.children : isMacro(n) && ExampleWrappers.includes(n.name) ? arg(n, 0) : []);
-	});
+	function visit(nodes: readonly RdNode[]): void {
+		nodes.forEach(n => {
+			const call = n.type === 'text' ? /^\s*([A-Za-z.][A-Za-z0-9._]*)\s*\(/.exec(n.text)?.[1] : undefined;
+			if(call !== undefined && methods.has(call)) {
+				found.push(['rd-s3-method-name', p.scan.lineOf(n.at), `S3 methods shown with full name in Rd file '${p.base}': '${call}'`]);
+			}
+			visit(n.type === 'group' ? n.children : isMacro(n) && ExampleWrappers.includes(n.name) ? arg(n, 0) : []);
+		});
+	}
 	visit(section(p, 'usage')?.args[0] ?? []);
 	return found;
 }
@@ -526,7 +529,9 @@ function examples(p: Page, { data }: Env): Finding[] {
 	if(ex === undefined || !/\S/.test(ex.code) || p.diags.some(d => d.kind === 'rd-syntax')) {
 		return [];
 	}
-	const at = (row: number) => ex.lineOffset + row;
+	const at = (row: number) => {
+		return ex.lineOffset + row;
+	};
 	const tree = data.parseStandalone(ex.code);
 	const errorRow = firstErrorRow(tree.rootNode);
 	if(errorRow !== undefined) {
@@ -536,10 +541,10 @@ function examples(p: Page, { data }: Env): Finding[] {
 	const nodes = projectNodes(ast);
 	const found: Finding[] = [];
 	const lineOf = (n: { info: { id: unknown } }) => at((SourceLocation.fromNode(n as never)?.[0] ?? 1) - 1);
-	const assigned = (node: typeof nodes[number]) => {
+	function assigned(node: typeof nodes[number]) {
 		const parent = RNode.directParent(node, ast.idMap);
 		return (RArgument.is(parent) && parent.name === node) || (RBinaryOp.is(parent) && parent.lhs === node && ['<-', '=', '<<-'].includes(parent.operator));
-	};
+	}
 	let [setwds, restores] = [0, false];
 	for(const node of nodes) {
 		const symbol = RSymbol.is(node) ? Identifier.getName(node.content) : undefined;

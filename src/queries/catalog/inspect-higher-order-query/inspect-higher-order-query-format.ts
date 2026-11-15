@@ -31,10 +31,7 @@ export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, quer
 	return result;
 }
 
-/**
- * Either returns all function definitions alongside whether they are higher-order functions,
- * or just those matching the filters.
- */
+/** Either returns all function definitions alongside whether they are higher-order functions, or just those matching the filters. */
 export interface InspectHigherOrderQuery extends BaseQueryFormat {
 	readonly type:    'inspect-higher-order';
 	readonly filter?: readonly SlicingCriterion[]

@@ -1,6 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
-import type { OutputFormatter } from '../../../util/text/ansi';
-import { bold, italic } from '../../../util/text/ansi';
+import { type OutputFormatter, bold, italic } from '../../../util/text/ansi';
 import Joi from 'joi';
 import { queryHeader } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -145,13 +144,13 @@ export async function executeDataColumnsQuery({ analyzer }: BasicQueryData, quer
 	const cfg = await analyzer.controlflow();
 	const start = Date.now();
 	let interpreter: AbstractInterpreter<{ dataFrame: DataFrameDomain }> | undefined;
-	const shapeOf = (node: RNodeWithParent): DataColumnsFrame | undefined => {
+	function shapeOf(node: RNodeWithParent): DataColumnsFrame | undefined {
 		if(interpreter === undefined) {
 			interpreter = new AbstractInterpreter({ controlFlow: cfg, dfg, normalizedAst: ast, ctx: analyzer.inspectContext() }, new DataFrameShapeAnalysis({ trackOperations: false }));
 			interpreter.start();
 		}
 		return frameOf(node, interpreter.getAbstractValue(node, 'dataFrame'));
-	};
+	}
 	const results: Record<string, DataColumnsAt> = {};
 	for(const query of queries) {
 		for(const position of query.positions) {

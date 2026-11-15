@@ -4,8 +4,11 @@ import { type DataflowInformation, ControlDependency, happensInEveryBranch } fro
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	type PotentiallyEmptyRArgument,
+	RFunctionCall,
+	EmptyArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RLogical } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -16,13 +19,27 @@ import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import { LazyBindings } from '../../../../../environments/frame-memory';
-import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
-import type { NamedInGraphIdentifierDefinition, BrandedIdentifier, BrandedNamespace, IdentifierDefinition, InGraphIdentifierDefinition, InGraphReferenceType } from '../../../../../environments/identifier';
+import {
+	Identifier,
+	PkgName,
+	ReferenceType,
+	type NamedInGraphIdentifierDefinition,
+	type BrandedIdentifier,
+	type BrandedNamespace,
+	type IdentifierDefinition,
+	type InGraphIdentifierDefinition,
+	type InGraphReferenceType
+} from '../../../../../environments/identifier';
 import type { BuiltInIdentifierDefinition, BuiltInMemory } from '../../../../../environments/built-in';
 import type { BuiltInFnInfo } from '../../../../../environments/built-in-props';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { DefaultAttachPosition, Environment, EnvType, REnvironment } from '../../../../../environments/environment';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
+import {
+	DefaultAttachPosition,
+	Environment,
+	EnvType,
+	REnvironment,
+	type REnvironmentInformation
+} from '../../../../../environments/environment';
 import type { FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { EdgeType } from '../../../../../graph/edge';
 import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
@@ -102,10 +119,10 @@ export function processLibrary<OtherInfo>(
 	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), formals);
 	const charId = uniqueArray(argMaps.get('char') ?? []);
 	/* `library(pkg, include.only = "f")` and `exclude = "f"` attach only part of the exports, as `import::from` does */
-	const namesIn = (key: 'only' | 'except'): string[] | undefined => {
+	function namesIn(key: 'only' | 'except'): string[] | undefined {
 		const value = RArgument.getValue<OtherInfo & ParentInformation>(args, argMaps.get(key)?.[0] ?? '');
 		return value === undefined ? undefined : NodeValue.stringsOf(value.info.id, data);
-	};
+	}
 	const only = config.fromImports ? undefined : namesIn('only');
 	const except = config.fromImports ? undefined : namesIn('except');
 	const spec: AttachSpec = {

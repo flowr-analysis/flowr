@@ -42,7 +42,9 @@ function appends(id: NodeId, idMap: AstIdMap, opens: (id: NodeId) => boolean): b
 	if(!RFunctionCall.is(node)) {
 		return false;
 	}
-	const named = (a: typeof node.arguments[number], name: string) => a !== EmptyArgument && a.name !== undefined && Identifier.getName(a.name.content) === name;
+	const named = (a: typeof node.arguments[number], name: string) => {
+		return a !== EmptyArgument && a.name !== undefined && Identifier.getName(a.name.content) === name;
+	};
 	const mode = node.arguments.find(a => named(a, 'open')) ?? (opens(id) ? node.arguments[1] : undefined);
 	return node.arguments.some(a => named(a, 'append') && a !== EmptyArgument && RLogical.is(a.value) && a.value.content)
 		|| (mode !== undefined && mode !== EmptyArgument && (mode.name === undefined || named(mode, 'open')) && RString.is(mode.value) && /^a[tb+]*$/.test(mode.value.content.str));

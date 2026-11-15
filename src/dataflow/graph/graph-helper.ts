@@ -1,7 +1,6 @@
 import { DataflowMermaid } from '../../util/mermaid/dfg';
 import { df2quads } from './quads';
-import type { NamedGraph } from '../../util/diff-graph';
-import { GraphDiff, GraphDifferenceReport, initDiffContext } from '../../util/diff-graph';
+import { type NamedGraph, GraphDiff, GraphDifferenceReport, initDiffContext } from '../../util/diff-graph';
 import type { GenericDiffConfiguration } from '../../util/diff';
 import { diffDataflowGraph } from './diff-dataflow-graph';
 import { DataflowGraph, UnknownSideEffect } from './graph';
@@ -14,8 +13,7 @@ import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
 import { DfEdge, EdgeType } from './edge';
 import { DefaultMap } from '../../util/collections/defaultmap';
-import type { DataflowGraphVertexFunctionDefinition } from './vertex';
-import { DfgVertex } from './vertex';
+import { type DataflowGraphVertexFunctionDefinition, DfgVertex } from './vertex';
 
 /** what {@link GraphHelper.reachable} follows and where it stops */
 export interface ReachOptions {

@@ -7,11 +7,10 @@ import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-par
 import { bold } from '../../../util/text/ansi';
 import { queryHeader } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { SlicingCriteria } from '../../../slicing/criterion/parse';
+import { type SlicingCriteria, SlicingCriterion } from '../../../slicing/criterion/parse';
 import { metaSince } from '../../query-meta';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import type { AmbientAccess } from '../../../dataflow/graph/ambient-access';
-import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { QueryFunctionFilter } from '../../query-function-filter';
 import { log } from '../../../util/log';
 

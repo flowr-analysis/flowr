@@ -39,17 +39,11 @@ export enum LintingRuleTag {
 	 * For example, missing or incorrect random seeds, or missing data.
 	 */
 	Reproducibility = 'reproducibility',
-	/**
-	 * This rule is used to detect security-critical.
-	 * For example, missing input validation.
-	 */
+	/** This rule is used to detect security-critical. For example, missing input validation. */
 	Security = 'security',
 	/** This rule is used to detect issues that are related to the shiny framework. */
 	Shiny = 'shiny',
-	/**
-	 * This rule is used to detect issues that do not directly affect the semantics of the code,
-	 * but are still considered bad practice.
-	 */
+	/** This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice. */
 	Smell = 'smell',
 	/**
 	 * This rule is used to detect issues that are related to the style of the code.

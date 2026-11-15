@@ -32,9 +32,7 @@ export const baseMessage: MessageDefinition<IdMessageBase> = {
 	schema: Joi.object({ type: Joi.string().required(), id: Joi.string().optional() }).unknown(true)
 };
 
-/**
- * This is the main message type that should be used to represent a message in *flowR*
- */
+/** The main message type to represent a message in flowR */
 export type FlowrMessage = FlowrHelloResponseMessage
                          | FileAnalysisRequestMessage
                          | FileAnalysisResponseMessageJson

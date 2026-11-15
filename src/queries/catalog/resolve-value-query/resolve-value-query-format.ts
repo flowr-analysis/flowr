@@ -1,5 +1,5 @@
 import { type BasicQueryData, type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
-import type { SlicingCriteria } from '../../../slicing/criterion/parse';
+import { type SlicingCriteria, SlicingCriterion } from '../../../slicing/criterion/parse';
 import { queryHeader } from '../../query-print';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
@@ -11,7 +11,6 @@ import type { FlowrConfig } from '../../../config';
 import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { log } from '../../../util/log';
 import { metaSince } from '../../query-meta';
-import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 
 /** Naive fingerprint to filter out duplicate queries. */

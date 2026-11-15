@@ -26,8 +26,7 @@ import type {
 	SlicerStatsDfShape
 } from './stats/stats';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SlicingCriteria } from '../slicing/criterion/parse';
-import { SlicingCriterion } from '../slicing/criterion/parse';
+import { type SlicingCriteria, SlicingCriterion } from '../slicing/criterion/parse';
 import { createSlicePipeline, type DEFAULT_SLICING_PIPELINE, type TREE_SITTER_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import { retrieveNumberOfRTokensOfLastParse, type RParseRequestFromFile, type RParseRequestFromText } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
@@ -43,8 +42,7 @@ import { DfgVertex } from '../dataflow/graph/vertex';
 import { ControlFlowEdgeTypes, DfEdge } from '../dataflow/graph/edge';
 import { equidistantSampling, arraySum } from '../util/collections/arrays';
 import { FlowrConfig } from '../config';
-import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { extractCfg } from '../control-flow/control-flow-graph';
+import { type ControlFlowInformation, extractCfg } from '../control-flow/control-flow-graph';
 import { AbstractInterpreter } from '../abstract-interpretation/absint-inference';
 import { DataFrameShapeAnalysis } from '../abstract-interpretation/data-frame/shape-inference';
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
@@ -132,10 +130,7 @@ export class BenchmarkSlicer {
 		this.parserName = parserName;
 	}
 
-	/**
-	 * Initialize the slicer on the given request.
-	 * Can only be called once for each instance.
-	 */
+	/** Initialize the slicer on the given request. Can only be called once for each instance. */
 	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfig,
 		autoSelectIf?: AutoSelectPredicate, threshold?: number, inlineSources?: boolean, includeCallees?: boolean,
 		inlineFull?: InlineFull) {
@@ -183,13 +178,13 @@ export class BenchmarkSlicer {
 			numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.parser as RShell);
 			numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(this.parser as RShell, true);
 		} else {
-			const countChildren = function(node: SyntaxNode, ignoreComments = false): number {
+			function countChildren(node: SyntaxNode, ignoreComments = false): number {
 				let ret = node.type === TreeSitterType.Comment && ignoreComments ? 0 : 1;
 				for(const child of node.children) {
 					ret += countChildren(child, ignoreComments);
 				}
 				return ret;
-			};
+			}
 			const root = (this.loadedXml as Tree[]).map(t => t.rootNode);
 			numberOfRTokens = arraySum(root.map(r => countChildren(r)));
 			numberOfRTokensNoComments = arraySum(root.map(r => countChildren(r, true)));

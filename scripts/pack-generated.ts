@@ -6,7 +6,7 @@ import type { Packed } from '../src/data/packed';
 export function pack(value: unknown): Packed {
 	const nodes: Packed[number][] = [];
 	const known = new Map<string, number>();
-	const intern = (node: Packed[number]): number => {
+	function intern(node: Packed[number]): number {
 		const key = JSON.stringify(node);
 		let i = known.get(key);
 		if(i === undefined) {
@@ -14,8 +14,8 @@ export function pack(value: unknown): Packed {
 			known.set(key, i);
 		}
 		return i;
-	};
-	const visit = (v: unknown): number => {
+	}
+	function visit(v: unknown): number {
 		if(Array.isArray(v)) {
 			return intern(v.map(visit));
 		} else if(v !== null && typeof v === 'object') {
@@ -23,7 +23,7 @@ export function pack(value: unknown): Packed {
 			return intern([-1 - visit(entries.map(([k]) => k)), ...entries.map(([, e]) => visit(e))]);
 		}
 		return intern(v as Packed[number]);
-	};
+	}
 	visit(value);
 	return nodes;
 }

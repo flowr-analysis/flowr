@@ -1,6 +1,5 @@
 import type { ICodeCell, INotebookContent, IOutput } from '@jupyterlab/nbformat';
-import type { FlowrFileProvider } from '../../../context/flowr-file';
-import { FileRole, FlowrFile } from '../../../context/flowr-file';
+import { type FlowrFileProvider, FileRole, FlowrFile } from '../../../context/flowr-file';
 import type { RecordedRun, RecordsRuns } from './recorded-runs';
 
 /**

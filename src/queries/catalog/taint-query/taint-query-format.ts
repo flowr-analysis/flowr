@@ -3,8 +3,11 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
-import type { AnyPredefinedTaintAnalysisName, AllPredefinedTaintAnalysisNames } from '../../../taint-analysis/predefined/predefined';
-import { predefinedTaintAnalyses } from '../../../taint-analysis/predefined/predefined';
+import {
+	type AnyPredefinedTaintAnalysisName,
+	type AllPredefinedTaintAnalysisNames,
+	predefinedTaintAnalyses
+} from '../../../taint-analysis/predefined/predefined';
 import { Bottom, BottomSymbol } from '../../../abstract-interpretation/domains/lattice';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';

@@ -104,13 +104,13 @@ export const PACKAGE_DATA = {
 		const entries = pf.entries;
 		const isDir = (rel: string) => entries.some(e => e.isDirectory && e.relative === rel);
 		const headers = new Map<PackageEntry, RdaHeader | undefined>();
-		const headerOf = (e: PackageEntry): RdaHeader | undefined => {
+		function headerOf(e: PackageEntry): RdaHeader | undefined {
 			if(!headers.has(e)) {
 				const bytes = bytesOf(e);
 				headers.set(e, bytes && rdaHeader(bytes, e.absolute));
 			}
 			return headers.get(e);
-		};
+		}
 
 		const children = entries.filter(e => path.posix.dirname(e.relative) === 'data' && !path.posix.basename(e.relative).startsWith('.'));
 		const datalist = children.find(e => e.relative === 'data/datalist');
@@ -133,14 +133,14 @@ export const PACKAGE_DATA = {
 		}
 
 		const names = new Map<PackageEntry, string[]>();
-		const namesOf = (e: PackageEntry): string[] => {
+		function namesOf(e: PackageEntry): string[] {
 			if(!names.has(e)) {
 				const base = path.posix.basename(e.relative).replace(DataFile, '');
 				const objects = ctx.files.datasetObjects(base);
 				names.set(e, (pf.onDisk && RdaFile.test(e.relative) ? objectNamesOf(e.absolute) : undefined) ?? (objects.length > 0 ? [...objects] : [base]));
 			}
 			return names.get(e) as string[];
-		};
+		}
 		const saves = dataSets.filter(e => RdaFile.test(e.relative));
 		for(const e of saves) {
 			if(pf.onDisk && namesOf(e).includes('.Random.seed')) {

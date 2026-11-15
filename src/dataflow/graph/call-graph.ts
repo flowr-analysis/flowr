@@ -1,6 +1,11 @@
 import { DataflowGraph } from './graph';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo } from './vertex';
-import { VertexType, DfgVertex } from './vertex';
+import {
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexFunctionDefinition,
+	type DataflowGraphVertexInfo,
+	VertexType,
+	DfgVertex
+} from './vertex';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge, EdgeType } from './edge';
 import { isBuiltInProcName, bareProcName, BuiltInProcName } from '../environments/built-in-proc-name';

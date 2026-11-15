@@ -1866,8 +1866,7 @@ function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = 
 function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInformation> | undefined)[], info: ResolveInfo) {
 	let selectedCols: (string | number | undefined)[] | undefined = [];
 	let unselectedCols: (string | number | undefined)[] | undefined = [];
-	const joinColumns = (columns1: (string | number | undefined)[] | undefined, columns2: (string | number | undefined)[] | undefined) =>
-		columns1 !== undefined && columns2 !== undefined ? [...columns1, ...columns2] : undefined;
+	const joinColumns = (columns1: (string | number | undefined)[] | undefined, columns2: (string | number | undefined)[] | undefined) => columns1 !== undefined && columns2 !== undefined ? [...columns1, ...columns2] : undefined;
 
 	for(const arg of args) {
 		if(arg !== undefined && RArgument.isNotEmpty(arg)) {

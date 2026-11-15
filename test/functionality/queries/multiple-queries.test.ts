@@ -3,9 +3,7 @@ import { withTreeSitter } from '../_helper/shell';
 import { assertQuery } from '../_helper/query';
 import { label } from '../_helper/label';
 import { type Queries, Query } from '../../../src/queries/query';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
-import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
+import { analyze } from '../_helper/analyzer';
 
 describe('Multiple queries', withTreeSitter(ts => {
 	/**
@@ -13,7 +11,7 @@ describe('Multiple queries', withTreeSitter(ts => {
 	 * so we compare every result against the pipeline output it is derived from.
 	 */
 	function testQueries(name: string, code: string, query: Queries) {
-		assertQuery(label(name), ts, code, query, ({ dataflow, normalize }: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>) => ({
+		assertQuery(label(name), ts, code, query, ({ dataflow, normalize }) => ({
 			dataflow:         { graph: dataflow.graph },
 			'id-map':         { idMap: normalize.idMap },
 			'normalized-ast': { normalized: normalize }
@@ -37,8 +35,7 @@ describe('Multiple queries', withTreeSitter(ts => {
 	describe('a single query', () => {
 		const code = 'x <- 1\ny <- 2\nx + 1';
 		async function analyzer() {
-			const a = await new FlowrAnalyzerBuilder().setParser(ts).build();
-			a.addRequest(code);
+			const a = await analyze(ts, code);
 			return a;
 		}
 		test('answers with the one entry of a per-query result', async() => {

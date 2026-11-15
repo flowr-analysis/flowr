@@ -1,6 +1,5 @@
 import { compactRecord, nonEmpty } from '../../../util/objects';
-import type { BrandedIdentifier, BrandedNamespace } from '../../environments/identifier';
-import { Identifier, PkgName } from '../../environments/identifier';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier, PkgName } from '../../environments/identifier';
 import { baseRExportOwner } from '../../../util/r-base-packages';
 import { messageOf, type FunctionGuards, type GuardClause } from './function-guards';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -21,6 +20,7 @@ import { groupMethodConditions } from './group-method-guards';
 import { s3GroupGenericOf } from '../../environments/group-generics';
 import { uniqueArray, uniqueArrayMerge } from '../../../util/collections/arrays';
 import type { Column } from '../../../util/range';
+import { StoredLocation } from './stored-location';
 
 /**
  * Where a {@link StatedGuards} comes from: read off the closure of a function (by `scripts/gen-base-guards.ts` into the base table, or when the signature
@@ -125,10 +125,10 @@ function briefOf(this: void, node: RNodeWithParent | undefined, message: string 
  * @param ownerOf - the package defining a function of the program, to qualify {@link GuardReason.via} with
  */
 export function reasonsOf(this: void, clauses: readonly GuardClause[], idMap: AstIdMap, ownerOf: (name: string) => string | undefined = () => undefined): GuardReason[] {
-	const qualified = (name: string) => {
+	function qualified(name: string) {
 		const owner = ownerOf(name);
 		return owner === undefined ? name : `${owner}::${name}`;
-	};
+	}
 	return clauses.map(({ requires, rendered, kind, at, via, message }) => {
 		const node = idMap.get(at);
 		const brief = briefOf(node, message, idMap);
@@ -180,7 +180,7 @@ export function storedGuardsOf(this: void, guards: StatedGuards, self: string): 
 		...(because !== undefined && joinedReasons(because) === requires ? {} : { requires }),
 		...(calls === undefined || (derived !== undefined && derived.join() === calls.join()) ? {} : { calls }),
 		...rest,
-		...(because === undefined ? {} : { because: because.map(({ loc, ...reason }) => ({ ...reason, ...(loc === undefined ? {} : { loc: `${loc.fn === self ? '' : loc.fn + ':'}${loc.line}:${loc.column}` }) })) })
+		...(because === undefined ? {} : { because: because.map(({ loc, ...reason }) => ({ ...reason, ...(loc === undefined ? {} : { loc: StoredLocation.format(loc, self) }) })) })
 	};
 }
 
@@ -192,14 +192,7 @@ export function statedGuardsOfStored(this: void, stored: StoredGuards, self: str
 		requires: requires ?? joinedReasons(because ?? []),
 		...(derived === undefined || derived.length === 0 ? {} : { calls: derived }),
 		...rest,
-		...(because === undefined ? {} : { because: because.map(({ loc, ...reason }) => {
-			if(loc === undefined) {
-				return reason;
-			}
-			const [line, column] = loc.split(':').slice(-2).map(Number);
-			const fn = loc.split(':').slice(0, -2).join(':');
-			return { ...reason, loc: { fn: fn === '' ? self : fn, line, column: column } };
-		}) })
+		...(because === undefined ? {} : { because: because.map(({ loc, ...reason }) => loc === undefined ? reason : { ...reason, loc: StoredLocation.parse(loc, self) as NonNullable<GuardReason['loc']> }) })
 	};
 }
 

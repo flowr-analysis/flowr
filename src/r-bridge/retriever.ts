@@ -13,10 +13,7 @@ export const fileProtocol = 'file://';
 
 export interface RParseRequestFromFile {
 	readonly request: 'file';
-	/**
-	 * The path to the file represented in the {@link FlowrAnalyzerFilesContext}.
-	 * See {@link RParseRequests} for multiple files.
-	 */
+	/** The path to the file represented in the {@link FlowrAnalyzerFilesContext}. See {@link RParseRequests} for multiple files. */
 	readonly content: string;
 }
 

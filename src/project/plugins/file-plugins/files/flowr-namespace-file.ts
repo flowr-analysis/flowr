@@ -1,7 +1,6 @@
 import { RString } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { unescapeRString } from '../../../../dataflow/eval/values/string/string-constants';
-import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
-import { FlowrTextFile, FlowrFile } from '../../../context/flowr-file';
+import { type FileRole, type FlowrFileProvider, FlowrTextFile, FlowrFile } from '../../../context/flowr-file';
 import { unquoteArgument } from '../../../../abstract-interpretation/data-frame/resolve-args';
 import type { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
 import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';

@@ -3,8 +3,7 @@
  * than only something it reports.
  * @module
  */
-import type { LintingResult } from './linter-format';
-import { LintQuickFix, LintingResults } from './linter-format';
+import { type LintingResult, LintQuickFix, LintingResults } from './linter-format';
 import type { LintResultsByRule } from './linter-output';
 import { SourceLocation, SourceRange, type Column, type Line } from '../util/range';
 import { guard, isNotUndefined } from '../util/assert';

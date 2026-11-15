@@ -5,11 +5,16 @@ import { functionBullet, queryHeader } from '../../query-print';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
-import type { FunctionArgumentRoles } from '../../../dataflow/fn/argument-roles';
-import type { StatedProps, ArgProps, PropMask } from '../../../dataflow/environments/built-in-props';
-import { ArgProp, CallProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
+import { type FunctionArgumentRoles, DefaultDepth } from '../../../dataflow/fn/argument-roles';
+import {
+	type StatedProps,
+	type ArgProps,
+	type PropMask,
+	ArgProp,
+	CallProp,
+	SemanticCallTag
+} from '../../../dataflow/environments/built-in-props';
 import { enumMembers } from '../../../util/objects';
-import { DefaultDepth } from '../../../dataflow/fn/argument-roles';
 import { FunctionFilterSchema } from '../../query-function-property';
 import { uniqueArrayMerge } from '../../../util/collections/arrays';
 import { metaSince } from '../../query-meta';

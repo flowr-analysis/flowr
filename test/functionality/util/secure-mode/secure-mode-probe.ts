@@ -11,14 +11,13 @@ import { RShell } from '../../../../src/r-bridge/shell';
 import { waitOnScript } from '../../../../src/cli/repl/execute';
 import { FlowrConfig } from '../../../../src/config';
 import { retrieveEngineInstances } from '../../../../src/engines';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { RDAParser } from '../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 import type { FlowrFileProvider } from '../../../../src/project/context/flowr-file';
 import { executeLintingRule } from '../../../../src/linter/linter-executor';
 import zlib from 'zlib';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'stream';
+import { analyze } from '../../_helper/analyzer';
 
 /** writes 600 MB of zeros, gzip-compressed, to `file` without holding them in memory */
 async function writeGzipBomb(file: string): Promise<void> {
@@ -56,8 +55,7 @@ void (async() => {
 
 	process.env[SecureMode.EnvVar] = '0';
 	const engines = await retrieveEngineInstances(FlowrConfig.parse(hostile) as FlowrConfig);
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(engines.engines[engines.default] as never).build();
-	analyzer.addRequest(requestFromInput('x <- 1\nprint(x)'));
+	const analyzer = await analyze(engines.engines[engines.default] as never, 'x <- 1\nprint(x)');
 
 	const gz = path.join(dir, 'bomb.rda');
 	await writeGzipBomb(gz);

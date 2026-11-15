@@ -1,4 +1,5 @@
 import { type CallContextQuery, type CallContextQuerySubKindResult, CallContextQueryDefinition } from './catalog/call-context-query/call-context-query-format';
+import { printAsMs } from '../util/text/time';
 import type { BaseQueryFormat, BaseQueryMeta, BaseQueryResult, BasicQueryData } from './base-query-format';
 import { getGuardIssueUrl, guard } from '../util/assert';
 import { SupportedVirtualQueries, type VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
@@ -9,7 +10,7 @@ import { type NormalizedAstQuery, NormalizedAstQueryDefinition } from './catalog
 import { type StaticSliceQuery, StaticSliceQueryDefinition } from './catalog/static-slice-query/static-slice-query-format';
 import { ClusterQueryDefinition, type DataflowClusterQuery } from './catalog/cluster-query/cluster-query-format';
 import { type DependenciesQuery, DependenciesQueryDefinition } from './catalog/dependencies-query/dependencies-query-format';
-import { type OutputFormatter, ColorEffect, Colors, FontStyles } from '../util/text/ansi';
+import { type OutputFormatter, bold, ColorEffect, Colors, FontStyles, italic } from '../util/text/ansi';
 import Joi from 'joi';
 import { type LocationMapQuery, LocationMapQueryDefinition } from './catalog/location-map-query/location-map-query-format';
 import { type ConfigQuery, ConfigQueryDefinition } from './catalog/config-query/config-query-format';
@@ -380,3 +381,31 @@ export const Query = {
 			((reported as { results?: readonly LintingResult[] }).results ?? []).map(result => ({ rule, result })));
 	}
 };
+
+/** Generates an ASCII summary of the given query results */
+export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(formatter: OutputFormatter, totalInMs: number, results: QueryResults<S>, analyzer: ReadonlyFlowrAnalysisProvider, queries: Queries<S>): Promise<string> {
+	const result: string[] = [];
+	for(const [query, queryResults] of Object.entries(results)) {
+		if(query === '.meta') {
+			continue;
+		}
+		if(queryResults === undefined || (typeof queryResults === 'object' && queryResults !== null && 'error' in queryResults)) {
+			const message = (queryResults as { error?: string } | undefined)?.error ?? 'unknown error';
+			result.push(`Query: ${bold(query, formatter)} ${bold('failed', formatter)}: ${message}`);
+			continue;
+		}
+		const queryType = SupportedQueries[query as SupportedQueryTypes];
+		const relevantQueries = queries.filter(q => q.type === query as SupportedQueryTypes) as Query[];
+		if(await queryType.asciiSummarizer(formatter, analyzer, queryResults as BaseQueryResult, result, relevantQueries)) {
+			continue;
+		}
+
+		result.push(`Query: ${bold(query, formatter)}`);
+		const { '.meta': meta, ...rest } = queryResults as Awaited<QueryResult<S>> & { '.meta'?: BaseQueryMeta };
+		result.push(...Object.entries(rest).map(([key, value]) => ` ╰ ${key}: ${JSON.stringify(value)}`), `  - Took ${printAsMs(meta?.timing ?? -1, 0)}`);
+	}
+	if(analyzer.flowrConfig.repl.queryStats !== false) {
+		result.push(italic(`All queries together required ≈${printAsMs(results['.meta'].timing, 0)} (1ms accuracy, total ${printAsMs(totalInMs, 0)})`, formatter));
+	}
+	return formatter.format(result.join('\n'));
+}

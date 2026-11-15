@@ -3,13 +3,18 @@
  * @module
  */
 import { AmbientStateName } from './ambient-state-name';
-import type { ControlDependency, KillReference } from '../info';
-import { happensInEveryBranch, negateControlDependency, withCds } from '../info';
+import { type ControlDependency, type KillReference, happensInEveryBranch, negateControlDependency, withCds } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
-import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference, InGraphIdentifierDefinition } from './identifier';
+import {
+	type BrandedIdentifier,
+	type IdentifierDefinition,
+	type IdentifierReference,
+	type InGraphIdentifierDefinition,
+	Identifier,
+	ReferenceType
+} from './identifier';
 import { anyRemovalMarker, noteRemovalMarker, removalMarkerOf, removedNameOf } from './removal-marker';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Identifier, ReferenceType } from './identifier';
 import { withAppliedCds } from './reference-to-maybe';
 import type { DataflowGraph } from '../graph/graph';
 import { EdgeType } from '../graph/edge';

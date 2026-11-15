@@ -1,20 +1,18 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { CodeClonesQueryDefinition, type CodeClonesQueryResult } from '../../../src/queries/catalog/code-clones-query/code-clones-query-format';
 import { CloneAlgorithm } from '../../../src/clones/clone-detector';
 import { ClonePerspective } from '../../../src/clones/clone-ast';
 import type { ReplOutput } from '../../../src/cli/repl/commands/repl-main';
 import { FlowrConfig } from '../../../src/config';
 import type { SerializedCloneIndex } from '../../../src/clones/clone-index';
+import { analyze } from '../_helper/analyzer';
 
 describe('Code Clones Query', withTreeSitter(parser => {
 	const a = 'normalize <- function(v) {\n  m <- mean(v)\n  s <- sd(v)\n  out <- (v - m) / s\n  out[is.na(out)] <- 0\n  out\n}';
 	const b = 'scale_it <- function(values) {\n  mu <- mean(values)\n  sigma <- sd(values)\n  res <- (values - mu) / sigma\n  res[is.na(res)] <- 0\n  res\n}';
 	async function run(code: string, query: Record<string, unknown>): Promise<CodeClonesQueryResult> {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest(requestFromInput(code));
+		const analyzer = await analyze(parser, code);
 		const result = await analyzer.query([{ type: 'code-clones', ...query } as never]);
 		return result['code-clones'];
 	}

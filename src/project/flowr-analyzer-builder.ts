@@ -7,8 +7,7 @@ import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize
 import { guard } from '../util/assert';
 import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
-import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-registry';
-import { makePlugin } from './plugins/plugin-registry';
+import { type BuiltInFlowrPluginName, type PluginToRegister, makePlugin } from './plugins/plugin-registry';
 
 /**
  * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
@@ -128,10 +127,7 @@ export class FlowrAnalyzerBuilder {
 		return this;
 	}
 
-	/**
-	 * Additional parameters for the analyses.
-	 * @param input - The input.
-	 */
+	/** Additional parameters for the analyses. */
 	public setInput(input: Omit<NormalizeRequiredInput, 'context'>): this {
 		this.input = input;
 		return this;
@@ -190,6 +186,14 @@ export class FlowrAnalyzerBuilder {
 			} catch{ /* leave undetected: resolveAssumedRVersion falls back to the default assumed version */ }
 		}
 		return analyzer;
+	}
+
+	/**
+	 * {@link FlowrAnalyzerBuilder#build|Build} the analyzer and {@link FlowrAnalyzer#addRequest|add} the given requests to it,
+	 * e.g., `await new FlowrAnalyzerBuilder().setParser(parser).buildFor('x <- 1')`.
+	 */
+	public async buildFor(...request: Parameters<FlowrAnalyzer['addRequest']>): Promise<FlowrAnalyzer> {
+		return (await this.build()).addRequest(...request);
 	}
 
 	/**

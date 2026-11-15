@@ -225,12 +225,12 @@ export function declaredClassesImpl(graph: DataflowGraph): Map<ClassName, Declar
 			classes.set(classDecl.name, { ...classDecl, id, name: classDecl.name });
 		}
 	}
-	const addSuper = (sub: ClassName, sup: ClassName | undefined) => {
+	function addSuper(sub: ClassName, sup: ClassName | undefined) {
 		const existing = classes.get(sub);
 		if(existing !== undefined && sup !== undefined && !existing.contains.includes(sup)) {
 			classes.set(sub, { ...existing, contains: [...existing.contains, sup] });
 		}
-	};
+	}
 	/* R6 and S7 name their parent by the generator *variable*, so `Employee <- R6Class(inherit = Person)` only says "Person"; the assignment that bound the generator says which class that is */
 	const byGenerator = generatorVariables(graph, classes);
 	for(const [name, declared] of classes) {

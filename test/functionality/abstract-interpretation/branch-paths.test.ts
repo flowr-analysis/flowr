@@ -1,18 +1,16 @@
 import { assert, describe, test } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { BranchPaths } from '../../../src/abstract-interpretation/branch-paths';
 import '../../../src/abstract-interpretation/branch-paths-interpreter';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { withTreeSitter } from '../_helper/shell';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { analyze } from '../_helper/analyzer';
 
 describe('Branch paths', withTreeSitter(parser => {
 	/** the paths to the first call named `name` in the only function, each step as `<lexeme of the cause>=<when>[@<lexeme of the arm>]` */
 	async function pathsTo(code: string, name: string): Promise<string[][] | undefined> {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest(requestFromInput(code));
+		const analyzer = await analyze(parser, code);
 		const dfg = (await analyzer.dataflow()).graph;
 		const ast = await analyzer.normalize();
 		const paths = BranchPaths.create({ controlFlow: await analyzer.controlflow(), dfg, normalizedAst: ast, ctx: analyzer.inspectContext() });

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-11-11, 08:13:04 UTC (v2.17.5, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-11-15, 09:20:10 UTC (v2.17.6, R v4.6.1), do not edit directly._
 
 This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter [query](https://github.com/flowr-analysis/flowr/wiki/Query-API).
 Some rules also draw on the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database).
@@ -15,7 +15,7 @@ Formatted more nicely, this returns:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (24 ms)\
+Query: **linter** (22 ms)\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
@@ -115,14 +115,14 @@ Badges link to the [tags](#tags), steps of `R CMD check` to the [conformance pag
 	
 <h2 id="quick-fixes">Quick Fixes</h2>
 
-Rules tagged <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span> attach a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L108"><code><span title="Helper for working with quick fixes .">LintQuickFix</span></code></a> to their results,
+Rules tagged <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-brightgreen) </a></span> attach a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L96"><code><span title="Helper for working with quick fixes .">LintQuickFix</span></code></a> to their results,
 describing the edit that resolves the finding. flowR does not only report them, it carries them out:
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-fix.ts#L56"><code>byFile</code></a> collects the fixes of a lint run per file and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/resolve-numbers.ts#L164"><code><span title="apply fold to the operands, mapping over the one vector among them (R recycles, we only fold equal lengths)">apply</span></code></a>
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-fix.ts#L54"><code><span title="Every quick fix a lint run offers, grouped by the file it changes. Fixes flowR cannot place are left out.">byFile</span></code></a> collects the fixes of a lint run per file and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/resolve-numbers.ts#L164"><code><span title="apply fold to the operands, mapping over the one vector among them (R recycles, we only fold equal lengths)">apply</span></code></a>
 returns that file's content with them applied. Of two overlapping fixes only the one coming first in the file is kept,
 and a removal that leaves nothing but whitespace behind takes its line with it.
 
-In <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-output.ts#L27"><code><span title="[SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html), e.g. to upload to GitHub code scanning">LinterOutputFormat::<b>Sarif</b></span></code></a> output the fixes become SARIF `fixes`, which an editor
-or code scanner can offer directly. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-output.ts#L29"><code><span title="[GitHub workflow commands](https://docs.github.com/actions/reference/workflow-commands-for-github-actions), one annotation per finding">LinterOutputFormat::<b>Github</b></span></code></a> annotations carry no
+In <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-output.ts#L21"><code><span title="[SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html), e.g. to upload to GitHub code scanning">LinterOutputFormat::<b>Sarif</b></span></code></a> output the fixes become SARIF `fixes`, which an editor
+or code scanner can offer directly. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-output.ts#L23"><code><span title="[GitHub workflow commands](https://docs.github.com/actions/reference/workflow-commands-for-github-actions), one annotation per finding">LinterOutputFormat::<b>Github</b></span></code></a> annotations carry no
 fix of their own, so the descriptions are appended to the message.
 
 <h2 id="tags">Tags</h2>

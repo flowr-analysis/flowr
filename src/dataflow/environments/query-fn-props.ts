@@ -9,15 +9,12 @@ import { FunctionSemantics } from '../fn/function-semantics';
 import type { BuiltIns } from './built-in';
 import type { BuiltInDefinition, BuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
-import type { REnvironmentInformation } from './environment';
-import { REnvironment } from './environment';
-import type { BrandedIdentifier, IdentifierDefinition, BrandedNamespace } from './identifier';
-import { Identifier, PkgName, ReferenceType } from './identifier';
+import { type REnvironmentInformation, REnvironment } from './environment';
+import { type BrandedIdentifier, type IdentifierDefinition, type BrandedNamespace, Identifier, PkgName, ReferenceType } from './identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PackageSignatureSource } from '../../project/sigdb/reader';
 import type { DecodedFunction } from '../../project/sigdb/decode';
-import type { SignatureDb } from '../../project/sigdb/signature-db';
-import { signatureDbOf } from '../../project/sigdb/signature-db';
+import { type SignatureDb, signatureDbOf } from '../../project/sigdb/signature-db';
 import { Resolve } from './resolve-helper';
 import { Ambient, type AmbientEffects, type AmbientFamilyName, type AmbientVerb } from './ambient-effect';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -254,7 +251,7 @@ const ExportingPerContext = new WeakMap<object, { readonly dependencies: number,
 function exportingPackage(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerContext): BrandedNamespace | undefined {
 	const db = signatureDbOf(ctx.deps);
 	const src = db.sources();
-	const mostUsed = (pkgs: Iterable<BrandedNamespace>): BrandedNamespace | undefined => {
+	function mostUsed(pkgs: Iterable<BrandedNamespace>): BrandedNamespace | undefined {
 		let best: BrandedNamespace | undefined;
 		for(const pkg of pkgs) {
 			if(db.rawFunctionOf(Identifier.make(name, pkg))?.exported === true && (best === undefined || src.downloads(pkg) > src.downloads(best) || (src.downloads(pkg) === src.downloads(best) && compareByCodeUnit(pkg, best) < 0))) {
@@ -262,7 +259,7 @@ function exportingPackage(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerCon
 			}
 		}
 		return best;
-	};
+	}
 	const attached = (pkg: BrandedNamespace) => pkg === PkgName.Base || AttachedBasePackageSet.has(pkg);
 	return mostUsed(new Set(ctx.deps.getDependencies().map(d => d.name).filter(p => !attached(p))))
 		?? mostUsed([...AttachedBasePackageSet].filter(p => p !== PkgName.Base))

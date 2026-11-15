@@ -1,8 +1,8 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { Identifier, PkgName } from '../../../../src/dataflow/environments/identifier';
 import { CallProp, SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
+import { analyze } from '../../_helper/analyzer';
 
 /**
  * `functionInfo` is the one access point for what flowR knows about a function, whichever of its sources knows
@@ -10,8 +10,7 @@ import { CallProp, SemanticCallTag } from '../../../../src/dataflow/environments
  */
 describe('FlowrAnalyzer.functionInfo', withTreeSitter(parser => {
 	async function analyzerFor(code: string) {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest(code);
+		const analyzer = await analyze(parser, code);
 		await analyzer.dataflow();
 		return analyzer;
 	}

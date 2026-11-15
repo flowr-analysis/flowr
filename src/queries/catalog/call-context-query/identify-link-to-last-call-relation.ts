@@ -12,8 +12,7 @@ import type { LinkToLastCall } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
 import type { PromotedCallTest, PromotedLinkTo } from './call-context-query-executor';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
-import { CfgVertex } from '../../../control-flow/control-flow-graph';
+import { type ControlFlowGraph, CfgVertex } from '../../../control-flow/control-flow-graph';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
@@ -25,7 +24,7 @@ export enum CallTargets {
 	OnlyGlobal = 'global',
 	/** call targets a function that is defined locally or globally, but must include a global function */
 	MustIncludeGlobal = 'must-include-global',
-	/** call targets a function that is defined locally  */
+	/** call targets a function that is defined locally */
 	OnlyLocal = 'local',
 	/** call targets a function that is defined locally or globally, but must include a local function */
 	MustIncludeLocal = 'must-include-local',

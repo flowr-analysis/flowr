@@ -1,25 +1,33 @@
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
-import type { ArgProps, FnSig, PropSelector } from '../../dataflow/environments/built-in-props';
+import {
+	type ArgProps,
+	type FnSig,
+	type PropSelector,
+	ArgProp,
+	CallProp,
+	SemanticCallTag
+} from '../../dataflow/environments/built-in-props';
 import { DefaultMap } from '../../util/collections/defaultmap';
-import { ArgProp, CallProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { type BrandedIdentifier, Identifier, PkgName } from '../../dataflow/environments/identifier';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { FunctionArgument } from '../../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
+import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
+import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { CallTargets } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { contentFreeFunctions, narrowingFunctions } from '../../queries/catalog/input-sources-query/input-source-functions';
-import type { InputSource, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
-import { InputTraceType, InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
+import {
+	type InputSource,
+	type InputSources,
+	InputTraceType,
+	InputType
+} from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { RConstant, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
+import { RRole } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElement } from '../../search/flowr-search';
@@ -29,8 +37,14 @@ import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { Record } from '../../util/record';
-import type { LintingResult, LintingRule, LintQuickFix } from '../linter-format';
-import { prettyPrint, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import {
+	type LintingResult,
+	type LintingRule,
+	type LintQuickFix,
+	prettyPrint,
+	LintingResultCertainty,
+	LintingRuleCertainty
+} from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { uniqueArray } from '../../util/collections/arrays';
@@ -173,11 +187,11 @@ function getCriticalTargets(elements: readonly FlowrSearchElement<ParentInformat
 	for(const [id] of aliases.entries().filter(([, names]) => names.values().some(name => criticalCalls.has(name)))) {
 		ids.add(id);
 	}
-	const locate = (arg: NodeId) => {
+	function locate(arg: NodeId) {
 		const node = graph.idMap?.get(arg);
 		const range = RNode.span(node);
 		return range === undefined || node === undefined ? undefined : SourceLocation.from(range, node.info.file);
-	};
+	}
 	for(const id of ids) {
 		const call = graph.getVertex(id);
 		if(!DfgVertex.isFunctionCall(call)) {
@@ -219,7 +233,7 @@ function methodCalls(graph: DataflowGraph, methods: readonly CriticalMethod[]): 
 		return [];
 	}
 	/* a value made by the constructor, also through a branch or block (`if(a) V8::v8() else ...`) or another alias */
-	const holds = (v: NodeId, receiver: Identifier, depth: number): boolean => {
+	function holds(v: NodeId, receiver: Identifier, depth: number): boolean {
 		const made = graph.getVertex(v);
 		const value = graph.idMap?.get(v);
 		if(DfgVertex.isVariableDefinition(made) || DfgVertex.hasOrigin(made, BuiltInProcName.Assignment)) {
@@ -229,13 +243,13 @@ function methodCalls(graph: DataflowGraph, methods: readonly CriticalMethod[]): 
 		}
 		return DfgVertex.isFunctionCall(made) && (Identifier.matches(made.name, receiver)
 			|| (depth > 0 && Dataflow.targetsOf(graph, v, EdgeType.Returns).some(r => holds(r, receiver, depth - 1))));
-	};
+	}
 	/* the named object where no binding of the program surely shadows it, otherwise what a binding holds */
-	const means = (symbol: RSymbol<ParentInformation>, receiver: Identifier, depth = 4): boolean => {
+	function means(symbol: RSymbol<ParentInformation>, receiver: Identifier, depth = 4): boolean {
 		const defs = Dataflow.targetsOf(graph, symbol.info.id, EdgeType.Reads).filter(d => !NodeId.isBuiltIn(d));
 		return (defs.every(d => graph.getVertex(d)?.cds?.length) && Identifier.matches(symbol.content, receiver))
 			|| (depth > 0 && defs.some(def => Dataflow.targetsOf(graph, def, EdgeType.DefinedBy).some(v => holds(v, receiver, depth))));
-	};
+	}
 	return graph.verticesOfType(VertexType.FunctionCall).flatMap(([id, call]) => {
 		const node = graph.idMap?.get(id);
 		const access = RFunctionCall.isUnnamed(node) ? node.calledFunction : undefined;
@@ -279,7 +293,7 @@ function readsParameter(graph: DataflowGraph, start: NodeId, sanitizers: Readonl
 	const seen = new Set<NodeId>([start]);
 	const queue = [start];
 	for(let id; (id = queue.pop()) !== undefined;) {
-		if(graph.idMap?.get(id)?.info.role === RoleInParent.ParameterName) {
+		if(RRole.isParameterName(id, graph.idMap)) {
 			return true;
 		}
 		const vertex = graph.getVertex(id);

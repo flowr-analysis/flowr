@@ -6,8 +6,7 @@ import type { DocMakerArgs, DocMakerLike, DocMakerOutputArgs } from '../document
 import fs from 'fs';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-import type { OptionDefinition } from 'command-line-usage';
-import commandLineUsage from 'command-line-usage';
+import commandLineUsage, { type OptionDefinition } from 'command-line-usage';
 import commandLineArgs from 'command-line-args';
 import { flowrVersion } from '../util/version';
 import { WikiFaq } from '../documentation/wiki-faq';

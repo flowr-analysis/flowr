@@ -1,5 +1,4 @@
-import Parser from 'web-tree-sitter';
-import type { Query, QueryCapture } from 'web-tree-sitter';
+import Parser, { type Query, type QueryCapture } from 'web-tree-sitter';
 import type { RParseRequest } from '../../retriever';
 import { type SyncParser, type TreeSitterInformation, ParserName } from '../../parser';
 import type { TreeSitterEngineConfig } from '../../../config';

@@ -37,7 +37,7 @@ export function deterministicCountingIdGenerator(id = 0): () => NodeId {
 	return () => id++;
 }
 
-/**  Generates ids with a fixed source path, and the location if given, as prefix and an incrementing counter. */
+/** Generates ids with a fixed source path, and the location if given, as prefix and an incrementing counter. */
 export function sourcedDeterministicCountingIdGenerator(path: string, location?: SourceRange, start = 0): () => NodeId {
 	let id = start;
 	/* without a location the ids carry only `path`, as in `eval::13-0`, where the path already names the `eval` call */
@@ -76,10 +76,7 @@ export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInform
 export type AstIdMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>;
 interface FoldInfo<OtherInfo> { idMap: AstIdMap<OtherInfo>, getId: IdGenerator<OtherInfo>, file?: string }
 
-/**
- * Contains the normalized AST as a doubly linked tree
- * and a map from ids to nodes so that parent links can be chased easily.
- */
+/** Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily. */
 export interface NormalizedAst<OtherInfo = ParentInformation, Node = RProject<OtherInfo & ParentInformation>> {
 	/** Bidirectional mapping of ids to the corresponding nodes and the other way */
 	idMap:     AstIdMap<OtherInfo>
@@ -101,7 +98,6 @@ export interface NormalizedAstDecorationConfiguration<OtherInfo> {
 
 /**
  * Covert the given AST into a doubly linked tree while assigning ids (so it stays serializable).
- * @param     project - The AST to decorate
  * @param     getId   - The id generator: must generate a unique id für each passed node
  * @returns           A decorated AST based on the input and the id provider.
  * @typeParam OtherInfo - The original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)

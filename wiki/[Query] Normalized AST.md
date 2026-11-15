@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 09:20:10 UTC (v2.17.6), do not edit directly._
 <h2 id="Normalized AST Query">Normalized AST Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the normalized AST of the given code.\
@@ -44,6 +44,6 @@ x + 1
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Normalized AST Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/normalized-ast-query/normalized-ast-query-format.ts#L13"><code><span title="Executes the normalized-AST query.">executeNormalizedAstQuery</span></code></a>.
+The Normalized AST Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/normalized-ast-query/normalized-ast-query-format.ts#L10"><code><span title="Executes the normalized-AST query.">executeNormalizedAstQuery</span></code></a>.
 
 </details>

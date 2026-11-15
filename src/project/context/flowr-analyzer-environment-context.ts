@@ -1,15 +1,17 @@
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
-import type { IEnvironment, REnvironmentInformation } from '../../dataflow/environments/environment';
-import { Environment, REnvironment } from '../../dataflow/environments/environment';
+import { type IEnvironment, type REnvironmentInformation, Environment, REnvironment } from '../../dataflow/environments/environment';
 import type { DeepReadonly } from 'ts-essentials';
-import type { BuiltInDefinitions } from '../../dataflow/environments/built-in-config';
-import { getBuiltInDefinitions } from '../../dataflow/environments/built-in-config';
+import { type BuiltInDefinitions, getBuiltInDefinitions } from '../../dataflow/environments/built-in-config';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
-import type { BrandedIdentifier, BrandedNamespace, IdentifierDefinition } from '../../dataflow/environments/identifier';
-import { Identifier, ReferenceType } from '../../dataflow/environments/identifier';
+import {
+	type BrandedIdentifier,
+	type BrandedNamespace,
+	type IdentifierDefinition,
+	Identifier,
+	ReferenceType
+} from '../../dataflow/environments/identifier';
 import type { BuiltInIdentifierDefinition, BuiltInMemory, BuiltIns } from '../../dataflow/environments/built-in';
-import type { Fingerprint } from '../../slicing/static/fingerprint';
-import { envFingerprint } from '../../slicing/static/fingerprint';
+import { type Fingerprint, envFingerprint } from '../../slicing/static/fingerprint';
 
 /** Read-only interface to the {@link FlowrAnalyzerEnvironmentContext}. */
 export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
@@ -32,10 +34,7 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	 */
 	knowsPackage(pkg: string): boolean;
 
-	/**
-	 * Get the empty built-in environment used during analysis.
-	 * The empty built-in environment only contains primitive definitions.
-	 */
+	/** Get the empty built-in environment used during analysis. The empty built-in environment only contains primitive definitions. */
 	get emptyBuiltInEnvironment(): DeepReadonly<IEnvironment>;
 
 	/**

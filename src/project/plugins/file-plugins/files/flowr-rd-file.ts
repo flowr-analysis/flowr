@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { FlowrFileProvider } from '../../../context/flowr-file';
-import { FlowrTextFile, FlowrWrappedFile } from '../../../context/flowr-file';
+import { type FlowrFileProvider, FlowrTextFile, FlowrWrappedFile } from '../../../context/flowr-file';
 import { type RObject, type RObjectData, attributeOf, RDAParser, SexpType, stringsOf } from './flowr-rda-file';
 import { uniqueArray } from '../../../../util/collections/arrays';
 import { isNotUndefined } from '../../../../util/assert';
@@ -249,10 +248,11 @@ export function rdMetaOf(table: RObject): RdMetaEntry[] {
 	if(columns === undefined || names.length !== columns.length) {
 		return [];
 	}
-	const column = (of: RdMetaColumn): RObjectData | undefined => columns[names.indexOf(of)];
+	const column = (of: RdMetaColumn): RObjectData | undefined => {
+		return columns[names.indexOf(of)];
+	};
 	const text = (of: RdMetaColumn): readonly string[] => stringsOf(column(of));
-	const lists = (of: RdMetaColumn): readonly RObjectData[] =>
-		(column(of)?.value as RObjectData[] | undefined) ?? [];
+	const lists = (of: RdMetaColumn): readonly RObjectData[] => (column(of)?.value as RObjectData[] | undefined) ?? [];
 	const [files, topics, types, titles] = [text('File'), text('Name'), text('Type'), text('Title')];
 	const [aliases, keywords] = [lists('Aliases'), lists('Keywords')];
 	/* a page with no name is no topic anyone can ask for */
@@ -373,23 +373,23 @@ export function scanRd(content: string, { specOf = () => undefined, lenient = fa
 	let pos = 0;
 	let ended = false;
 	let closed = false;
-	const seq = (mode: RdMode, closing: boolean, parent: string | undefined, open: number): RdNode[] => {
+	function seq(mode: RdMode, closing: boolean, parent: string | undefined, open: number): RdNode[] {
 		const nodes: RdNode[] = [];
 		let buf = '';
 		let bufAt = pos;
 		let quote: string | undefined;
 		let quoteAt = 0;
 		let comment = false;
-		const flush = () => {
+		function flush() {
 			if(buf !== '') {
 				nodes.push({ type: 'text', text: buf, at: bufAt, mode });
 			}
 			buf = '';
-		};
-		const add = (n: number) => {
+		}
+		function add(n: number) {
 			bufAt = buf === '' ? pos : bufAt;
 			buf += src.slice(pos, pos += n);
-		};
+		}
 		while(pos < src.length) {
 			const [c, n] = [src[pos], src[pos + 1] ?? ''];
 			if(c === '\\' && n !== '' && '\\%{}'.includes(n)) {
@@ -433,8 +433,8 @@ export function scanRd(content: string, { specOf = () => undefined, lenient = fa
 		}
 		closed = false;
 		return nodes;
-	};
-	const macro = (nodes: RdNode[], parent: string | undefined) => {
+	}
+	function macro(nodes: RdNode[], parent: string | undefined) {
 		const at = pos++;
 		RdMacroName.lastIndex = pos;
 		const name = RdMacroName.exec(src)?.[0] ?? '';
@@ -472,7 +472,7 @@ export function scanRd(content: string, { specOf = () => undefined, lenient = fa
 		if(spec !== undefined || lenient) {
 			nodes.push({ type: 'macro', name, at, option, args, spans });
 		}
-	};
+	}
 	const nodes = seq('t', false, undefined, 0);
 	return { text: src, nodes, problems, lineOf };
 }
@@ -480,7 +480,7 @@ export function scanRd(content: string, { specOf = () => undefined, lenient = fa
 /** The bodies of every `\macro{...}` of a scan, keyed by macro and in order; a use inside a group of the same macro is no second use (`\alias{\alias{x}}`), and nothing in a macro left unclosed is trusted. */
 function macroGroups(scan: RdScan): Map<string, string[]> {
 	const groups = new Map<string, string[]>();
-	const visit = (nodes: readonly RdNode[], inside: ReadonlySet<string>): void => {
+	function visit(nodes: readonly RdNode[], inside: ReadonlySet<string>): void {
 		for(const n of nodes) {
 			if(n.type === 'group') {
 				visit(n.children, inside);
@@ -491,7 +491,7 @@ function macroGroups(scan: RdScan): Map<string, string[]> {
 				n.args.forEach(a => visit(a, new Set([...inside, n.name])));
 			}
 		}
-	};
+	}
 	visit(scan.nodes, new Set());
 	return groups;
 }

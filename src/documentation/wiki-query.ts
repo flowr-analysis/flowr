@@ -16,7 +16,8 @@ import {
 	registerQueryDocumentation,
 	showQuery,
 	sliceQueryShorthand,
-	tocForQueryType
+	tocForQueryType,
+	type ShowQueryOptions
 } from './doc-util/doc-query';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/text/ansi';
@@ -32,7 +33,6 @@ import { printCfgCode } from './doc-util/doc-cfg';
 import { documentReplSession } from './doc-util/doc-repl';
 import type { SlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
 import { escapeNewline } from './doc-util/doc-escape';
-import type { ShowQueryOptions } from './doc-util/doc-query';
 import { DefaultAssumedRVersion } from '../config';
 import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';

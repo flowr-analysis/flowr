@@ -177,7 +177,7 @@ function tokenUnits(c: Corpus, { unit, tokens: mode }: TokenConfig) {
 	const us = units(c, unit);
 	const tokens = us.map(u => tokenize(c.trees[u.file], mode, u.node).map(t => c.tokens.get(t)));
 	c.stats.units = us.length;
-	const candidates = (keys: readonly Iterable<number>[], lengths: readonly number[], threshold: number, visit: (i: number, j: number) => void) => {
+	function candidates(keys: readonly Iterable<number>[], lengths: readonly number[], threshold: number, visit: (i: number, j: number) => void) {
 		const postings = new DefaultMap<number, Set<number>>(() => new Set());
 		keys.forEach((ks, u) => {
 			for(const k of ks) {
@@ -196,7 +196,7 @@ function tokenUnits(c: Corpus, { unit, tokens: mode }: TokenConfig) {
 				}
 			}
 		});
-	};
+	}
 	return { us, tokens, candidates };
 }
 

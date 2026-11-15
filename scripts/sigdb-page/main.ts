@@ -1,9 +1,24 @@
 import { rankName } from '../../src/util/text/name-rank';
 import { button, el } from '../page-lib/dom';
-import type { Spec } from './query';
-import { argsOf, aboutWord, Vocabulary, WordKind, closed, completeAt, explainAt, problemsOf, globOf, isIncomplete, highlight, matchArgs, norm, parseSpec, wordsOf } from './query';
-import type { Guards, Stated } from './database';
-import { byId, db, Entry } from './database';
+import {
+	type Spec,
+	argsOf,
+	aboutWord,
+	Vocabulary,
+	WordKind,
+	closed,
+	completeAt,
+	explainAt,
+	problemsOf,
+	globOf,
+	isIncomplete,
+	highlight,
+	matchArgs,
+	norm,
+	parseSpec,
+	wordsOf
+} from './query';
+import { type Guards, type Stated, byId, db, Entry } from './database';
 import { Hits } from './render';
 import { ambientFilters, FilterBar, FilterKind, Mix } from './filters';
 import { ExportFlag } from './export-flags';

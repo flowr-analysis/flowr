@@ -10,8 +10,7 @@ import { CallTargets } from '../../../src/queries/catalog/call-context-query/ide
 import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
-import type { PropSelector } from '../../../src/dataflow/environments/built-in-props';
-import { CallProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
+import { type PropSelector, CallProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
 
 assumeLoadedPackages('svDialogs');
 
@@ -123,8 +122,7 @@ describe('flowR search', withTreeSitter(parser => {
 		});
 		/* what a call is, rather than what it is called, so that no consumer has to keep a list of names */
 		describe('call properties', () => {
-			const carrying = (props: PropSelector, matchType?: 'some' | 'every') =>
-				Q.all().filter({ name: FlowrFilter.CallProps, args: { props, matchType } });
+			const carrying = (props: PropSelector, matchType?: 'some' | 'every') => Q.all().filter({ name: FlowrFilter.CallProps, args: { props, matchType } });
 			const code = 'pdf("a.pdf")\nplot(1)\ndev.off()\nsetwd("/tmp")\nx <- readline("give: ")\nprint(1)';
 
 			assertSearch('asks the user', parser, code, ['5@readline'], carrying(SemanticCallTag.User));

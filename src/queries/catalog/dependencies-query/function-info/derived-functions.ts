@@ -1,7 +1,6 @@
 import type { FunctionInfo } from './function-info';
 import { FunctionSemantics } from '../../../../dataflow/fn/function-semantics';
-import type { PropSelector } from '../../../../dataflow/environments/built-in-props';
-import { ArgProp, CallProp, FnSig, SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
+import { type PropSelector, ArgProp, CallProp, FnSig, SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
 import { builtInNames } from '../../../../dataflow/environments/query-fn-props';
 import type { BuiltInDefinitions } from '../../../../dataflow/environments/built-in-config';
 import { Identifier, type BrandedIdentifier } from '../../../../dataflow/environments/identifier';

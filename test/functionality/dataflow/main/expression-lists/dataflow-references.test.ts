@@ -1,10 +1,14 @@
 import { describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../../_helper/shell';
-import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
-import type { BrandedIdentifier, IdentifierReference } from '../../../../../src/dataflow/environments/identifier';
-import { Identifier, isReferenceType, ReferenceType } from '../../../../../src/dataflow/environments/identifier';
+import {
+	type BrandedIdentifier,
+	type IdentifierReference,
+	Identifier,
+	isReferenceType,
+	ReferenceType
+} from '../../../../../src/dataflow/environments/identifier';
 import type { KillReference } from '../../../../../src/dataflow/info';
+import { analyze } from '../../../_helper/analyzer';
 
 /** the variable-like references, as the sets also carry the called functions */
 function variableNames(references: readonly IdentifierReference[]): BrandedIdentifier[] {
@@ -31,7 +35,8 @@ describe('References of an Expression List', withTreeSitter(parser => {
 
 	function assertReferences(name: string, code: string, expected: ExpectedReferences) {
 		test(name, async() => {
-			const { dataflow } = await createDataflowPipeline(parser, { context: contextFromInput(code) }).allRemainingSteps();
+			const analyzer = await analyze(parser, code);
+			const dataflow = await analyzer.dataflow();
 			expect({
 				in:      variableNames(dataflow.in),
 				out:     variableNames(dataflow.out),

@@ -27,7 +27,7 @@ import { CallSites } from '../fn/call-sites';
 import { type BrandedIdentifier, Identifier, PkgName } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../../util/assert';
-import type { ArgProps, FnSig  } from '../environments/built-in-props';
+import type { ArgProps, FnSig } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
 import type { BuiltInLookup } from '../fn/frame-reflection';
 
@@ -354,10 +354,10 @@ function linkArguments(args: readonly FunctionArgument[], params: readonly RPara
 	const matched = matchArgumentsToParameters(graphArgumentNames(known), names);
 	const dots = names.indexOf(DotsParameterName);
 	const elements = dots < 0 ? undefined : elementReadsOf(params[dots].name.info.id, graph);
-	const link = (aid: NodeId, pid: NodeId) => {
+	function link(aid: NodeId, pid: NodeId) {
 		graph.addEdge(aid, pid, EdgeType.DefinesOnCall);
 		graph.addEdge(pid, aid, EdgeType.DefinedByOnCall);
-	};
+	}
 	let position = 0;
 	for(let i = 0; i < known.length; i++) {
 		const arg = known[i];

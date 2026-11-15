@@ -3,11 +3,12 @@ import { createWriteStream } from 'fs';
 /* type-only, the package itself is optional and resolved at call time (see `logToFile`) */
 import type { Options, RotatingFileStream } from 'rotating-file-stream';
 
-export const expensiveTrace = (log: Logger<ILogObj> | undefined, supplier: () => string): void => {
+/** Logs the supplied message on trace level, only computing it if that level is enabled. */
+export function expensiveTrace(log: Logger<ILogObj> | undefined, supplier: () => string): void {
 	if(log !== undefined && log.settings.minLevel <= LogLevel.Trace) {
 		log.trace(supplier());
 	}
-};
+}
 
 /** The rotating stream, or `undefined` if the optional dependency is not installed. */
 function rotatingStream(filename: string, options: Options): RotatingFileStream | undefined {

@@ -16,7 +16,7 @@ export interface BaxterConfig {
 
 /** Baxter's similarity `2S / (2S + L + R)` of two subtrees, with S the shared nodes: children match by position, leaves by lexeme. */
 export function treeSimilarity(a: CloneTree, i: number, b: CloneTree, j: number): number {
-	const shared = (i: number, j: number): number => {
+	function shared(i: number, j: number): number {
 		if(a.shape[i] !== b.shape[j]) {
 			return 0;
 		}
@@ -25,7 +25,7 @@ export function treeSimilarity(a: CloneTree, i: number, b: CloneTree, j: number)
 			s += shared(ci, cj);
 		}
 		return s;
-	};
+	}
 	return 2 * shared(i, j) / (a.size[i] + b.size[j]);
 }
 

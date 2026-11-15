@@ -1,6 +1,6 @@
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
-import { UnknownSideEffect } from '../../dataflow/graph/graph';
+import { UnknownSideEffect, type DataflowGraph } from '../../dataflow/graph/graph';
 import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../dataflow/environments/identifier';
 import { builtInOf, callsBuiltIn, namesWith } from '../linter-util';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
@@ -20,7 +20,6 @@ import { type LintingResult, type LintingRule, LintingResultCertainty, prettyPri
 import { LintingRuleTag } from '../linter-tags';
 import { collectScopeDefinedNames, isDefinedInEnclosingScope, isInstalledResourceFile, isInSubscript, isNonStandardEvaluated, useResolvesToDefinitionOrBuiltin } from './undefined-symbol-util';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -163,10 +162,10 @@ export const UNDEFINED_SYMBOL = {
 			totalVariableUses:  0,
 			suppressed:         { installed: 0, loadedPackage: 0, enclosingScope: 0, nonStandardEval: 0, subscript: 0, unresolvedLibrary: 0, declaredGlobal: 0 }
 		};
-		const suppress = (reason: keyof SuppressionCounts): undefined => {
+		function suppress(reason: keyof SuppressionCounts): undefined {
 			meta.suppressed[reason]++;
 			return undefined;
-		};
+		}
 
 		// `inst/` files are installed verbatim (resources, not namespace source); skip them. Key off the
 		// FileRole.Install role, with a path fallback for requests that bypass the file-role plugins.
@@ -209,7 +208,7 @@ export const UNDEFINED_SYMBOL = {
 		const hintPackagesFor = (name: BrandedIdentifier): BrandedNamespace[] => deps.packagesExporting(name).filter(p => !attached.has(p)).slice(0, MaxHintPackages);
 
 		/** shared resolution logic for a name used either as a function call or a variable */
-		const check = (node: RNodeWithParent, name: BrandedIdentifier, namespace: BrandedNamespace | undefined, kind: UndefinedSymbolKind): UndefinedSymbolResult | undefined => {
+		function check(node: RNodeWithParent, name: BrandedIdentifier, namespace: BrandedNamespace | undefined, kind: UndefinedSymbolKind): UndefinedSymbolResult | undefined {
 			const id = node.info.id;
 			/* never a candidate, so not counted as suppressed: resolved by flowR itself (local/param/builtin), a bare call to a built-in
 			   whose origin was rewritten (a resolved `UseMethod` dispatch is re-tagged as a plain call), a bare name from a default-attached
@@ -252,17 +251,17 @@ export const UNDEFINED_SYMBOL = {
 			}
 			const availableInPackages = namespace === undefined ? hintPackagesFor(name) : [];
 			return { certainty: LintingResultCertainty.Uncertain, name, kind, involvedId: id, loc, ...(availableInPackages.length > 0 ? { availableInPackages } : {}) } satisfies UndefinedSymbolResult;
-		};
+		}
 
 		/** the symbol to check if the config asks for it: a called function, or a plain symbol read */
-		const symbolOf = (node: RNodeWithParent): [UndefinedSymbolKind, Identifier] | undefined => {
+		function symbolOf(node: RNodeWithParent): [UndefinedSymbolKind, Identifier] | undefined {
 			const vtx = graph.getVertex(node.info.id);
 			if(DfgVertex.isFunctionCall(vtx)) {
 				return !DfgVertex.hasOrigin(vtx, BuiltInProcName.Unnamed) && config.checkFunctions ? ['function', vtx.name] : undefined;
 			}
 			const plainSymbol = RSymbol.is(node) && node.lexeme !== '...' && node.lexeme !== undefined;
 			return DfgVertex.isUse(vtx) && config.checkVariables && plainSymbol ? ['variable', node.content] : undefined;
-		};
+		}
 
 		const results = elements.getElements().map(({ node }) => {
 			const symbol = symbolOf(node);

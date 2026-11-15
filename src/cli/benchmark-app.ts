@@ -146,7 +146,6 @@ async function collectFiles(files: RequestFile[], paths: string[], getBaseDir: (
 
 /**
  * Find the common base directory of a list of paths.
- * @param paths - list of paths
  * @returns     the common base directory
  */
 function findCommonBaseDir(paths: string[]): string {

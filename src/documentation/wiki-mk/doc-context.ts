@@ -1,5 +1,17 @@
-import type { FnElementInfo, MermaidClassDiagramArguments, PrintHierarchyArguments, TypeElementKind } from '../doc-util/doc-types';
-import { visualizeMermaidClassDiagram, printCodeOfElement, printHierarchy, shortLinkFile, shortLink, getDocumentationForType, getTypesFromFolder, printCodeOfFile } from '../doc-util/doc-types';
+import {
+	type FnElementInfo,
+	type MermaidClassDiagramArguments,
+	type PrintHierarchyArguments,
+	type TypeElementKind,
+	visualizeMermaidClassDiagram,
+	printCodeOfElement,
+	printHierarchy,
+	shortLinkFile,
+	shortLink,
+	getDocumentationForType,
+	getTypesFromFolder,
+	printCodeOfFile
+} from '../doc-util/doc-types';
 import path from 'path';
 import { guard } from '../../util/assert';
 import { autoGenHeader } from '../doc-util/doc-auto-gen';

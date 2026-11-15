@@ -19,10 +19,10 @@ async function contextParsed(namespace = Namespace): Promise<{ info: NamespaceIn
 	await analyzer.dataflow();
 	const ctx = analyzer.inspectContext();
 	const info = ctx.deps.getDependency('current')?.namespaceInfo as NamespaceInfo;
-	const fn = (name: string): FunctionInfo[] => {
+	function fn(name: string): FunctionInfo[] {
 		const found = ctx.deps.functionsContext.getFunctionInfo('current', name);
 		return found === undefined ? [] : Array.isArray(found) ? found : [found];
-	};
+	}
 	return { info, fn };
 }
 

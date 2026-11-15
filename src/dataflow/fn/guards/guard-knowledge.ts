@@ -1,5 +1,4 @@
-import type { BrandedIdentifier } from '../../environments/identifier';
-import { Identifier } from '../../environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../environments/identifier';
 import type { BuiltInDefinitions } from '../../environments/built-in-config';
 import { DefaultBuiltinConfig } from '../../environments/default-builtin-config';
 import { RValueType, type GuardFacts, type GuardFactsLookup, type RCondition, type RFailure, type RValueTypes, type RVersions } from '../../environments/guard-facts';

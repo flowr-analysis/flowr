@@ -133,10 +133,7 @@ const PluginRegistry = new Map<string, PluginProducer>(BuiltInPlugins as [string
 
 type PluginProducer = new (...args: never[]) => FlowrAnalyzerPlugin;
 
-/**
- * Register a new Flowr Analyzer plugin for the registry,
- * to be used by the {@link FlowrAnalyzerBuilder} and {@link FlowrAnalyzer}.
- */
+/** Register a new Flowr Analyzer plugin for the registry, to be used by the {@link FlowrAnalyzerBuilder} and {@link FlowrAnalyzer}. */
 export function registerPluginMaker(plugin: PluginProducer, name: Exclude<string, BuiltInFlowrPluginName> = plugin.name): void {
 	PluginRegistry.set(name, plugin);
 }

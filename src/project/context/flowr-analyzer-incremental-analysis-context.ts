@@ -1,6 +1,5 @@
 import type Parser from 'web-tree-sitter';
-import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
-import { InvalidationEventType } from '../cache/flowr-cache';
+import { type InvalidationEvent, type InvalidationEventReceiver, InvalidationEventType } from '../cache/flowr-cache';
 import { assertUnreachable } from '../../util/assert';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { FilePath } from './flowr-file';

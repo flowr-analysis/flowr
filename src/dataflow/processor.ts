@@ -1,6 +1,5 @@
 /** Based on a two-way fold, this processor will automatically supply scope information */
-import type { ControlDependency } from './info';
-import { DataflowInformation } from './info';
+import { type ControlDependency, DataflowInformation } from './info';
 import { activeDataflowBudget } from '../gas';
 import type { NormalizedAst, ParentInformation, RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from './environments/environment';
@@ -21,10 +20,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	readonly environment:          REnvironmentInformation
 	/** Other processors to be called by the given functions */
 	readonly processors:           DataflowProcessors<OtherInfo>
-	/**
-	 * The chain of file paths that lead to this inclusion.
-	 * The most recent (last) entry is expected to always be the current one.
-	 */
+	/** The chain of file paths that lead to this inclusion. The most recent (last) entry is expected to always be the current one. */
 	readonly referenceChain:       (string | undefined)[]
 	/** The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs). */
 	readonly cds:                  readonly ControlDependency[] | undefined

@@ -39,10 +39,7 @@ export async function executeExceptionQuery({ analyzer }: BasicQueryData, querie
 	};
 }
 
-/**
- * Either returns all function definitions alongside exception information,
- * or just those matching the filters.
- */
+/** Either returns all function definitions alongside exception information, or just those matching the filters. */
 export interface InspectExceptionQuery extends BaseQueryFormat {
 	readonly type:    'inspect-exception';
 	/** If given, only function definitions that match one of the given slicing criteria are considered. */

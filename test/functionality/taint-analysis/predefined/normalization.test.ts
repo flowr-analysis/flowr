@@ -1,6 +1,5 @@
 import { test, describe } from 'vitest';
-import type { TaintAnalysisExpectation } from '../helper';
-import { testPredefinedTaintAnalysis } from '../helper';
+import { type TaintAnalysisExpectation, testPredefinedTaintAnalysis } from '../helper';
 import { normalizationKnownConstant, ZScore, ZeroCentered, MinMax } from '../../../../src/taint-analysis/predefined/normalization';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { decorateLabelContext, label } from '../../_helper/label';

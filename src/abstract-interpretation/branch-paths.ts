@@ -1,8 +1,7 @@
 import type { AbsintVisitorConfiguration } from './absint-inference';
 import { guard } from '../util/assert';
 import { Top } from './domains/lattice';
-import { BoundedSetDomain } from './domains/bounded-set-domain';
-import type { BoundedSetLift } from './domains/bounded-set-domain';
+import { BoundedSetDomain, type BoundedSetLift } from './domains/bounded-set-domain';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 

@@ -1,6 +1,5 @@
 import { assertAst, withShell } from '../../../_helper/shell';
-import type { Pos } from '../../../_helper/ast-builder';
-import { bin, comment, exprList, group, num, parameter, str, sym } from '../../../_helper/ast-builder';
+import { type Pos, bin, comment, exprList, group, num, parameter, str, sym } from '../../../_helper/ast-builder';
 import { label } from '../../../_helper/label';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';

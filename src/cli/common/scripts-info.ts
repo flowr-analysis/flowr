@@ -14,7 +14,6 @@ interface BaseScriptInformation extends MergeableRecord {
 	target:       string
 	/** description of the tool for the user */
 	description:  string
-	/** example usage */
 	usageExample: string
 	/** command line options that are available */
 	options:      OptionDefinition[]

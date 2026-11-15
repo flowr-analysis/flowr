@@ -724,6 +724,39 @@ async function withRSlot<T>(this: void, run: () => Promise<T>): Promise<T> {
 	}
 }
 
+const RTimedOut = new Error('Rscript did not finish within 20 seconds');
+
+/**
+ * What `Rscript` prints for `script`, killed after 20 seconds with all its children, as on windows `Rscript.exe` only
+ * launches the R that holds the output, so killing the launcher alone leaves the run waiting forever.
+ * Not the `timeout` of execFile: when a blocked event loop (e.g., loading the signature database) runs it late, it drops
+ * the output of an R that finished long ago and reports success, hence the grace period before giving up.
+ */
+async function runRscript(script: string, cwd: string): Promise<string> {
+	const running = execFileAsync('Rscript', ['--vanilla', script], { cwd, maxBuffer: 1 << 24 });
+	let timer: NodeJS.Timeout | undefined;
+	let killed = false;
+	const timedOut = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => {
+			killed = true;
+			const pid = running.child.pid;
+			if(process.platform === 'win32' && pid !== undefined) {
+				execFile('taskkill', ['/pid', String(pid), '/T', '/F'], () => undefined);
+			} else {
+				running.child.kill('SIGKILL');
+			}
+			timer = setTimeout(() => reject(RTimedOut), 5_000);
+		}, 20_000);
+	});
+	try {
+		return (await Promise.race([running, timedOut])).stdout.replace(/\r\n/g, '\n').trimEnd();
+	} catch(e) {
+		throw killed ? RTimedOut : e;
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 /**
  * What `Rscript` prints for `code` in a fresh directory holding `files`, failing on an error or after 20 seconds.
  * The code goes through a file, as windows cuts `-e` at the first line break.
@@ -737,16 +770,9 @@ export async function printedByR(code: string, files: Readonly<Record<string, st
 		await fs.promises.mkdir(cwd);
 		await fs.promises.writeFile(script, code);
 		await Promise.all(Object.entries(files).map(([name, content]) => fs.promises.writeFile(path.join(cwd, name), content)));
-		return await withRSlot(async() => {
-			const running = execFileAsync('Rscript', ['--vanilla', script], { cwd, maxBuffer: 1 << 24 });
-			/* not the `timeout` of execFile: when a blocked event loop (e.g., loading the signature database) runs it late, it drops the output of an R that finished long ago and reports success */
-			const timer = setTimeout(() => running.child.kill('SIGKILL'), 20_000);
-			try {
-				return (await running).stdout.replace(/\r\n/g, '\n').trimEnd();
-			} finally {
-				clearTimeout(timer);
-			}
-		});
+		/* an R that hangs on a trivial program is the machine, not the program, so it gets a second run */
+		const rscript = () => withRSlot(() => runRscript(script, cwd));
+		return await rscript().catch(e => e === RTimedOut ? rscript() : Promise.reject(e as Error));
 	} finally {
 		await fs.promises.rm(root, { recursive: true, force: true });
 	}

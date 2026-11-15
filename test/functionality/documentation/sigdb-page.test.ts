@@ -4,7 +4,7 @@ import { build } from 'esbuild';
 import { assert, describe, test } from 'vitest';
 import { contractFormals, spokenOf } from '../../../scripts/sigdb-page/contract-formals';
 import { answersAll, contractTokens, takeContractSpecs } from '../../../scripts/sigdb-page/contract-search';
-import { guardsForPage } from '../../../scripts/sigdb-index';
+import { builtInKinds, guardsForPage } from '../../../scripts/sigdb-index';
 import { linkedGroups, mergedRelations } from '../../../src/dataflow/fn/guards/condition-grouping';
 
 const Root = path.join(__dirname, '..', '..', '..');
@@ -18,6 +18,13 @@ describe('Signature database page', () => {
 		for(const id of Hooks) {
 			assert.include(template, `id="${id}"`);
 		}
+	});
+
+	test('a kind of one package\'s definition names that package', () => {
+		/* `maps::map` draws, `purrr::map` does not */
+		const map = builtInKinds().get('map') ?? [];
+		assert.include(map, 'visualize@maps');
+		assert.notInclude(map, 'visualize');
 	});
 
 	test('a contract keeps every formal it speaks of, even one the stated signature misses', () => {

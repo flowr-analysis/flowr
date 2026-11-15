@@ -85,7 +85,7 @@ function denotesGlobalEnv(node: RNode<ParentInformation> | undefined, environmen
 	const defs = [...df.graph.edgesFrom(node.info.id)].filter(([t, e]) => DfEdge.includesType(e, EdgeType.Reads) && !NodeId.isBuiltIn(t)).map(([t]) => t);
 	return defs.length > 0 && defs.every(d => {
 		const def = idMap.get(d);
-		const assignment = def?.info.parent === undefined ? undefined : idMap.get(def.info.parent);
+		const assignment = def === undefined ? undefined : RNode.directParent(def, idMap);
 		const value = !RBinaryOp.is(assignment) ? undefined : assignment.lhs === def ? assignment.rhs : assignment.rhs === def ? assignment.lhs : undefined;
 		return value !== undefined && denotesGlobalEnv(value, df.graph.getVertex(d)?.environment ?? environment, df, idMap, ctx, depth + 1);
 	});
@@ -163,7 +163,7 @@ const BeforeLocking: ReadonlySet<BrandedIdentifier> = new Set(['.onLoad']);
 export function superAssignmentTarget(op: RNode<ParentInformation>, name: BrandedIdentifier, idMap: AstIdMap, topLevel: ReadonlySet<BrandedIdentifier>, memo: Map<NodeId, ReadonlySet<BrandedIdentifier>>): 'enclosing' | 'namespace' | 'global' | 'top-level' {
 	let first = true;
 	let outermost: RFunctionDefinition<ParentInformation> | undefined;
-	for(let cur = op.info.parent === undefined ? undefined : idMap.get(op.info.parent); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap.get(cur.info.parent)) {
+	for(const cur of RNode.iterateParents(op, idMap)) {
 		if(!RFunctionDefinition.is(cur) && !isLocalCall(cur)) {
 			continue;
 		}
@@ -194,7 +194,7 @@ function topLevelBindings(ast: NormalizedAst, isPackageCode: (file: string | und
 		if(!RBinaryOp.is(node) || !LocalAssignments.has(node.operator) || !isPackageCode(node.info.file)) {
 			continue;
 		}
-		const parent = node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
+		const parent = RNode.directParent(node, idMap);
 		if(parent === undefined || (RExpressionList.is(parent) && parent.info.parent === undefined)) {
 			const name = targetVariable(node.operator === '->' ? node.rhs : node.lhs);
 			if(name !== undefined) {
@@ -204,7 +204,6 @@ function topLevelBindings(ast: NormalizedAst, isPackageCode: (file: string | und
 	}
 	return names;
 }
-
 
 /**
  * Port of the `R CMD check` notes on code that changes the global environment
@@ -281,9 +280,6 @@ export const GLOBAL_ENVIRONMENT_MODIFICATION = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds code that changes the global environment: `assign()` or `data()` into it, `attach()`, `<<-` without a binding in an enclosing function, and `<<-` to a package variable, whose binding is locked at run time.',
-		defaultConfig: () => ({
-			checkSuperAssignments: true,
-			allowedGlobals:        ['.Random.seed']
-		})
+		defaultConfig: () => ({ checkSuperAssignments: true, allowedGlobals: ['.Random.seed'] })
 	}
 } as const satisfies LintingRule<GlobalEnvironmentModificationResult, GlobalEnvironmentModificationMetadata, GlobalEnvironmentModificationConfig>;

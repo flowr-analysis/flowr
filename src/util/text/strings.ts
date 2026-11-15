@@ -7,16 +7,12 @@ export function escapeRegex(text: Printable): string {
 	return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/**
- * Check if the given string starts and ends with the given letter
- */
+/** Check if the given string starts and ends with the given letter */
 export function startAndEndsWith(str: string, letter: string): boolean {
 	return str.startsWith(letter) && str.endsWith(letter);
 }
 
-/**
- * Whether every character of `needle` appears in `hay` in order (a subsequence / fuzzy match).
- */
+/** Whether every character of `needle` appears in `hay` in order (a subsequence / fuzzy match). */
 export function isSubsequence(needle: string, hay: string): boolean {
 	if(needle.length === 0) {
 		return true;
@@ -43,16 +39,12 @@ export function matchByPrefixOrSubsequence(candidates: readonly string[], needle
 	return candidates.filter(c => c !== needle && isSubsequence(lower, c.toLowerCase()));
 }
 
-/**
- * Removes all whitespace in the given string
- */
+/** Removes all whitespace in the given string */
 export function withoutWhitespace(output: string): string {
 	return output.replace(/\s/g, '');
 }
 
-/**
- * Find the longest common prefix in an array of strings
- */
+/** Find the longest common prefix in an array of strings */
 export function longestCommonPrefix(strings: string[]): string {
 	if(strings.length === 0) {
 		return '';
@@ -111,9 +103,7 @@ export function fileUrlToPath(s: string): string | undefined {
 	}
 }
 
-/**
- * Check if the given path is an absolute path.
- */
+/** Check if the given path is an absolute path. */
 export function isAbsolutePath(p: string, regex: RegExp | undefined): boolean {
 	if(regex?.test(p) || p.startsWith('/') || p.startsWith('\\') || /^[a-zA-Z]:[\\/]/.test(p) || p.startsWith('~') || isUrl(p)) {
 		return true;   // a UNC path, a Windows one, `~`, which R expands to the user's home, and any URL
@@ -124,11 +114,7 @@ export function isAbsolutePath(p: string, regex: RegExp | undefined): boolean {
 	return typeof normalized === 'string' && normalized === path.normalize(path.resolve(p) + '/');
 }
 
-const CorrespondingClose = {
-	'(': ')',
-	'[': ']',
-	'{': '}'
-} as const;
+const CorrespondingClose = { '(': ')', '[': ']', '{': '}' } as const;
 
 /** collect '-' at the start until '[' or '(' is reached, then drop the same from the end if present otherwise return the value as is */
 export function dropRawStringSurround(value: string): string {

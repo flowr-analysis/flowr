@@ -33,7 +33,6 @@ const CommentRetriever: CommentRetrievers = {
 	}
 };
 
-
 const defaultRetriever = (c: RNode<ParentInformation>, a: AstIdMap) => parseRoxygenCommentsOfNode(c, a)?.tags;
 
 /**

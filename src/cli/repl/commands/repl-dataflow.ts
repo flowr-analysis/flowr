@@ -154,7 +154,6 @@ export const dataflowSilentCommand = codeCommand('Just calculates the DFG, but o
 	]);
 });
 
-
 export const dataflowSimplifiedCommand = mermaidCommand('Get mermaid code for the simplified dataflow graph', ':dataflowsimple', ['ds', 'dfs'], { url: false, simplified: true });
 
 export const dataflowSimpleStarCommand = mermaidCommand('Returns the URL to mermaid.live', ':dataflowsimple*', ['ds*', 'dfs*'], { url: true, simplified: true });

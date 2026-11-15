@@ -105,7 +105,7 @@ function framesFor(node: RNodeWithParent, idMap: AstIdMap, dfg: DataflowGraph): 
 	for(const ancestor of RNode.iterateParents(node, idMap)) {
 		const op = operatorOf(ancestor);
 		if(RFunctionCall.is(ancestor) || RBinaryOp.is(ancestor) || RPipe.is(ancestor)) {
-			const around = ancestor.info.parent === undefined ? undefined : idMap.get(ancestor.info.parent);
+			const around = RNode.directParent(ancestor, idMap);
 			const outer = RArgument.is(around) ? idMap.get(around.info.parent as NodeId) : around;
 			/* the other quoted operands are written in the same data mask (`y = mpg` next to `x = wt` in `aes`), and name columns, not data */
 			const level = operandsOf(ancestor).filter(operand => operand !== child && !RNode.iterateParents(child, idMap).some(p => p === operand) && !dfg.isQuoted(operand.info.id));
@@ -138,9 +138,7 @@ function frameOf(node: RNodeWithParent, value: DataFrameDomain | undefined): Dat
 	return { id: node.info.id, lexeme: RNode.lexeme(node), must, may, exact: value.colnames.isFinite() && may.length === 0 };
 }
 
-/**
- * Executes data columns queries: the data frame shape inference runs once for all of them.
- */
+/** Executes data columns queries: the data frame shape inference runs once for all of them. */
 export async function executeDataColumnsQuery({ analyzer }: BasicQueryData, queries: readonly DataColumnsQuery[]): Promise<DataColumnsQueryResult> {
 	const ast = await analyzer.normalize();
 	const dfg = (await analyzer.dataflow()).graph;
@@ -233,10 +231,7 @@ export interface DataColumnsQueryResult extends BaseQueryResult {
 
 function dataColumnsLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'data-columns'> {
 	const positions = sliceCriteriaParser(line[0]);
-	return {
-		query: { type: 'data-columns', positions: positions ?? [] },
-		rCode: queryLineCode(line, positions ? 1 : 0)
-	};
+	return { query: { type: 'data-columns', positions: positions ?? [] }, rCode: queryLineCode(line, positions ? 1 : 0) };
 }
 
 export const DataColumnsQueryDefinition = {

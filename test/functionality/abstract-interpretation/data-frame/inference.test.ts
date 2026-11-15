@@ -1532,7 +1532,7 @@ result <- df[c(1, 1, 1, 1, 1), ]
 			{ '1@result': { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [3, 3] } }
 		);
 
-		describe('Unsupported', { fails: true }, () => {
+		describe('Formerly unsupported', () => {
 			testShape(
 				`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
@@ -2028,7 +2028,7 @@ print(df)
 			}
 		);
 
-		describe('Unsupported', { fails: true }, () => {
+		describe('Formerly unsupported', () => {
 			testShape(
 				`
 null <- \\() NULL
@@ -2060,6 +2060,69 @@ print(df)
 				`,
 				['4@df'],
 				{ minRVersion: MIN_VERSION_LAMBDA }
+			);
+			testShape(
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+df$name <- if(FALSE) 1
+print(df)
+				`,
+				['3@df']
+			);
+
+			testShape(
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+df$name <- switch("z", a = 1)
+print(df)
+				`,
+				['3@df']
+			);
+
+			testShape(
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+df$name <- get0("nope")
+print(df)
+				`,
+				['3@df']
+			);
+
+			testShape(
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+df[["name"]] <- attr(df, "foo")
+print(df)
+				`,
+				['3@df']
+			);
+
+			testShape(
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+df$name <- { x <- 1; NULL }
+print(df)
+				`,
+				['3@df']
+			);
+
+			testShape(
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+df$name <- unlist(list())
+print(df)
+				`,
+				['3@df']
+			);
+
+			testShape(
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+l <- list(a = 1)
+df$name <- l$b
+print(df)
+				`,
+				['4@df']
 			);
 		});
 	});
@@ -3011,7 +3074,7 @@ result <- subset(TRUE, FALSE, x = df)
 			['2@result']
 		);
 
-		describe('Unsupported', { fails: true }, () => {
+		describe('Formerly unsupported', () => {
 			testShape(
 				`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")

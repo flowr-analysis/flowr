@@ -150,14 +150,8 @@ function mismatchesOf(call: RFunctionCall<ParentInformation>, formals: readonly 
 }
 
 /** the given function definition and all definitions enclosing it */
-function enclosingFunctions(fn: RFunctionDefinition<ParentInformation>, idMap: ReadonlyMap<NodeId, RNode<ParentInformation>>): RFunctionDefinition<ParentInformation>[] {
-	const result = [fn];
-	for(let cur = idMap.get(fn.info.parent ?? ''); cur !== undefined; cur = idMap.get(cur.info.parent ?? '')) {
-		if(RFunctionDefinition.is(cur)) {
-			result.push(cur);
-		}
-	}
-	return result;
+function enclosingFunctions(fn: RFunctionDefinition<ParentInformation>, idMap: AstIdMap): RFunctionDefinition<ParentInformation>[] {
+	return [fn, ...RNode.iterateParents(fn, idMap).filter(RFunctionDefinition.is)];
 }
 
 /**
@@ -263,9 +257,6 @@ export const CALL_ARGUMENTS = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds calls with arguments the called function does not take, names that match a formal only partially or match several formals, `...` used in a function without `...`, and local functions defined twice with different formals. Calls are resolved through the dataflow graph.',
-		defaultConfig: () => ({
-			reportPartialMatches:  true,
-			checkPackageFunctions: true
-		})
+		defaultConfig: () => ({ reportPartialMatches: true, checkPackageFunctions: true })
 	}
 } as const satisfies LintingRule<CallArgumentsResult, CallArgumentsMetadata, CallArgumentsConfig>;

@@ -77,9 +77,7 @@ export interface AttachSpec {
 	readonly pos?:           number;
 }
 
-/**
- * Process a library call like `library` or `require`
- */
+/** Process a library call like `library` or `require` */
 export function processLibrary<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -142,22 +140,10 @@ export function processLibrary<OtherInfo>(
 	if(!config.characterOnly && charId.length >= 1) {
 		const values = NodeValue.setOf(charId[0], data);
 		if(values?.type === 'set' && values.elements.length > 0) {
-			let seenTrue = false;
-			let seenFalse = false;
-			let seenMaybe = false;
-			for(const elem of values.elements) {
-				if(elem.type !== 'logical') {
-					continue;
-				} else if(elem.value === true) {
-					seenTrue = true;
-				} else if(elem.value === false) {
-					seenFalse = true;
-				} else {
-					seenMaybe = true;
-				}
-			}
+			const logicals = values.elements.flatMap(e => e.type === 'logical' ? [e.value] : []);
+			const seenTrue = logicals.includes(true);
 			/* mixed true/false, no logical value at all, or an explicit NA are all treated the same: uncertain */
-			isCharacterOnly = seenMaybe || seenTrue === seenFalse ? 'maybe' : seenTrue;
+			isCharacterOnly = logicals.some(v => v !== true && v !== false) || seenTrue === logicals.includes(false) ? 'maybe' : seenTrue;
 		}
 	}
 	const evaluatedNames = isCharacterOnly ? evaluated.map(n => NodeValue.stringsOf(n.info.id, data)) : [];
@@ -209,12 +195,8 @@ function packageNameOf<Info>(node: RNode<Info> | undefined): BrandedNamespace | 
 
 /** The string literals of a `"x"` or `c("x", "y")` node (used for `import::from`'s `.except`). */
 function stringLiterals<Info>(node: RNode<Info>): string[] {
-	if(RString.is(node)) {
-		return [node.content.str];
-	}
-	return RFunctionCall.isNamed(node, 'c')
-		? node.arguments.flatMap(a => a !== EmptyArgument && RString.is(a.value) ? [a.value.content.str] : [])
-		: [];
+	return RString.is(node) ? [node.content.str]
+		: RFunctionCall.isNamed(node, 'c') ? node.arguments.flatMap(a => a !== EmptyArgument && RString.is(a.value) ? [a.value.content.str] : []) : [];
 }
 
 /** Parse `import::from(pkg, a, keep = filter, .all = TRUE, .except = c(...))` into which exports to attach. */
@@ -299,12 +281,9 @@ function parseUseSpec<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): { pack: BrandedNamespace, spec: AttachSpec } | undefined {
 	const bracket = parseBoxSpec(first);
-	if(bracket !== undefined) {
+	const pack = bracket === undefined ? packageNameOf(first) : undefined;
+	if(bracket !== undefined || pack === undefined) {
 		return bracket;
-	}
-	const pack = packageNameOf(first);
-	if(pack === undefined) {
-		return undefined;
 	}
 	// box::use is read as box's namespace-only member access: a box::-qualified call, or box is a loaded dependency
 	if(Identifier.getNamespace(name.content) === PkgName.Box || data.ctx.deps.getDependency(PkgName.Box) !== undefined) {

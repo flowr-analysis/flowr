@@ -29,9 +29,7 @@ export interface CompoundQueryFormat<
 	> & Partial<QueryArgumentsWithType<SubQueryType>>>;
 }
 
-/**
- * Execute a single, virtual compound query in terms of unfolding the contained queries.
- */
+/** Execute a single, virtual compound query in terms of unfolding the contained queries. */
 export function executeCompoundQueries<
 	SubQueryType extends SupportedQueryTypes,
 	CommonArguments extends VirtualCompoundConstraint<SubQueryType> = VirtualCompoundConstraint<SubQueryType>
@@ -40,11 +38,7 @@ export function executeCompoundQueries<
 ): QueryArgumentsWithType<SubQueryType>[] {
 	const results: QueryArgumentsWithType<SubQueryType>[] = [];
 	for(const arg of query.arguments) {
-		results.push({
-			type: query.query,
-			...query.commonArguments,
-			...arg
-		} as unknown as QueryArgumentsWithType<SubQueryType>);
+		results.push({ type: query.query, ...query.commonArguments, ...arg } as unknown as QueryArgumentsWithType<SubQueryType>);
 	}
 	return results;
 }

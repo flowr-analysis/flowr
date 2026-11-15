@@ -97,13 +97,7 @@ export function processListToEnv<OtherInfo>(
 		if(RArgument.isEmpty(arg) || arg.name === undefined || arg.value === undefined) {
 			continue;
 		}
-		written.push({
-			type:      ReferenceType.Variable,
-			name:      arg.name.content,
-			nodeId:    arg.info.id,
-			definedAt: rootId,
-			cds:       data.cds
-		});
+		written.push({ type: ReferenceType.Variable, name: arg.name.content, nodeId: arg.info.id, definedAt: rootId, cds: data.cds });
 		result.graph.addEdge(arg.info.id, arg.value.info.id, EdgeType.DefinedBy);
 		result.graph.addEdge(arg.info.id, rootId, EdgeType.DefinedBy);
 		result.graph.addEdge(rootId, arg.value.info.id, EdgeType.Reads);

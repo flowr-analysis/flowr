@@ -1,12 +1,11 @@
 import Joi from 'joi';
+import { functionBullet, queryHeader } from './query-print';
 import { filterLineParser, type BasicQueryData, type BaseQueryFormat, type BaseQueryResult } from './base-query-format';
 import type { SupportedQuery } from './query';
 import { criteriaQueryCompleter } from '../cli/repl/parser/slice-query-parser';
-import { bold } from '../util/text/ansi';
 import { metaSince } from './query-meta';
-import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SlicingCriterion } from '../slicing/criterion/parse';
-import { SourceLocation } from '../util/range';
 
 /** The `filter` property shared by the `inspect-*` queries. */
 export const FunctionFilterSchema = Joi.array().items(Joi.string().required()).optional().description('If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered.');
@@ -29,11 +28,10 @@ export function functionPropertyQuery<const T extends string, const K extends st
 		},
 		asciiSummarizer: (async(formatter, processed, queryResults, result) => {
 			const out = queryResults as Result;
-			result.push(`Query: ${bold(spec.type, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push(queryHeader(spec.type, formatter, out['.meta'].timing, true));
+			const idMap = (await processed.normalize()).idMap;
 			for(const [r, v] of Object.entries(out[spec.resultKey])) {
-				const node = (await processed.normalize()).idMap.get(NodeId.normalize(r));
-				const loc = node ? SourceLocation.fromNode(node) : undefined;
-				result.push(`  - Function ${bold(r, formatter)} (${SourceLocation.format(loc)}) is ${v ? '' : 'not '}${spec.phrase}`);
+				result.push(`${functionBullet(r, formatter, idMap)} is ${v ? '' : 'not '}${spec.phrase}`);
 			}
 			return true;
 		}) satisfies SupportedQuery['asciiSummarizer'],

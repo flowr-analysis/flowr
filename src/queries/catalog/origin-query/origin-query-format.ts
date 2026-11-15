@@ -12,9 +12,7 @@ import { metaSince } from '../../query-meta';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 
-/**
- * Execute origin queries, catching duplicates with the same fingerprint
- */
+/** Execute origin queries, catching duplicates with the same fingerprint */
 export async function executeOriginQuery({ analyzer }: BasicQueryData, queries: readonly OriginQuery[]): Promise<OriginQueryResult> {
 	const start = Date.now();
 	const results: OriginQueryResult['results'] = {};
@@ -33,12 +31,8 @@ export async function executeOriginQuery({ analyzer }: BasicQueryData, queries: 
 		results[key] = Dataflow.origin((await analyzer.dataflow()).graph, astId);
 	}
 
-	return {
-		...metaSince(start),
-		results
-	};
+	return { ...metaSince(start), results };
 }
-
 
 export interface OriginQuery extends BaseQueryFormat {
 	readonly type:      'origin';
@@ -57,15 +51,8 @@ function originQueryLineParser(output: ReplOutput, line: readonly string[], _con
 		return invalidQueryLine(output, 'Invalid origin query format, slicing criterion must be given in parentheses, e.g. (2@var), (1:5) or ($10)');
 	}
 
-	return {
-		query: {
-			type:      'origin',
-			criterion: criterion
-		},
-		rCode: queryLineCode(line)
-	};
+	return { query: { type: 'origin', criterion: criterion }, rCode: queryLineCode(line) };
 }
-
 
 export const OriginQueryDefinition = {
 	title:           'Origin Query',

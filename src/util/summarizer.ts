@@ -39,9 +39,7 @@ export abstract class Summarizer<Output, Configuration extends CommonSummarizerC
 	public abstract summarizePhase(): Promise<Output>;
 }
 
-/**
- * Summarizes the given measurement data.
- */
+/** Summarizes the given measurement data. */
 export function summarizeMeasurement(data: number[], totalNumberOfDataPoints?: number): SummarizedMeasurement {
 	// just to avoid in-place modification
 	const sorted = [...data].sort((a, b) => a - b);

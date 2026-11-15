@@ -32,7 +32,6 @@ import { baseManualTopicUrl, cranMirrorRepoUrl, cranMirrorSourceUrl, cranPageUrl
 
 export { cranMirrorSourceUrl, cranPageUrl, rSourceRef, rSourceUrl };
 
-
 /** whether a pattern uses glob wildcards (`*`, `?`) */
 function hasGlob(pattern: string | undefined): boolean {
 	return pattern !== undefined && /[*?]/.test(pattern);
@@ -307,28 +306,12 @@ function resolveGeneric(src: PackageSignatureSource, pkg: BrandedNamespace, fns:
 	if(local) {
 		return { fn: local, package: pkg };
 	}
-	for(const base of baseRPackages()) {
-		if(base !== pkg) {
-			const fn = src.functionByName(base, generic);
-			if(fn) {
-				return { fn, package: base };
-			}
-		}
-	}
-	return undefined;
+	return baseRPackages().values().filter(base => base !== pkg).map(base => ({ fn: src.functionByName(base, generic), package: base })).find((r): r is { fn: DecodedFunction, package: BrandedNamespace } => r.fn !== undefined);
 }
 
 /** whether `cls` is a class a loaded package registers S3 methods for (the method's own package, or base R) */
 function isKnownS3Class(src: PackageSignatureSource, pkg: BrandedNamespace, cls: string): boolean {
-	if(src.lookup(pkg)?.s3Classes.includes(cls)) {
-		return true;
-	}
-	for(const base of baseRPackages()) {
-		if(base !== pkg && src.lookup(base)?.s3Classes.includes(cls)) {
-			return true;
-		}
-	}
-	return false;
+	return [pkg, ...baseRPackages()].some(p => src.lookup(p)?.s3Classes.includes(cls));
 }
 
 /**
@@ -486,16 +469,7 @@ export function signaturePackageInfo(src: PackageSignatureSource, pkg: BrandedNa
 /** a few near matches for a mistyped package/symbol (case-insensitive substring), for a friendly hint */
 function suggest(candidates: Iterable<BrandedIdentifier | BrandedNamespace>, query: string, limit = 6): string[] {
 	const needle = query.toLowerCase();
-	const out: string[] = [];
-	for(const c of candidates) {
-		if(c.toLowerCase().includes(needle)) {
-			out.push(String(c));
-			if(out.length >= limit) {
-				break;
-			}
-		}
-	}
-	return out;
+	return Iterator.from(candidates).filter(c => c.toLowerCase().includes(needle)).take(limit).map(String).toArray();
 }
 
 /** cap on wildcard-search hits, so a `* *` search cannot exhaust memory */

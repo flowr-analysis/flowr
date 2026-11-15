@@ -1,35 +1,25 @@
 import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
-import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
+import { queryHeader } from '../../query-print';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type ControlFlowInformation, CfgVertex } from '../../../control-flow/control-flow-graph';
 import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { type CfgSimplificationPassName, CfgSimplificationPasses } from '../../../control-flow/cfg-simplification';
-import { log } from '../../../util/log';
-import { metaSince } from '../../query-meta';
+import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
-/**
- * Executes the control flow query with the given simplification passes.
- */
+/** Executes the control flow query with the given simplification passes. */
 export async function executeControlFlowQuery({ analyzer }: BasicQueryData, queries: readonly ControlFlowQuery[]): Promise<ControlFlowQueryResult> {
-	if(queries.length !== 1) {
-		log.warn('The control flow query expects only up to one query, but got', queries.length);
-	}
+	warnUnlessSingleQuery('The control flow', queries);
 
 	const query = queries[0];
 
 	const start = Date.now();
 	const controlFlow = await analyzer.controlflow(query.config?.simplificationPasses);
-	return {
-		...metaSince(start),
-		controlFlow
-	};
+	return { ...metaSince(start), controlFlow };
 }
 
-/**
- * Provides the control flow graph with an optional, fixed configuration
- */
+/** Provides the control flow graph with an optional, fixed configuration */
 export interface ControlFlowQuery extends BaseQueryFormat {
 	readonly type:    'control-flow';
 	readonly config?: {
@@ -50,7 +40,7 @@ export const ControlFlowQueryDefinition = {
 	executor:        executeControlFlowQuery,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'control-flow'>['control-flow'];
-		result.push(`Query: ${bold('control-flow', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+		result.push(queryHeader('control-flow', formatter, out['.meta'].timing, true));
 		result.push(`   ╰ CFG: ${cfgToMermaidUrl(out.controlFlow, await analyzer.normalize())}`);
 		return true;
 	},

@@ -1,8 +1,5 @@
 import { createNormalizePipeline } from '../../core/steps/pipeline/default-pipelines';
-import type {
-	ParentInformation,
-	RNodeWithParent
-} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { normalizedAstToMermaid } from '../../util/mermaid/ast';
 import { docTook } from './doc-timings';
 import type { KnownParser } from '../../r-bridge/parser';
@@ -35,9 +32,7 @@ export interface PrintNormalizedAstOptions {
  */
 export async function printNormalizedAstForCode(parser: KnownParser, code: string, { showCode = true, prefix = 'flowchart TD\n', ctx }: PrintNormalizedAstOptions = {}) {
 	const now = performance.now();
-	const result = await createNormalizePipeline(parser, {
-		context: contextFromInput(code)
-	}).allRemainingSteps();
+	const result = await createNormalizePipeline(parser, { context: contextFromInput(code) }).allRemainingSteps();
 	const duration = performance.now() - now;
 
 	const metaInfo = `The analysis${docTook(duration)} ran (including parsing with the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment.`;

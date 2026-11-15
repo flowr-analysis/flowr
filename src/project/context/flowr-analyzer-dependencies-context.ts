@@ -16,17 +16,11 @@ import { uniqueArray } from '../../util/collections/arrays';
 import { withGuards } from '../sigdb/guarded-source';
 import { signatureDbOf, type SignatureDb } from '../sigdb/signature-db';
 
-/**
- * Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them.
- */
+/** Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them. */
 export interface ReadOnlyFlowrAnalyzerDependenciesContext {
-	/**
-	 * The name of this context.
-	 */
+	/** The name of this context. */
 	readonly name:             BrandedNamespace;
-	/**
-	 * The functions context associated with this dependencies-context.
-	 */
+	/** The functions context associated with this dependencies-context. */
 	readonly functionsContext: ReadOnlyFlowrAnalyzerFunctionsContext;
 	/**
 	 * Get the dependency with the given name, if it exists.
@@ -52,9 +46,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 */
 	inferredRange(name: BrandedNamespace): Range | undefined;
 
-	/**
-	 * Get all dependencies known to this context.
-	 */
+	/** Get all dependencies known to this context. */
 	getDependencies(): readonly Readonly<Package>[];
 
 	/**
@@ -63,9 +55,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 */
 	declaredPackageNames(): readonly BrandedNamespace[];
 
-	/**
-	 * Metadata of the signature databases the version plugins currently have loaded.
-	 */
+	/** Metadata of the signature databases the version plugins currently have loaded. */
 	loadedSignatureDatabases(): SigDbLoadedInfo[];
 
 	/**
@@ -121,9 +111,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	signatureOf(id: Identifier, version?: string): DecodedFunction | undefined;
 }
 
-/**
- * Manages the project's dependencies, their versions, and their interplay with {@link FlowrAnalyzerPackageVersionsPlugin}s.
- */
+/** Manages the project's dependencies, their versions, and their interplay with {@link FlowrAnalyzerPackageVersionsPlugin}s. */
 export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-dependencies-context';
 
@@ -169,13 +157,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		if(!isSigDbEnabled(this.ctx.config)) {
 			return [];
 		}
-		const out = new Set<BrandedNamespace>();
-		for(const p of this.plugins) {
-			for(const pkg of p.packagesExporting(name)) {
-				out.add(pkg);
-			}
-		}
-		return [...out];
+		return uniqueArray(this.plugins.flatMap(p => [...p.packagesExporting(name)]));
 	}
 
 	public signatures(): SignatureDb {
@@ -197,15 +179,13 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		const name = Identifier.getName(id);
 		const ver = version ?? this.getDependency(pkg)?.resolvedVersion;
 		for(const src of this.signatureSources()) {
-			if(!src.has(pkg)) {
-				continue; // avoids touching a package this source lacks
-			}
-			// decode only the one function (not the whole package), falling back to the source's latest version
-			const fn = src.functionByName(pkg, name, ver) ?? src.functionByName(pkg, name);
+			/* decode only the one function (not the whole package), falling back to the source's latest version */
+			const fn = src.has(pkg) ? src.functionByName(pkg, name, ver) ?? src.functionByName(pkg, name) : undefined;
 			if(fn) {
 				return fn;
 			}
 		}
+
 		return undefined;
 	}
 
@@ -284,9 +264,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	public getDependency(name: BrandedNamespace, version?: string | Range): Package | undefined {
-		if(!this.staticsLoaded) {
-			this.resolveStaticDependencies();
-		}
+		this.ensureStaticsLoaded();
 		if(version !== undefined) {
 			return this.resolvePinnedDependency(name, typeof version === 'string' ? RRange.parse('=' + version) : version);
 		}
@@ -339,9 +317,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	public getDependencies(): Package[] {
-		if(!this.staticsLoaded) {
-			this.resolveStaticDependencies();
-		}
+		this.ensureStaticsLoaded();
 		return Array.from(this.dependencies.values());
 	}
 

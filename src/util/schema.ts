@@ -137,9 +137,7 @@ export function descriptionPaths(description: Joi.Description, path: readonly st
 	return result;
 }
 
-/**
- * Describes a Joi schema in a human-readable way.
- */
+/** Describes a Joi schema in a human-readable way. */
 export function describeSchema(schema: Joi.Schema, f: OutputFormatter = formatter): string {
 	const description = schema.describe();
 	const lines = genericDescription(1, f, f.format('.', { effect: ColorEffect.Foreground, color: Colors.White }), description);
@@ -198,9 +196,7 @@ function printFlags(flags: object | undefined): string {
 	return flagText.trim().length > 0 ? '[' + flagText + '] ' : '';
 }
 
-/**
- * Creates the header line(s) for a schema description.
- */
+/** Creates the header line(s) for a schema description. */
 export function headerLine(level: number, formatter: OutputFormatter, name: string, type: string, flags: object | undefined): SchemaLine[] {
 	const fnam = name === '.' ? '' : bold(name, formatter) + ' ';
 	const fdesc = flags && 'description' in flags ? italic(flags['description'] as string, formatter) + ' ' : '';
@@ -208,9 +204,7 @@ export function headerLine(level: number, formatter: OutputFormatter, name: stri
 	return [{ level, text }];
 }
 
-/**
- * Describes a Joi object schema.
- */
+/** Describes a Joi object schema. */
 export function describeObject(level: number, formatter: OutputFormatter, desc: Joi.Description): SchemaLine[] {
 	let lines: SchemaLine[] = [];
 

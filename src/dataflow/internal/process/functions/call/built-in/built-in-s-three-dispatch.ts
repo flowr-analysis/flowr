@@ -21,7 +21,6 @@ import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { DotsParameterName } from '../../../../../../util/arg-matching';
 
-
 /** e.g. UseMethod(generic, object) */
 interface S3DispatchConfig {
 	/** absent for a next-method call (`callNextMethod(...)`, `NextMethod(...)`) */
@@ -70,14 +69,7 @@ export function processS3Dispatch<OtherInfo>(
 	const fnRef = { nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function };
 
 	if(ControlFlow.alwaysExits(dfObj, data.cds)) {
-		patchFunctionCall({
-			nextGraph:             dfObj.graph,
-			rootId,
-			name,
-			data,
-			argumentProcessResult: [dfObj],
-			origin:                BuiltInProcName.S3Dispatch
-		});
+		patchFunctionCall({ nextGraph: dfObj.graph, rootId, name, data, argumentProcessResult: [dfObj], origin: BuiltInProcName.S3Dispatch });
 		return dfObj;
 	}
 

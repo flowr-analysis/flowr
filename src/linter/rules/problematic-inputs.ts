@@ -225,9 +225,6 @@ export const PROBLEMATIC_INPUTS = {
 		description:   'Finds dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with \'|\' indicating a pipe command injection.',
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.Performance],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: ctx => ({
-			consider:             ctx.env.deriveFromIndex(defaultConsider),
-			pipeCommandFunctions: defaultPipeCommandFunctions
-		})
+		defaultConfig: ctx => ({ consider: ctx.env.deriveFromIndex(defaultConsider), pipeCommandFunctions: defaultPipeCommandFunctions })
 	}
 } as const satisfies LintingRule<ProblematicInputsResult, never, ProblematicInputsConfig>;

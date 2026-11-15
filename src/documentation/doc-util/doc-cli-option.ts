@@ -4,8 +4,7 @@ import { guard } from '../../util/assert';
 import { textWithTooltip } from '../../util/html-hover-over';
 import type { OptionDefinition } from 'command-line-usage';
 import { flowrMainOptionDefinitions } from '../../cli/flowr-main-options';
-import type { ReplCommandNames } from '../../cli/repl/commands/repl-commands';
-import { getReplCommands } from '../../cli/repl/commands/repl-commands';
+import { type ReplCommandNames, getReplCommands } from '../../cli/repl/commands/repl-commands';
 import { escapeHTML } from './doc-escape';
 import { FlowrConfig } from '../../config';
 import { schemaPathInfo } from '../../util/schema';
@@ -16,9 +15,7 @@ export type ScriptOptions<Type extends keyof typeof scripts | 'flowr'> =
 	Type extends keyof typeof scripts ? typeof scripts[Type]['options'][number]['name'] :
 		Type extends 'flowr' ? typeof flowrMainOptionDefinitions[number]['name'] : never;
 
-/**
- * Produce the documentation string for a CLI long option
- */
+/** Produce the documentation string for a CLI long option */
 export function getCliLongOptionOf<
 	ScriptName extends keyof typeof scripts | 'flowr',
 	OptionName extends ScriptOptions<ScriptName>
@@ -35,17 +32,13 @@ export function getCliLongOptionOf<
 	return textWithTooltip(`${char}-${ligatureBreaker}-${optionName}${char}`, 'Description (Command Line Argument): ' + description) + alias;
 }
 
-
-/**
- * Produce the documentation string for multiple CLI long options
- */
+/** Produce the documentation string for multiple CLI long options */
 export function multipleCliOptions<
 	ScriptName extends keyof typeof scripts | 'flowr',
 	OptionName extends ScriptOptions<ScriptName>
 >(scriptName: ScriptName, ...options: OptionName[]): string {
 	return options.map(o => getCliLongOptionOf(scriptName, o, false, true)).join(' ');
 }
-
 
 /**
  * Produce a documentation link for a flowR configuration option (e.g. `solver.sigdb.enabled`).
@@ -67,9 +60,7 @@ export function getConfigOption(path: AutocompletablePaths<FlowrConfig>, quote =
 	return `<a href="${FlowrWikiBaseRef}/Interface#configuring-flowr" title=${JSON.stringify(escapeHTML(tooltip))}>${label}</a>`;
 }
 
-/**
- * Produce the documentation string for a REPL command
- */
+/** Produce the documentation string for a REPL command */
 export function getReplCommand(commandName: ReplCommandNames | string, quote = true, showStar = false): string {
 	const availableNames = getReplCommands();
 	const commands = availableNames[commandName];

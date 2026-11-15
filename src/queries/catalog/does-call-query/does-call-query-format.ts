@@ -1,6 +1,7 @@
 import { type BasicQueryData, type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
+import { queryHeader } from '../../query-print';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
@@ -17,9 +18,7 @@ import type { CallGraph } from '../../../dataflow/graph/call-graph';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 import { transitiveLibraryCallees } from '../call-graph-query/expand-library-internals';
 
-/**
- * Execute does call queries on the given analyzer.
- */
+/** Execute does call queries on the given analyzer. */
 export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries: readonly DoesCallQuery[]): Promise<DoesCallQueryResult> {
 	const start = Date.now();
 	const cg = await analyzer.callGraph();
@@ -40,10 +39,7 @@ export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries
 		const c = makeCallMatcher(query.calls);
 		results[id] = findCallersMatchingConstraints(cg, nodeId, c, query.expandLibraryInternals ? deps : undefined);
 	}
-	return {
-		...metaSince(start),
-		results
-	};
+	return { ...metaSince(start), results };
 }
 
 type CheckCallMatch = (vtx: { id: NodeId, name?: Identifier }, cg: CallGraph) => boolean;
@@ -201,24 +197,11 @@ function constraintParser(argument: string | undefined): { call: SlicingCriterio
 	const [criteria, ...rhs] = args;
 	const rhsStr = rhs.join(' ');
 	if(rhsStr.startsWith('$')) {
-		return {
-			call:       criteria as SlicingCriterion,
-			constraint: {
-				type: 'calls-id',
-				id:   rhsStr.slice(1) as SlicingCriterion,
-			}
-		};
+		return { call: criteria as SlicingCriterion, constraint: { type: 'calls-id', id: rhsStr.slice(1) as SlicingCriterion } };
 	} else {
 		const isExact = startAndEndsWith(rhsStr, '"');
 		const name = isExact ? rhsStr.slice(1, -1) : rhsStr;
-		return {
-			call:       criteria as SlicingCriterion,
-			constraint: {
-				type:      'name',
-				name:      name,
-				nameExact: isExact ? true : undefined,
-			}
-		};
+		return { call: criteria as SlicingCriterion, constraint: { type: 'name', name: name, nameExact: isExact ? true : undefined } };
 	}
 }
 
@@ -229,13 +212,7 @@ function doesCallQueryLineParser(output: ReplOutput, line: readonly string[], _c
 	}
 
 	return {
-		query: [
-			{
-				type:    'does-call',
-				queryId: constraint.call + ' (shorthand)',
-				call:    constraint.call,
-				calls:   constraint.constraint,
-			}],
+		query: [{ type: 'does-call', queryId: constraint.call + ' (shorthand)', call: constraint.call, calls: constraint.constraint }],
 		rCode: queryLineCode(line)
 	};
 }
@@ -246,7 +223,7 @@ export const DoesCallQueryDefinition = {
 	perQueryResults: true,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'does-call'>['does-call'];
-		result.push(`Query: ${bold('does-call', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+		result.push(queryHeader('does-call', formatter, out['.meta'].timing, true));
 		for(const [r, v] of Object.entries(out.results)) {
 			const idMap = (await processed.normalize()).idMap;
 			result.push(`  - ${bold(r, formatter)} found:`);

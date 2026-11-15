@@ -509,13 +509,10 @@ export class BuiltIns {
 					definedAt: id,
 					processor: (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix, readIndices: config.readIndices }),
 					/* `f(x) <- v` rebinds `x`, the plain call `` `f<-`(x, v) `` above only hands back a modified copy */
-					config:    {
-						...config,
-						assignmentOperator: suffix
-					},
-					name:   assignment,
-					cds:    undefined,
-					nodeId: id
+					config:    { ...config, assignmentOperator: suffix },
+					name:      assignment,
+					cds:       undefined,
+					nodeId:    id
 				}];
 				this.set(effectiveName, d, assumePrimitive, Identifier.getNamespace(assignment));
 			}

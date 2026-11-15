@@ -64,10 +64,7 @@ export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, quer
 		results[key] = { packages, ...timedSliceEntry(query, slice, Date.now() - sliceStart,
 			() => reconstructSlice(n, df.graph, slice.result, query)) };
 	}
-	return {
-		...metaSince(start),
-		results
-	};
+	return { ...metaSince(start), results };
 }
 
 /** Calculates and returns the static backward or forward slice from the given criteria */

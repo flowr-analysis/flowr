@@ -57,9 +57,7 @@ import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { runCalibration } from './calibration';
 
-/**
- * The logger to be used for benchmarking as a global object.
- */
+/** The logger to be used for benchmarking as a global object. */
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' });
 
 /**
@@ -284,17 +282,13 @@ export class BenchmarkSlicer {
 			slicingCriteria:             [],
 			numberOfDataflowNodesSliced: 0,
 			timesHitThreshold:           0,
-			reconstructedCode:           {
-				code:                  '',
-				linesWithAutoSelected: 0
-			}
+			reconstructedCode:           { code: '', linesWithAutoSelected: 0 }
 		};
 		this.perSliceMeasurements.set(slicingCriteria, stats);
 
 		this.executor.updateRequest({ criterion: slicingCriteria });
 
 		const totalStopwatch = measurements.start('total');
-
 
 		const slicedOutput = await this.measureSliceStep('slice', measurements, 'static slicing');
 		const decodedCriteria = SlicingCriterion.decodeAll(slicingCriteria, (this.normalizedAst as NormalizedAst).idMap);
@@ -319,11 +313,7 @@ export class BenchmarkSlicer {
 		stats.timesHitThreshold = slicedOutput.timesHitThreshold;
 
 		stats.measurements = measurements.get();
-		return {
-			stats,
-			slice: slicedOutput,
-			code:  stats.reconstructedCode
-		};
+		return { stats, slice: slicedOutput, code: stats.reconstructedCode };
 	}
 
 	/**
@@ -430,9 +420,7 @@ export class BenchmarkSlicer {
 			}
 			const state = inference.getAbstractTrace().get(node.info.id);
 
-			const nodeStats: PerNodeStatsDfShape = {
-				numberOfEntries: state?.isValue() ? state.value.size : 0
-			};
+			const nodeStats: PerNodeStatsDfShape = { numberOfEntries: state?.isValue() ? state.value.size : 0 };
 
 			if(operations !== undefined) {
 				nodeStats.mappedOperations = operations.map(op => op.operation);
@@ -712,9 +700,7 @@ export class BenchmarkSlicer {
 		};
 	}
 
-	/**
-	 * Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead.
-	 */
+	/** Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead. */
 	public ensureSessionClosed(): void {
 		this.parser?.close();
 	}

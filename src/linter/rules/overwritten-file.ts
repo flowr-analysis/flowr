@@ -123,8 +123,6 @@ export const OVERWRITTEN_FILE = {
 		description:   'Finds files the script writes more than once, so the later write replaces what the earlier one wrote, as two figures saved under the same name.',
 		tags:          [LintingRuleTag.Bug, LintingRuleTag.Reproducibility],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: () => ({
-			additionalWriteFunctions: []
-		})
+		defaultConfig: () => ({ additionalWriteFunctions: [] })
 	}
 } as const satisfies LintingRule<OverwrittenFileResult, OverwrittenFileMetadata, OverwrittenFileConfig>;

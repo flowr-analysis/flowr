@@ -14,16 +14,11 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { queryLineCode } from '../../../cli/repl/parser/slice-query-parser';
 import { CloneIndex } from '../../../clones/clone-index';
 import { deepMergeObject } from '../../../util/objects';
-import { metaSince } from '../../query-meta';
-import { log } from '../../../util/log';
+import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
-/**
- * Builds the clone index of the analyzed files and runs the requested clone detectors on it.
- */
+/** Builds the clone index of the analyzed files and runs the requested clone detectors on it. */
 export async function executeCodeClonesQuery({ analyzer }: BasicQueryData, queries: readonly CodeClonesQuery[]): Promise<CodeClonesQueryResult> {
-	if(queries.length !== 1) {
-		log.warn('The code-clones query expects only up to one query, but got', queries.length);
-	}
+	warnUnlessSingleQuery('The code-clones', queries);
 	const query = queries[0];
 	const start = Date.now();
 	const algorithms = query.algorithms ?? DefaultCloneDetectionConfig.algorithms;
@@ -38,12 +33,7 @@ export async function executeCodeClonesQuery({ analyzer }: BasicQueryData, queri
 	const index = await CloneIndex.build(analyzer, { perspective });
 	const corpus = against.length > 0 ? { perspective, files: against.flatMap(a => a.files) } : undefined;
 	const { pairs, stats } = detectClones(index, config, corpus);
-	return {
-		...metaSince(start),
-		pairs,
-		stats,
-		...(query.exportIndex ? { index: CloneIndex.serialize(index) } : {})
-	};
+	return { ...metaSince(start), pairs, stats, ...(query.exportIndex ? { index: CloneIndex.serialize(index) } : {}) };
 }
 
 /**
@@ -87,10 +77,7 @@ function codeClonesLineParser(_output: ReplOutput, line: readonly string[], _con
 		from++;
 	}
 	const algorithms = line.slice(0, from) as CloneAlgorithm[];
-	return {
-		query: [{ type: 'code-clones', ...(algorithms.length > 0 ? { algorithms } : {}) }],
-		rCode: queryLineCode(line, from)
-	};
+	return { query: [{ type: 'code-clones', ...(algorithms.length > 0 ? { algorithms } : {}) }], rCode: queryLineCode(line, from) };
 }
 
 function fragmentText(f: ClonePair['a'], formatter: OutputFormatter): string {

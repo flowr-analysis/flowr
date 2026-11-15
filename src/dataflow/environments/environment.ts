@@ -4,12 +4,7 @@
  */
 import { builtInEnvJsonReplacer, isDefaultBuiltInEnvironment } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
-import type {
-	BrandedNamespace,
-	BrandedIdentifier,
-	IdentifierDefinition,
-	ReferenceType
-} from './identifier';
+import type { BrandedNamespace, BrandedIdentifier, IdentifierDefinition, ReferenceType } from './identifier';
 import { anyRemovalMarker, removalMarkerOf } from './removal-marker';
 import { Identifier, PkgName } from './identifier';
 import { ControlDependency, happensInEveryBranch  } from '../info';
@@ -264,10 +259,7 @@ export class Environment implements IEnvironment {
 			this.writableMemory.delete(marker);
 			this.cache?.delete(marker);
 		}
-		/* isolate the cds from the originating reference, which may still be updated in place */
-		if(definition.cds !== undefined) {
-			definition = { ...definition, cds: definition.cds.slice() };
-		}
+		definition = isolateCds(definition);
 		/* a maybe definition joins the existing ones; the array may be shared with clones, so replace instead of push */
 		const existing = definition.cds === undefined ? undefined : this.lookup(name);
 		this.writableMemory.set(name, existing === undefined ? [definition] : [...existing, definition]);
@@ -331,10 +323,7 @@ export class Environment implements IEnvironment {
 
 	public defineSuper(definition: IdentifierDefinition & { name: Identifier }, append = false): Environment {
 		const [name, ns] = Identifier.toArray(definition.name);
-		/* isolate the cds from the originating reference, see {@link define} */
-		if(definition.cds !== undefined) {
-			definition = { ...definition, cds: definition.cds.slice() };
-		}
+		definition = isolateCds(definition);
 		const newEnvironment = this.clone(false);
 		if(ns !== undefined && this.n !== ns) {
 			newEnvironment.parent = newEnvironment.parent.defineInNamespace(definition, ns);
@@ -475,16 +464,13 @@ export class Environment implements IEnvironment {
 			return this;
 		}
 		const definition = this.lookup(name);
-		let cont = true;
 		if(definition !== undefined) {
 			this.writableMemory.delete(name);
 			this.cache?.delete(name);
-			cont = !definition.every(d => happensInEveryBranch(d.cds));
 		}
-		if(cont) {
+		if(!definition?.every(d => happensInEveryBranch(d.cds))) {
 			this.writableParent.remove(name);
 		}
-
 		return this;
 	}
 
@@ -501,12 +487,7 @@ export class Environment implements IEnvironment {
 	}
 
 	toJSON(): Jsonified {
-		return this.builtInEnv ? {
-			id:         this.id,
-			parent:     this.parent,
-			builtInEnv: this.builtInEnv,
-			memory:     new Map(this.memory),
-		} : {
+		return this.builtInEnv ? { id: this.id, parent: this.parent, builtInEnv: this.builtInEnv, memory: new Map(this.memory) } : {
 			id:        this.id,
 			parent:    this.parent,
 			memory:    new Map(this.memory),
@@ -516,6 +497,11 @@ export class Environment implements IEnvironment {
 			globalEnv: this.globalEnv,
 		};
 	}
+}
+
+/** the definition with its cds isolated from the originating reference, which may still be updated in place */
+function isolateCds<D extends IdentifierDefinition>(definition: D): D {
+	return definition.cds === undefined ? definition : { ...definition, cds: definition.cds.slice() };
 }
 
 /** Walks up to the global environment (see {@link Environment#globalEnv}), falling back to the last non-builtin env. */

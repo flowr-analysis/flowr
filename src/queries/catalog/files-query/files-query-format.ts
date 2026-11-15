@@ -1,19 +1,17 @@
 import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import { bold, ColorEffect, Colors } from '../../../util/text/ansi';
 import Joi from 'joi';
+import { queryHeader } from '../../query-print';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FileRole } from '../../../project/context/flowr-file';
 import { jsonReplacer } from '../../../util/json';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import type { CommandCompletions } from '../../../cli/repl/completion';
-import { fileProtocol } from '../../../r-bridge/retriever';
+import { type CommandCompletions, completePrefixedList } from '../../../cli/repl/completion';
 import { metaSince } from '../../query-meta';
 
-/**
- * Executes the given files queries using the provided analyzer.
- */
+/** Executes the given files queries using the provided analyzer. */
 export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly FilesQuery[]): Promise<FilesQueryResult> {
 	const start = Date.now();
 	const base = analyzer.inspectContext().files.getAllFiles();
@@ -22,11 +20,7 @@ export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly
 	const foundFingerprints = new Set<string>();
 	for(const query of queries) {
 		if(query.matchesPathRegex === undefined && query.roles === undefined) {
-			files = base.map(l => ({
-				roles:   l.roles,
-				content: l.content(),
-				path:    l.path()
-			}));
+			files = base.map(l => ({ roles: l.roles, content: l.content(), path: l.path() }));
 			break;
 		}
 		const pathRegex = query.matchesPathRegex ? new RegExp(query.matchesPathRegex) : undefined;
@@ -42,23 +36,14 @@ export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly
 				continue;
 			}
 			foundFingerprints.add(fingerprint);
-			files.push({
-				roles:   file.roles,
-				content: file.content(),
-				path:    file.path()
-			});
+			files.push({ roles: file.roles, content: file.content(), path: file.path() });
 		}
 	}
 
-	return Promise.resolve({
-		...metaSince(start),
-		files
-	});
+	return Promise.resolve({ ...metaSince(start), files });
 }
 
-/**
- * Returns the content(s) of all files matching the given pattern.
- */
+/** Returns the content(s) of all files matching the given pattern. */
 export interface FilesQuery extends BaseQueryFormat {
 	readonly type:              'files';
 	/** If you provide roles, only files with all the given roles are returned. Supply multiple queries if you want a union! */
@@ -87,7 +72,6 @@ function summarizeObjectWithLimit(obj: object | string, limitChars = 500, limitL
 		return str;
 	}
 }
-
 
 function rolesFromInput(rolesPart: readonly string[]): { valid: FileRole[], invalid: string[] } {
 	return rolesPart
@@ -124,31 +108,7 @@ function filesQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 }
 
 function filesQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
-	const rolesPrefixNotPresent = line.length == 0 || (line.length == 1 && line[0].length < rolePrefix.length);
-	const rolesNotFinished = line.length == 1 && line[0].startsWith(rolePrefix) && !startingNewArg;
-	const endOfRoles = line.length == 1 && startingNewArg || line.length == 2;
-
-	if(rolesPrefixNotPresent) {
-		return { completions: [`${rolePrefix}`] };
-	} else if(endOfRoles) {
-		return { completions: [fileProtocol] };
-	} else if(rolesNotFinished) {
-		const rolesWithoutPrefix = line[0].slice(rolePrefix.length);
-		const usedRoles = rolesWithoutPrefix.split(',').map(r => r.trim());
-		const allRoles = Object.values(FileRole);
-		const unusedRoles = allRoles.filter(r => !usedRoles.includes(r));
-		const lastRole = usedRoles[usedRoles.length - 1];
-		const lastRoleIsUnfinished = !allRoles.includes(lastRole as FileRole);
-
-		if(lastRoleIsUnfinished) {
-			return { completions: unusedRoles, argumentPart: lastRole };
-		} else if(unusedRoles.length > 0) {
-			return { completions: [','], argumentPart: '' };
-		} else {
-			return { completions: [' '], argumentPart: '' };
-		}
-	}
-	return { completions: [] };
+	return completePrefixedList(line, startingNewArg, rolePrefix, Object.values(FileRole));
 }
 
 function guessProto(obj: object): string | undefined {
@@ -170,7 +130,7 @@ export const FilesQueryDefinition = {
 	executor:        executeFileQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'files'>['files'];
-		result.push(`Query: ${bold('files', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+		result.push(queryHeader('files', formatter, out['.meta'].timing, true));
 		result.push(`   ╰ Found ${out.files.length} file${out.files.length === 1 ? '' : 's'}`);
 		for(const f of out.files) {
 			const nam = guessProto(f.content);

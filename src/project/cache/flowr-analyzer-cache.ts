@@ -106,8 +106,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	}
 
 	private async runTapeUntil<T>(force: boolean | undefined, until: () => T | undefined): Promise<T> {
-		guard(this.args.context.files.hasRequests(),
-			'At least one request must be set to run the analysis pipeline');
+		guard(this.args.context.files.hasRequests(), 'At least one request must be set to run the analysis pipeline');
 		/* one tape: a second caller, as `analyzer.normalize()` while `analyzer.dataflow()` still runs, waits for the steps before */
 		const run = this.running.then(() => {
 			if(force) {
@@ -216,11 +215,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @param simplifications - Simplification passes to be applied to the CFG.
 	 */
 	public async controlflow(force: boolean | undefined, simplifications?: readonly CfgSimplificationPassName[]): Promise<ControlFlowInformation> {
-		const cfgInfo = {
-			ctx: this.args.context,
-			ast: async() => await this.normalize(),
-			dfg: async() => await this.dataflow()
-		};
+		const cfgInfo = { ctx: this.args.context, ast: async() => await this.normalize(), dfg: async() => await this.dataflow() };
 		return this.controlFlowCache.get(force, cfgInfo, simplifications);
 	}
 
@@ -279,9 +274,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		return computed;
 	}
 
-	/**
-	 * Get the call graph for the request if already available, otherwise return `undefined`.
-	 */
+	/** Get the call graph for the request if already available, otherwise return `undefined`. */
 	public peekCallGraph(): CallGraph | undefined {
 		return this.callGraphCache;
 	}

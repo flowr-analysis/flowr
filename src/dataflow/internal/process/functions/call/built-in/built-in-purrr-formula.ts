@@ -202,7 +202,6 @@ export function processPurrrFormula<OtherInfo>(
 		return false;
 	});
 
-
 	if(config.returnArg) {
 		const returnArgId = argMaps.get(config.returnArg)?.[0];
 		if(returnArgId) {

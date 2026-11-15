@@ -5,7 +5,6 @@ import { AtomPrecedence, GuardTerm, NegationPrecedence, Precedence, RConstantNam
 import { closingQuote } from '../../../util/text/args';
 import { unescapeRString } from '../../eval/values/string/string-constants';
 
-
 /** What flowR writes into terms beyond plain R, see {@link GuardTerm}. */
 const OwnNotation: ReadonlySet<string> = new Set(['succeeds', '...names']);
 

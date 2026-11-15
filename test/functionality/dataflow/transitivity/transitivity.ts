@@ -24,6 +24,8 @@ import type { BrandedIdentifier } from '../../../../src/dataflow/environments/id
 export interface Verdict {
 	readonly red?:       string
 	readonly imprecise?: string
+	/** the analysis runs long enough to hold up the tests running next to it in the same worker, so it runs on its own */
+	readonly alone?:     boolean
 }
 
 /** One program with what is asked of it, the last line prints the value to check. */
@@ -62,7 +64,8 @@ export function testing(capabilities: readonly FlowrCapabilityId[], define: () =
 }
 
 function caseTest(verdict: Verdict) {
-	const run = verdict.red === undefined ? test : test.fails;
+	const base = verdict.alone ? test.sequential : test;
+	const run = verdict.red === undefined ? base : base.fails;
 	return (name: string, fn: (context: TestContext) => Promise<void>) => run(label(name, tested, ['dataflow']), fn);
 }
 

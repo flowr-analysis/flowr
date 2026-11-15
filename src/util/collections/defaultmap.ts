@@ -41,9 +41,7 @@ export class DefaultMap<K, V = K> {
 		}
 	}
 
-	/**
-	 * Iterates over all entries that have been set (explicitly or by the generator)
-	 */
+	/** Iterates over all entries that have been set (explicitly or by the generator) */
 	public entries(): MapIterator<[K, V]> {
 		return this.internal.entries();
 	}

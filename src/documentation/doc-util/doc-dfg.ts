@@ -1,6 +1,5 @@
 import type { DataflowGraph, UnknownSideEffect } from '../../dataflow/graph/graph';
-import type { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
-import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
+import { type DEFAULT_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../util/assert';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
@@ -15,25 +14,17 @@ import type { MermaidMarkdownMark } from '../../util/mermaid/info';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { CallGraph } from '../../dataflow/graph/call-graph';
 
-
 /**
  * Visualizes the dataflow graph as a mermaid graph inside a markdown code block.
  * Please use this only for documentation purposes, for programmatic usage use {@link DataflowMermaid.convert} directly.
  */
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>, simplified = false) {
 	return `
-${codeBlock('mermaid', Dataflow.visualize.mermaid.convert({
-	graph,
-	prefix: 'flowchart LR',
-	mark,
-	simplified
-}).string)}
+${codeBlock('mermaid', Dataflow.visualize.mermaid.convert({ graph, prefix: 'flowchart LR', mark, simplified }).string)}
 	`;
 }
 
-/**
- * Options for {@link printDfGraphForCode}.
- */
+/** Options for {@link printDfGraphForCode}. */
 export interface PrintDataflowGraphOptions {
 	readonly mark?:               ReadonlySet<MermaidMarkdownMark>;
 	readonly showCode?:           boolean;
@@ -47,9 +38,7 @@ export interface PrintDataflowGraphOptions {
 	readonly ctx?:                GeneralDocContext;
 }
 
-/**
- * Visualizes a side effect for documentation purposes.
- */
+/** Visualizes a side effect for documentation purposes. */
 export function formatSideEffect(ef: UnknownSideEffect): string {
 	if(typeof ef === 'object') {
 		return `${ef.id} (linked)`;
@@ -68,9 +57,7 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, opt
  */
 export async function printDfGraphForCode(parser: KnownParser, code: string, { callGraph = false, simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false, timeless = false, ctx }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
-	const result = await createDataflowPipeline(parser, {
-		context: contextFromInput(code)
-	}).allRemainingSteps();
+	const result = await createDataflowPipeline(parser, { context: contextFromInput(code) }).allRemainingSteps();
 	const duration = performance.now() - now;
 
 	if(switchCodeAndGraph) {
@@ -109,24 +96,18 @@ ${switchCodeAndGraph ? dfGraph : codeText}
 	return exposeResult ? [resultText, result] : resultText;
 }
 
-
 /** returns resolved expected df graph */
 export async function verifyExpectedSubgraph(parser: KnownParser, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
 	const context = contextFromInput(code);
 	/* we verify that we get what we want first! */
-	const info = await createDataflowPipeline(parser, {
-		context: context,
-		getId:   deterministicCountingIdGenerator(0)
-	}).allRemainingSteps();
+	const info = await createDataflowPipeline(parser, { context: context, getId: deterministicCountingIdGenerator(0) }).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);
 	expectedSubgraph = Dataflow.resolveGraphCriteria(expectedSubgraph, context);
 	const report: GraphDifferenceReport = Dataflow.diffGraphs(
 		{ name: 'expected', graph: expectedSubgraph },
 		{ name: 'got',      graph: info.dataflow.graph },
-		{
-			leftIsSubgraph: true
-		}
+		{ leftIsSubgraph: true }
 	);
 
 	guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`);

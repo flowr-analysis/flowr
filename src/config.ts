@@ -61,9 +61,7 @@ export enum VersionSelection {
 	System = 'system'
 }
 
-/**
- * How to infer the working directory from a script
- */
+/** How to infer the working directory from a script */
 export enum InferWorkingDirectory {
 	/** Don't infer the working directory */
 	No = 'no',
@@ -75,9 +73,7 @@ export enum InferWorkingDirectory {
 	AnyScript = 'any-script'
 }
 
-/**
- * How to handle fixed strings in a source path
- */
+/** How to handle fixed strings in a source path */
 export enum DropPathsOption {
 	/** Don't drop any parts of the sourced path */
 	No = 'no',
@@ -633,15 +629,8 @@ export const FlowrConfig = {
 			ignoreSourceCalls: false,
 			ignoreLoadCalls:   false,
 			semantics:         {
-				environment: {
-					overwriteBuiltIns: {
-						loadDefaults: true,
-						definitions:  []
-					}
-				},
-				ambient: {
-					drawingWritesDevice: false
-				}
+				environment: { overwriteBuiltIns: { loadDefaults: true, definitions: [] } },
+				ambient:     { drawingWritesDevice: false }
 			},
 			defaultPlugins: FlowrDefaultPlugins,
 			repl:           {
@@ -653,12 +642,8 @@ export const FlowrConfig = {
 				queryStats:          true,
 				showPlugins:         false,
 			},
-			project: {
-				resolveUnknownPathsOnDisk: true,
-				failOnInaccessiblePath:    false,
-				assumeImplicitEcho:        true
-			},
-			linter: {
+			project: { resolveUnknownPathsOnDisk: true, failOnInaccessiblePath: false, assumeImplicitEcho: true },
+			linter:  {
 				/* tests and the R CMD check rules only make sense for a package, which re-enables them below */
 				disabledRules: ['software-has-tests'],
 				disabledTags:  ['cmd-check']
@@ -694,45 +679,24 @@ export const FlowrConfig = {
 				},
 				transitiveSideEffectRounds: DefaultTransitiveSideEffectRounds,
 				maxOverlayDepth:            DefaultMaxOverlayDepth,
-				instrument:                 {
-					dataflowExtractors: undefined
-				},
-				slicer: {
-					threshold:  50,
-					autoExtend: false
-				}
+				instrument:                 { dataflowExtractors: undefined },
+				slicer:                     { threshold: 50, autoExtend: false }
 			},
 			abstractInterpretation: {
 				wideningThreshold: 4,
 				followCalls:       true,
-				dataFrame:         {
-					maxColNames:    50,
-					readLoadedData: {
-						readExternalFiles: true,
-						maxReadLines:      1e6
-					}
-				}
+				dataFrame:         { maxColNames: 50, readLoadedData: { readExternalFiles: true, maxReadLines: 1e6 } }
 			},
 			incremental: {
 				alwaysIncremental: false,
 				parsing:           {
 					activated:  false,
-					heuristics: {
-						activated:       true,
-						mtime:           true,
-						linesFrom:       500,
-						bytesFrom:       50_000,
-						alwaysWithEdits: false,
-						minFiles:        1,
-					}
+					heuristics: { activated: true, mtime: true, linesFrom: 500, bytesFrom: 50_000, alwaysWithEdits: false, minFiles: 1 }
 				}
 			},
 			gas: {
-				thresholds: {
-					memory: { problematic: 0.7,       critical: 0.9 },
-					timeMs: { problematic: 100_000,   critical: 120_000 }
-				},
-				features: {}
+				thresholds: { memory: { problematic: 0.7,       critical: 0.9 }, timeMs: { problematic: 100_000,   critical: 120_000 } },
+				features:   {}
 			}
 		};
 	},
@@ -984,17 +948,13 @@ export const FlowrConfig = {
 		const dropped = FlowrConfig.dropSecuritySensitive(raw);
 		return SecureMode.isEnabled() ? [...dropped, ...FlowrConfig.regexPaths().flatMap(p => dropPath(raw, p, ''))] : dropped;
 	},
-	/**
-	 * Creates a new flowr config that has the updated values.
-	 */
+	/** Creates a new flowr config that has the updated values. */
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- amendments usually mutate in place and return nothing
 	amend(this: void, config: FlowrConfig, amendmentFunc: (config: WritableFlowrConfig) => FlowrConfig | void): FlowrConfig {
 		const newConfig = FlowrConfig.clone(config);
 		return amendmentFunc(newConfig) ?? newConfig;
 	},
-	/**
-	 * Clones the given flowr config object.
-	 */
+	/** Clones the given flowr config object. */
 	clone(this: void, config: FlowrConfig): FlowrConfig {
 		return deepClonePreserveUnclonable(config);
 	},
@@ -1036,9 +996,7 @@ export const FlowrConfig = {
 	specializationFor(this: void, config: FlowrConfig, kind: ProjectKind): DeepPartial<FlowrConfig> | undefined {
 		return resolveSpecialization(config.specializeConfig, kind);
 	},
-	/**
-	 * Gets the configuration for the given engine type from the config.
-	 */
+	/** Gets the configuration for the given engine type from the config. */
 	getForEngine<T extends EngineConfig['type']>(this: void, config: FlowrConfig, engine: T): EngineConfig & { type: T } | undefined {
 		const engines = config.engines;
 		if(engines.length > 0) {

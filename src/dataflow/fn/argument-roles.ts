@@ -54,7 +54,6 @@ export function argumentRolesOfFunctions(this: void, ids: Iterable<NodeId>, grap
 	return all;
 }
 
-
 /** What one run carries along, so the built-in lookups are shared between the definitions it answers. */
 export interface LookupState {
 	readonly graph: DataflowGraph

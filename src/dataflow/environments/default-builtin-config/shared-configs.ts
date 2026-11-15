@@ -437,12 +437,10 @@ export const ReadsPlot = [Ambient.plot.reads, ...BasePlot] as const;
 
 /** what adding to a plot does */
 export const PlotAddonConfig = {
-	treatAsFnCall: {
-		'facet_grid': ['labeller']
-	},
-	ambient: BuildsGgPlot,
-	tags:    [SemanticCallTag.Graphics] as SemanticCallTags,
-	sig:     sig({ '...': ArgProp.Forced })
+	treatAsFnCall: { 'facet_grid': ['labeller'] },
+	ambient:       BuildsGgPlot,
+	tags:          [SemanticCallTag.Graphics] as SemanticCallTags,
+	sig:           sig({ '...': ArgProp.Forced })
 } as const;
 
 /** the devices withr opens for a scope, as `with_<device>` and `local_<device>` */
@@ -460,6 +458,15 @@ export const SetsEntry = (state: KeyedState, key: string) => ({ family: state, a
 /** `library(pkg)` and `library("pkg")` name the package, `library(pkg, character.only = TRUE)` looks the variable up */
 export const LibrarySearchPath = SetsEntryNamedBy(KeyedState.SearchPath, ['package', 'help', 'pos', 'lib.loc', 'character.only'], 'package', { quoted: 'character.only' });
 export const LoaderSearchPath = (quoted: boolean) => ({ ...Ambient.searchPath.writes, member: { from: 'unnamed', quoted } }) as const;
+/** a loader installing each missing package first, so a later load may find it installed */
+export const LoaderInstalls = (quoted: boolean) => [LoaderSearchPath(quoted), { ...Ambient.installed.adds, member: { from: 'unnamed', quoted } }] as const;
+/** the packages the parameter `name` names, any we cannot name if it is not given */
+const PackagesNamedBy = (name: string, access: AmbientVerb) => ({ ...SetsEntryNamedBy(KeyedState.InstalledPackages, [name], name, { fallback: UnknownKey }), access });
+/** puts the packages the first parameter `name` names into the first library path, fetched from the repositories */
+export const InstallsPackages = (name: string) => [PackagesNamedBy(name, AmbientVerb.Writes), Ambient.libPaths.reads, { ...Ambient.option.reads, member: { from: 'constant', keys: ['repos'] } }] as const;
+export const RemovesPackages = (name: string) => [PackagesNamedBy(name, AmbientVerb.Writes), Ambient.libPaths.reads] as const;
+/** looks up whether the packages the parameter `name` names are installed, every one if it is not given */
+export const ReadsInstalled = (name: string | undefined, quoted = false) => name === undefined ? Ambient.installed.reads : { ...SetsEntryNamedBy(KeyedState.InstalledPackages, [name], name, { quoted }), access: AmbientVerb.Reads };
 /* which entry a detach removes depends on every earlier attach, so it reads the search path as well */
 export const DetachSearchPath = [
 	{ ...SetsEntryNamedBy(KeyedState.SearchPath, ['name', 'pos', 'unload', 'character.only', 'force'], 'name', { quoted: 'character.only' }), access: AmbientVerb.Kills },

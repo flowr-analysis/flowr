@@ -25,25 +25,16 @@ import type { DataflowGraph } from '../../../../../graph/graph';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { applyKills, cancelRevivedKills } from '../../../../../environments/apply-kill';
 
-/**
- * Configuration options for the basic R pipe
- */
+/** Configuration options for the basic R pipe */
 interface PipeConfiguration {
 	pipePlaceholderName: BrandedIdentifier;
-	/**
-	 * this is for a pipe like `%<>%` which assigns its lhs
-	 */
+	/** this is for a pipe like `%<>%` which assigns its lhs */
 	assignLhs:           boolean;
-	/**
-	 * Whether to return the lhs (e.g., with the TPipe)
-	 */
+	/** Whether to return the lhs (e.g., with the TPipe) */
 	returnLhs:           boolean;
-	/**
-	 * If so, also allow a symbol instead of a function as rhs, if it is the case, this automatically converts the symbol on the rhs to a function call
-	 */
+	/** If so, also allow a symbol instead of a function as rhs, if it is the case, this automatically converts the symbol on the rhs to a function call */
 	rhsMightBeSymbol?:   boolean;
 }
-
 
 /** Piping the data in shifts the arguments, so the call's own `all-but-first` marking misses them. */
 function markPipedDataMask<OtherInfo>(rhs: RFunctionCall<OtherInfo & ParentInformation>, graph: DataflowGraph): void {
@@ -63,9 +54,7 @@ function markPipedDataMask<OtherInfo>(rhs: RFunctionCall<OtherInfo & ParentInfor
 	}
 }
 
-/**
- * Support for R's pipe functions like `|>` or magrittr's `%>%`
- */
+/** Support for R's pipe functions like `|>` or magrittr's `%>%` */
 export function processPipe<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -103,7 +92,6 @@ export function processPipe<OtherInfo>(
 	});
 	const processedArguments = fCallInfo.processedArguments;
 	let information = fCallInfo.information;
-
 
 	// If this is an assigning pipe (e.g., %<>%), perform the assignment writeback using the built-in
 	// assignment processor: target <- source where target is the original lhs and source is the rhs call
@@ -158,12 +146,7 @@ export function processPipe<OtherInfo>(
 		// without a placeholder the lhs becomes the first argument of the rhs call
 		if(occurrenceIds.length === 0) {
 			dataflowLogger.trace(`Linking pipe arg ${argId} as first argument of ${rhs.info.id}`);
-			functionCallNode.args.unshift({
-				name:   undefined,
-				nodeId: argId,
-				cds:    data.cds,
-				type:   ReferenceType.Function
-			});
+			functionCallNode.args.unshift({ name: undefined, nodeId: argId, cds: data.cds, type: ReferenceType.Function });
 			information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument | EdgeType.Reads);
 		}
 

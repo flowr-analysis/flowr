@@ -81,20 +81,12 @@ class AsciiCanvas {
 	}
 }
 
-/**
- * Converts the given dataflow graph to an ASCII representation.
- */
+/** Converts the given dataflow graph to an ASCII representation. */
 export function dfgToAscii(dfg: DataflowGraph): string {
 	const { graphlib: dagreGraphlib, layout } = dagre();
 	const g: DagreGraph = new dagreGraphlib.Graph<GraphLabel, NodeLabel, EdgeLabel>();
 	const verts = Array.from(dfg.vertices(true));
-	g.setGraph({
-		nodesep: 1,
-		ranksep: 4,
-		edgesep: 0,
-		rankdir: verts.length < 15 ? 'LR' : 'TB',
-		ranker:  'longest-path',
-	});
+	g.setGraph({ nodesep: 1, ranksep: 4, edgesep: 0, rankdir: verts.length < 15 ? 'LR' : 'TB', ranker: 'longest-path' });
 	for(const [id, v] of verts) {
 		let label = NodeId.recoverName(id, dfg.idMap) ?? v.tag;
 
@@ -102,12 +94,7 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 			label = label.padStart(2, ' ').padEnd(3, ' ');
 		}
 
-		g.setNode(String(id), {
-			label,
-			width:  Math.max(3, label.length * 1.2),
-			height: 4,
-			shape:  'rectangle'
-		});
+		g.setNode(String(id), { label, width: Math.max(3, label.length * 1.2), height: 4, shape: 'rectangle' });
 	}
 	const edgesDone = new Set<string>();
 	let longestId = 0;
@@ -122,9 +109,7 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 			edgesDone.add(JSON.stringify([String(from), String(to)]));
 		}
 	}
-	layout(g, {
-		minlen: 2
-	});
+	layout(g, { minlen: 2 });
 	const canvas = new AsciiCanvas();
 	renderEdges(g, canvas);
 	renderVertices(dfg, g, canvas);
@@ -188,14 +173,7 @@ function renderVertices(dfg: DataflowGraph, g: DagreGraph, canvas: AsciiCanvas):
 	}
 }
 
-const edgesChar = {
-	vertical:    '│',
-	horizontal:  '─',
-	topLeft:     '┌',
-	topRight:    '┐',
-	bottomLeft:  '└',
-	bottomRight: '┘',
-};
+const edgesChar = { vertical: '│', horizontal: '─', topLeft: '┌', topRight: '┐', bottomLeft: '└', bottomRight: '┘' };
 function determineCornerChar(lastDirection: 'horizontal' | 'vertical' | null, px: number, py: number, tx: number, ty: number): string {
 	if(px === tx) {
 		return edgesChar.vertical;

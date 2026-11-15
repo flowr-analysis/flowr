@@ -36,7 +36,7 @@ export function makeFlowMemo(): FlowMemo {
 }
 
 /** the roles of an argument that carries no data into the result, whatever else the call does with it */
-const CarriesNoData = ArgProp.Resource | ArgProp.Flag | ArgProp.Nse | ArgProp.Callee | ArgProp.Presence | ArgProp.Handle | ArgProp.Written | ArgProp.Lazy;
+const CarriesNoData = ArgProp.Resource | ArgProp.Flag | ArgProp.Nse | ArgProp.Callee | ArgProp.Presence | ArgProp.Handle | ArgProp.Lazy;
 
 function carriesData(roles: number): boolean {
 	return (roles & CarriesNoData) === 0;
@@ -104,7 +104,8 @@ function variablesOf(dataflow: DataflowInformation, ast: NormalizedAst, id: Node
 	seen.add(id);
 	const into = new Set<BrandedIdentifier>();
 	const vertex = dataflow.graph.getVertex(id);
-	if(DfgVertex.isUse(vertex)) {
+	/* the target of an in-place setter (`setDT(dt)`) is defined by reading what it held */
+	if(DfgVertex.isUse(vertex) || (DfgVertex.isVariableDefinition(vertex) && Dataflow.targetsOf(dataflow.graph, id, EdgeType.Reads).length > 0)) {
 		const name = nameOf(ast, id);
 		if(name !== undefined && !namesFunction(dataflow, id)) {
 			into.add(name);

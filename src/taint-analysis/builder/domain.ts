@@ -64,12 +64,7 @@ export class FiniteDomainBuilder<Top extends symbol, Bottom extends symbol, Elem
 			this.setBottom(Bottom as Bottom);
 		}
 
-		return {
-			top:      this._top as Top,
-			bottom:   this._bottom as Bottom,
-			elements: new Set(this.elements),
-			leq:      new Map(this.leqMap),
-		};
+		return { top: this._top as Top, bottom: this._bottom as Bottom, elements: new Set(this.elements), leq: new Map(this.leqMap) };
 	}
 
 	build(initialElement?: Elements[number]): FiniteDomain<Top, Bottom, Elements> {

@@ -9,6 +9,7 @@
  * The result is a few megabytes, so it is deliberately not committed: the documentation job builds it
  * and publishes it to the orphan `gh-pages` branch, which keeps it off the repository's history.
  */
+import { AmbientWording } from '../src/dataflow/environments/ambient-effect';
 import fs from 'fs';
 import path from 'path';
 import { build } from 'esbuild';
@@ -73,7 +74,7 @@ async function main(): Promise<void> {
 		[name, entries.map(({ pkg, props, args, ambient }) =>
 			[pkg, props.join('|'), (args ?? []).map(([arg, roles]) => arg + ':' + roles.join('|')).join(','),
 				/* what it does to the global state, by part: `[family, [[part, access, label, members, when]]]` */
-				...ambient === undefined ? [] : [ambient.map(({ family, accesses }) => [family, accesses.map(({ part, access, label, members, when }) => [part, access, label, members, when])])]])
+				...ambient === undefined ? [] : [ambient.map(({ family, accesses }) => [family, accesses.map(a => [a.part, a.access, AmbientWording.access(a), AmbientWording.members(a), AmbientWording.conditions(a)])])]])
 		]))).replaceAll('</', '<\\/');
 	/* a replacement function, since the bundle holds `$` followed by a backtick, which a replacement string would expand */
 	const script = await pageScript();

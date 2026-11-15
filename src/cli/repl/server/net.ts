@@ -1,6 +1,4 @@
-/**
- * This is just a simple layer to allow me to mock the server's behavior in tests.
- */
+/** This is just a simple layer to allow me to mock the server's behavior in tests. */
 import net from 'net';
 import type WebSocket from 'ws';
 import { WebSocketServer } from 'ws';
@@ -9,9 +7,7 @@ import { serverLog } from './server';
 /** Function handler that should be triggered when the respective socket connects */
 export type OnConnect = (c: Socket) => void;
 
-/**
- * A generic server interface that allows us to mock the server's behavior in tests.
- */
+/** A generic server interface that allows us to mock the server's behavior in tests. */
 export interface Server {
 	/**
 	 * Register a function to be called when a new socket connects.
@@ -20,7 +16,6 @@ export interface Server {
 	onConnect(handler: OnConnect): void
 	start(port: number): void
 }
-
 
 /**
  * Whether a WebSocket client with the given `Origin` header may connect.

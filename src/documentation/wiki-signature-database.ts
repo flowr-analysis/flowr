@@ -1,8 +1,7 @@
 import { ShowDocTimings } from './doc-util/doc-timings';
 import fs from 'fs';
 import path from 'path';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../project/sigdb/reader';
 import { type FnProp, SigDbSchema } from '../project/sigdb/schema';
@@ -209,9 +208,7 @@ function pluginLink(key: string): string {
 	return `[\`${key}\`](${RemoteFlowrFilePathBaseRef}src/project/plugins/plugin-registry.ts)`;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Signature-Database
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Signature-Database */
 export class WikiSignatureDatabase extends DocMaker<'wiki/Signature Database.md'> {
 	constructor() {
 		super('wiki/Signature Database.md', module.filename, 'bundled signature database that resolves `library()` calls');

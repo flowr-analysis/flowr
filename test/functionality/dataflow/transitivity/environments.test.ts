@@ -63,6 +63,28 @@ describe('Transitivity through environments and super assignments, checked again
 		}
 	}));
 
+	describe('environments handed to functions whose body flowR does not see', () => testing(['environment-sharing'], () => {
+		const cases: readonly TransitivityCase[] = [
+			{ name: 'a package function writing into a new environment', code: 'e <- new.env()\nrlang::env_poke(e, "k", 3)\nprint(e$k)' },
+			{ name: 'a package function writing through a copy of the environment', code: 'e <- new.env()\nh <- e\nrlang::env_poke(h, "k", 3)\nprint(e$k)' },
+			{ name: 'a package function binding into the global environment', code: 'rlang::env_bind(globalenv(), kk = 5)\nprint(kk)' },
+			{ name: 'a package function writing into an environment made from a list', code: 'e <- as.environment(list(a = 1))\nrlang::env_poke(e, "a", 2)\nprint(e$a)' },
+			{ name: 'a package function writing into an environment rlang made', code: 'e <- rlang::env()\nrlang::env_poke(e, "k", 3)\nprint(e$k)' },
+			{ name: 'a package function writing into another environment', code: 'e <- new.env()\ng <- new.env()\nrlang::env_poke(g, "k", 3)\nprint(e$k)', dropped: 'env_poke' },
+			{ name: 'a package function writing into an environment handed to a function of the program', code: 'e <- new.env()\nf <- function(x) rlang::env_poke(x, "k", 3)\nf(e)\nprint(e$k)' },
+			{ name: 'a package function writing into an environment handed through two functions', code: 'e <- new.env()\nf <- function(x) rlang::env_poke(x, "k", 3)\ng <- function(y) f(y)\ng(e)\nprint(e$k)' },
+			{ name: 'a package function writing into another environment handed to a function', code: 'e <- new.env()\nd <- new.env()\nf <- function(x) rlang::env_poke(x, "k", 3)\nf(d)\nprint(e$k)', dropped: 'f(d)' },
+			{ name: 'a package function writing into an environment another package function made', code: 'e <- rlang::child_env(globalenv())\nrlang::env_poke(e, "k", 3)\nprint(e$k)' },
+			{ name: 'a package function writing into an R6 object', code: 'library(R6)\nC <- R6Class("C", public = list(n = 0))\no <- C$new()\nrlang::env_poke(o, "n", 9)\nprint(o$n)', sigdb: true },
+			{ name: 'a data.table sorted in place', code: 'library(data.table)\ndt <- data.table(a = c(2, 1))\nsetorder(dt, a)\nprint(dt$a)', sigdb: true },
+			{ name: 'data.table columns reordered in place', code: 'library(data.table)\ndt <- data.table(a = 1, b = 2)\nsetcolorder(dt, c("b", "a"))\nprint(names(dt))', sigdb: true },
+			{ name: 'a data frame turned into a data.table in place', code: 'library(data.table)\nd <- data.frame(a = 1)\nsetDT(d)\nprint(class(d)[1])', sigdb: true }
+		];
+		for(const c of cases) {
+			sliceMatchesR(parser, c);
+		}
+	}));
+
 	describe('values', () => {
 		resolvesLikeR(parser, 'a super assignment through a returned function', 'n <- 1\nmk <- function() function() n <<- 3\ninc <- mk()\ninc()\ncat(n)', '5@n');
 		resolvesLikeR(parser, 'assign to the global environment two calls deep', 'f <- function() assign("z", 4, envir = .GlobalEnv)\ng <- function() f()\ng()\ncat(z)', '4@z');

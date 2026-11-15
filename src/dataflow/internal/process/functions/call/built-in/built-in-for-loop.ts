@@ -3,12 +3,7 @@ import { hooksUnder } from '../../../../../hooks';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
-import {
-	findNonLocalReads,
-	linkCircularRedefinitionsWithinALoop,
-	produceNameSharedIdMap,
-	reapplyLoopExitPoints
-} from '../../../../linker';
+import { findNonLocalReads, linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap, reapplyLoopExitPoints } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { patchFunctionCall } from '../common';
@@ -31,7 +26,6 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { REnvironment } from '../../../../../environments/environment';
-
 
 const ScalarTypes: ReadonlySet<Value['type']> = new Set(['interval', 'number', 'string', 'logical']);
 
@@ -131,14 +125,7 @@ export function processForLoop<OtherInfo>(
 
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), nextGraph);
 
-	patchFunctionCall({
-		nextGraph,
-		rootId,
-		name,
-		data,
-		argumentProcessResult: [variable, vector, body],
-		origin:                BuiltInProcName.ForLoop
-	});
+	patchFunctionCall({ nextGraph, rootId, name, data, argumentProcessResult: [variable, vector, body], origin: BuiltInProcName.ForLoop });
 	nextGraph.addEdge(rootId, body.entryPoint, EdgeType.NonStandardEvaluation);
 	nextGraph.addEdge(name.info.id, vector.entryPoint, EdgeType.Reads);
 

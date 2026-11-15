@@ -7,11 +7,7 @@ import { expensiveTrace, log, LogLevel } from '../util/log';
 import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { guard } from '../util/assert';
 import type { MergeableRecord } from '../util/objects';
-import type {
-	NormalizedAst,
-	ParentInformation,
-	RNodeWithParent
-} from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation, RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
@@ -229,10 +225,7 @@ function reconstructBodyWithHeader(header: PrettyPrintLine, body: Code, onEmpty:
 			{ line: '}', indent: header.indent }
 		];
 	} else {
-		return [
-			header,
-			...indentBy(body, 1)
-		];
+		return [header, ...indentBy(body, 1)];
 	}
 }
 
@@ -570,11 +563,8 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
 	foldBinaryOp: reconstructBinaryOp,
 	foldPipe:     reconstructBinaryOp,
 	foldUnaryOp:  reconstructUnaryOp,
-	other:        {
-		foldComment:       reconstructAsLeaf,
-		foldLineDirective: reconstructAsLeaf
-	},
-	loop: {
+	other:        { foldComment: reconstructAsLeaf, foldLineDirective: reconstructAsLeaf },
+	loop:         {
 		foldFor:    reconstructForLoop,
 		foldRepeat: reconstructRepeatLoop,
 		foldWhile:  reconstructWhileLoop,
@@ -682,11 +672,7 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 				parts.push(selection.inlineFull === 'banner' ? `${fileBanner(ast.ast.files[i].filePath)}\n${code}` : code);
 			}
 		}
-		return {
-			code:                  parts.join('\n'),
-			linesWithAutoSelected: linesWithAutoSelected.size,
-			inlineWarnings:        warnings
-		};
+		return { code: parts.join('\n'), linesWithAutoSelected: linesWithAutoSelected.size, inlineWarnings: warnings };
 	}
 
 	const indices = selection.reconstructFiles === 'all' ? ast.ast.files.map((_, i) => i) : (selection.reconstructFiles ?? [0]);

@@ -3,8 +3,7 @@ import type { DeepPartial } from 'ts-essentials';
 import { type KnownParser, type KnownParserInformation, ParserName } from '../r-bridge/parser';
 import { executeQueries, Query, type Queries, type QueryArgumentsWithType, type QueryResults, type SingleQueryResult, type SupportedQueryTypes } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { decorateAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type NormalizedAst, decorateAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
 import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
@@ -13,8 +12,7 @@ import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-build
 import { type GetSearchElements, runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
-import type { RParseRequest, RParseRequestFromFile } from '../r-bridge/retriever';
-import { isParseRequest, fileProtocol, requestFromInput } from '../r-bridge/retriever';
+import { type RParseRequest, type RParseRequestFromFile, isParseRequest, fileProtocol, requestFromInput } from '../r-bridge/retriever';
 import { isFilePath } from '../util/files';
 import type { FlowrFileProvider } from './context/flowr-file';
 import type { Tree } from 'web-tree-sitter';
@@ -45,9 +43,7 @@ export interface FlowrAnalysisOptions {
 	readonly gas?: GasOverrides;
 }
 
-/**
- * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
- */
+/** Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state. */
 export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser> extends ReadonlyFlowrAnalysisProvider<Parser> {
 	/**
 	 * Returns project context information.
@@ -68,14 +64,10 @@ export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser>
 	 * @see {@link FlowrAnalysisProvider.addRequest|addRequest} - for adding analysis requests to the analyzer.
 	 */
 	addFile(...f: (string | FlowrFileProvider<string> | RParseRequestFromFile)[]): void
-	/**
-	 * Reset the analyzer state, including the context and the cache.
-	 */
+	/** Reset the analyzer state, including the context and the cache. */
 	reset(): void;
 
-	/**
-	 * Receive cache invalidation events from the cache and propagate them to the context and other relevant components.
-	 */
+	/** Receive cache invalidation events from the cache and propagate them to the context and other relevant components. */
 	receive(event: InvalidationEvent): void
 }
 
@@ -113,9 +105,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekParse} - to get the parse output if already available without triggering a new computation.
 	 */
 	parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>>
-	/**
-	 * Peek at the parse output for the request, if it was already computed.
-	 */
+	/** Peek at the parse output for the request, if it was already computed. */
 	peekParse(): NonNullable<AnalyzerCacheType<Parser>['parse']> | undefined;
 	/**
 	 * Parse standalone R code provided as a string or via the `file://` protocol.
@@ -129,9 +119,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekNormalize} - to get the normalized AST if already available without triggering a new computation.
 	 */
 	normalize(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;
-	/**
-	 * Peek at the normalized abstract syntax tree for the request, if it was already computed.
-	 */
+	/** Peek at the normalized abstract syntax tree for the request, if it was already computed. */
 	peekNormalize(): NormalizedAst & PipelinePerStepMetaInformation | undefined;
 
 	/**
@@ -146,9 +134,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekDataflow} - to get the dataflow graph if already available without triggering a new computation.
 	 */
 	dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation>;
-	/**
-	 * Peek at the dataflow graph for the request, if it was already computed.
-	 */
+	/** Peek at the dataflow graph for the request, if it was already computed. */
 	peekDataflow(): DataflowInformation & PipelinePerStepMetaInformation | undefined;
 	/**
 	 * Get the control flow graph (CFG) for the request.
@@ -157,17 +143,11 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekControlflow} - to get the CFG if already available without triggering a new computation.
 	 */
 	controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation>;
-	/**
-	 * Peek at the control flow graph (CFG) for the request, if it was already computed.
-	 */
+	/** Peek at the control flow graph (CFG) for the request, if it was already computed. */
 	peekControlflow(simplifications?: readonly CfgSimplificationPassName[]): ControlFlowInformation | undefined;
-	/**
-	 * Calculate the call graph for the request.
-	 */
+	/** Calculate the call graph for the request. */
 	callGraph(force?: boolean): Promise<CallGraph>;
-	/**
-	 * Peek at the call graph for the request, if it was already computed.
-	 */
+	/** Peek at the call graph for the request, if it was already computed. */
 	peekCallGraph(): CallGraph | undefined;
 	/**
 	 * A value computed from the current analysis once per `key` (e.g. the function computing it), shared by
@@ -205,9 +185,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 */
 	query<Types extends SupportedQueryTypes = SupportedQueryTypes>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>>;
 	query<Type extends SupportedQueryTypes>(query: QueryArgumentsWithType<Type>, options?: FlowrAnalysisOptions): Promise<SingleQueryResult<Type>>;
-	/**
-	 * Access the taint analysis API for the request.
-	 */
+	/** Access the taint analysis API for the request. */
 	taint<Names extends readonly string[] = []>(): TaintAnalysisBuilder<Names>;
 	/**
 	 * Run a search on the current analysis.
@@ -228,7 +206,6 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	/** Discard every {@link updateConfig} override made so far and invalidate the cached analysis. */
 	resetConfig(): void;
 }
-
 
 /**
  * Central class for conducting analyses with FlowR.
@@ -272,8 +249,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public parserInformation(): KnownParserInformation {
-		this.parserInfo ??= this.parser.information(this);
-		return this.parserInfo;
+		return this.parserInfo ??= this.parser.information(this);
 	}
 
 	public inspectContext(): ReadOnlyFlowrAnalyzerContext {
@@ -307,17 +283,11 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree {
 		const request = isParseRequest(data) ? data : requestFromInput(data);
-		if(this.parser.name === ParserName.TreeSitter) {
-			return this.parser.parse(request, this.ctx);
-		} else {
-			const ts = new TreeSitterExecutor();
-			return ts.parse(request, this.ctx);
-		}
+		return this.parser.name === ParserName.TreeSitter ? this.parser.parse(request, this.ctx) : new TreeSitterExecutor().parse(request, this.ctx);
 	}
 
 	public normalizeStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): NormalizedAst {
-		const parse = this.parseStandalone(data);
-		return decorateAst(normalizeTreeSitterTreeToAst([{ parsed: parse, filePath: undefined }], true), {});
+		return decorateAst(normalizeTreeSitterTreeToAst([{ parsed: this.parseStandalone(data), filePath: undefined }], true), {});
 	}
 
 	public addRequest(...request: (RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string)[]): this {
@@ -368,7 +338,6 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public async runFull(force?: boolean, options?: FlowrAnalysisOptions): Promise<void> {
 		await this.ctx.gas.withGas(options?.gas, () => this.dataflow(force));
-		return;
 	}
 
 	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation> {
@@ -397,9 +366,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.ctx.gas.withGas(options?.gas, () => Array.isArray(query) ? executeQueries({ analyzer: this }, query as Queries) : Query.one({ analyzer: this }, query as Query));
 	}
 
-	public async runSearch<
-		Search extends FlowrSearchLike
-	>(search: Search, options?: FlowrAnalysisOptions): Promise<GetSearchElements<SearchOutput<Search>>> {
+	public async runSearch<Search extends FlowrSearchLike>(search: Search, options?: FlowrAnalysisOptions): Promise<GetSearchElements<SearchOutput<Search>>> {
+
 		return this.ctx.gas.withGas(options?.gas, () => runSearch(search, this));
 	}
 

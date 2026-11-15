@@ -34,11 +34,7 @@ function killBuiltInEnv(env: IEnvironment | undefined): SizedEnvironment {
 		memory.set(k, v.filter(v => v.type !== ReferenceType.BuiltInFunction && v.type !== ReferenceType.BuiltInConstant && !('processor' in v)));
 	}
 
-	return {
-		id:     env.id,
-		parent: killBuiltInEnv(env.parent),
-		memory
-	};
+	return { id: env.id, parent: killBuiltInEnv(env.parent), memory };
 }
 
 /**
@@ -53,10 +49,7 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 		if(vertex.environment) {
 			vertex = {
 				...vertex,
-				environment: {
-					...vertex.environment,
-					current: killBuiltInEnv(v.environment?.current)
-				}
+				environment: { ...vertex.environment, current: killBuiltInEnv(v.environment?.current) }
 			} as DataflowGraphVertexInfo;
 		}
 
@@ -65,10 +58,7 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 				...vertex,
 				subflow: {
 					...vertex.subflow,
-					environment: {
-						...vertex.subflow.environment,
-						current: killBuiltInEnv(vertex.subflow.environment.current)
-					}
+					environment: { ...vertex.subflow.environment, current: killBuiltInEnv(vertex.subflow.environment.current) }
 				}
 			} as DataflowGraphVertexInfo;
 		}

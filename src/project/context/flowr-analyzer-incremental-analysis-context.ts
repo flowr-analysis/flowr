@@ -7,11 +7,8 @@ import type { FilePath } from './flowr-file';
 import type { ParseStepOutput } from '../../r-bridge/parser';
 import fs from 'fs';
 
-
 export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
-	/**
-	 * The name of this context.
-	 */
+	/** The name of this context. */
 	readonly name: string;
 
 	getOldParseResultOf(filePath: FilePath): Parser.Tree | undefined;
@@ -29,15 +26,11 @@ export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
  */
 type ShouldReparseTest = (filePath: FilePath, ctx: FlowrAnalyzerContext) => boolean;
 
-/**
- * Information to carry over for future incremental builds
- */
+/** Information to carry over for future incremental builds */
 export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAnalyzerIncrementalAnalysisContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-incremental-analysis-context';
 
-	/**
-	 * The files that have been changed since the last analysis mapping to their old content.
-	 */
+	/** The files that have been changed since the last analysis mapping to their old content. */
 	private changedFilesWithOldContent: Map<FilePath, string | undefined> = new Map();
 	private oldParseResults:            Map<FilePath, Parser.Tree> = new Map();
 	private readonly lastKnownMtime:    Map<FilePath, number> = new Map();

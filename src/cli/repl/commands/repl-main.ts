@@ -24,23 +24,15 @@ export interface ReplOutput {
  * Default repl output that redirects everything to the stdout and stderror channels (linked to `console`).
  * @see ReplOutput
  */
-export const standardReplOutput: ReplOutput = {
-	formatter: formatter,
-	stdout:    console.log,
-	stderr:    console.error
-};
+export const standardReplOutput: ReplOutput = { formatter: formatter, stdout: console.log, stderr: console.error };
 
-
-/**
- * Information passed to each {@link ReplCommand#fn}.
- */
+/** Information passed to each {@link ReplCommand#fn}. */
 export interface ReplCommandInformation {
 	output:              ReplOutput,
 	allowRSessionAccess: boolean,
 	analyzer:            ReadonlyFlowrAnalysisProvider,
 	remainingLine:       string,
 }
-
 
 /**
  * Information passed to each {@link ReplCodeCommand#fn}.
@@ -90,9 +82,7 @@ interface ParsedReplLine {
 	remaining: string[];
 }
 
-/**
- * Repl command that uses the {@link FlowrAnalyzer}
- */
+/** Repl command that uses the {@link FlowrAnalyzer} */
 export interface ReplCodeCommand extends ReplBaseCommand {
 	isCodeCommand: true;
 	/**

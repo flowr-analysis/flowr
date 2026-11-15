@@ -1,4 +1,4 @@
-import { extractCfg } from '../../control-flow/control-flow-graph';
+import { extractCfg, type ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { KnownParser } from '../../r-bridge/parser';
@@ -8,7 +8,6 @@ import type { GeneralDocContext } from '../wiki-mk/doc-context';
 import type { DataflowInformation } from '../../dataflow/info';
 import { cfgToMermaid } from '../../util/mermaid/cfg';
 import { codeBlock } from './doc-code';
-import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import { type CfgSimplificationPassName, DefaultCfgSimplificationOrder, simplifyControlFlowInformation } from '../../control-flow/cfg-simplification';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 
@@ -18,24 +17,16 @@ interface GetCfgReturn {
 	dataflow: DataflowInformation
 }
 
-/**
- * Returns the control flow graph for the given code.
- */
+/** Returns the control flow graph for the given code. */
 export async function getCfg(parser: KnownParser, code: string, simplifications: readonly CfgSimplificationPassName[] = []): Promise<GetCfgReturn> {
 	const context = contextFromInput(code);
 	const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
 	const dataflow = result.dataflow;
 	const cfg = simplifyControlFlowInformation(extractCfg(dataflow), { ast: result.normalize, dfg: dataflow.graph, ctx: context }, [...DefaultCfgSimplificationOrder, ...simplifications]);
-	return {
-		info: cfg,
-		ast:  result.normalize,
-		dataflow
-	};
+	return { info: cfg, ast: result.normalize, dataflow };
 }
 
-/**
- * Serializes the given control flow graph to a mermaid diagram.
- */
+/** Serializes the given control flow graph to a mermaid diagram. */
 export function printCfg(cfg: ControlFlowInformation, ast: NormalizedAst, prefix = 'flowchart TD\n', simplify = false) {
 	return `
 ${codeBlock('mermaid', cfgToMermaid(cfg, ast, { prefix, simplify }))}
@@ -51,9 +42,7 @@ export interface PrintCfgOptions {
 	readonly ctx?:             GeneralDocContext;
 }
 
-/**
- * Generates and prints the control flow graph for the given code, along with optional metadata and the original code.
- */
+/** Generates and prints the control flow graph for the given code, along with optional metadata and the original code. */
 export async function printCfgCode(parser: KnownParser, code: string, { showCode = true, openCode = false, prefix = 'flowchart TD\n', simplifications = [], simplify = false, ctx }: PrintCfgOptions = {}) {
 	const now = performance.now();
 	const res = await getCfg(parser, code, simplifications);

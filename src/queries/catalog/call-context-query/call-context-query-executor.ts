@@ -1,5 +1,5 @@
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { isArray } from '../../../util/collections/arrays';
+import { isArray, uniqueArrayBy } from '../../../util/collections/arrays';
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
@@ -31,24 +31,10 @@ import { ArrayQueue } from '../../../util/collections/queue';
 import { baseRExportOwner } from '../../../util/r-base-packages';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 
+/** The report of what was collected, dropping results identical to an earlier one of the same subkind. */
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
-	const result: CallContextQueryKindResult = {};
-	for(const [kind, collected] of collector.store) {
-		const subkinds = {} as CallContextQueryKindResult[string]['subkinds'];
-		for(const [subkind, values] of collected) {
-			if(!Array.isArray(subkinds[subkind])) {
-				subkinds[subkind] = [];
-			}
-			const collectIn = subkinds[subkind];
-			for(const value of values) {
-				collectIn.push(value);
-			}
-		}
-		result[kind] = {
-			subkinds
-		};
-	}
-	return result;
+	return Object.fromEntries(collector.store.entries().map(([kind, collected]) =>
+		[kind, { subkinds: Object.fromEntries(collected.entries().map(([subkind, values]) => [subkind, uniqueArrayBy(values, v => JSON.stringify(v))])) }]));
 }
 
 function isSubCallQuery(query: CallContextQuery): query is SubCallContextQueryFormat {
@@ -106,10 +92,7 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 			callName:   promoteCallName(q.callName, q.callNameExact),
 			exactNames: exactNamesOf(q.callName, q.callNameExact),
 			idx,
-			fileFilter: q.fileFilter && {
-				...q.fileFilter,
-				filter: promoteCallName(q.fileFilter.filter)
-			}
+			fileFilter: q.fileFilter && { ...q.fileFilter, filter: promoteCallName(q.fileFilter.filter) }
 		};
 		if(!isSubCallQuery(q)) {
 			return promoted;
@@ -123,7 +106,6 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 
 	return { promotedQueries, requiresCfg };
 }
-
 
 /**
  * Where the function of a call comes from: the functions it calls and the definition of its name, or the expression
@@ -235,23 +217,6 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: bo
 	}
 
 	return aliases;
-}
-
-function removeIdenticalDuplicates(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>) {
-	for(const [, collected] of collector.store) {
-		for(const [subkind, values] of collected) {
-			const seen = new Set<string>();
-			const newValues = values.filter(v => {
-				const str = JSON.stringify(v);
-				if(seen.has(str)) {
-					return false;
-				}
-				seen.add(str);
-				return true;
-			});
-			collected.set(subkind, newValues);
-		}
-	}
 }
 
 function doesFilepathMatch(file: string | undefined, filter: FileFilter<PromotedCallTest> | undefined): boolean {
@@ -431,10 +396,5 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 		}
 	}
 
-	removeIdenticalDuplicates(initialIdCollector);
-
-	return {
-		...metaSince(now),
-		kinds: makeReport(initialIdCollector)
-	};
+	return { ...metaSince(now), kinds: makeReport(initialIdCollector) };
 }

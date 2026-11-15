@@ -2,9 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall, type ProcessKnownFunctionCallResult } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type {
-	PotentiallyEmptyRArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -163,10 +161,7 @@ export function symbolArgumentsToStrings<OtherInfo>(args: readonly PotentiallyEm
 					info:     arg.value.info,
 					lexeme:   arg.value.lexeme,
 					location: arg.value.location,
-					content:  {
-						quotes: 'none',
-						str:    arg.value.lexeme
-					}
+					content:  { quotes: 'none', str: arg.value.lexeme }
 				}
 			};
 		}
@@ -181,11 +176,5 @@ function processStringBasedAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	rootId: NodeId
 ) {
-	return processKnownFunctionCall({
-		name,
-		args:   symbolArgumentsToStrings(args),
-		rootId,
-		data,
-		origin: BuiltInProcName.Access
-	});
+	return processKnownFunctionCall({ name, args: symbolArgumentsToStrings(args), rootId, data, origin: BuiltInProcName.Access });
 }

@@ -1,11 +1,8 @@
 import { FlowrGithubBaseRef } from './doc-util/doc-files';
 import { codeBlock } from './doc-util/doc-code';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Onboarding
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Onboarding */
 export class WikiOnboarding extends DocMaker<'wiki/Onboarding.md'> {
 	constructor() {
 		super('wiki/Onboarding.md', module.filename, 'developer onboarding process');

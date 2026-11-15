@@ -14,14 +14,5 @@ import type { JsonEntry } from '../../../json/format';
 export function normalizeComment(data: NormalizerData, obj: JsonEntry): RComment {
 	const { location, content } = retrieveMetaStructure(obj);
 	guard(content.startsWith('#'), 'comment must start with #');
-	return {
-		type:   RType.Comment,
-		location,
-		lexeme: content,
-		info:   {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: content
-		}
-	};
+	return { type: RType.Comment, location, lexeme: content, info: { fullRange: data.currentRange, adToks: [], fullLexeme: content } };
 }

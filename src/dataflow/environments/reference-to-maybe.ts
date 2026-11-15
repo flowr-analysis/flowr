@@ -86,9 +86,7 @@ export function makeAllMaybe(references: readonly IdentifierReference[] | undefi
 	return references?.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, applyCds)) ?? [];
 }
 
-/**
- * apply the given cds to all elements in the graph and also transform the given references similar to {@link makeAllMaybe}.
- */
+/** apply the given cds to all elements in the graph and also transform the given references similar to {@link makeAllMaybe}. */
 export function applyCdsToAllInGraphButConstants(graph: DataflowGraph, references: readonly IdentifierReference[], cds: readonly ControlDependency[]): void {
 	for(const [,v] of graph.vertices(true)) {
 		if(!DfgVertex.isValue(v)) {

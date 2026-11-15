@@ -89,12 +89,7 @@ function isSameEnvironment<OtherInfo>(a: RNode<OtherInfo & ParentInformation> | 
 type RmFormalRole = 'names' | 'frame' | 'modifier';
 
 /** The formals of `rm(..., list = character(), pos = -1, envir = as.environment(pos), inherits = FALSE)`. */
-const RmFormals: Readonly<Record<BrandedIdentifier, RmFormalRole>> = {
-	list:     'names',
-	pos:      'frame',
-	envir:    'frame',
-	inherits: 'modifier'
-};
+const RmFormals: Readonly<Record<BrandedIdentifier, RmFormalRole>> = { list: 'names', pos: 'frame', envir: 'frame', inherits: 'modifier' };
 
 /** Whether a `pos`/`envir` value still names the frame the call happens in, so the removal stays local. */
 function targetsCurrentFrame<OtherInfo>(

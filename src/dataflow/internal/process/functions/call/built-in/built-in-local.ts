@@ -22,7 +22,6 @@ import { Resolve } from '../../../../../environments/resolve-helper';
 import { REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
 
-
 export interface LocalFunctionConfiguration {
 	args: {
 		/** The expression in `local(expr, env)` */
@@ -62,14 +61,7 @@ export function processLocal<OtherInfo>(
 	const envirResolution = envirOf(envirRouting);
 	const dfEnv = env ? processDataflowFor(env, data) : DataflowInformation.initialize(rootId, data);
 	if(ControlFlow.alwaysExits(dfEnv, data.cds)) {
-		patchFunctionCall({
-			nextGraph:             dfEnv.graph,
-			rootId,
-			name,
-			data,
-			argumentProcessResult: [dfEnv],
-			origin:                BuiltInProcName.Local
-		});
+		patchFunctionCall({ nextGraph: dfEnv.graph, rootId, name, data, argumentProcessResult: [dfEnv], origin: BuiltInProcName.Local });
 		return dfEnv;
 	}
 

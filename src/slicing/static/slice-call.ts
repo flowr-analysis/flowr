@@ -43,9 +43,7 @@ function linkedFunctionsOf(defs: readonly NodeId[], graph: DataflowGraph): Reado
 	return linked;
 }
 
-/**
- * Returns the function call targets (definitions) by the given caller
- */
+/** Returns the function call targets (definitions) by the given caller */
 export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext, ruledOut?: ReadonlySet<NodeId>): [ReadonlySet<DataflowGraphVertexInfo>, REnvironmentInformation] {
 	guard(dataflowGraph.hasVertex(callerInfo.id), () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`);
 	// bind with call-local environments during slicing

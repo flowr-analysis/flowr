@@ -29,9 +29,7 @@ export interface FindingContext {
 	readonly functionName?: string;
 }
 
-/**
- * A report message: either a constant string, or a function rendering a message per {@link FindingContext|finding}.
- */
+/** A report message: either a constant string, or a function rendering a message per {@link FindingContext|finding}. */
 export type ReportTemplate = string | ((finding: FindingContext) => string);
 
 /**
@@ -41,9 +39,7 @@ export type ReportTemplate = string | ((finding: FindingContext) => string);
 export const findingToken: (finding: FindingContext) => string | undefined
 	= finding => finding.functionName ?? finding.lexeme;
 
-/**
- * Assembles the {@link FindingContext} for a single finding from its node id and resolved node/location.
- */
+/** Assembles the {@link FindingContext} for a single finding from its node id and resolved node/location. */
 export function buildFindingContext(
 	name: string,
 	nodeId: NodeId,

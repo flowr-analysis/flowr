@@ -1,5 +1,6 @@
 import { Ternary } from '../../../../../../util/logic';
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import type { ResolveInfo } from '../../../../../eval/resolve/alias-tracking';
 import type { ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -8,6 +9,7 @@ import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { type BrandedIdentifier, Identifier } from '../../../../../environments/identifier';
 import { MatchArgs } from '../../../../../graph/match-args';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { AmbientStateName, type KeyedState, UnknownKey } from '../../../../../environments/ambient-state-name';
 
 /**
@@ -47,7 +49,7 @@ export type AmbientKeys = {
 };
 
 /** The strings the value at `value` may have, `undefined` if we do not know. */
-export function stringValuesOf<OtherInfo>(value: RNodeWithParent<OtherInfo> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): BrandedIdentifier[] | undefined {
+export function stringValuesOf<OtherInfo>(value: RNodeWithParent<OtherInfo> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation> | ResolveInfo): BrandedIdentifier[] | undefined {
 	if(value === undefined) {
 		return undefined;
 	} else if(RString.is(value)) {
@@ -71,7 +73,7 @@ function quotedName<OtherInfo>(node: RNodeWithParent<OtherInfo>): BrandedIdentif
 }
 
 /** Whether the value at `node` is `TRUE`, {@link Ternary.Never} if there is no flag. */
-export function flagValue<OtherInfo>(node: RNodeWithParent<OtherInfo> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): Ternary {
+export function flagValue<OtherInfo>(node: RNodeWithParent<OtherInfo> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation> | ResolveInfo): Ternary {
 	const values = node === undefined ? [] : NodeValue.setOf(node.info.id, data)?.elements;
 	if(node === undefined) {
 		return Ternary.Never;
@@ -82,11 +84,14 @@ export function flagValue<OtherInfo>(node: RNodeWithParent<OtherInfo> | undefine
 	return isTrue.every(Boolean) ? Ternary.Always : isTrue.some(Boolean) ? Ternary.Maybe : Ternary.Never;
 }
 
-function parameterKeys<OtherInfo>(keys: AmbientKeys & { readonly from: 'parameter' }, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): readonly BrandedIdentifier[] {
+function parameterKeys<OtherInfo>(keys: AmbientKeys & { readonly from: 'parameter' }, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation> | ResolveInfo): readonly BrandedIdentifier[] {
 	const bound = MatchArgs.toNames(args, keys.signature);
-	const value = keys.names.map(n => bound.get(n)?.value).find(v => v !== undefined);
+	const given = keys.names.map(n => bound.get(n)).find(a => a?.value !== undefined);
+	const value = given?.value;
 	if(value === undefined) {
-		return keys.fallback === undefined ? [] : [keys.fallback];
+		return args.some(forwardsDots) ? [UnknownKey] : keys.fallback === undefined ? [] : [keys.fallback];
+	} else if(given !== undefined && forwardsDots(given)) {
+		return [UnknownKey];
 	}
 	/* whether the argument is looked up as a value, which the flag switches on for a quoted one */
 	const looksUp = typeof keys.quoted === 'string' ? flagValue(bound.get(keys.quoted)?.value, data) : keys.quoted ? Ternary.Never : Ternary.Always;
@@ -95,8 +100,13 @@ function parameterKeys<OtherInfo>(keys: AmbientKeys & { readonly from: 'paramete
 	return name === undefined ? values : [name, ...values];
 }
 
-/** The entries the call with the arguments `args` names, see {@link AmbientKeys}. */
-export function keysOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): readonly BrandedIdentifier[] {
+/** Whether the argument forwards `...`, which may stand for any number of arguments of any name. */
+export function forwardsDots<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo>): boolean {
+	return arg !== EmptyArgument && arg.name === undefined && RSymbol.is(arg.value) && arg.value.content === Identifier.dotdotdot();
+}
+
+/** The entries the call with the arguments `args` names, see {@link AmbientKeys}; a forwarded `...` names entries we cannot name. */
+export function keysOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation> | ResolveInfo): readonly BrandedIdentifier[] {
 	switch(keys.from) {
 		case 'constant':
 			return keys.keys;
@@ -114,7 +124,25 @@ export function keysOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyE
 			return parameterKeys(keys, args, data);
 		case 'unnamed':
 			return args.flatMap((a): BrandedIdentifier | readonly BrandedIdentifier[] => a === EmptyArgument || a.name !== undefined || a.value === undefined ? []
-				: (keys.quoted ? quotedName(a.value) : undefined) ?? stringValuesOf(a.value, data) ?? [UnknownKey]);
+				: forwardsDots(a) ? [UnknownKey] : (keys.quoted ? quotedName(a.value) : undefined) ?? stringValuesOf(a.value, data) ?? [UnknownKey]);
+	}
+}
+
+/** The ids of the arguments naming the entries of a call with the arguments `args`, see {@link keysOf}; a forwarded `...` names some as well. */
+export function keyArgumentsOf<OtherInfo>(keys: AmbientKeys, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]): NodeId[] {
+	const given = args.filter((a): a is Exclude<typeof a, typeof EmptyArgument> => a !== EmptyArgument);
+	switch(keys.from) {
+		case 'constant':
+			return [];
+		case 'argument-names':
+			return given.filter(a => a.name === undefined ? !RString.is(a.value) : !keys.ignore?.includes(Identifier.getName(a.name.content))).map(a => a.info.id);
+		case 'unnamed':
+			return given.filter(a => a.name === undefined && a.value !== undefined).map(a => a.info.id);
+		case 'parameter': {
+			const bound = MatchArgs.toNames(args, keys.signature);
+			const named = keys.names.map(n => bound.get(n)).find(a => a?.value !== undefined);
+			return named === undefined ? given.filter(forwardsDots).map(a => a.info.id) : [named.info.id];
+		}
 	}
 }
 

@@ -118,9 +118,7 @@ export class PipelineExecutor<P extends Pipeline> {
 		this.input = input;
 	}
 
-	/**
-	 * Retrieve the {@link Pipeline|pipeline} that is currently being.
-	 */
+	/** Retrieve the {@link Pipeline|pipeline} that is currently being. */
 	public getPipeline(): P {
 		return this.pipeline;
 	}
@@ -148,7 +146,6 @@ export class PipelineExecutor<P extends Pipeline> {
 		guard(this.currentExecutionStage === PipelineStepStage.OncePerFile, 'Cannot switch to next stage, already in per-request stage.');
 		this.currentExecutionStage = PipelineStepStage.OncePerRequest;
 	}
-
 
 	public getResults(intermediate?: false): PipelineOutput<P>;
 	public getResults(intermediate: true): Partial<PipelineOutput<P>>;
@@ -217,10 +214,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	public updateRequest(newRequestData: PipelinePerRequestInput<P>): void {
 		const requestStep = this.pipeline.firstStepPerRequest;
 		guard(this.stepCounter >= requestStep, 'Cannot reset request prior to once-per-request stage');
-		this.input = {
-			...(this.input as object),
-			...newRequestData
-		} as PipelineInput<P>;
+		this.input = { ...(this.input as object), ...newRequestData } as PipelineInput<P>;
 		this.stepCounter = requestStep;
 		// clear the results for all steps with an index >= firstStepPerRequest, this is more of a sanity check
 		for(let i = requestStep; i < this.length; i++) {

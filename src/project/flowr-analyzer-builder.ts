@@ -101,9 +101,7 @@ export class FlowrAnalyzerBuilder {
 		key: K,
 		value: ConfigValueAt<K>
 	): this;
-	/**
-	 * Set a specific value in the configuration used by the resulting analyzer.
-	 */
+	/** Set a specific value in the configuration used by the resulting analyzer. */
 	public configure(key: ValidFlowrConfigPaths | EngineConfigPath, value: unknown): this {
 		FlowrConfig.setInConfigInPlace(this.flowrConfig, key, value as never);
 		return this;
@@ -205,11 +203,7 @@ export class FlowrAnalyzerBuilder {
 		if(this.flowrConfig.solver.sigdb.enabled && this.flowrConfig.solver.sigdb.eagerlyLoad) {
 			context.deps.eagerlyLoadSignatureDatabases();
 		}
-		const cache = FlowrAnalyzerCache.create({
-			parser: this.parser,
-			context,
-			...(this.input ?? {})
-		});
+		const cache = FlowrAnalyzerCache.create({ parser: this.parser, context, ...(this.input ?? {}) });
 
 		return new FlowrAnalyzer(
 			this.parser,

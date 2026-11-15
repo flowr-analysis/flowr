@@ -71,7 +71,6 @@ function lastElementInNesting(i: number, list: Readonly<DepthList>, depth: numbe
 	return true;
 }
 
-
 function initialIndentation(i: number, depth: number, deadDepths: Set<number>, nextDepth: number, list: Readonly<DepthList>, f: OutputFormatter): string {
 	let result = `${i === 0 ? '' : '\n'}${f.getFormatString({ style: FontStyles.Faint })}`;
 	// we know there never is something on the same level as the expression list
@@ -150,7 +149,6 @@ function findErrors(node: SyntaxNode): SyntaxNode[] {
 
 	return errors;
 }
-
 
 export const parseCommand: ReplCodeCommand = {
 	description:   'Prints ASCII Art of the parsed, unmodified AST',

@@ -5,9 +5,7 @@ import { NamedAccessOperators } from '../../../../../dataflow/environments/built
 import type { RArgument, RUnnamedArgument } from './r-argument';
 import type { EmptyArgument } from './r-function-call';
 
-/**
- * Represents an R Indexing operation with `$`, `@`, `[[`, or `[`.
- */
+/** Represents an R Indexing operation with `$`, `@`, `[[`, or `[`. */
 interface RAccessBase<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	readonly type: RType.Access;
 	/** the accessed container/variable/expression */
@@ -15,9 +13,7 @@ interface RAccessBase<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	operator:      '[' | '[[' | '$' | '@';
 }
 
-/**
- * Represents an R named access operation with `$` or `@`, the field is a string.
- */
+/** Represents an R named access operation with `$` or `@`, the field is a string. */
 export interface RNamedAccess<Info = NoInfo> extends RAccessBase<Info> {
 	operator: '$' | '@';
 	access:   [RUnnamedArgument<Info>];
@@ -46,15 +42,11 @@ export const RAccess = {
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RAccess<Info> {
 		return node?.type === RType.Access;
 	},
-	/**
-	 * Type guard for {@link RNamedAccess} nodes.
-	 */
+	/** Type guard for {@link RNamedAccess} nodes. */
 	isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RNamedAccess<Info> {
 		return RAccess.is(node) && RAccess.isNamedOperator(node.operator);
 	},
-	/**
-	 * Type guard for {@link RIndexAccess} nodes.
-	 */
+	/** Type guard for {@link RIndexAccess} nodes. */
 	isIndex<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RIndexAccess<Info> {
 		return RAccess.is(node) && !RAccess.isNamedOperator(node.operator);
 	},

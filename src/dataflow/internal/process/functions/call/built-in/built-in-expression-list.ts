@@ -590,10 +590,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 			}
 			const shadowing = localDefs.filter(d => isNotUndefined(d.name) && idMap.has(functionCall) && RNode.findEnclosing(d.nodeId, idMap, n => n.info.id === functionCall) === undefined);
 			if(shadowing.length > 0) {
-				environment = {
-					current: environment.current.removeAll(shadowing as { name: BrandedIdentifier }[]),
-					level:   environment.level
-				};
+				environment = { current: environment.current.removeAll(shadowing as { name: BrandedIdentifier }[]), level: environment.level };
 			}
 			const dependencies = cds === undefined ? callDependencies : [...callDependencies ?? [], ...cds];
 			inputEnvironment = alternatives ? REnvironment.append(inputEnvironment, environment) : REnvironment.overwrite(inputEnvironment, environment, dependencies);

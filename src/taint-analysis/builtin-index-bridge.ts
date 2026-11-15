@@ -23,13 +23,7 @@ export function taintMappingFromBuiltInIndex<Domain extends AnyAbstractDomain>(
 			return undefined;
 		}
 
-		return {
-			identifier: i,
-			condition:  {
-				argSignature: { sig, props: argProps },
-				conditionFn
-			}
-		};
+		return { identifier: i, condition: { argSignature: { sig, props: argProps }, conditionFn } };
 	});
 
 	return mappings.filter(isNotUndefined);

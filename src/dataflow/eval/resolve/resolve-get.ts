@@ -47,8 +47,5 @@ export function resolveAsGet(this: void, args: BuiltInEvalHandlerArgs): Value {
 		return Top;
 	}
 	const name = Resolve.toSingleString((matched[0] as RNodeWithParent).info.id, args);
-	if(name === undefined) {
-		return Top;
-	}
-	return trackAliasInEnvironments(name, environment, args);
+	return name === undefined ? Top : trackAliasInEnvironments(name, environment, args);
 }

@@ -21,9 +21,7 @@ import { AbstractInterpreter, type AbsintAnalysis } from '../../../abstract-inte
 import { log } from '../../../util/log';
 import { metaSince } from '../../query-meta';
 
-/**
- * Executes the given abstract interpretation queries using the provided analyzer.
- */
+/** Executes the given abstract interpretation queries using the provided analyzer. */
 export async function executeAbsintQuery<AbsintType extends AbsintQueryType>({ analyzer }: BasicQueryData, queries: readonly AbsintQuery<AbsintType>[]): Promise<AbsintQueryResult<AbsintType>> {
 	if(queries.length === 0 || queries.some(query => query.inference !== queries[0].inference)) {
 		throw new Error('The inference types of bundled abstract interpretation queries must be the same.');
@@ -46,10 +44,7 @@ export async function executeAbsintQuery<AbsintType extends AbsintQueryType>({ a
 	if(queries.length === 1 && queries[0].criteria === undefined) {
 		const state = ('domain' in inference ? interpreter.getEndState(inference.domain) : interpreter.getEndState()) as AbsintQueryStateDomain<AbsintType>;
 
-		return {
-			...metaSince(start),
-			result: state
-		};
+		return { ...metaSince(start), result: state };
 	}
 	const result = new Map<SlicingCriterion, AbsintQueryDomain<AbsintType> | undefined>();
 
@@ -73,10 +68,7 @@ export async function executeAbsintQuery<AbsintType extends AbsintQueryType>({ a
 		}
 	}
 
-	return {
-		...metaSince(start),
-		result: result
-	};
+	return { ...metaSince(start), result: result };
 }
 
 export interface AbsintQuery<AbsintType extends AbsintQueryType = AbsintQueryType> extends BaseQueryFormat {
@@ -116,7 +108,6 @@ export type AbsintQueryStateDomain<AbsintType extends AbsintQueryType = AbsintQu
 export type AbsintQueryDomain<AbsintType extends AbsintQueryType = AbsintQueryType> =
 	typeof AbsintQueryInferences[AbsintType] extends { domain: string } ? AbsintQueryDomains<AbsintType>[typeof AbsintQueryInferences[AbsintType]['domain']] : MultiValueDomain<Partial<AbsintQueryDomains<AbsintType>>>;
 
-
 function absintQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
 	if(line.length === 0 || (line.length === 1 && !startingNewArg)) {
 		return { completions: Record.keys(AbsintQueryInferences).map(type => `${type} `) };
@@ -154,14 +145,7 @@ function absintQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	}
 	const code = queryLineCode(line, criteria ? 2 : 1);
 
-	return {
-		query: {
-			type:      'absint',
-			inference: type,
-			criteria:  criteria
-		},
-		rCode: code
-	};
+	return { query: { type: 'absint', inference: type, criteria: criteria }, rCode: code };
 }
 
 export const AbsintQueryDefinition = {

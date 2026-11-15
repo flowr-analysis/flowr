@@ -35,4 +35,3 @@ export const enum RoleInParent {
 	IndexAccess = 'idx-acc'
 }
 
-

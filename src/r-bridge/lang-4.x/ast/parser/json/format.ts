@@ -36,9 +36,7 @@ export interface JsonEntry extends Entry {
 	readonly children: JsonEntry[]
 }
 
-/**
- * Named JSON entries - these also have a RawRType assigned to them.
- */
+/** Named JSON entries - these also have a RawRType assigned to them. */
 export interface NamedJsonEntry {
 	name:    RawRType
 	content: JsonEntry
@@ -131,9 +129,7 @@ function bytesToUtf8Json(bytes: number[]): string {
 	return JSON.stringify(decoded).slice(1, -1);
 }
 
-/**
- * Takes the raw {@link RShell} output and extracts the csv information contained
- */
+/** Takes the raw {@link RShell} output and extracts the csv information contained */
 export function prepareParsedData(data: string): CsvEntry[] {
 	let json: unknown;
 	try {
@@ -171,27 +167,13 @@ export function prepareParsedData(data: string): CsvEntry[] {
 	return roots;
 }
 
-/**
- * Takes the CSV-Entries and maps them to the old json format for compatibility.
- */
+/** Takes the CSV-Entries and maps them to the old json format for compatibility. */
 export function convertPreparedParsedData(roots: readonly CsvEntry[]): JsonEntry {
-	const partialEntry = {
-		token:  RawRType.ExpressionList,
-		text:   '',
-		id:     RootId,
-		parent: RootId
-	};
+	const partialEntry = { token: RawRType.ExpressionList, text: '', id: RootId, parent: RootId };
 
 	// if we don't have children, this is simple
 	if(roots.length <= 0) {
-		return {
-			...partialEntry,
-			line1:    1,
-			col1:     1,
-			line2:    1,
-			col2:     1,
-			children: []
-		};
+		return { ...partialEntry, line1: 1, col1: 1, line2: 1, col2: 1, children: [] };
 	}
 
 	// Locate start, end of a source file (order children in advance).

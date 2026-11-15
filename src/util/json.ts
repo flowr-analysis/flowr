@@ -1,6 +1,5 @@
 // to get the types within JSON.stringify
 
-
 /** Use only if you do not know the object type; otherwise rely on `IEnvironment#builtInEnv`. */
 export function isDefaultBuiltInEnvironment(obj: unknown) {
 	return typeof obj === 'object' && obj !== null && ((obj as Record<string, unknown>).builtInEnv === true);
@@ -22,9 +21,7 @@ export function jsonReplacer(key: unknown, value: unknown): unknown {
 	}
 }
 
-/**
- * Stringifies potentially very large objects to JSON, sending chunks to the provided send function.
- */
+/** Stringifies potentially very large objects to JSON, sending chunks to the provided send function. */
 export function superBigJsonStringify(obj: unknown, end: string, send: (s: string) => void): void {
 	try {
 		const tryOut = JSON.stringify(obj, jsonReplacer) + end;

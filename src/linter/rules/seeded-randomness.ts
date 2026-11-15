@@ -1,10 +1,4 @@
-import {
-	prettyPrint,
-	type LintingResult,
-	LintingResultCertainty,
-	type LintingRule,
-	LintingRuleCertainty
-} from '../linter-format';
+import { prettyPrintAt, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
 import { RValue } from '../../dataflow/eval/values/r-value';
 import { functionFinderUtil } from './function-finder-util';
 import { SourceLocation, SourceRange } from '../../util/range';
@@ -45,9 +39,7 @@ export interface SeededRandomnessConfig extends MergeableRecord {
 	 * The default value for this is the function `set.seed` and the variable `.Random.seed`.
 	 */
 	randomnessProducers: { type: 'function' | 'assignment', name: BrandedIdentifier }[]
-	/**
-	 * A set of randomness consumer function names that require a seed to be set prior to invocation.
-	 */
+	/** A set of randomness consumer function names that require a seed to be set prior to invocation. */
 	randomnessConsumers: readonly string[]
 }
 
@@ -216,10 +208,7 @@ export const SEEDED_RANDOMNESS = {
 		name:        'Seeded Randomness',
 		description: 'Finds randomness-based function calls not preceded by a random seed generation function. For consistent reproducibility, functions that use randomness should only be called after a constant random seed is set using a function like `set.seed`.'
 	},
-	prettyPrint: prettyPrint(
-		result => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)}`,
-		result => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)} is called without a preceding random seed function like \`set.seed\``
-	)
+	prettyPrint: prettyPrintAt(result => `Function \`${result.function}\``, () => 'is called without a preceding random seed function like `set.seed`')
 } as const satisfies LintingRule<SeededRandomnessResult, SeededRandomnessMeta, SeededRandomnessConfig>;
 
 function getDefaultAssignments(definitions: BuiltInDefinitions): BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[] {

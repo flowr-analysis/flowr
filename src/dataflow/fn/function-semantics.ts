@@ -11,6 +11,7 @@ import { argForImpl, classDeclarationOfImpl, declaredClassesImpl, superClassesOf
 import { DfgVertex } from '../graph/vertex';
 import { ArgProps, CallProps, FnSig } from '../environments/built-in-props';
 import { MatchArgs } from '../graph/match-args';
+import { CallSites } from './call-sites';
 import { Nse } from '../internal/process/functions/call/nse';
 import { Quoted } from '../internal/process/functions/call/quoted';
 import { Deferred } from '../internal/process/functions/call/deferred';
@@ -66,6 +67,8 @@ export const FunctionSemantics = {
 		argument:    ArgProps,
 		/** R's argument matching -- exact, then partial, then positional. */
 		match:       MatchArgs,
+		/** Who calls a function the program defines and what a call stands for once the parameters it hands on are replaced, see {@link CallSites}. */
+		sites:       CallSites,
 		/** The arguments a call does not evaluate. */
 		nse:         Nse,
 		/** The expressions it quotes instead. */

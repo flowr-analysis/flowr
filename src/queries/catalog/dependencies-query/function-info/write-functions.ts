@@ -29,9 +29,7 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 		resolveValue:   true,
 		defaultValue:   StdErr,
 		ignoreIf:       'arg-true',
-		additionalArgs: {
-			val: { argIdx: 1, argName: 'silent' }
-		}
+		additionalArgs: { val: { argIdx: 1, argName: 'silent' } }
 	},
 	// write functions that don't have argIndex are assumed to write to stdout
 	/* a print method may write to a file instead, like `print(xtable(d), file = "t.tex")` */

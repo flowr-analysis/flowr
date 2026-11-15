@@ -6,11 +6,7 @@ import type { ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
-export const DefaultAllVariablesFilter: SlicingCriteriaFilter = {
-	minimumSize: 1,
-	maximumSize: 1,
-	collectAll:  defaultAllVariablesCollector
-};
+export const DefaultAllVariablesFilter: SlicingCriteriaFilter = { minimumSize: 1, maximumSize: 1, collectAll: defaultAllVariablesCollector };
 
 const onLeaf = () => [];
 const onBinary = (_: unknown, lhs: NodeId[], rhs: NodeId[]) => [...lhs, ...rhs];
@@ -30,10 +26,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 		foldNext:   onLeaf,
 		foldBreak:  onLeaf
 	},
-	other: {
-		foldComment:       onLeaf,
-		foldLineDirective: onLeaf
-	},
+	other:          { foldComment: onLeaf, foldLineDirective: onLeaf },
 	foldIfThenElse: (_: unknown, a: NodeId[], b: NodeId[], c: NodeId[] | undefined) => [...a, ...b, ...(c ?? [])],
 	foldExprList:   (_: unknown, _grouping: unknown, a: NodeId[][]) => a.flat(),
 	functions:      {

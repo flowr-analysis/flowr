@@ -85,7 +85,6 @@ export class LimitedThreadPool {
 		await new Promise<void>(resolve => child.on('exit', resolve)).then(() => clearTimeout(timeout)).then(() => this.runNext());
 	}
 
-
 	private onChildExit(args: string[]) {
 		return (code: number, signal: unknown) => {
 			if(code === 0) {

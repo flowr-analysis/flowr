@@ -5,30 +5,20 @@ import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
-import { log } from '../../../util/log';
-import { metaSince } from '../../query-meta';
+import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
-/**
- * Executes the given dataflow queries.
- */
+/** Executes the given dataflow queries. */
 export async function executeDataflowQuery({ analyzer }: BasicQueryData, queries: readonly DataflowQuery[]): Promise<DataflowQueryResult> {
-	if(queries.length !== 1) {
-		log.warn('Dataflow query expects only up to one query, but got', queries.length);
-	}
+	warnUnlessSingleQuery('Dataflow', queries);
 	const startTime = Date.now();
 	const { graph } = await analyzer.dataflow();
-	return {
-		...metaSince(startTime),
-		graph: queries.every(q => q.environments === false) ? graph.withoutEnvironments() : graph
-	};
+	return { ...metaSince(startTime), graph: queries.every(q => q.environments === false) ? graph.withoutEnvironments() : graph };
 }
 
 /** Above this many characters, the mermaid.live link is dropped from the REPL output (large graphs produce megabyte-sized base64 urls). */
 const MaxMermaidUrlLength = 8000;
 
-/**
- * Simple re-returns the dataflow graph of the analysis.
- */
+/** Simple re-returns the dataflow graph of the analysis. */
 export interface DataflowQuery extends BaseQueryFormat {
 	readonly type:          'dataflow';
 	/** Whether to include the environments of the vertices and function definitions (default), see {@link DataflowGraph#withoutEnvironments}. */

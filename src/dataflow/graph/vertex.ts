@@ -149,11 +149,7 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 }
 
 /** The object system whose dispatch a function definition (potentially) takes part in. */
-export const FunctionDispatch = {
-	S3: 's3',
-	S4: 's4',
-	S7: 's7'
-} as const;
+export const FunctionDispatch = { S3: 's3', S4: 's4', S7: 's7' } as const;
 export type FunctionDispatch = typeof FunctionDispatch[keyof typeof FunctionDispatch];
 
 /** What a call does to the variable it names in an environment. */

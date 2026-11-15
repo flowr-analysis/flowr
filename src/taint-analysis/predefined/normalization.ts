@@ -36,10 +36,7 @@ const normalizationSources: TaintMapping<typeof normalizationDomain>[] = [
 	{
 		identifier: ['scale', PkgName.Base],
 		condition:  {
-			argValues: [
-				{ pos: 1, name: 'center', default: true },
-				{ pos: 2, name: 'scale', default: true }
-			],
+			argValues:     [{ pos: 1, name: 'center', default: true }, { pos: 2, name: 'scale', default: true }],
 			argDefinition: [{ pos: 0, name: 'x' }],
 			conditionFn:   ([center, scale], [taint]) => {
 				if(center === true && scale === true) {

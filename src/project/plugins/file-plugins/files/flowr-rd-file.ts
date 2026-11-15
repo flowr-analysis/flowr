@@ -6,6 +6,7 @@ import { type RObject, type RObjectData, attributeOf, RDAParser, SexpType, strin
 import { uniqueArray } from '../../../../util/collections/arrays';
 import { isNotUndefined } from '../../../../util/assert';
 import { dottedSplits } from '../../../../util/text/strings';
+import { scanRCode } from '../../../../util/text/args';
 import { compactRecord } from '../../../../util/objects';
 
 /** One parsed `.Rd` manual page; it documents every name it lists as an {@link RdPage.aliases|alias}, not just its file name. */
@@ -615,23 +616,9 @@ function parseUsage(block: string | undefined): string[] {
 /** how much `code` opens more brackets than it closes, ignoring what a string literal holds */
 function bracketDepth(code: string): number {
 	let depth = 0;
-	let quote: string | undefined = undefined;
-	for(let i = 0; i < code.length; i++) {
-		const c = code[i];
-		if(quote !== undefined) {
-			if(c === '\\') {
-				i++;
-			} else if(c === quote) {
-				quote = undefined;
-			}
-		} else if(c === '"' || c === '\'' || c === '`') {
-			quote = c;
-		} else if(c === '(' || c === '[' || c === '{') {
-			depth++;
-		} else if(c === ')' || c === ']' || c === '}') {
-			depth--;
-		}
-	}
+	scanRCode(code, (_c, _i, d) => {
+		depth = d;
+	});
 	return depth;
 }
 

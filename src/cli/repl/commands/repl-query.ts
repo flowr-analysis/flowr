@@ -31,7 +31,6 @@ function analyzerHasTarget(analyzer: ReadonlyFlowrAnalysisProvider, input: strin
 	return current.length === 1 && current[0].request === requested.request && current[0].content === requested.content;
 }
 
-
 function printQueryHelp(output: ReplOutput) {
 	output.stderr(`Format: ${italic(':query <query> <code>', output.formatter)}`);
 	output.stdout('Queries starting with \'@<type>\' are interpreted as a query of the given type.');
@@ -180,14 +179,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 		}
 	}
 
-	return {
-		query: await executeQueries({
-			analyzer,
-		},
-		parsedQuery),
-		parsedQuery,
-		analyzer
-	};
+	return { query: await executeQueries({ analyzer }, parsedQuery), parsedQuery, analyzer };
 }
 
 const ConfigLineRegex = /^(@config)(?:\s+([\s\S]*))?$/;

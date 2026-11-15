@@ -183,20 +183,10 @@ function downloadVariantOrder(): readonly string[] {
  * downloader fetches exactly one variant per shard/dictionary -- never both -- matching what the reader resolves.
  */
 export function selectDownloadVariants(names: Iterable<string>): string[] {
-	const groups = new Map<string, Map<string, string>>();   // logical name -> (ext -> physical name)
-	for(const name of names) {
-		const logical = stripCompressedExt(name);
-		const ext = compressedExtOf(name) ?? '';
-		let byExt = groups.get(logical);
-		if(!byExt) {
-			byExt = new Map();
-			groups.set(logical, byExt);
-		}
-		byExt.set(ext, name);
-	}
 	const order = downloadVariantOrder();
 	const picked: string[] = [];
-	for(const byExt of groups.values()) {
+	for(const variants of Map.groupBy(names, stripCompressedExt).values()) {
+		const byExt = new Map(variants.map(name => [compressedExtOf(name) ?? '', name]));
 		const ext = order.find(e => byExt.has(e));
 		if(ext !== undefined) {
 			picked.push(byExt.get(ext) as string);

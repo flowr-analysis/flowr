@@ -22,13 +22,9 @@ export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	 * This config is combined with the user config when executing the rule.
 	 */
 	readonly defaultConfig:    (ctx: ReadOnlyFlowrAnalyzerContext) => NoInfer<DeepReadonly<Config>>;
-	/**
-	 * A short list of tags that describe and categorize the linting rule.
-	 */
+	/** A short list of tags that describe and categorize the linting rule. */
 	readonly tags:             readonly LintingRuleTag[];
-	/**
-	 * The linting rule's certainty in terms of the rule's calculations' precision and recall.
-	 */
+	/** The linting rule's certainty in terms of the rule's calculations' precision and recall. */
 	readonly certainty:        LintingRuleCertainty;
 	/**
 	 * A short description of the linting rule.
@@ -73,25 +69,17 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 }
 
 interface BaseQuickFix {
-	/**
-	 * The type of the quick fix.
-	 */
+	/** The type of the quick fix. */
 	readonly type:        string
-	/**
-	 * A short, human-readable description of the quick fix.
-	 */
+	/** A short, human-readable description of the quick fix. */
 	readonly description: string
-	/**
-	 * The range of the text that should be replaced.
-	 */
+	/** The range of the text that should be replaced. */
 	readonly loc:         SourceLocation
 }
 
 export interface LintQuickFixReplacement extends BaseQuickFix {
 	readonly type:        'replace'
-	/**
-	 * The text that should replace the given range.
-	 */
+	/** The text that should replace the given range. */
 	readonly replacement: string
 }
 
@@ -132,40 +120,28 @@ export const LintQuickFix = {
 	}
 } as const;
 
-/**
- * A linting result for a single linting rule match.
- */
+/** A linting result for a single linting rule match. */
 export interface LintingResult {
 	/** The certainty of the linting result. */
 	readonly certainty:  LintingResultCertainty
-	/**
-	 * If available, what to do to fix the linting result.
-	 */
+	/** If available, what to do to fix the linting result. */
 	readonly quickFix?:  LintQuickFix[]
-	/**
-	 * The node ID or IDs involved in this linting result, if applicable.
-	 */
+	/** The node ID or IDs involved in this linting result, if applicable. */
 	readonly involvedId: NodeId | NodeId[] | undefined
-	/**
-	 * The source location where this linting result occurs
-	 */
+	/** The source location where this linting result occurs */
 	readonly loc:        SourceLocation;
 }
-
 
 export interface ConfiguredLintingRule<Name extends LintingRuleNames = LintingRuleNames> {
 	readonly name:   Name
 	readonly config: DeepPartial<LintingRuleConfig<Name>>
 }
 
-/**
- * For when a linting rule throws an error during execution
- */
+/** For when a linting rule throws an error during execution */
 export interface LintingResultsError {
 	/** the error thrown */
 	readonly error: unknown
 }
-
 
 export interface LintingResultsSuccess<Name extends LintingRuleNames> {
 	results: LintingRuleResult<Name>[];
@@ -201,9 +177,7 @@ export const LintingResults = {
 	isSuccess<Name extends LintingRuleNames>(this: void, o: LintingResults<Name>): o is LintingResultsSuccess<Name> {
 		return 'results' in o;
 	},
-	/**
-	 * Unpacks the given linting results, throwing an error if they represent an error.
-	 */
+	/** Unpacks the given linting results, throwing an error if they represent an error. */
 	unpackSuccess<Name extends LintingRuleNames>(this: void, o: LintingResults<Name>): LintingResultsSuccess<Name> {
 		if(LintingResults.isSuccess(o)) {
 			return o;
@@ -220,18 +194,14 @@ export const LintingResults = {
 		}
 		return new Set(res.results.flatMap(r => r.involvedId).filter(isNotUndefined));
 	},
-	/**
-	 * Gets all locations from the given linting results, i.e. the `loc` property of all results that have a location.
-	 */
+	/** Gets all locations from the given linting results, i.e. the `loc` property of all results that have a location. */
 	allLocations<L extends LintingRuleNames>(this: void, res: LintingResults<L> | undefined): SourceLocation[] {
 		if(!res || LintingResults.isError(res)) {
 			return [];
 		}
 		return res.results.filter(LintingResults.hasLocation).map(r => r.loc);
 	},
-	/**
-	 * Stringifies the error contained in the given linting results error.
-	 */
+	/** Stringifies the error contained in the given linting results error. */
 	stringifyError(this: void, { error }: LintingResultsError): string {
 		if(error instanceof Error) {
 			return error.message;
@@ -245,9 +215,7 @@ export const LintingResults = {
 			return String(error);
 		}
 	},
-	/**
-	 * Checks whether the given linting result has a location, i.e. whether it has a `loc` property.
-	 */
+	/** Checks whether the given linting result has a location, i.e. whether it has a `loc` property. */
 	hasLocation<R extends LintingResult>(this: void, res: R): res is R & { loc: SourceLocation } {
 		return 'loc' in res;
 	}
@@ -267,9 +235,7 @@ export enum LintingResultCertainty {
 }
 
 export enum LintingRuleCertainty {
-	/**
-	 * Linting rules that are expected to have both high precision and high recall.
-	 */
+	/** Linting rules that are expected to have both high precision and high recall. */
 	Exact = 'exact',
 	/**
 	 * Linting rules that are expected to have high precision, but not necessarily high recall.
@@ -288,12 +254,12 @@ export enum LintingPrettyPrintContext {
 	Full  = 'full'
 }
 
-/**
- * Builds the pretty printers of a rule, the `full` printer defaults to the `query` one.
- */
+/** Builds the pretty printers of a rule stating `what` a result is at its location, the `full` one followed by `why`. */
+export function prettyPrintAt<R extends LintingResult>(what: (r: R) => string, why: (r: R) => string) {
+	return prettyPrint<R>(r => `${what(r)} at ${SourceLocation.format(r.loc)}`, r => `${what(r)} at ${SourceLocation.format(r.loc)} ${why(r)}`);
+}
+
+/** Builds the pretty printers of a rule, the `full` printer defaults to the `query` one. */
 export function prettyPrint<R>(query: (r: R) => string, full: (r: R) => string = query): { readonly [C in LintingPrettyPrintContext]: (r: R, metadata: unknown) => string } {
-	return {
-		[LintingPrettyPrintContext.Query]: query,
-		[LintingPrettyPrintContext.Full]:  full
-	};
+	return { [LintingPrettyPrintContext.Query]: query, [LintingPrettyPrintContext.Full]: full };
 }

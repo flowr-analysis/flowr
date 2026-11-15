@@ -196,6 +196,9 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 #hits .kindtag.gone { color: #d55e00; background: color-mix(in srgb, #d55e00 10%, transparent); border-color: color-mix(in srgb, #d55e00 35%, transparent); }
 /* what flowR states about the name, next to what the database says about it */
 #hits .kindtag.props { border-style: dashed; opacity: .8; }
+#hits .crumb { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .66rem; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted); white-space: nowrap; }
+#hits .kindtag .crumb { margin-left: .3rem; padding-left: .3rem; border-left: 1px solid currentColor; color: inherit; opacity: .75; }
+#hits .teaser .crumb::after, #hits .ambient .crumb::after { content: ' \203A'; color: var(--border); }
 #hits .flag.stated { border-style: dashed; color: var(--accent); }
 /* stated: as wide as what it says and no wider, an ellipsis only once the line runs out; inline-flex so its own parts (kind/args/ret) lay out beside it */
 #hits .stated {

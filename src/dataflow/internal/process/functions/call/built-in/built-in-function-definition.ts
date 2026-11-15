@@ -160,12 +160,7 @@ export function processFunctionDefinition<OtherInfo>(name: RSymbol<OtherInfo & P
 
 	for(const read of remainingRead) {
 		if(read.name) {
-			subgraph.addVertex({
-				tag:         VertexType.Use,
-				id:          read.nodeId,
-				environment: undefined,
-				cds:         undefined
-			}, data.ctx.env.cleanEnv);
+			subgraph.addVertex({ tag: VertexType.Use, id: read.nodeId, environment: undefined, cds: undefined }, data.ctx.env.cleanEnv);
 		}
 	}
 

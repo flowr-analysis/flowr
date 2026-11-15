@@ -3,9 +3,7 @@ import { FlowrAnalyzerDescriptionFilePlugin } from './file-plugins/flowr-analyze
 import {
 	FlowrAnalyzerPackageVersionsDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
-import {
-	FlowrAnalyzerPackageVersionsSigDbPlugin
-} from './package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
+import { FlowrAnalyzerPackageVersionsSigDbPlugin } from './package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import {
 	FlowrAnalyzerPackageVersionsPackratPlugin,
 	FlowrAnalyzerPackageVersionsRenvPlugin,
@@ -13,15 +11,9 @@ import {
 	FlowrAnalyzerPackageVersionsRvPlugin,
 	FlowrAnalyzerPackageVersionsUvrPlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin';
-import {
-	FlowrAnalyzerPackageVersionsSessionInfoPlugin
-} from './package-version-plugins/flowr-analyzer-package-versions-session-info-plugin';
-import {
-	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
-} from './loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
-import {
-	FlowrAnalyzerLoadingOrderImplicitSourcesPlugin
-} from './loading-order-plugins/flowr-analyzer-loading-order-implicit-sources-plugin';
+import { FlowrAnalyzerPackageVersionsSessionInfoPlugin } from './package-version-plugins/flowr-analyzer-package-versions-session-info-plugin';
+import { FlowrAnalyzerLoadingOrderDescriptionFilePlugin } from './loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
+import { FlowrAnalyzerLoadingOrderImplicitSourcesPlugin } from './loading-order-plugins/flowr-analyzer-loading-order-implicit-sources-plugin';
 import { FlowrAnalyzerRmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerQmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 import { guard } from '../../util/assert';
@@ -56,9 +48,7 @@ import {
 	FlowrAnalyzerMetaRProjectFilePlugin,
 	FlowrAnalyzerMetaUvrManifestFilePlugin
 } from './package-version-plugins/flowr-analyzer-meta-manifest-file-plugin';
-import {
-	FlowrAnalyzerMetaDescriptionFilePlugin
-} from './package-version-plugins/flowr-analyzer-meta-description-file-plugin';
+import { FlowrAnalyzerMetaDescriptionFilePlugin } from './package-version-plugins/flowr-analyzer-meta-description-file-plugin';
 import { FlowrAnalyzerSweaveFilePlugin } from './file-plugins/notebooks/flowr-analyzer-sweave-file-plugin';
 import {
 	FlowrAnalyzerGitignoreProjectDiscoveryPlugin,
@@ -70,20 +60,12 @@ import {
 	FlowrAnalyzerFullProjectDiscoveryPlugin
 } from './project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerRprofileFilePlugin } from './file-plugins/flowr-analyzer-rprofile-file-plugin';
-import {
-	FlowrAnalyzerLoadingOrderRprofilePlugin
-} from './loading-order-plugins/flowr-analyzer-loading-order-rprofile-plugin';
-import {
-	FlowrAnalyzerPackageVersionsLibraryPlugin
-} from './package-version-plugins/flowr-analyzer-package-versions-library-plugin';
+import { FlowrAnalyzerLoadingOrderRprofilePlugin } from './loading-order-plugins/flowr-analyzer-loading-order-rprofile-plugin';
+import { FlowrAnalyzerPackageVersionsLibraryPlugin } from './package-version-plugins/flowr-analyzer-package-versions-library-plugin';
 import { FlowrAnalyzerPackageVersionsOnDemandPlugin } from './package-version-plugins/flowr-analyzer-package-versions-on-demand-plugin';
-import {
-	FlowrAnalyzerLoadingOrderIncludedFilesPlugin
-} from './loading-order-plugins/flowr-analyzer-loading-order-included-files-plugin';
+import { FlowrAnalyzerLoadingOrderIncludedFilesPlugin } from './loading-order-plugins/flowr-analyzer-loading-order-included-files-plugin';
 
-/**
- * The built-in Flowr Analyzer plugins that are always available.
- */
+/** The built-in Flowr Analyzer plugins that are always available. */
 export const BuiltInPlugins = [
 	['file:description', FlowrAnalyzerDescriptionFilePlugin],
 	['versions:description', FlowrAnalyzerPackageVersionsDescriptionFilePlugin],
@@ -181,9 +163,7 @@ export type PluginToRegister<T extends BuiltInFlowrPluginName | string> =
 		: [string, unknown[]]
 		);
 
-/**
- * Create a Flowr Analyzer plugin from a {@link PluginToRegister} specification.
- */
+/** Create a Flowr Analyzer plugin from a {@link PluginToRegister} specification. */
 export function makePlugin<T extends BuiltInFlowrPluginName | string>(toRegister: PluginToRegister<T>): FlowrAnalyzerPlugin {
 	if(toRegister instanceof Object && 'process' in toRegister) {
 		return toRegister;

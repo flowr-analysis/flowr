@@ -24,9 +24,7 @@ export class FlowrAnalyzerSysdataFilePlugin extends FlowrAnalyzerPatternFilePlug
 		super(filePattern, PathPart.Full);
 	}
 
-	/**
-	 * Processes the given file, assigning it the {@link FileRole.Data} role.
-	 */
+	/** Processes the given file, assigning it the {@link FileRole.Data} role. */
 	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): FlowrSysdataFile {
 		return FlowrSysdataFile.from(file, FileRole.Data);
 	}

@@ -32,7 +32,6 @@ export interface InputSourcesQuery extends BaseQueryFormat {
 	readonly config?:   InputSourcesQueryConfig
 }
 
-
 /**
  * Which functions belong to which input type is stated with the functions themselves, in the built-in configuration
  * the analyzer registered (see {@link ReadOnlyFlowrAnalyzerEnvironmentContext#builtInDefinitions}):

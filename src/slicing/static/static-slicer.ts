@@ -338,7 +338,6 @@ function withoutMissed(edges: ReadonlyOutgoingEdges, misses: (id: NodeId) => boo
 	return edges;
 }
 
-
 /** The `edges` without the types `drop` names for their targets. */
 function withoutTypes(edges: ReadonlyOutgoingEdges, drop: ReadonlyMap<NodeId, EdgeType>): ReadonlyOutgoingEdges {
 	if(drop.size === 0) {
@@ -616,11 +615,6 @@ export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target
 			queue.potentialAdditions.delete(target);
 		}
 	} else {
-		queue.potentialAdditions.set(target, [id, {
-			id:                 target,
-			baseEnvironment,
-			envFingerprint,
-			onlyForSideEffects: false
-		}]);
+		queue.potentialAdditions.set(target, [id, { id: target, baseEnvironment, envFingerprint, onlyForSideEffects: false }]);
 	}
 }

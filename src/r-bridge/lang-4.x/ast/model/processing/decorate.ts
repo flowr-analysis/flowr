@@ -32,16 +32,12 @@ import type { RProject } from '../nodes/r-project';
  */
 export type IdGenerator<OtherInfo> = (data: RProject<OtherInfo> | RNode<OtherInfo>) => NodeId;
 
-/**
- * The simplest id generator which just increments a number on each call.
- */
+/** The simplest id generator which just increments a number on each call. */
 export function deterministicCountingIdGenerator(id = 0): () => NodeId {
 	return () => id++;
 }
 
-/**
- *  Generates ids with a fixed source path, and the location if given, as prefix and an incrementing counter.
- */
+/**  Generates ids with a fixed source path, and the location if given, as prefix and an incrementing counter. */
 export function sourcedDeterministicCountingIdGenerator(path: string, location?: SourceRange, start = 0): () => NodeId {
 	let id = start;
 	/* without a location the ids carry only `path`, as in `eval::13-0`, where the path already names the `eval` call */
@@ -66,10 +62,7 @@ export interface ParentContextInfo extends MergeableRecord {
 	index: number
 }
 
-const defaultParentContext: Omit<ParentContextInfo, 'nest'> = {
-	role:  RoleInParent.Root,
-	index: 0
-};
+const defaultParentContext: Omit<ParentContextInfo, 'nest'> = { role: RoleInParent.Root, index: 0 };
 
 export interface ParentInformation extends ParentContextInfo {
 	/** uniquely identifies an AST-Node */
@@ -79,7 +72,6 @@ export interface ParentInformation extends ParentContextInfo {
 }
 
 export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInformation>;
-
 
 export type AstIdMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>;
 interface FoldInfo<OtherInfo> { idMap: AstIdMap<OtherInfo>, getId: IdGenerator<OtherInfo>, file?: string }
@@ -97,9 +89,7 @@ export interface NormalizedAst<OtherInfo = ParentInformation, Node = RProject<Ot
 	hasError?: boolean
 }
 
-/**
- * Node types for which the nesting score will be increased
- */
+/** Node types for which the nesting score will be increased */
 export const nestForElement: ReadonlySet<RType> = new Set([
 	RType.FunctionDefinition, RType.ForLoop, RType.WhileLoop, RType.RepeatLoop, RType.IfThenElse,
 ]);
@@ -140,11 +130,8 @@ export function decorateAst<OtherInfo = NoInfo>(
 		foldBinaryOp: foldBinaryOp,
 		foldPipe:     foldBinaryOp,
 		foldUnaryOp:  unaryOp,
-		other:        {
-			foldComment:       foldLeaf,
-			foldLineDirective: foldLeaf
-		},
-		loop: {
+		other:        { foldComment: foldLeaf, foldLineDirective: foldLeaf },
+		loop:         {
 			foldFor:    createFoldForForLoop(info),
 			foldRepeat: createFoldForRepeatLoop(info),
 			foldWhile:  createFoldForWhileLoop(info),
@@ -169,20 +156,21 @@ export function decorateAst<OtherInfo = NoInfo>(
 			const decoratedAst = guardNesting('AST decoration', file.filePath, () => foldAstStateful(file.root, 0, folds));
 			decoratedAst.info.role = RoleInParent.Root;
 			decoratedAst.info.index = 0;
-			return {
-				root:     decoratedAst as RExpressionList<OtherInfo & ParentInformation>,
-				filePath: file.filePath
-			};
+			return { root: decoratedAst as RExpressionList<OtherInfo & ParentInformation>, filePath: file.filePath };
 		}),
-		info: {
-			id: getId(project)
-		}
+		info: { id: getId(project) }
 	};
 
-	return {
-		ast: decoratedProject,
-		idMap
-	};
+	return { ast: decoratedProject, idMap };
+}
+
+function adopt<OtherInfo>(child: RNodeWithParent<OtherInfo>, parent: NodeId, role: RoleInParent, index?: number): void {
+	const childInfo = child.info;
+	childInfo.parent = parent;
+	if(index !== undefined) {
+		childInfo.index = index;
+	}
+	childInfo.role = role;
 }
 
 function createFoldForLeaf<OtherInfo>(info: FoldInfo<OtherInfo>) {
@@ -190,13 +178,7 @@ function createFoldForLeaf<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const id = info.getId(data);
 		const decorated = {
 			...data,
-			info: {
-				...data.info,
-				id,
-				parent: undefined,
-				...defaultParentContext,
-				nest:   nesting
-			}
+			info: { ...data.info, id, parent: undefined, ...defaultParentContext, nest: nesting }
 		} as RNodeWithParent<OtherInfo>;
 		decorated.info.file = info.file;
 		info.idMap.set(id, decorated);
@@ -209,18 +191,9 @@ function createFoldForBinaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const id = info.getId(data);
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined, nest }, lhs, rhs } as RNodeWithParent<OtherInfo>;
 		info.idMap.set(id, decorated);
-		const lhsInfo = lhs.info;
-		lhsInfo.parent = id;
-		const rhsInfo = rhs.info;
-		rhsInfo.parent = id;
-		rhsInfo.index = 1;
-		if(RPipe.is(data)) {
-			lhsInfo.role = RoleInParent.PipeLhs;
-			rhsInfo.role = RoleInParent.PipeRhs;
-		} else {
-			lhsInfo.role = RoleInParent.BinaryOperationLhs;
-			rhsInfo.role = RoleInParent.BinaryOperationRhs;
-		}
+		const pipe = RPipe.is(data);
+		adopt(lhs, id, pipe ? RoleInParent.PipeLhs : RoleInParent.BinaryOperationLhs);
+		adopt(rhs, id, pipe ? RoleInParent.PipeRhs : RoleInParent.BinaryOperationRhs, 1);
 		decorated.info.file = info.file;
 		return decorated;
 	};
@@ -231,9 +204,7 @@ function createFoldForUnaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const id = info.getId(data);
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined, nest }, operand } as RNodeWithParent<OtherInfo>;
 		info.idMap.set(id, decorated);
-		const opInfo = operand.info;
-		opInfo.parent = id;
-		opInfo.role = RoleInParent.UnaryOperand;
+		adopt(operand, id, RoleInParent.UnaryOperand);
 		decorated.info.file = info.file;
 		return decorated;
 	};
@@ -244,18 +215,13 @@ function createFoldForAccess<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const id = info.getId(data);
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined, nest: nesting }, accessed, access } as RNodeWithParent<OtherInfo>;
 		info.idMap.set(id, decorated);
-		const accessedInfo = accessed.info;
-		accessedInfo.parent = id;
-		accessedInfo.role = RoleInParent.Accessed;
+		adopt(accessed, id, RoleInParent.Accessed);
 		if(typeof access !== 'string') {
 			let idx = 0; // the first oe will be skipped in the first iter
 			for(const acc of access) {
 				idx++;
 				if(acc !== EmptyArgument) {
-					const curInfo = acc.info;
-					curInfo.parent = id;
-					curInfo.index = idx;
-					curInfo.role = RoleInParent.IndexAccess;
+					adopt(acc, id, RoleInParent.IndexAccess, idx);
 				}
 			}
 		}
@@ -269,17 +235,9 @@ function createFoldForForLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const id = info.getId(data);
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined, nest: nesting }, variable, vector, body } as RNodeWithParent<OtherInfo>;
 		info.idMap.set(id, decorated);
-		const varInfo = variable.info;
-		varInfo.parent = id;
-		varInfo.role = RoleInParent.ForVariable;
-		const vecInfo = vector.info;
-		vecInfo.parent = id;
-		vecInfo.index = 1;
-		vecInfo.role = RoleInParent.ForVector;
-		const bodyInfo = body.info;
-		bodyInfo.parent = id;
-		bodyInfo.index = 2;
-		bodyInfo.role = RoleInParent.ForBody;
+		adopt(variable, id, RoleInParent.ForVariable);
+		adopt(vector, id, RoleInParent.ForVector, 1);
+		adopt(body, id, RoleInParent.ForBody, 2);
 		decorated.info.file = info.file;
 		return decorated;
 	};
@@ -290,9 +248,7 @@ function createFoldForRepeatLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const id = info.getId(data);
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined, nest: nesting },  body } as RNodeWithParent<OtherInfo>;
 		info.idMap.set(id, decorated);
-		const bodyInfo = body.info;
-		bodyInfo.parent = id;
-		bodyInfo.role = RoleInParent.RepeatBody;
+		adopt(body, id, RoleInParent.RepeatBody);
 		decorated.info.file = info.file;
 		return decorated;
 	};
@@ -303,13 +259,8 @@ function createFoldForWhileLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const id = info.getId(data);
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined, nest: nesting },  condition, body } as RNodeWithParent<OtherInfo>;
 		info.idMap.set(id, decorated);
-		const condInfo = condition.info;
-		condInfo.parent = id;
-		condInfo.role = RoleInParent.WhileCondition;
-		const bodyInfo = body.info;
-		bodyInfo.parent = id;
-		bodyInfo.index = 1;
-		bodyInfo.role = RoleInParent.WhileBody;
+		adopt(condition, id, RoleInParent.WhileCondition);
+		adopt(body, id, RoleInParent.WhileBody, 1);
 		decorated.info.file = info.file;
 		return decorated;
 	};
@@ -320,18 +271,10 @@ function createFoldForIfThenElse<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const id = info.getId(data);
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined, nest: nesting }, condition, then, otherwise } as RNodeWithParent<OtherInfo>;
 		info.idMap.set(id, decorated);
-		const condInfo = condition.info;
-		condInfo.parent = id;
-		condInfo.role = RoleInParent.IfCondition;
-		const thenInfo = then.info;
-		thenInfo.parent = id;
-		thenInfo.index = 1;
-		thenInfo.role = RoleInParent.IfThen;
+		adopt(condition, id, RoleInParent.IfCondition);
+		adopt(then, id, RoleInParent.IfThen, 1);
 		if(otherwise) {
-			const otherwiseInfo = otherwise.info;
-			otherwiseInfo.parent = id;
-			otherwiseInfo.index = 2;
-			otherwiseInfo.role = RoleInParent.IfOtherwise;
+			adopt(otherwise, id, RoleInParent.IfOtherwise, 2);
 		}
 		decorated.info.file = info.file;
 		return decorated;
@@ -345,15 +288,11 @@ function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		info.idMap.set(id, decorated);
 		let i = 0;
 		for(const child of children) {
-			const childInfo = child.info;
-			childInfo.parent = id;
-			childInfo.index = i++;
-			childInfo.role = RoleInParent.ExpressionListChild;
+			adopt(child, id, RoleInParent.ExpressionListChild, i++);
 		}
 		/* the braces belong to their block, so walking up from one reaches the block and its statement */
 		for(const brace of grouping ?? []) {
-			brace.info.parent = id;
-			brace.info.role = RoleInParent.ExpressionListGrouping;
+			adopt(brace, id, RoleInParent.ExpressionListGrouping);
 		}
 		decorated.info.file = info.file;
 		return decorated;
@@ -370,17 +309,12 @@ function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
 			decorated = { ...data, info: { ...data.info, id, parent: undefined, nest: nesting }, calledFunction: functionName, arguments: args } as RUnnamedFunctionCall<OtherInfo & ParentInformation>;
 		}
 		info.idMap.set(id, decorated);
-		const funcInfo = functionName.info;
-		funcInfo.parent = id;
-		funcInfo.role = RoleInParent.FunctionCallName;
+		adopt(functionName, id, RoleInParent.FunctionCallName);
 		let idx = 0;
 		for(const arg of args) {
 			idx++;
 			if(arg !== EmptyArgument) {
-				const argInfo = arg.info;
-				argInfo.parent = id;
-				argInfo.index = idx;
-				argInfo.role = RoleInParent.FunctionCallArgument;
+				adopt(arg, id, RoleInParent.FunctionCallArgument, idx);
 			}
 		}
 		decorated.info.file = info.file;
@@ -395,15 +329,9 @@ function createFoldForFunctionDefinition<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		info.idMap.set(id, decorated);
 		let idx = 0;
 		for(const param of params) {
-			const paramInfo = param.info;
-			paramInfo.parent = id;
-			paramInfo.index = idx++;
-			paramInfo.role = RoleInParent.FunctionDefinitionParameter;
+			adopt(param, id, RoleInParent.FunctionDefinitionParameter, idx++);
 		}
-		const bodyInfo = body.info;
-		bodyInfo.parent = id;
-		bodyInfo.index = idx;
-		bodyInfo.role = RoleInParent.FunctionDefinitionBody;
+		adopt(body, id, RoleInParent.FunctionDefinitionBody, idx);
 		decorated.info.file = info.file;
 		return decorated;
 	};
@@ -414,14 +342,9 @@ function createFoldForFunctionParameter<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const id = info.getId(data);
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined, nest: nesting }, name, defaultValue } as RParameter<OtherInfo & ParentInformation>;
 		info.idMap.set(id, decorated);
-		const nameInfo = name.info;
-		nameInfo.parent = id;
-		nameInfo.role = RoleInParent.ParameterName;
+		adopt(name, id, RoleInParent.ParameterName);
 		if(defaultValue) {
-			const defaultInfo = defaultValue.info;
-			defaultInfo.parent = id;
-			defaultInfo.index = 1;
-			defaultInfo.role = RoleInParent.ParameterDefaultValue;
+			adopt(defaultValue, id, RoleInParent.ParameterDefaultValue, 1);
 		}
 		decorated.info.file = info.file;
 		return decorated;
@@ -435,16 +358,11 @@ function createFoldForFunctionArgument<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		info.idMap.set(id, decorated);
 		let idx = 0;
 		if(name) {
-			const nameInfo = name.info;
-			nameInfo.parent = id;
-			nameInfo.role = RoleInParent.ArgumentName;
+			adopt(name, id, RoleInParent.ArgumentName);
 			idx++; // adaptive, 0 for the value if there is no name!
 		}
 		if(value) {
-			const valueInfo = value.info;
-			valueInfo.parent = id;
-			valueInfo.index = idx;
-			valueInfo.role = RoleInParent.ArgumentValue;
+			adopt(value, id, RoleInParent.ArgumentValue, idx);
 		}
 		decorated.info.file = info.file;
 		return decorated;

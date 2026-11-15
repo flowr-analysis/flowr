@@ -14,9 +14,7 @@ import { escapeRegex, matchByPrefixOrSubsequence } from '../../../util/text/stri
 import { log } from '../../../util/log';
 import { isNotUndefined } from '../../../util/assert';
 
-/**
- * Executes the given configuration queries using the provided analyzer.
- */
+/** Executes the given configuration queries using the provided analyzer. */
 export function executeConfigQuery({ analyzer }: BasicQueryData, queries: readonly ConfigQuery[]): Promise<ConfigQueryResult> {
 	if(queries.some(q => q.reset)) {
 		analyzer.resetConfig();

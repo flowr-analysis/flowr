@@ -5,23 +5,18 @@ import { FlowrTextFile, FlowrFile } from '../../../context/flowr-file';
 import { unquoteArgument } from '../../../../abstract-interpretation/data-frame/resolve-args';
 import type { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
 import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';
-import type {
-	AstIdMap,
-	NormalizedAst,
-	ParentInformation
-} from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, NormalizedAst, ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { foldAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/fold';
 import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../../dataflow/environments/identifier';
 import type { RFunctionCall } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { RPrimitives } from '../../../../data/r-primitives.generated';
-import {
-	toUnnamedArgument
-} from '../../../../dataflow/internal/process/functions/call/argument/make-argument';
+import { toUnnamedArgument } from '../../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { SourceRange } from '../../../../util/range';
 import { parseRRegexPattern } from '../../../../util/r-regex';
 import { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { uniqueArray } from '../../../../util/collections/arrays';
+import { splitRCodeArgs } from '../../../../util/text/args';
 
 export interface NamespaceInfo {
 	exportedSymbols:      BrandedIdentifier[];
@@ -202,11 +197,8 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 		foldIfThenElse: (ifNode, _cond, thenBranch, elseBranch) =>
 			handleConditionCall(nast.idMap, ifNode.condition, thenBranch, elseBranch),
 		foldSymbol: nothing,
-		other:      {
-			foldComment:       nothing,
-			foldLineDirective: nothing
-		},
-		functions: {
+		other:      { foldComment: nothing, foldLineDirective: nothing },
+		functions:  {
 			foldFunctionDefinition: nothing,
 			foldArgument:           (_arg, _name, value) => value ?? getEmptyNamespaceFormat(),
 			foldParameter:          (_param, _name, defaultValue, _down) => defaultValue ?? getEmptyNamespaceFormat(),
@@ -233,8 +225,7 @@ export function getExportedNames(info: NamespaceInfo): BrandedIdentifier[] {
 			s3.push(`${g}.${m}`);
 		}
 	}
-	return uniqueArray([...info.exportedSymbols, ...info.exportedS4Methods,
-		...info.exportedS4Classes, ...info.exportedPatterns, ...s3]);
+	return uniqueArray([...info.exportedSymbols, ...info.exportedS4Methods, ...info.exportedS4Classes, ...info.exportedPatterns, ...s3]);
 }
 
 /** The names a package makes callable: the explicitly configured {@link NamespaceInfo#callable} subset, or all exports (see {@link getExportedNames}) by default. */
@@ -466,39 +457,13 @@ const namedArgument = /^([\w.]+)\s*=(?!=)\s*(.*)$/s;
  * arguments as written. Only top-level commas separate, so an argument that is itself a call stays in one piece.
  */
 function splitNamespaceArgs(args: string): DirectiveArgument[] {
-	const names: DirectiveArgument[] = [];
-	let depth = 0;
-	let start = 0;
-	let quote: string | undefined;
-	for(let i = 0; i <= args.length; i++) {
-		const c = args[i];
-		if(quote !== undefined) {
-			if(c === '\\') {
-				i++;
-			} else if(c === quote) {
-				quote = undefined;
-			}
-		} else if(c === '"' || c === '\'' || c === '`') {
-			quote = c;
-		} else if(c === '(' || c === '[') {
-			depth++;
-		} else if(c === ')' || c === ']') {
-			depth--;
-		} else if(i === args.length || (c === ',' && depth === 0)) {
-			const part = args.slice(start, i).trim();
-			start = i + 1;
-			const named = namedArgument.exec(part);
-			if(part.length > 0) {
-				names.push(named === null ? { value: part } : { name: named[1], value: named[2] });
-			}
-		}
-	}
-	return names;
+	return splitRCodeArgs(args, '([', ')]').filter(part => part.length > 0).map(part => {
+		const named = namedArgument.exec(part);
+		return named === null ? { value: part } : { name: named[1], value: named[2] };
+	});
 }
 
-/**
- * Parses the given NAMESPACE file
- */
+/** Parses the given NAMESPACE file */
 function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 	const result = getEmptyNamespaceFormat();
 	const fileContent = file.content().toString().replaceAll(cleanLineCommentRegex, '').trim()

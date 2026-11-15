@@ -37,24 +37,18 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape',
 		name:      'pureAlias',
 		role:      TaintRole.Transformer,
 		callProps: CallProp.Pure,
-		args:      {
-			argProps:     ArgProp.Alias,
-			argSelection: 'ExactlyOne',
-		},
+		args:      { argProps: ArgProp.Alias, argSelection: 'ExactlyOne' },
 		/** Pass through of incoming taint */
-		handler: ([_arg], [taint]) => taint?.value
+		handler:   ([_arg], [taint]) => taint?.value
 	},
 	/** Pure functions which calculate their result on one or multiple arguments */
 	pureComputer: {
 		name:      'pureComputer',
 		role:      TaintRole.Transformer,
 		callProps: CallProp.Pure,
-		args:      {
-			argProps:     ArgProp.Value,
-			argSelection: 'AtLeastOne',
-		},
+		args:      { argProps: ArgProp.Value, argSelection: 'AtLeastOne' },
 		/** Least-upper bound of incoming taints */
-		handler: ([_arg], taints) =>
+		handler:   ([_arg], taints) =>
 			taints.length > 0 ? AbstractDomain.joinAll(taints).value : Top
 	},
 	/** Pure functions which calculate their result based on the shape of input data */
@@ -62,19 +56,14 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape',
 		name:      'pureShape',
 		role:      TaintRole.Transformer,
 		callProps: CallProp.Pure,
-		args:      {
-			argProps:     ArgProp.Shape,
-			argSelection: 'AtLeastOne',
-		},
+		args:      { argProps: ArgProp.Shape, argSelection: 'AtLeastOne' },
 		/** Least-upper bound of incoming taints */
-		handler: ([_arg], taints) =>
+		handler:   ([_arg], taints) =>
 			taints.length > 0 ? AbstractDomain.joinAll(taints).value : Top
 	}
 };
 
-/**
- * Get the set of taint mappings for a given {@link TaintFnCategory}.
- */
+/** Get the set of taint mappings for a given {@link TaintFnCategory}. */
 export function resolveCategoryToTaintMappings<Domain extends AnyAbstractDomain>(category: TaintFnCategory): TaintMapping<Domain>[] {
 	const mappings = taintMappingFromBuiltInIndex(category.callProps, category.args.argProps, category.handler)
 		.map(m => {

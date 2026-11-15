@@ -56,9 +56,6 @@ export interface S3MethodConsistencyMetadata extends MergeableRecord {
 	readonly consideredReplacements: number
 }
 
-
-
-
 /** the formals of a definition, without the backticks of non-syntactic names */
 function formalNames(def: RFunctionDefinition<ParentInformation>): BrandedIdentifier[] {
 	return rawFormalNames(def).map(n => n.replace(/^`(.*)`$/, '$1'));
@@ -102,7 +99,7 @@ function formatFormals(name: BrandedIdentifier, formals: readonly BrandedIdentif
 
 /** the node naming the function a definition is bound to, the definition itself when it is anonymous */
 function nameNodeOf(def: RFunctionDefinition<ParentInformation>, idMap: AstIdMap): RNode<ParentInformation> {
-	const parent = def.info.parent === undefined ? undefined : idMap.get(def.info.parent);
+	const parent = RNode.directParent(def, idMap);
 	return parent !== undefined && RBinaryOp.is(parent) && parent.rhs === def ? parent.lhs : def;
 }
 
@@ -252,11 +249,6 @@ export const S3_METHOD_CONSISTENCY = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds S3 methods whose formals do not match their generic, methods not registered in the NAMESPACE, and replacement functions whose last formal is not `value`.',
-		defaultConfig: () => ({
-			checkMethods:           true,
-			checkApparentMethods:   true,
-			checkUnregistered:      true,
-			checkReplacementValues: true
-		})
+		defaultConfig: () => ({ checkMethods: true, checkApparentMethods: true, checkUnregistered: true, checkReplacementValues: true })
 	}
 } as const satisfies LintingRule<S3MethodConsistencyResult, S3MethodConsistencyMetadata, S3MethodConsistencyConfig>;

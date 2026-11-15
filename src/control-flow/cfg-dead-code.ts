@@ -31,11 +31,9 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	private raises:                    ((holder: NodeId, inner: NodeId) => boolean) | undefined;
 
 	private getValue(id: NodeId): Ternary {
-		const has = this.cachedConditions.get(id);
-		if(has) {
-			return has;
+		if(!this.cachedConditions.get(id)) {
+			this.visitNode(id);
 		}
-		this.visitNode(id);
 		return this.cachedConditions.get(id) ?? Ternary.Maybe;
 	}
 
@@ -44,14 +42,10 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		if(this.isCaught(id) || this.config.dfg.isQuoted(id)) {
 			return false;
 		}
-		const has = this.cachedStatements.get(id);
-		if(!has) {
+		if(!this.cachedStatements.get(id)) {
 			this.visitNode(id);
-			if(!this.cachedStatements.get(id)) {
-				return false;
-			}
 		}
-		return !this.inParameterDefault(id);
+		return this.cachedStatements.get(id) === true && !this.inParameterDefault(id);
 	}
 
 	/** a parameter default is forced on access if at all, so a jump within it must not cut the function body */
@@ -168,15 +162,10 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	 * construct is where its parts join again, so there is no edge that would delimit it on its own.
 	 */
 	private isCaught(id: NodeId): boolean {
-		const cached = this.caught.get(id);
-		if(cached !== undefined) {
-			return cached;
-		}
-		const result = RNode.iterateParents(this.getNormalizedAst(id), this.config.normalizedAst.idMap)
-			.some(node => {
-				const vertex = this.getDataflowGraph(node.info.id);
-				return DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) || DfgVertex.hasOrigin(vertex, BuiltInProcName.Quote);
-			});
+		const result = this.caught.get(id) ?? RNode.iterateParents(this.getNormalizedAst(id), this.config.normalizedAst.idMap).some(node => {
+			const vertex = this.getDataflowGraph(node.info.id);
+			return DfgVertex.hasOrigin(vertex, BuiltInProcName.Try) || DfgVertex.hasOrigin(vertex, BuiltInProcName.Quote);
+		});
 		this.caught.set(id, result);
 		return result;
 	}
@@ -200,11 +189,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private selectedSwitchArm(v: DataflowGraphVertexFunctionCall): { id: NodeId | undefined } | 'unknown' {
-		const cached = this.cachedSwitch.get(v.id);
-		if(cached !== undefined) {
-			return cached;
-		}
-		const result = this.computeSelectedSwitchArm(v);
+		const result = this.cachedSwitch.get(v.id) ?? this.computeSelectedSwitchArm(v);
 		this.cachedSwitch.set(v.id, result);
 		return result;
 	}
@@ -215,29 +200,17 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			return 'unknown';
 		}
 		const arms = v.args.slice(1);
-		for(let i = 0; i < arms.length; i++) {
-			if(FunctionArgument.getName(arms[i]) === target) {
-				for(let j = i; j < arms.length; j++) {
-					if(FunctionArgument.getReference(arms[j]) !== undefined) {
-						return { id: FunctionArgument.getId(arms[j]) };
-					}
-				}
-				return { id: undefined };
-			}
+		const at = arms.findIndex(a => FunctionArgument.getName(a) === target);
+		/* a named arm without a value falls through to the next one that has one */
+		const picked = at < 0 ? undefined : arms.slice(at).find(a => FunctionArgument.getReference(a) !== undefined);
+		if(at >= 0) {
+			return { id: picked === undefined ? undefined : FunctionArgument.getId(picked) };
 		}
-		let defaultId: NodeId | undefined;
-		let defaults = 0;
-		for(const arm of arms) {
-			if(arm !== EmptyArgument && !FunctionArgument.isNamed(arm) && FunctionArgument.getReference(arm) !== undefined) {
-				defaults++;
-				defaultId = FunctionArgument.getId(arm);
-			}
-		}
-		return defaults > 1 ? 'unknown' : { id: defaultId };
+		const defaults = arms.filter(arm => arm !== EmptyArgument && !FunctionArgument.isNamed(arm) && FunctionArgument.getReference(arm) !== undefined);
+		return defaults.length > 1 ? 'unknown' : { id: defaults.length === 0 ? undefined : FunctionArgument.getId(defaults[0]) };
 	}
 
 }
-
 
 /** Breaks unsatisfiable control dependencies */
 export function cfgAnalyzeDeadCode(cfg: ControlFlowInformation, info: CfgPassInfo): ControlFlowInformation {

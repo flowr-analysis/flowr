@@ -9,9 +9,8 @@ import { rAuthorInfoToReadable } from '../../../util/r-author';
 import type { RLicenseElementInfo } from '../../../util/r-license';
 import { stringifyRLicense } from '../../../util/r-license';
 import type { ProjectKind } from '../../../project/context/project-kind';
-import { log } from '../../../util/log';
 import path from 'path';
-import { metaSince } from '../../query-meta';
+import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 import { FileRole } from '../../../project/context/flowr-file';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 import type { DeclaredPackages } from '../../../project/context/flowr-analyzer-meta-context';
@@ -61,13 +60,9 @@ function collectDependencyStats(declared: DeclaredPackages, deps: ReadOnlyFlowrA
 	};
 }
 
-/**
- * Executes the given project queries.
- */
+/** Executes the given project queries. */
 export async function executeProjectQuery({ analyzer }: BasicQueryData, queries: readonly ProjectQuery[]): Promise<ProjectQueryResult> {
-	if(queries.length !== 1) {
-		log.warn('Project query expects only up to one query, but got', queries.length);
-	}
+	warnUnlessSingleQuery('Project', queries);
 	const startTime = Date.now();
 	const withDf = queries.some(q => q.withDf);
 	const showFiles = queries.some(q => q.showFiles);
@@ -113,7 +108,6 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 		dfaPerformed: analyzer.peekDataflow() !== undefined
 	};
 }
-
 
 export interface ProjectQuery extends BaseQueryFormat {
 	readonly type:    'project';

@@ -532,8 +532,8 @@ export function casesOf(this: void, clauses: readonly CaseClause[], formals: rea
 			}
 			cases[formal] = split.map(([term, { all }]) => {
 				const relations = relationsOf(all, facts).filter(r => r.formals.includes(formal));
-				const claimOf = (conditions: readonly GuardTerm[]) => toClaim(conditions.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, formal, facts)), Unconstrained));
-				return { when: GuardTerm.render(term), claim: claimBeyond(claimOf(all), claimOf(GuardTerm.conjuncts(term))), ...(relations.length > 0 ? { relations } : {}) };
+				const claim = claimBeyond(toClaim(abstractOfAll(all, formal, facts)), toClaim(abstractOfAll(GuardTerm.conjuncts(term), formal, facts)));
+				return { when: GuardTerm.render(term), claim, ...(relations.length > 0 ? { relations } : {}) };
 			});
 			break;
 		}
@@ -550,17 +550,22 @@ export function impliedBy(this: void, implied: GuardTerm, conditions: readonly G
 	}
 	const mentioned = formals.filter(formal => GuardTerm.formalsOf(implied).has(formal));
 	return mentioned.length === 1 && GuardTerm.isCall(implied) && mentioned.every(formal => {
-		const known = conditions.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, formal, facts)), Unconstrained);
+		const known = abstractOfAll(conditions, formal, facts);
 		const { plain } = abstractOf(implied, formal, facts);
 		return !known.types.isTop() && !plain.isTop() && known.types.leq(plain);
 	});
+}
+
+/** What all of the conditions together make sure of the formal. */
+function abstractOfAll(this: void, conditions: readonly GuardTerm[], formal: BrandedIdentifier, facts: GuardFactsLookup): Abstract {
+	return conditions.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, formal, facts)), Unconstrained);
 }
 
 /** What the given conditions, all of which hold on a normal return, claim about each of the given formals; a formal without any claim is left out. */
 export function claimsOf(this: void, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[], facts: GuardFactsLookup): Record<BrandedIdentifier, FormalClaim> {
 	const claims: Record<BrandedIdentifier, FormalClaim> = {};
 	for(const formal of formals) {
-		const claim = toClaim(conditions.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, formal, facts)), Unconstrained));
+		const claim = toClaim(abstractOfAll(conditions, formal, facts));
 		if(Object.keys(claim).length > 0) {
 			claims[formal] = claim;
 		}
@@ -605,10 +610,7 @@ function ofReturned(this: void, { types, scalar, notNA, count, nonEmpty }: Retur
 /** What a function is stated to return, a classed value bringing a method of its own making it a case of the unclassed one, see {@link ReturnedValue.dispatchesOn}. */
 export function returnedClaimOf(this: void, returned: ReturnedValue): FormalClaim | undefined {
 	const claim = toClaim(ofReturned(returned));
-	if(Object.keys(claim).length === 0) {
-		return undefined;
-	}
-	return returned.dispatchesOn === undefined ? claim : { cases: [{ when: `!is.object(${returned.dispatchesOn})`, claim }] };
+	return Object.keys(claim).length === 0 ? undefined : returned.dispatchesOn === undefined ? claim : { cases: [{ when: `!is.object(${returned.dispatchesOn})`, claim }] };
 }
 
 /** The types `c` turns its elements into, from the weakest to the strongest. */

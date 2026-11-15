@@ -85,9 +85,7 @@ function warnIfNearGitHubLimit(file: string): void {
 	}
 }
 
-/**
- * Updates and optionally re-creates all flowR wikis.
- */
+/** Updates and optionally re-creates all flowR wikis. */
 export async function makeAllWikis(force: boolean, filter: string[] | undefined) {
 	const setupStart = new Date();
 	console.log('Setting up wiki generation...');
@@ -176,18 +174,8 @@ if(require.main === module) {
 			header:  `flowR (version ${flowrVersion().toString()})`,
 			content: 'Documentation (wiki, issue, ...) generator for flowR'
 		},
-		{
-			header:  'Synopsis',
-			content: [
-				'$ wiki {bold --help}',
-				'$ wiki {bold --force}',
-				'$ wiki {bold --filter} {italic "dataflow"}'
-			]
-		},
-		{
-			header:     'Options',
-			optionList: wikiOptions
-		}
+		{ header: 'Synopsis', content: ['$ wiki {bold --help}', '$ wiki {bold --force}', '$ wiki {bold --filter} {italic "dataflow"}'] },
+		{ header: 'Options', optionList: wikiOptions }
 	];
 
 	setMinLevelOfAllLogs(LogLevel.Fatal);

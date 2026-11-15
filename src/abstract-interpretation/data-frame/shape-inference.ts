@@ -15,36 +15,26 @@ interface Operation<Name extends DataFrameOperationName> {
 	options?:  DataFrameOperationOptions<Name>;
 }
 
-/**
- * An abstract data frame operation.
- */
+/** An abstract data frame operation. */
 export type DataFrameOperation<OperationName extends DataFrameOperationName = DataFrameOperationName> = {
 	[Name in OperationName]: Operation<Name> & DataFrameOperationArgs<Name>;
 }[OperationName];
 
-/**
- * An abstract data frame operation without additional options.
- */
+/** An abstract data frame operation without additional options. */
 export type DataFrameOperationType<OperationName extends DataFrameOperationName = DataFrameOperationName> = {
 	[Name in OperationName]: Omit<Operation<Name>, 'type' | 'options'> & DataFrameOperationArgs<Name>;
 }[OperationName];
 
-/**
- * A possible `undefined` array of abstract data frame operations (see {@link DataFrameOperation}).
- */
+/** A possible `undefined` array of abstract data frame operations (see {@link DataFrameOperation}). */
 export type DataFrameOperations<OperationName extends DataFrameOperationName = DataFrameOperationName> = DataFrameOperation<OperationName>[] | undefined;
 
-/**
- * The abstract domains inferred by the data frame shape analysis (see {@link DataFrameShapeAnalysis}).
- */
+/** The abstract domains inferred by the data frame shape analysis (see {@link DataFrameShapeAnalysis}). */
 export type DataFrameShapeDomains = {
 	/** The inferred shape of data frames */
 	readonly dataFrame: DataFrameDomain;
 };
 
-/**
- * The options of the data frame shape analysis (see {@link DataFrameShapeAnalysis}).
- */
+/** The options of the data frame shape analysis (see {@link DataFrameShapeAnalysis}). */
 export interface DataFrameShapeAnalysisOptions {
 	/** Whether the abstract data frame operations the expressions are mapped to should be stored (defaults to `true`) */
 	readonly trackOperations?: boolean;

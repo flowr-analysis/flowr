@@ -1,7 +1,4 @@
-import type { AstIdMap,
-	ParentInformation,
-	RNodeWithParent
-} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
@@ -63,9 +60,7 @@ function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & Pare
 	};
 }
 
-function getEffectiveOrder<T>(config: {
-	swapSourceAndTarget?: boolean
-}, args: [T, T]): [T, T] {
+function getEffectiveOrder<T>(config: Pick<AssignmentConfiguration, 'swapSourceAndTarget'>, args: [T, T]): [T, T] {
 	return config.swapSourceAndTarget ? [args[1], args[0]] : args;
 }
 
@@ -100,15 +95,20 @@ export interface AssignmentConfiguration {
 	readonly beforeDefine?:        (information: { readonly environment: REnvironmentInformation, readonly graph: DataflowGraph }) => REnvironmentInformation
 }
 
+/** An argument of a call by its name, or else by its position among the unnamed ones. */
+export interface ArgumentSlot {
+	readonly idx?: number
+	readonly name: BrandedIdentifier
+}
+
 export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration {
-	readonly source:       { idx?: number, name: BrandedIdentifier };
-	readonly target:       { idx?: number, name: BrandedIdentifier };
+	readonly source:       ArgumentSlot;
+	readonly target:       ArgumentSlot;
 	/** the class of the S3 method the call binds as `<target>.<class>`, like `.S3method("f", "b", m)` binds `f.b` */
-	readonly targetClass?: { idx?: number, name: BrandedIdentifier };
+	readonly targetClass?: ArgumentSlot;
 	/** binds at the top level wherever the call runs, as registering a method (`setMethod`) does */
 	readonly registers?:   boolean;
 }
-
 
 function yieldsEnvironment<OtherInfo>(
 	node:  RNode<OtherInfo & ParentInformation>,
@@ -145,10 +145,7 @@ function tryReplacement<OtherInfo>(
 	/* every replacement function rebinds its target, no matter whether we ship a built-in for it or the user wrote it; a user-defined one is only ever bound under its `<-` name, the `<<-` form stays in the configuration */
 	const name = builtIn ? functionName.content : Identifier.mapName(functionName.content, n => superAssignment ? n.slice(0, -'<<-'.length) + '<-' : n);
 
-	const replacementConfig = builtIn ? builtIn.config : {
-		readIndices:        true,
-		assignmentOperator: superAssignment ? '<<-' : '<-'
-	};
+	const replacementConfig = builtIn ? builtIn.config : { readIndices: true, assignmentOperator: superAssignment ? '<<-' : '<-' };
 	const info = BuiltInProcessorMapper[BuiltInProcName.Replacement](
 		{ ...functionName, content: name },
 		wrapArgumentsUnnamed(args, data.completeAst.idMap),
@@ -162,10 +159,7 @@ function tryReplacement<OtherInfo>(
 		return info;
 	}
 	/* the replacement marks its callee as an S3 prefix, which only ever resolves to `name.<class>`; a user-defined replacement is bound under the plain name, so we read that first to link the call to its definition */
-	return {
-		...info,
-		in: [{ nodeId: functionName.info.id, name, cds: data.cds, type: ReferenceType.Function }, ...info.in]
-	};
+	return { ...info, in: [{ nodeId: functionName.info.id, name, cds: data.cds, type: ReferenceType.Function }, ...info.in] };
 }
 
 /** In contrast to `processAssignment`, this function allows more flexible handling of assignment-like functions. */
@@ -187,7 +181,7 @@ export function processAssignmentLike<OtherInfo>(
 			argsWithNames.set(name, arg);
 		}
 	}
-	const argOf = ({ idx, name }: { idx?: number, name: BrandedIdentifier }) => argsWithNames.get(name) ?? (idx === undefined ? undefined : argsWithoutNames[idx]);
+	const argOf = ({ idx, name }: ArgumentSlot) => argsWithNames.get(name) ?? (idx === undefined ? undefined : argsWithoutNames[idx]);
 	const source = argOf(config.source);
 	const target = argOf(config.target);
 	const classArg = config.targetClass === undefined ? undefined : argOf(config.targetClass);
@@ -317,6 +311,10 @@ function processAssignmentTarget<OtherInfo>(
 	const target = RArgument.valueOf(effectiveArgs[0]);
 	const source = RArgument.valueOf(effectiveArgs[1]);
 
+	/* an in-place setter of one argument, as `setDT(d)`, works on its target alone */
+	if(source === undefined && args.length === 1 && config.readTarget && RSymbol.is(target)) {
+		return processAssignmentTarget(name, [args[0], args[0]], rootId, data, config);
+	}
 	if(target === undefined || source === undefined) {
 		dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has an undefined target or source, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;

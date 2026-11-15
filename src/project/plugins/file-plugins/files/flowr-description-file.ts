@@ -32,9 +32,7 @@ export class FlowrDescriptionFile extends FlowrWrappedFile<DeepReadonly<DCF>> {
 		return file;
 	}
 
-	/**
-	 * Returns the parsed license information from the 'License' field in the DESCRIPTION file.
-	 */
+	/** Returns the parsed license information from the 'License' field in the DESCRIPTION file. */
 	public license(): RLicenseElementInfo[] | undefined {
 		const licenses = this.content().get('License');
 		if(!licenses) {
@@ -43,9 +41,7 @@ export class FlowrDescriptionFile extends FlowrWrappedFile<DeepReadonly<DCF>> {
 		return parseRLicenseField(...licenses);
 	}
 
-	/**
-	 * Returns the parsed version from the 'Version' field in the DESCRIPTION file.
-	 */
+	/** Returns the parsed version from the 'Version' field in the DESCRIPTION file. */
 	public version(): SemVer & { str: string } | undefined {
 		const v = this.content().get('Version');
 		if(!v || v.length === 0) {
@@ -55,9 +51,7 @@ export class FlowrDescriptionFile extends FlowrWrappedFile<DeepReadonly<DCF>> {
 		return RVersion.parse(verStr);
 	}
 
-	/**
-	 * Returns the parsed authors from the `Authors@R` field in the DESCRIPTION file.
-	 */
+	/** Returns the parsed authors from the `Authors@R` field in the DESCRIPTION file. */
 	public authors(): RAuthorInfo[] | undefined {
 		let authors = this.content().get('Authors@R');
 		if(authors) {
@@ -70,34 +64,26 @@ export class FlowrDescriptionFile extends FlowrWrappedFile<DeepReadonly<DCF>> {
 		);
 	}
 
-	/**
-	 * Returns the parsed suggested packages from the 'Suggests' field in the DESCRIPTION file.
-	 */
+	/** Returns the parsed suggested packages from the 'Suggests' field in the DESCRIPTION file. */
 	public suggests(): Package[] | undefined {
 		const suggests = this.content().get('Suggests');
 		return suggests ? parsePackagesWithVersions(suggests, 'package') : undefined;
 	}
 
-	/**
-	 * Returns the parsed enhanced packages from the 'Enhances' field in the DESCRIPTION file.
-	 */
+	/** Returns the parsed enhanced packages from the 'Enhances' field in the DESCRIPTION file. */
 	public enhances(): Package[] | undefined {
 		const enhances = this.content().get('Enhances');
 		return enhances ? parsePackagesWithVersions(enhances, 'package') : undefined;
 	}
 
-	/**
-	 * Returns the 'Collate' field from the DESCRIPTION file.
-	 */
+	/** Returns the 'Collate' field from the DESCRIPTION file. */
 	public collate(): readonly string[] | undefined {
 		const c = this.content().get('Collate');
 		// we join newlines, and then split quote sensitive:
 		return c ? splitAtEscapeSensitive(c.join(' '), true, ' ').map(s => RString.unquote(s).trim()).filter(s => s.length > 0) : undefined;
 	}
 
-	/**
-	 * Returns the parsed dependencies from the 'Depends' field in the DESCRIPTION file.
-	 */
+	/** Returns the parsed dependencies from the 'Depends' field in the DESCRIPTION file. */
 	public depends(): readonly Package[] | undefined {
 		const deps = this.content().get('Depends');
 		return deps ? parsePackagesWithVersions(deps, 'r') : undefined;
@@ -112,33 +98,25 @@ export class FlowrDescriptionFile extends FlowrWrappedFile<DeepReadonly<DCF>> {
 		return lt ? parsePackagesWithVersions(lt, 'package') : undefined;
 	}
 
-	/**
-	 * Returns the parsed imports from the 'Imports' field in the DESCRIPTION file.
-	 */
+	/** Returns the parsed imports from the 'Imports' field in the DESCRIPTION file. */
 	public imports(): readonly Package[] | undefined {
 		const imps = this.content().get('Imports');
 		return imps ? parsePackagesWithVersions(imps, 'package') : undefined;
 	}
 
-	/**
-	 * Returns the package name from the 'Package' field in the DESCRIPTION file.
-	 */
+	/** Returns the package name from the 'Package' field in the DESCRIPTION file. */
 	public packageName(): string | undefined {
 		const names = this.content().get('Package');
 		return names && names.length > 0 ? names[0] : names?.join(' ');
 	}
 
-	/**
-	 * Returns the package title from the 'Title' field in the DESCRIPTION file.
-	 */
+	/** Returns the package title from the 'Title' field in the DESCRIPTION file. */
 	public packageTitle(): string | undefined {
 		const titles = this.content().get('Title');
 		return titles && titles.length > 0 ? titles[0] : titles?.join(' ');
 	}
 
-	/**
-	 * Returns the (lower-cased) 'Type' field of the DESCRIPTION file, e.g. `package`, `shiny`, or `compendium`.
-	 */
+	/** Returns the (lower-cased) 'Type' field of the DESCRIPTION file, e.g. `package`, `shiny`, or `compendium`. */
 	public type(): string | undefined {
 		const types = this.content().get('Type');
 		return types && types.length > 0 ? types[0].trim().toLowerCase() : undefined;
@@ -258,13 +236,7 @@ export function parsePackagesWithVersions(packageStrings: readonly string[], typ
 		const [, name, operator, version] = match;
 
 		const range = Package.parsePkgVersionRange(operator, version);
-		packages.push(new Package(
-			{
-				name:               name,
-				type:               type,
-				versionConstraints: range ? [range] : undefined
-			}
-		));
+		packages.push(new Package({ name: name, type: type, versionConstraints: range ? [range] : undefined }));
 		str = str.slice(match.index + match[0].length);
 	}
 	return packages;

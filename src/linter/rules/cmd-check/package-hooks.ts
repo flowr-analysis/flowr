@@ -13,10 +13,7 @@ import type { DataflowInformation } from '../../../dataflow/info';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RIfThenElse } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
-import { RWhileLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
-import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
-import { RRepeatLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
-import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { RLoopConstructs, RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { isExportedInInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
@@ -79,7 +76,7 @@ const BranchingCalls: ReadonlySet<BrandedIdentifier> = new Set(['switch', 'tryCa
 
 /** the constructs whose body may or may not run */
 function isConditional(node: RNode<ParentInformation>, graph: DataflowGraph): boolean {
-	return RIfThenElse.is(node) || RWhileLoop.is(node) || RForLoop.is(node) || RRepeatLoop.is(node) || RFunctionCall.is(node) && callsBuiltIn(graph, node.info.id, BranchingCalls);
+	return RIfThenElse.is(node) || RLoopConstructs.is(node) || RFunctionCall.is(node) && callsBuiltIn(graph, node.info.id, BranchingCalls);
 }
 
 /**

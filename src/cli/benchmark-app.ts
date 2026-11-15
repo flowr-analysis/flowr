@@ -34,10 +34,7 @@ export interface BenchmarkCliOptions {
 
 const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [], {
 	subtitle: 'Slice given files with additional benchmark information',
-	examples: [
-		'{italic example-folder/}',
-		'{bold --help}'
-	]
+	examples: ['{italic example-folder/}', '{bold --help}']
 });
 
 if(options.input.length === 0) {

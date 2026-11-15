@@ -1,157 +1,62 @@
-import {
-	type CallContextQuery,
-	type CallContextQuerySubKindResult,
-	CallContextQueryDefinition
-} from './catalog/call-context-query/call-context-query-format';
+import { type CallContextQuery, type CallContextQuerySubKindResult, CallContextQueryDefinition } from './catalog/call-context-query/call-context-query-format';
 import type { BaseQueryFormat, BaseQueryMeta, BaseQueryResult, BasicQueryData } from './base-query-format';
 import { getGuardIssueUrl, guard } from '../util/assert';
 import { SupportedVirtualQueries, type VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
 import { type DataflowQuery, DataflowQueryDefinition } from './catalog/dataflow-query/dataflow-query-format';
 import { type IdMapQuery, IdMapQueryDefinition } from './catalog/id-map-query/id-map-query-format';
-import {
-	type NormalizedAstQuery,
-	NormalizedAstQueryDefinition
-} from './catalog/normalized-ast-query/normalized-ast-query-format';
-import {
-	type StaticSliceQuery,
-	StaticSliceQueryDefinition
-} from './catalog/static-slice-query/static-slice-query-format';
+import { type NormalizedAstQuery, NormalizedAstQueryDefinition } from './catalog/normalized-ast-query/normalized-ast-query-format';
+import { type StaticSliceQuery, StaticSliceQueryDefinition } from './catalog/static-slice-query/static-slice-query-format';
 import { ClusterQueryDefinition, type DataflowClusterQuery } from './catalog/cluster-query/cluster-query-format';
-import {
-	type DependenciesQuery,
-	DependenciesQueryDefinition
-} from './catalog/dependencies-query/dependencies-query-format';
-import type { OutputFormatter } from '../util/text/ansi';
-import { ColorEffect, Colors, FontStyles } from '../util/text/ansi';
+import { type DependenciesQuery, DependenciesQueryDefinition } from './catalog/dependencies-query/dependencies-query-format';
+import { type OutputFormatter, ColorEffect, Colors, FontStyles } from '../util/text/ansi';
 import Joi from 'joi';
-import {
-	type LocationMapQuery,
-	LocationMapQueryDefinition
-} from './catalog/location-map-query/location-map-query-format';
+import { type LocationMapQuery, LocationMapQueryDefinition } from './catalog/location-map-query/location-map-query-format';
 import { type ConfigQuery, ConfigQueryDefinition } from './catalog/config-query/config-query-format';
 import { type SearchQuery, SearchQueryDefinition } from './catalog/search-query/search-query-format';
-import {
-	type HappensBeforeQuery,
-	HappensBeforeQueryDefinition
-} from './catalog/happens-before-query/happens-before-query-format';
-import {
-	type ResolveValueQuery,
-	ResolveValueQueryDefinition
-} from './catalog/resolve-value-query/resolve-value-query-format';
-import {
-	type DataflowLensQuery,
-	DataflowLensQueryDefinition
-} from './catalog/dataflow-lens-query/dataflow-lens-query-format';
+import { type HappensBeforeQuery, HappensBeforeQueryDefinition } from './catalog/happens-before-query/happens-before-query-format';
+import { type ResolveValueQuery, ResolveValueQueryDefinition } from './catalog/resolve-value-query/resolve-value-query-format';
+import { type DataflowLensQuery, DataflowLensQueryDefinition } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
 import { type ProjectQuery, ProjectQueryDefinition } from './catalog/project-query/project-query-format';
 import { type SignatureQuery, SignatureQueryDefinition } from './catalog/signature-query/signature-query-format';
 import { type OriginQuery, OriginQueryDefinition } from './catalog/origin-query/origin-query-format';
 import { type LinterQuery, LinterQueryDefinition } from './catalog/linter-query/linter-query-format';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import {
-	type ControlFlowQuery,
-	ControlFlowQueryDefinition
-} from './catalog/control-flow-query/control-flow-query-format';
+import { type ControlFlowQuery, ControlFlowQueryDefinition } from './catalog/control-flow-query/control-flow-query-format';
 import type { AsyncOrSync } from 'ts-essentials';
 import { deepMergeObject, type MergeableRecord } from '../util/objects';
 import type { FlowrConfig } from '../config';
-import {
-	type InspectHigherOrderQuery,
-	InspectHigherOrderQueryDefinition
-} from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
+import { type InspectHigherOrderQuery, InspectHigherOrderQueryDefinition } from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { log } from '../util/log';
 import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import { missingRootsWithoutRequests } from './query-print';
 import type { CommandCompletions } from '../cli/repl/completion';
-import type { FilesQuery } from './catalog/files-query/files-query-format';
-import { FilesQueryDefinition } from './catalog/files-query/files-query-format';
-import type { CallGraphQuery } from './catalog/call-graph-query/call-graph-query-format';
-import { CallGraphQueryDefinition } from './catalog/call-graph-query/call-graph-query-format';
+import { type FilesQuery, FilesQueryDefinition } from './catalog/files-query/files-query-format';
+import { type CallGraphQuery, CallGraphQueryDefinition } from './catalog/call-graph-query/call-graph-query-format';
 import { type AmbientAccessQuery, AmbientAccessQueryDefinition } from './catalog/ambient-access-query/ambient-access-query-format';
-import type {
-	InspectRecursionQuery } from './catalog/inspect-recursion-query/inspect-recursion-query-format';
-import {
-	InspectRecursionQueryDefinition
-} from './catalog/inspect-recursion-query/inspect-recursion-query-format';
-import type {
-	InspectFnPropsQuery } from './catalog/inspect-fn-props-query/inspect-fn-props-query-format';
-import {
-	InspectFnPropsQueryDefinition
-} from './catalog/inspect-fn-props-query/inspect-fn-props-query-format';
-import type { InspectFnGuardsQuery } from './catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
-import { InspectFnGuardsQueryDefinition } from './catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
-import type { DoesCallQuery } from './catalog/does-call-query/does-call-query-format';
-import { DoesCallQueryDefinition } from './catalog/does-call-query/does-call-query-format';
-import type {
-	InspectExceptionQuery } from './catalog/inspect-exceptions-query/inspect-exception-query-format';
-import {
-	InspectExceptionQueryDefinition
-} from './catalog/inspect-exceptions-query/inspect-exception-query-format';
-import type {
-	InputSourcesQuery,
-} from './catalog/input-sources-query/input-sources-query-format';
-import {
-	InputSourcesDefinition
-} from './catalog/input-sources-query/input-sources-query-format';
-import type { ProvenanceQuery } from './catalog/provenance-query/provenance-query-format';
-import { ProvenanceQueryDefinition } from './catalog/provenance-query/provenance-query-format';
-import type { TaintQuery } from './catalog/taint-query/taint-query-format';
-import { TaintQueryDefinition } from './catalog/taint-query/taint-query-format';
+import { type InspectRecursionQuery, InspectRecursionQueryDefinition } from './catalog/inspect-recursion-query/inspect-recursion-query-format';
+import { type InspectFnPropsQuery, InspectFnPropsQueryDefinition } from './catalog/inspect-fn-props-query/inspect-fn-props-query-format';
+import { type InspectFnGuardsQuery, InspectFnGuardsQueryDefinition } from './catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
+import { type DoesCallQuery, DoesCallQueryDefinition } from './catalog/does-call-query/does-call-query-format';
+import { type InspectExceptionQuery, InspectExceptionQueryDefinition } from './catalog/inspect-exceptions-query/inspect-exception-query-format';
+import { type InputSourcesQuery, InputSourcesDefinition } from './catalog/input-sources-query/input-sources-query-format';
+import { type ProvenanceQuery, ProvenanceQueryDefinition } from './catalog/provenance-query/provenance-query-format';
+import { type TaintQuery, TaintQueryDefinition } from './catalog/taint-query/taint-query-format';
 import type { LintingResult, LintingResultCertainty } from '../linter/linter-format';
 import { type DiceQuery, DiceQueryDefinition } from './catalog/dice-query/dice-query-format';
-import {
-	type GuessDepVersionsQuery,
-	GuessDepVersionsQueryDefinition
-} from './catalog/guess-dep-versions-query/guess-dep-versions-query-format';
+import { type GuessDepVersionsQuery, GuessDepVersionsQueryDefinition } from './catalog/guess-dep-versions-query/guess-dep-versions-query-format';
 import { AbsintQueryDefinition, type AbsintQuery } from './catalog/absint-query/absint-query-format';
 import { type CodeClonesQuery, CodeClonesQueryDefinition } from './catalog/code-clones-query/code-clones-query-format';
 import { type DataColumnsQuery, DataColumnsQueryDefinition } from './catalog/data-columns-query/data-columns-query-format';
-import {
-	type FunctionInfoQuery,
-	FunctionInfoQueryDefinition
-} from './catalog/function-info-query/function-info-query-format';
+import { type FunctionInfoQuery, FunctionInfoQueryDefinition } from './catalog/function-info-query/function-info-query-format';
 
-/**
- * These are all queries that can be executed from within flowR
- */
-export type Query = CallContextQuery
-	| ConfigQuery
-	| SearchQuery
-	| DataflowQuery
-	| DoesCallQuery
-	| CallGraphQuery
-	| ControlFlowQuery
-	| DataflowLensQuery
-	| FilesQuery
-	| AbsintQuery
-	| NormalizedAstQuery
-	| IdMapQuery
-	| DataflowClusterQuery
-	| StaticSliceQuery
-	| DependenciesQuery
-	| LocationMapQuery
-	| HappensBeforeQuery
-	| InspectExceptionQuery
-    | InspectHigherOrderQuery
-	| InspectRecursionQuery
-	| InspectFnPropsQuery
-	| InspectFnGuardsQuery
-	| AmbientAccessQuery
-	| ResolveValueQuery
-	| ProjectQuery
-	| SignatureQuery
-	| OriginQuery
-	| LinterQuery
-	| ProvenanceQuery
-	| InputSourcesQuery
-	| TaintQuery
-	| DiceQuery
-	| GuessDepVersionsQuery
-	| FunctionInfoQuery
-	| CodeClonesQuery
-	| DataColumnsQuery
-	;
+/** These are all queries that can be executed from within flowR */
+export type Query = CallContextQuery | ConfigQuery | SearchQuery | DataflowQuery | DoesCallQuery | CallGraphQuery | ControlFlowQuery | DataflowLensQuery | FilesQuery
+	| AbsintQuery | NormalizedAstQuery | IdMapQuery | DataflowClusterQuery | StaticSliceQuery | DependenciesQuery | LocationMapQuery | HappensBeforeQuery
+	| InspectExceptionQuery | InspectHigherOrderQuery | InspectRecursionQuery | InspectFnPropsQuery | InspectFnGuardsQuery | AmbientAccessQuery
+	| ResolveValueQuery | ProjectQuery | SignatureQuery | OriginQuery | LinterQuery | ProvenanceQuery | InputSourcesQuery | TaintQuery | DiceQuery
+	| GuessDepVersionsQuery | FunctionInfoQuery | CodeClonesQuery | DataColumnsQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -162,9 +67,7 @@ type SupportedQueriesType = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
 };
 
-/**
- * The result of parsing a query line from, e.g., the repl.
- */
+/** The result of parsing a query line from, e.g., the repl. */
 export interface ParsedQueryLine<QueryType extends BaseQueryFormat['type']> {
 	/** The parsed query or queries from the line. */
 	query:  QueryArgumentsWithType<QueryType> | QueryArgumentsWithType<QueryType>[] | undefined;
@@ -260,31 +163,12 @@ export async function executeQueriesOfSameType<SpecificQuery extends Query>(data
 function runExecutor(data: BasicQueryData, type: SupportedQueryTypes, queries: readonly Query[]): Promise<BaseQueryResult> {
 	const definition = SupportedQueries[type] as SupportedQuery | undefined;
 	guard(definition !== undefined, `Unsupported query type: ${type}`);
-	const run = (): Promise<BaseQueryResult> => definition.executor(data, queries as never);
-	return run();
+	return definition.executor(data, queries as never);
 }
 
 /** Groups the queries by type in the order the types first occur, unfolding virtual queries into the queries they stand for. */
 function groupQueriesByType(queries: Queries): Map<SupportedQueryTypes, Query[]> {
-	const grouped = new Map<SupportedQueryTypes, Query[]>();
-	function add(query: Query) {
-		const group = grouped.get(query.type);
-		if(group) {
-			group.push(query);
-		} else {
-			grouped.set(query.type, [query]);
-		}
-	}
-	for(const query of queries) {
-		if(query.type === 'compound') {
-			for(const subQuery of SupportedVirtualQueries[query.type](query)) {
-				add(subQuery);
-			}
-		} else {
-			add(query);
-		}
-	}
-	return grouped;
+	return Map.groupBy(queries.flatMap((q): readonly Query[] => q.type === 'compound' ? SupportedVirtualQueries[q.type](q) : [q]), q => q.type);
 }
 
 /* a record mapping the query type present to its respective result */
@@ -292,16 +176,12 @@ export type QueryResults<Base extends SupportedQueryTypes = SupportedQueryTypes>
 	readonly [QueryType in Base]: Awaited<QueryResult<QueryType>>
 } & BaseQueryResult;
 
-type OmitFromValues<T, K extends string | number | symbol> = {
-	[P in keyof T]?: Omit<T[P], K>
-};
+type OmitFromValues<T, K extends string | number | symbol> = { [P in keyof T]?: Omit<T[P], K> };
 
 export type QueryResultsWithoutMeta<Queries extends Query> = OmitFromValues<Omit<QueryResults<Queries['type']>, '.meta'>, '.meta'>;
 
-export type Queries<
-	Base extends SupportedQueryTypes = SupportedQueryTypes,
-	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
-> = readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[];
+export type Queries<Base extends SupportedQueryTypes = SupportedQueryTypes, VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>> =
+	readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[];
 
 /**
  * This is the main query execution function that takes a set of queries and executes them on the given data.
@@ -309,10 +189,9 @@ export type Queries<
  * discard the results of other queries.
  * @see {@link Query.one} - to run a single query and get its result directly
  */
-export async function executeQueries<
-	Base extends SupportedQueryTypes,
-	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): Promise<QueryResults<Base>> {
+export async function executeQueries<Base extends SupportedQueryTypes, VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>>(
+	data: BasicQueryData, queries: Queries<Base, VirtualArguments>
+): Promise<QueryResults<Base>> {
 	const start = Date.now();
 	const results: Record<string, BaseQueryResult | BaseQueryMeta> = {};
 	for(const [type, group] of groupQueriesByType(queries)) {
@@ -354,13 +233,9 @@ async function retryQueriesIndividually(data: BasicQueryData, group: readonly Qu
 	return merged === undefined ? { '.meta': { timing: 0 }, error } as BaseQueryResult : { ...merged, error } as BaseQueryResult;
 }
 
-/**
- * Produces a Joi schema representing all supported queries.
- */
+/** Produces a Joi schema representing all supported queries. */
 export function SupportedQueriesSchema() {
-	return Joi.alternatives(
-		Object.values(SupportedQueries).map(q => q.schema)
-	).description('Supported queries');
+	return Joi.alternatives(Object.values(SupportedQueries).map(q => q.schema)).description('Supported queries');
 }
 
 export const CompoundQuerySchema = Joi.object({
@@ -370,64 +245,42 @@ export const CompoundQuerySchema = Joi.object({
 	arguments:       Joi.array().items(Joi.object()).required().description('Arguments for each query.')
 }).description('Compound query used to combine queries of the same type');
 
-/**
- * Produces a Joi schema representing all virtual queries.
- */
+/** Produces a Joi schema representing all virtual queries. */
 export function VirtualQuerySchema() {
-	return Joi.alternatives(
-		CompoundQuerySchema
-	).description('Virtual queries (used for structure)');
+	return Joi.alternatives(CompoundQuerySchema).description('Virtual queries (used for structure)');
 }
 
-/**
- * Produces a Joi schema representing any supported query (including virtual queries).
- */
+/** Produces a Joi schema representing any supported query (including virtual queries). */
 export function AnyQuerySchema() {
-	return Joi.alternatives(
-		SupportedQueriesSchema(),
-		VirtualQuerySchema()
-	).description('A virtual or an active query!');
+	return Joi.alternatives(SupportedQueriesSchema(), VirtualQuerySchema()).description('A virtual or an active query!');
 }
 
-/**
- * Produces a Joi schema representing an array of supported queries.
- */
+/** Produces a Joi schema representing an array of supported queries. */
 export function QueriesSchema() {
 	return Joi.array().items(AnyQuerySchema()).description('Queries to run on the file analysis information (in the form of an array)');
 }
 
-/**
- * Wraps a function that executes a REPL query and, if it fails, checks whether there were any requests to analyze.
- */
-export async function genericWrapReplFailIfNoRequest<T>(
-	fn: () => Promise<T>,
-	output: ReplOutput,
-	analyzer: ReadonlyFlowrAnalysisProvider
-): Promise<T | undefined> {
+/** Wraps a function that executes a REPL query and, if it fails, checks whether there were any requests to analyze. */
+export async function genericWrapReplFailIfNoRequest<T>(fn: () => Promise<T>, output: ReplOutput, analyzer: ReadonlyFlowrAnalysisProvider): Promise<T | undefined> {
 	try {
 		return await fn();
 	} catch(e) {
 		const missing = missingRootsWithoutRequests(analyzer);
-		if(missing !== undefined) {
-			if(missing.length > 0) {
-				output.stderr(output.formatter.format(`Path does not exist: ${missing.map(p => `'${p}'`).join(', ')}`, { color: Colors.Red, style: FontStyles.Bold, effect: ColorEffect.Foreground }));
-				return;
-			}
-			output.stderr(
-				output.formatter.format('No requests to analyze were found.', { color: Colors.Red, style: FontStyles.Bold, effect: ColorEffect.Foreground  })
-		        + '\nIf you consider this an error, please report a bug: '
-				+ getGuardIssueUrl('analyzer found no requests to analyze')
-			);
-			output.stderr('Full error message: ' + ((e instanceof Error) ? e.message : String(e)));
-		} else {
+		if(missing === undefined) {
 			throw e;
 		}
+		const red = (text: string) => output.formatter.format(text, { color: Colors.Red, style: FontStyles.Bold, effect: ColorEffect.Foreground });
+		if(missing.length > 0) {
+			output.stderr(red(`Path does not exist: ${missing.map(p => `'${p}'`).join(', ')}`));
+			return;
+		}
+		output.stderr(red('No requests to analyze were found.') + '\nIf you consider this an error, please report a bug: ' + getGuardIssueUrl('analyzer found no requests to analyze'));
+		output.stderr('Full error message: ' + errorMessage(e));
 	}
 }
 
 /** What a query reports per key, for the queries that report anything per key. */
-type ResultsOf<Type extends SupportedQueryTypes> =
-	Awaited<QueryResult<Type>> extends { readonly results: infer R } ? R : never;
+type ResultsOf<Type extends SupportedQueryTypes> = Awaited<QueryResult<Type>> extends { readonly results: infer R } ? R : never;
 
 /** The keys {@link ResultsOf} is indexed by, e.g. the slicing criterion a slice was taken at. */
 type KeyOf<Type extends SupportedQueryTypes> = Extract<keyof ResultsOf<Type>, string>;
@@ -487,44 +340,30 @@ export const Query = {
 	 * const { slice, reconstruct } = await Query.one({ analyzer }, { type: 'static-slice', criteria: ['2@x'] });
 	 * ```
 	 */
-	async one<Type extends SupportedQueryTypes>(
-		this: void, data: BasicQueryData, query: QueryArgumentsWithType<Type>
-	): Promise<SingleQueryResult<Type>> {
+	async one<Type extends SupportedQueryTypes>(this: void, data: BasicQueryData, query: QueryArgumentsWithType<Type>): Promise<SingleQueryResult<Type>> {
 		const definition = SupportedQueries[query.type] as SupportedQuery;
 		const result = await runExecutor(data, query.type, [query]);
 		if(!definition.perQueryResults) {
 			return result as SingleQueryResult<Type>;
 		}
-		const results = (result as BaseQueryResult & { readonly results: Readonly<Record<string, unknown>> }).results;
-		for(const key in results) {
-			return results[key] as SingleQueryResult<Type>;
-		}
-		return undefined as SingleQueryResult<Type>;
+		return Object.values((result as BaseQueryResult & { readonly results?: Readonly<Record<string, unknown>> }).results ?? {})[0] as SingleQueryResult<Type>;
 	},
 	/** Every key and result of one query, typed as that query reports them. */
-	entries<Base extends SupportedQueryTypes, Type extends Base>(
-		this: void, results: QueryResults<Base>, type: Type
-	): [KeyOf<Type>, ValueOf<Type>][] {
+	entries<Base extends SupportedQueryTypes, Type extends Base>(this: void, results: QueryResults<Base>, type: Type): [KeyOf<Type>, ValueOf<Type>][] {
 		const found = results[type] as { results?: Record<string, unknown> } | undefined;
 		return Object.entries(found?.results ?? {}) as [KeyOf<Type>, ValueOf<Type>][];
 	},
 	/** Every result of one query, for when the keys are not what you are after. */
-	values<Base extends SupportedQueryTypes, Type extends Base>(
-		this: void, results: QueryResults<Base>, type: Type
-	): ValueOf<Type>[] {
+	values<Base extends SupportedQueryTypes, Type extends Base>(this: void, results: QueryResults<Base>, type: Type): ValueOf<Type>[] {
 		return Query.entries(results, type).map(([, value]) => value);
 	},
 	/** The result of one query under one key, `undefined` when it reported none. */
-	get<Base extends SupportedQueryTypes, Type extends Base>(
-		this: void, results: QueryResults<Base>, type: Type, key: KeyOf<Type>
-	): ValueOf<Type> | undefined {
+	get<Base extends SupportedQueryTypes, Type extends Base>(this: void, results: QueryResults<Base>, type: Type, key: KeyOf<Type>): ValueOf<Type> | undefined {
 		const found = results[type] as { results?: Record<string, unknown> } | undefined;
 		return found?.results?.[key] as ValueOf<Type> | undefined;
 	},
 	/** The one result of a query that was asked for one thing, `undefined` when it reported none. */
-	first<Base extends SupportedQueryTypes, Type extends Base>(
-		this: void, results: QueryResults<Base>, type: Type
-	): ValueOf<Type> | undefined {
+	first<Base extends SupportedQueryTypes, Type extends Base>(this: void, results: QueryResults<Base>, type: Type): ValueOf<Type> | undefined {
 		return Query.values(results, type)[0];
 	},
 	/**
@@ -532,24 +371,12 @@ export const Query = {
 	 * rather than leaving them as the two levels of record the result nests them in.
 	 */
 	calls(this: void, results: Partial<QueryResults<'call-context'>>): FoundCall[] {
-		const found: FoundCall[] = [];
-		for(const [kind, { subkinds }] of Object.entries(results['call-context']?.kinds ?? {})) {
-			for(const [subkind, hits] of Object.entries(subkinds)) {
-				for(const hit of hits) {
-					found.push({ ...hit, kind, subkind });
-				}
-			}
-		}
-		return found;
+		return Object.entries(results['call-context']?.kinds ?? {}).flatMap(([kind, { subkinds }]) =>
+			Object.entries(subkinds).flatMap(([subkind, hits]) => hits.map(hit => ({ ...hit, kind, subkind }))));
 	},
 	/** Every finding a `linter` query reported, flat, each carrying the rule that reported it. */
 	lints(this: void, results: Partial<QueryResults<'linter'>>): FoundLint[] {
-		const found: FoundLint[] = [];
-		for(const [rule, reported] of Object.entries(results['linter']?.results ?? {})) {
-			for(const result of (reported as { results?: readonly LintingResult[] }).results ?? []) {
-				found.push({ rule, result });
-			}
-		}
-		return found;
+		return Object.entries(results['linter']?.results ?? {}).flatMap(([rule, reported]) =>
+			((reported as { results?: readonly LintingResult[] }).results ?? []).map(result => ({ rule, result })));
 	}
 };

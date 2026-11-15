@@ -5,9 +5,7 @@ import { expensiveTrace } from './log';
 import type { ILogObj, Logger } from 'tslog';
 import { FlowrFilter } from '../search/flowr-search-filters';
 
-/**
- * checks if `item` is an object (it may be an array, ...)
- */
+/** checks if `item` is an object (it may be an array, ...) */
 export function isObjectOrArray(item: unknown): boolean {
 	return typeof item === 'object';
 }
@@ -191,9 +189,7 @@ export type AutocompletablePaths<T, Depth extends number = 6> =
 					: `${K}.${AutocompletablePaths<NonNullable<T[K]>, OneLess[Depth]> & string}`)
 			}[keyof T & string];
 
-/**
- * This is a version of a deep clone that preserves unclonable values (like functions, symbols, ...) by keeping the same reference to them.
- */
+/** This is a version of a deep clone that preserves unclonable values (like functions, symbols, ...) by keeping the same reference to them. */
 export function deepClonePreserveUnclonable<T>(obj: T): T {
 	if(typeof obj !== 'object' || obj === null) {
 		return obj;
@@ -303,10 +299,15 @@ export function getOnPath(obj: unknown, path: string): unknown {
 /**
  * Writes `value` at the given dot-separated `path` of `obj`, creating the intermediate steps that do not exist yet.
  * An intermediate is created as an array if the segment indexing it is a number, and as an object otherwise.
+ * A path naming the prototype (`__proto__`, `constructor`, `prototype`) is refused.
  * @see {@link getOnPath} for the counterpart that reads such a path
  */
 export function setOnPath(obj: object, path: string, value: unknown): void {
 	const segments = pathSegments(path);
+	/* a segment naming the prototype would write into every object */
+	if(segments.some(s => s === '__proto__' || s === 'constructor' || s === 'prototype')) {
+		throw new Error(`the path '${path}' names the prototype of an object`);
+	}
 	let at = obj as Record<string | number, unknown>;
 	for(let i = 0; i < segments.length - 1; i++) {
 		const segment = segments[i];

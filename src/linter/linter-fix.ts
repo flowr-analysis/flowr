@@ -53,27 +53,8 @@ function widenToLine(code: string, lineStarts: readonly number[], edit: Edit): E
 export const LintQuickFixes = {
 	/** Every quick fix a lint run offers, grouped by the file it changes. Fixes flowR cannot place are left out. */
 	byFile(this: void, results: LintResultsByRule): Map<string, LintQuickFix[]> {
-		const byFile = new Map<string, LintQuickFix[]>();
-		for(const perRule of Object.values(results)) {
-			if(LintingResults.isError(perRule)) {
-				continue;
-			}
-			for(const result of perRule.results as readonly LintingResult[]) {
-				for(const fix of result.quickFix ?? []) {
-					const file = SourceLocation.getFile(fix.loc);
-					if(file === undefined || !LintQuickFix.isPlaced(fix)) {
-						continue;
-					}
-					const known = byFile.get(file);
-					if(known === undefined) {
-						byFile.set(file, [fix]);
-					} else {
-						known.push(fix);
-					}
-				}
-			}
-		}
-		return byFile;
+		const fixes = Object.values(results).flatMap(perRule => LintingResults.isError(perRule) ? [] : (perRule.results as readonly LintingResult[]).flatMap(result => result.quickFix ?? []));
+		return Map.groupBy(fixes.filter(fix => SourceLocation.getFile(fix.loc) !== undefined && LintQuickFix.isPlaced(fix)), fix => SourceLocation.getFile(fix.loc) as string);
 	},
 	/**
 	 * The content of one file with the given fixes carried out, as {@link LintQuickFixes.byFile} groups them. Of two

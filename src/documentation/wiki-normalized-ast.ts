@@ -6,8 +6,7 @@ import { block, details } from './doc-util/doc-structure';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrInlineTextFile } from '../project/context/flowr-file';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import { parseRoxygenCommentsOfNode } from '../r-bridge/roxygen2/roxygen-parse';
 import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
@@ -38,9 +37,7 @@ async function quickNormalizedAstMultipleFiles() {
 	return n;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Normalized-AST
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Normalized-AST */
 export class WikiNormalizedAst extends DocMaker<'wiki/Normalized AST.md'> {
 	constructor() {
 		super('wiki/Normalized AST.md', module.filename, 'normalized ast');
@@ -149,10 +146,7 @@ you to decide how you want to traverse multiple files with a ${ctx.link('RProjec
 The ${ctx.link('RProject')} node cannot appear nested within other nodes, so you can safely assume that any child of a node is not an ${ctx.link('RProject')}.
 
 ${
-	block({
-		type:    'TIP',
-		content: 'When working with names and identifiers, consider using the utilities provided with the ' + ctx.link('Identifier', undefined, { type: 'variable' }) + ' object.',
-	})
+	block('TIP', 'When working with names and identifiers, consider using the utilities provided with the ' + ctx.link('Identifier', undefined, { type: 'variable' }) + ' object.')
 }
 
 ### Visitors

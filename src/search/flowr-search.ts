@@ -30,26 +30,18 @@ export type FlowrSearchTransformerNodeBase<Name extends string, Args extends Rec
 	FlowrSearchNodeBase<'transformer', Name, Args>;
 
 export interface FlowrSearchGetFilter extends Record<string, unknown> {
-	/**
-	 * The node must be in the given line.
-	 */
+	/** The node must be in the given line. */
 	readonly line?:          number;
-	/**
-	 * The node must be in the given column.
-	 */
+	/** The node must be in the given column. */
 	readonly column?:        number;
 	/**
 	 * The node must have the given name.
 	 * To treat this name as a regular expression, set {@link FlowrSearchGetFilter#nameIsRegex} to true.
 	 */
 	readonly name?:          string;
-	/**
-	 * Only useful in combination with `name`. If true, the name is treated as a regular expression.
-	 */
+	/** Only useful in combination with `name`. If true, the name is treated as a regular expression. */
 	readonly nameIsRegex?:   boolean;
-	/**
-	 * The node must have the given id.
-	 */
+	/** The node must have the given id. */
 	readonly id?:            NodeId;
 	/**
 	 * The node must stem from a file with the given path matching the regex.
@@ -73,9 +65,7 @@ export interface FlowrSearchGetFilter extends Record<string, unknown> {
 	 * Requires `line` to be provided.
 	 */
 	readonly fuzzy?:         boolean;
-	/**
-	 * If true (and `fuzzy` is true), return only the innermost (deepest in the AST) matching node(s).
-	 */
+	/** If true (and `fuzzy` is true), return only the innermost (deepest in the AST) matching node(s). */
 	readonly innermostOnly?: boolean;
 }
 
@@ -116,7 +106,6 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 			return this;
 		}
 	}
-
 
 	/**
 	 * Enriches this flowr search element collection with the given enrichment.

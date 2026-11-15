@@ -1,12 +1,8 @@
 import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
-import {
-	FlowrAnalyzerPackageVersionsPlugin
-} from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
-import {
-	namespaceFileLog
-} from '../plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
+import { FlowrAnalyzerPackageVersionsPlugin } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
+import { namespaceFileLog } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
 
 export interface FunctionInfo {
 	name:            BrandedIdentifier;

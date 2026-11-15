@@ -33,12 +33,7 @@ export function processSpecialBinOp<OtherInfo>(
 	/* the very dependency the right-hand side runs under, carried by its vertices and by the branch alike */
 	const evalsRhs: ControlDependency = { id: rootId, when: config.evalRhsWhen ?? true };
 	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data,
-		patchData: (d, i) => {
-			if(config.lazy && i === 1) {
-				return { ...d, cds: [...d.cds ?? [], evalsRhs] };
-			}
-			return d;
-		},
+		patchData:         (d, i) => config.lazy && i === 1 ? { ...d, cds: [...d.cds ?? [], evalsRhs] } : d,
 		customControlFlow: config.lazy,
 		origin:            BuiltInProcName.SpecialBinOp
 	});

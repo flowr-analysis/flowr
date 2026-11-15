@@ -11,8 +11,5 @@ import type { BuiltInIndex } from '../../../../dataflow/environments/query-fn-pr
  * Label a built-in with the tag and it shows up in the category.
  */
 export function functionsTagged(index: BuiltInIndex, tag: SemanticCallTag): FunctionInfo[] {
-	return index.with(tag).map(call => ({
-		name:    Identifier.getName(call),
-		package: Identifier.getNamespace(call)
-	}));
+	return index.with(tag).map(call => ({ name: Identifier.getName(call), package: Identifier.getNamespace(call) }));
 }

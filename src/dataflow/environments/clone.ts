@@ -7,8 +7,5 @@ import type { REnvironmentInformation } from './environment';
  * @useInstead {@link REnvironment.clone}
  */
 export function cloneEnvironmentInformation(environment: REnvironmentInformation, recurseParents = true): REnvironmentInformation {
-	return {
-		current: environment.current.clone(recurseParents),
-		level:   environment.level
-	};
+	return { current: environment.current.clone(recurseParents), level: environment.level };
 }

@@ -37,14 +37,10 @@ export async function executeDiceQuery({ analyzer }: BasicQueryData, queries: re
 
 		const sliceStart = Date.now();
 		const slice = staticDice(analyzer.inspectContext(), df, ast, startIds, endIds, analyzer.flowrConfig.solver.slicer?.threshold, includeCallees);
-		results[key] = timedSliceEntry(query, slice, Date.now() - sliceStart,
-			() => reconstructSlice(ast, df.graph, slice.result, query));
+		results[key] = timedSliceEntry(query, slice, Date.now() - sliceStart, () => reconstructSlice(ast, df.graph, slice.result, query));
 	}
 
-	return {
-		...metaSince(start),
-		results
-	};
+	return { ...metaSince(start), results };
 }
 
 /**
@@ -84,10 +80,7 @@ function diceQueryLineParser(output: ReplOutput, line: readonly string[], _confi
 		return invalidQueryLine(output, `Invalid dice query format. Expected ${diceFormat}, e.g. (2@x->12@x) or (1@a;2@b->5@c).`);
 	}
 	warnAboutSliceFlags(output, line[0], SharedSliceFlags);
-	return {
-		query: [{ type: 'dice', from: parsed.from, to: parsed.to, ...sliceQueryOptionsParser(line[0]) }],
-		rCode: queryLineCode(line)
-	};
+	return { query: [{ type: 'dice', from: parsed.from, to: parsed.to, ...sliceQueryOptionsParser(line[0]) }], rCode: queryLineCode(line) };
 }
 
 function diceQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {

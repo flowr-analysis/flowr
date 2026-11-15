@@ -43,12 +43,7 @@ function conditionalArgsOf<OtherInfo>(
 	if(!config?.args) {
 		return args.map(e => RArgument.valueOf(e));
 	}
-	const params = {
-		[config.args.cond]: 'cond',
-		[config.args.yes]:  'yes',
-		[config.args.no]:   'no',
-		'...':              '...'
-	};
+	const params = { [config.args.cond]: 'cond', [config.args.yes]: 'yes', [config.args.no]: 'no', '...': '...' };
 	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
 	return (['cond', 'yes', 'no'] as const).map(k => RArgument.valueOf(RArgument.getWithId(args, argMaps.get(k)?.[0])));
 }

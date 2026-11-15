@@ -1,6 +1,8 @@
 import { type BasicQueryData, filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
+import { functionBullet, queryHeader } from '../../query-print';
+import { FunctionFilterSchema } from '../../query-function-property';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
@@ -12,10 +14,7 @@ import { metaSince } from '../../query-meta';
 import { QueryFunctionFilter } from '../../query-function-filter';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 
-
-/**
- * Execute exception function inspection queries on the given analyzer.
- */
+/** Execute exception function inspection queries on the given analyzer. */
 export async function executeExceptionQuery({ analyzer }: BasicQueryData, queries: readonly InspectExceptionQuery[]): Promise<InspectExceptionQueryResult> {
 	const start = Date.now();
 	const { cg, fns } = await QueryFunctionFilter.inCallGraph(queries, analyzer);
@@ -63,14 +62,11 @@ export const InspectExceptionQueryDefinition = {
 	executor:        executeExceptionQuery,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'inspect-exception'>['inspect-exception'];
-		result.push(`Query: ${bold('inspect-exception', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+		result.push(queryHeader('inspect-exception', formatter, out['.meta'].timing, true));
 		const n = await processed.normalize();
-		function locationOf(r: NodeId): SourceLocation | undefined {
-			const node = n.idMap.get(NodeId.normalize(r));
-			return SourceLocation.fromNode(node);
-		}
+		const locationOf = (r: NodeId) => SourceLocation.fromNode(n.idMap.get(NodeId.normalize(r)));
 		for(const [r, v] of Object.entries(out.exceptions)) {
-			result.push(`  - Function ${bold(r, formatter)} (${SourceLocation.format(locationOf(r))}) ${v.length > 0 ? 'throws exceptions:' : 'does not throw exceptions.'}`);
+			result.push(`${functionBullet(r, formatter, n.idMap)} ${v.length > 0 ? 'throws exceptions:' : 'does not throw exceptions.'}`);
 			for(const { id: ex, cds } of v) {
 				result.push(`      - Exception ${happensInEveryBranch(cds) ? 'always ' : 'maybe '}thrown at id ${bold(String(ex), formatter)} "${NodeId.recoverName(NodeId.normalize(ex), n.idMap) ?? String(ex)}" (${SourceLocation.format(locationOf(ex))}, cds: ${cds?.map(c => c.when + ':' + SourceLocation.format(locationOf(c.id))).join(', ') ?? 'none'})`);
 			}
@@ -82,7 +78,7 @@ export const InspectExceptionQueryDefinition = {
 	syntax:    '@inspect-exception [(<crit>;...)] <code | file://path>',
 	schema:    Joi.object({
 		type:   Joi.string().valid('inspect-exception').required().description('The type of the query.'),
-		filter: Joi.array().items(Joi.string().required()).optional().description('If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered.'),
+		filter: FunctionFilterSchema,
 	}).description('Query to inspect which functions throw exceptions.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'inspect-exception'>['inspect-exception'];

@@ -1,7 +1,6 @@
 import { coerce, Range, SemVer, satisfies as semverSatisfies } from 'semver';
 import { compareRVersions } from './r-version-order';
 
-
 function makeVersion(version: string, original: string) {
 	const semver = new SemVer(version) as SemVer & { str: string };
 	semver.str = original;
@@ -51,8 +50,6 @@ function normalizeVersion(version: string): string {
 	}
 	return comparator + mainVersionParts.map(tryNormalizeNumberPart).join('.') + prerelease;
 }
-
-
 
 const AnyVerWithMaybeRangeRegex = /(\s*[<>=~^]*\s*\d+(\.\d*)*(-[0-9A-Za-z-.]+)?)/g;
 function normalizeVersions(versions: string): string {

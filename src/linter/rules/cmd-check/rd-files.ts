@@ -1,4 +1,5 @@
-import { prettyPrint, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -15,10 +16,10 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analy
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { type RdMacroUse, type RdNode, type RdScan, parseRdMacros, scanRd } from '../../../project/plugins/file-plugins/files/flowr-rd-file';
 import type { packageInfo } from './cmd-check-util';
-import { DependencyFields, projectNodes } from './cmd-check-util';
+import { DependencyFields, firstErrorRow, projectNodes } from './cmd-check-util';
 import type { PackageFiles } from './package-files';
 import { rdExamples } from './package-code';
-import { type FileResult, fileFindings, onPackageFiles } from './file-checks';
+import { type FileResult, fileFindings, onPackageFiles, KindInFile } from './file-checks';
 
 /** what is wrong with an Rd page or the manual, named after the part of `R CMD check` that finds it */
 export type RdFilesKind = 'rd-syntax' | 'rd-unknown-macro' | 'rd-structure' | 'rd-empty-section' | 'rd-encoding' | 'rd-markup' | 'rd-lost-braces'
@@ -510,18 +511,6 @@ function s3Names(p: Page, { methods }: Env): Finding[] {
 	return found;
 }
 
-/** a tree-sitter error node, searched without recursion deeper than the tree */
-function firstErrorRow(root: { isError: boolean, isMissing: boolean, children: readonly unknown[], startPosition: { row: number } }): number | undefined {
-	const stack = [root];
-	for(let node = stack.pop(); node !== undefined; node = stack.pop()) {
-		if(node.isError || node.isMissing) {
-			return node.startPosition.row;
-		}
-		stack.push(...(node.children as typeof root[]).slice().reverse());
-	}
-	return undefined;
-}
-
 /** the file argument of the functions that write one: its name and its position among the unnamed arguments */
 const RestoringCalls: readonly BrandedIdentifier[] = ['on.exit', 'with_dir', 'withr::with_dir'];
 
@@ -539,7 +528,7 @@ function examples(p: Page, { data }: Env): Finding[] {
 	}
 	const at = (row: number) => ex.lineOffset + row;
 	const tree = data.parseStandalone(ex.code);
-	const errorRow = tree.rootNode.hasError ? firstErrorRow(tree.rootNode) : undefined;
+	const errorRow = firstErrorRow(tree.rootNode);
 	if(errorRow !== undefined) {
 		return [['rd-example-syntax', at(errorRow), `Running examples in '${p.file}' failed: the example code does not parse (unexpected code at line ${at(errorRow)})`]];
 	}
@@ -548,7 +537,7 @@ function examples(p: Page, { data }: Env): Finding[] {
 	const found: Finding[] = [];
 	const lineOf = (n: { info: { id: unknown } }) => at((SourceLocation.fromNode(n as never)?.[0] ?? 1) - 1);
 	const assigned = (node: typeof nodes[number]) => {
-		const parent = node.info.parent === undefined ? undefined : ast.idMap.get(node.info.parent);
+		const parent = RNode.directParent(node, ast.idMap);
 		return (RArgument.is(parent) && parent.name === node) || (RBinaryOp.is(parent) && parent.lhs === node && ['<-', '=', '<<-'].includes(parent.operator));
 	};
 	let [setwds, restores] = [0, false];
@@ -596,9 +585,7 @@ type Add = ReturnType<typeof fileFindings<RdFilesKind>>['add'];
 
 /** the pages grouped by `key`, only the groups of more than one */
 function shared<T>(items: readonly T[], key: (t: T) => string): [string, T[]][] {
-	const m = new Map<string, T[]>();
-	items.forEach(i => m.set(key(i), [...m.get(key(i)) ?? [], i]));
-	return [...m].filter(([, g]) => g.length > 1);
+	return [...Map.groupBy(items, key)].filter(([, g]) => g.length > 1);
 }
 
 /** `checking Rd metadata`: names and aliases that more than one page uses, and the package aliases */
@@ -688,11 +675,8 @@ export const RD_FILES = {
 		}
 		return { results, '.meta': { checkedFiles: pages.length } };
 	}),
-	prettyPrint: prettyPrint(
-		result => `${result.kind} in ${result.file} at ${SourceLocation.format(result.loc)}`,
-		result => `${result.message} (at ${SourceLocation.format(result.loc)})`
-	),
-	info: {
+	prettyPrint: KindInFile,
+	info:        {
 		name:          'Rd Files',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,

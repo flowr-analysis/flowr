@@ -62,9 +62,7 @@ export const STOP_WITH_CALL_ARG = {
 	createSearch:        () => Q.all().filter(VertexType.FunctionCall),
 	processSearchResult: async(elements, _config, data) => {
 		const dataflow = await data.dataflow();
-		const meta: StopWithCallMetadata = {
-			consideredNodes: 0
-		};
+		const meta: StopWithCallMetadata = { consideredNodes: 0 };
 		return {
 			results:
 				elements.getElements()

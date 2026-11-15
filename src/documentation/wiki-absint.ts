@@ -92,10 +92,7 @@ function nodeIdToSlicingCriterion(id: NodeId, idMap: AstIdMap): string {
 }
 
 function multiValueExample() {
-	const domain = {
-		number: new IntervalDomain(IntervalTop),
-		string: new BoundedSetDomain<string>(Top)
-	};
+	const domain = { number: new IntervalDomain(IntervalTop), string: new BoundedSetDomain<string>(Top) };
 	const reduction = ({ number, string }: { number?: IntervalDomain, string?: BoundedSetDomain<string> }) => {
 		if(number?.isBottom() || string?.isBottom()) {
 			return { number: domain.number.bottom(), string: domain.string.bottom() };

@@ -1,7 +1,7 @@
 import { ArgProp, FnSig, SemanticCallTag, type BuiltInFnInfo } from './built-in-props';
 import { KeyedState } from './ambient-state-name';
 import type { BrandedIdentifier } from './identifier';
-import { uniqueArrayMerge } from '../../util/collections/arrays';
+import { uniqueArray } from '../../util/collections/arrays';
 import type { AmbientKeys } from '../internal/process/functions/call/built-in/built-in-ambient-keys';
 
 /** The parts of the global state other than the {@link KeyedState|keyed} ones a built-in may access, see {@link AmbientEffect}. */
@@ -125,6 +125,7 @@ export const Ambient = {
 	env:            effectsOf(KeyedState.Env),
 	locale:         effectsOf(KeyedState.Locale),
 	searchPath:     effectsOf(KeyedState.SearchPath),
+	installed:      effectsOf(KeyedState.InstalledPackages),
 	rng:            effectsOf(AmbientPart.Rng),
 	rngKind:        effectsOf(AmbientPart.RngKind),
 	wd:             effectsOf(AmbientPart.WorkingDirectory),
@@ -170,13 +171,16 @@ function withFileAccess(config: BuiltInFnInfo): BuiltInFnInfo {
 function withImplicitAccess(config: BuiltInFnInfo): BuiltInFnInfo {
 	const { tags, ambient } = config;
 	/* what always goes to the message sink, like `message`, does not print to the output sink */
-	const printsToMessages = Ambient.list(ambient).some(e => e.family === Ambient.messageSink.adds.family && e.when === undefined && e.unless === undefined);
+	const stated = Ambient.list(ambient);
+	const printsToMessages = stated.some(e => e.family === Ambient.messageSink.adds.family && e.when === undefined && e.unless === undefined);
+	/* a package attached must be installed, so the load reads the entries it attaches */
+	const installed = stated.some(e => e.family === KeyedState.InstalledPackages) ? [] : [{ ...Ambient.installed.reads, member: stated.find(e => e.family === KeyedState.SearchPath && e.access === AmbientVerb.Writes)?.member }];
 	const implied = [
 		...tags?.includes(SemanticCallTag.Process) ? [Ambient.env.reads] : [],
-		...tags?.includes(SemanticCallTag.LoadsPackage) ? [Ambient.libPaths.reads] : [],
+		...tags?.includes(SemanticCallTag.LoadsPackage) ? [Ambient.libPaths.reads, ...installed] : [],
 		...tags?.includes(SemanticCallTag.Prints) && !printsToMessages ? [Ambient.sink.adds] : []
 	];
-	return implied.length === 0 ? config : { ...config, ambient: [...Ambient.list(ambient), ...implied] };
+	return implied.length === 0 ? config : { ...config, ambient: [...stated, ...implied] };
 }
 
 /** The configuration with the {@link AmbientEffect}s its tags imply added to the ones it states. */
@@ -220,6 +224,7 @@ export const AmbientFamilyInfo: Readonly<Record<AmbientFamilyName, AmbientFamily
 	[KeyedState.Env]:               { label: 'environment variables', noun: 'environment variables', description: 'The environment variables of the R process by name, like TZ or LANG, which R and every child process read.' },
 	[KeyedState.Locale]:            { label: 'locale', noun: 'locale', description: 'The locale categories like LC_COLLATE, which sorting, formatting, and messages follow.' },
 	[KeyedState.SearchPath]:        { label: 'search path', noun: 'search path', description: 'The packages and environments attached, in which R looks up a name the code does not define.' },
+	[KeyedState.InstalledPackages]: { label: 'installed packages', noun: 'installed packages', description: 'The packages installed in the library by name, which install.packages adds, remove.packages removes, and every package load reads.' },
 	[AmbientPart.Rng]:              { label: 'random numbers', noun: 'random number generator', verbs: { [AmbientVerb.Adds]: 'draws from', [AmbientVerb.Writes]: 'seeds' }, description: 'The state of the random number generator, which set.seed sets and every draw advances.' },
 	[AmbientPart.RngKind]:          { label: 'random number kind', noun: 'generator kind', of: AmbientPart.Rng, description: 'Which random number generator R uses, which RNGkind sets and set.seed keeps unless it is given one.' },
 	[AmbientPart.WorkingDirectory]: { label: 'working directory', noun: 'working directory', description: 'The directory relative paths start from, which setwd changes.' },
@@ -246,33 +251,41 @@ export const AmbientVerbInfo: Readonly<Record<AmbientVerb, AmbientWords>> = {
 	[AmbientVerb.Builds]:   { label: 'builds an object drawing', description: 'The call builds an object that only draws once it is printed, like a ggplot.' }
 };
 
-/** One access of a built-in to a part, as {@link ambientSummaryOf} lists it. */
+/** How an access names the entries of its part it is about: as the configuration states them, or by the resource formals naming the files. */
+export type AmbientMembers = AmbientKeys | 'every' | { readonly from: 'resources', readonly formals: readonly BrandedIdentifier[] };
+
+/** One access of a built-in to a part, as {@link ambientSummaryOf} lists it; {@link AmbientWording} words it. */
 export interface AmbientAccessSummary {
 	readonly part:    AmbientFamilyName
 	readonly access:  AmbientVerb
-	/** the access as a page shows it, `adds to plot` */
-	readonly label:   string
-	/** the entries it is about where the configuration knows them (option keys, environment variable names), else how the arguments name them, empty for all of the part or the active instance */
-	readonly members: readonly string[]
-	/** when the access happens, all of them have to hold, empty if it always does */
-	readonly when:    readonly string[]
+	/** the access happens only if this holds, see {@link AmbientEffect#when} */
+	readonly when?:   AmbientCondition
+	/** the access happens only unless this holds, see {@link AmbientEffect#unless} */
+	readonly unless?: AmbientCondition
+	/** how the call names the entries it is about, empty for all of the part or the active instance */
+	readonly names:   readonly AmbientMembers[]
 }
 
 /** The accesses of a built-in to one part of the global state and the parts belonging to it, see {@link ambientSummaryOf}. */
 export interface AmbientFamilySummary {
 	readonly family:   AmbientFamilyName
-	readonly label:    string
 	readonly accesses: readonly AmbientAccessSummary[]
 }
 
-function memberWords(effect: AmbientEffect): readonly string[] {
-	const member = effect.member;
-	if(member === undefined) {
-		return effect.family === AmbientPart.Files && effect.sig !== undefined ? effect.sig.filter(([, p]) => (p & ArgProp.Resource) !== 0).map(([n]) => `named by ${n}`) : [];
-	} else if(member === 'every') {
+function membersOf(effect: AmbientEffect): readonly AmbientMembers[] {
+	if(effect.member !== undefined) {
+		return [effect.member];
+	}
+	const formals = effect.family === AmbientPart.Files && effect.sig !== undefined ? effect.sig.filter(([, p]) => (p & ArgProp.Resource) !== 0).map(([n]) => n) : [];
+	return formals.length === 0 ? [] : [{ from: 'resources', formals }];
+}
+
+function memberWords(member: AmbientMembers): readonly string[] {
+	if(member === 'every') {
 		return ['every open one'];
 	}
 	switch(member.from) {
+		case 'resources':      return member.formals.map(n => `named by ${n}`);
 		case 'constant':       return member.keys;
 		case 'argument-names': return ['the names of the arguments'];
 		case 'unnamed':        return ['the unnamed arguments'];
@@ -280,7 +293,8 @@ function memberWords(effect: AmbientEffect): readonly string[] {
 	}
 }
 
-function conditionWords(condition: AmbientCondition): string {
+/** The words for a condition, `add is TRUE`, as {@link AmbientAccessSummary#when} shows it. */
+export function conditionWords(condition: AmbientCondition): string {
 	if(condition === 'no-arguments') {
 		return 'it has no arguments';
 	} else if(condition === 'query') {
@@ -300,18 +314,50 @@ function conditionWords(condition: AmbientCondition): string {
  * and by verb, with the entries each access names: `graphics device: opens device, reads plot, adds to plot`.
  */
 export function ambientSummaryOf(config: BuiltInFnInfo | undefined): readonly AmbientFamilySummary[] {
+	return summaryOfEffects(withImpliedAmbient(config)?.ambient);
+}
+
+/** The {@link AmbientEffect}s grouped as {@link ambientSummaryOf} does, with no implied ones added. */
+export function summaryOfEffects(effects: AmbientEffects | undefined): readonly AmbientFamilySummary[] {
 	type Access = { -readonly [K in keyof AmbientAccessSummary]: AmbientAccessSummary[K] };
 	const families = new Map<AmbientFamilyName, Map<string, Access>>();
-	for(const effect of Ambient.list(withImpliedAmbient(config)?.ambient)) {
-		const words = AmbientFamilyInfo[effect.family];
-		const family = words.of ?? effect.family;
+	for(const effect of Ambient.list(effects)) {
+		const family = AmbientFamilyInfo[effect.family].of ?? effect.family;
 		const accesses = families.get(family) ?? new Map<string, Access>();
 		families.set(family, accesses);
-		const when = [...effect.when === undefined ? [] : [`if ${conditionWords(effect.when)}`], ...effect.unless === undefined ? [] : [`unless ${conditionWords(effect.unless)}`]];
-		const key = `${effect.family} ${effect.access} ${when.join()}`;
-		const known = accesses.get(key) ?? { part: effect.family, access: effect.access, label: `${words.verbs?.[effect.access] ?? AmbientVerbInfo[effect.access].label} ${words.noun}`, members: [], when };
+		const { when, unless } = effect;
+		const key = JSON.stringify([effect.family, effect.access, when, unless]);
+		const known = accesses.get(key) ?? { part: effect.family, access: effect.access, ...when === undefined ? {} : { when }, ...unless === undefined ? {} : { unless }, names: [] };
 		accesses.set(key, known);
-		known.members = uniqueArrayMerge(known.members, memberWords(effect));
+		known.names = [...known.names, ...membersOf(effect)];
 	}
-	return [...families].map(([family, accesses]) => ({ family, label: AmbientFamilyInfo[family].label, accesses: [...accesses.values()] }));
+	return [...families].map(([family, accesses]) => ({ family, accesses: [...accesses.values()] }));
 }
+
+/**
+ * The words for what {@link ambientSummaryOf} and {@link AmbientContract} state as data, the one place a page, the wiki, or a query
+ * turns a part, an access, the entries it names, or the conditions it happens under into text.
+ * @helper dataflow
+ */
+export const AmbientWording = {
+	name: 'AmbientWording',
+	/** The label of a part, `graphics device`. */
+	family(this: void, family: AmbientFamilyName): string {
+		return AmbientFamilyInfo[family].label;
+	},
+	/** The access as a page shows it, `adds to plot`. */
+	access(this: void, { part, access }: Pick<AmbientAccessSummary, 'part' | 'access'>): string {
+		const words = AmbientFamilyInfo[part];
+		return `${words.verbs?.[access] ?? AmbientVerbInfo[access].label} ${words.noun}`;
+	},
+	/** The entries the access is about, `digits` or `named by file`, empty for all of the part or the active instance. */
+	members(this: void, { names }: Pick<AmbientAccessSummary, 'names'>): readonly string[] {
+		return uniqueArray(names.flatMap(memberWords));
+	},
+	/** The words for one condition, `add is TRUE`. */
+	condition: conditionWords,
+	/** When the access happens, `if add is TRUE`, all of them have to hold, empty if it always does. */
+	conditions(this: void, { when, unless }: Pick<AmbientAccessSummary, 'when' | 'unless'>): readonly string[] {
+		return [...when === undefined ? [] : [`if ${conditionWords(when)}`], ...unless === undefined ? [] : [`unless ${conditionWords(unless)}`]];
+	}
+} as const;

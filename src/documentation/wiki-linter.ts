@@ -15,8 +15,7 @@ import { joinWithLast } from '../util/text/strings';
 import { LintingResultCertainty, LintingRuleCertainty } from '../linter/linter-format';
 import { LintQuickFixes } from '../linter/linter-fix';
 import type { LinterOutputFormat } from '../linter/linter-output';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import type { KnownParser } from '../r-bridge/parser';
 import { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -322,11 +321,7 @@ server <- function(input, output, session) {
 };
 
 /** the kinds of issue a rule finds, each rule carries at most one */
-const RuleKinds = [
-	[LintingRuleTag.Bug, 'Bugs'],
-	[LintingRuleTag.Smell, 'Smells'],
-	[LintingRuleTag.Style, 'Style']
-] as const;
+const RuleKinds = [[LintingRuleTag.Bug, 'Bugs'], [LintingRuleTag.Smell, 'Smells'], [LintingRuleTag.Style, 'Style']] as const;
 
 /** the tags of a rule as the wiki shows them: its kind, R CMD check, quick fixes, then the aspects by name */
 function sortedTags(tags: readonly LintingRuleTag[]): LintingRuleTag[] {
@@ -358,14 +353,10 @@ function rulesOverview(info: TypeElementInSource[]): string {
 ${rules.map(row).join('\n')}`).join('\n\n');
 }
 
-function registerRules(knownParser: KnownParser, tagTypes: TypeElementInSource[]) {
-	const ruleExplanations = new Map<LintingRuleNames, () => Promise<string>>();
-
-	for(const [name, { configType, ruleType, testfile, example, config }] of Object.entries(LintingRuleExamples)) {
-		rule(knownParser, name as LintingRuleNames, configType, ruleType, testfile, example, config, tagTypes);
-	}
-
-	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string | PackageExample, config: object | undefined, types: TypeElementInSource[]) {
+/** the page of every rule, keyed by the file it is written to */
+async function getRulesPages(parser: KnownParser, { info: types }: TypeReport): Promise<Record<string, string>> {
+	const result: Record<string, string> = {};
+	for(const [name, { configType, ruleType, testfile, example, config }] of Object.entries(LintingRuleExamples) as [LintingRuleNames, typeof LintingRuleExamples[LintingRuleNames]][]) {
 		const rule = LintingRules[name];
 		const configKeys = Object.keys(rule.info.defaultConfig(documentedContext)).sort();
 
@@ -373,7 +364,7 @@ function registerRules(knownParser: KnownParser, tagTypes: TypeElementInSource[]
 
 		const certaintyDoc = getDocumentationForType(`LintingRuleCertainty::${rule.info.certainty}`, types, '', { fuzzy: true }).replaceAll('\n', ' ');
 		const certaintyText = textWithTooltip(`<code>${rule.info.certainty}</code>`, certaintyDoc);
-		ruleExplanations.set(name, async() => `
+		result[path.join('wiki', `${getPageNameForLintingRule(name)}.md`)] = `
 
 ${autoGenHeader({ filename: module.filename, purpose: 'linter' })}
 ${section(rule.info.name + `&emsp;<sup>[<a href="${FlowrWikiBaseRef}/Linter">overview</a>]</sup>`, 2, name)}
@@ -409,10 +400,9 @@ ${await exampleQuery(parser, name, example, config)}
 
 More examples are the test cases in ${linkFlowRSourceFile(`test/functionality/linter/${testfile}.test.ts`)}.
 
-		`.trim());
+		`.trim();
 	}
-
-	return ruleExplanations;
+	return result;
 }
 
 /** runs the linter query on a rule's wiki example, refusing an example that shows no finding or an error */
@@ -488,12 +478,10 @@ function cmdCheckStepsOf(name: LintingRuleNames): string {
 ${steps.map(e => `| [${e.number}](${ConformancePage}#cmd-check-${e.number}) | ${cmdCheckStep(e)} | ${cmdCheckCoverage(e)} | ${cmdCheckNote(e)} |`).join('\n')}`;
 }
 
-function getAllLintingRulesWithTag(tag: LintingRuleTag): LintingRuleNames[] {
-	return Object.entries(LintingRules).filter(([_, rule]) => (rule.info.tags as readonly LintingRuleTag[]).includes(tag)).map(([name]) => name as LintingRuleNames);
-}
-
-function getAllLintingRulesWitCertainty(certainty: LintingRuleCertainty): LintingRuleNames[] {
-	return Object.entries(LintingRules).filter(([_, rule]) => rule.info.certainty === certainty).map(([name]) => name as LintingRuleNames);
+/** the rules whose info satisfies `pred`, as `(rules: a, b, and c)` */
+function listRulesWhere(pred: (info: typeof LintingRules[LintingRuleNames]['info']) => boolean): string {
+	const names = (Object.keys(LintingRules) as LintingRuleNames[]).filter(name => pred(LintingRules[name].info));
+	return `(rule${names.length === 1 ? '' : 's'}: ${joinWithLast(names.map(l => linkToRule(l))) || '_none_'})`;
 }
 
 function linkToRule(name: LintingRuleNames): string {
@@ -517,10 +505,7 @@ ${res}`;
 
 ${section('Linting Rules', 2, 'linting-rules')}
 
-${block({
-	type:    'NOTE',
-	content: `If you want to add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.`
-})}
+${block('NOTE', `If you want to add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.`)}
 
 The following linting rules are available, grouped by the kind of issue they find.
 Badges link to the [tags](#tags), steps of \`R CMD check\` to the [conformance page](${ConformancePage}).
@@ -545,11 +530,8 @@ We use tags to categorize linting rules for users. The following tags are availa
 
 | Tag/Badge&emsp;&emsp; | Description |
 | --- | :-- |
-${Object.entries(LintingRuleTag).map(([name, tag]) => {
-	return `| <a id="${tag}"></a> ${(makeTagBadge(tag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll('\n', ' ')} (rule${getAllLintingRulesWithTag(tag).length === 1 ? '' : 's'}: ${
-		joinWithLast(getAllLintingRulesWithTag(tag).map(l => linkToRule(l))) || '_none_'
-	}) | `;
-}).join('\n')}
+${Object.entries(LintingRuleTag).map(([name, tag]) =>
+	`| <a id="${tag}"></a> ${(makeTagBadge(tag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll('\n', ' ')} ${listRulesWhere(r => (r.tags as readonly LintingRuleTag[]).includes(tag))} | `).join('\n')}
 
 ${section('Certainty', 2, 'certainty')}
 
@@ -559,11 +541,8 @@ ${section('Rule Certainty', 3, 'rule-certainty')}
 
 | Rule Certainty | Description |
 | -------------- | :---------- |
-${Object.entries(LintingRuleCertainty).map(([name, certainty]) => {
-	return `| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingRuleCertainty::' + name, tagTypes.info).replaceAll('\n', ' ')} (rule${getAllLintingRulesWitCertainty(certainty).length === 1 ? '' : 's'}: ${
-		joinWithLast(getAllLintingRulesWitCertainty(certainty).map(l => linkToRule(l))) || '_none_'
-	}) |`;
-}).join('\n')}
+${Object.entries(LintingRuleCertainty).map(([name, certainty]) =>
+	`| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingRuleCertainty::' + name, tagTypes.info).replaceAll('\n', ' ')} ${listRulesWhere(r => r.certainty === certainty)} |`).join('\n')}
 	
 ${section('Result Certainty', 3, 'result-certainty')}
 
@@ -604,24 +583,9 @@ ${numberedConformance().filter(e => e.area === area).map(e =>
 `;
 }
 
-async function getRulesPages(knownParser: KnownParser, tagTypes: TypeReport): Promise<Record<string, string>> {
-	const rules = registerRules(knownParser, tagTypes.info);
-	const result: Record<string, string> = {};
-
-	for(const [name, rule] of rules) {
-		const filepath = path.join('wiki', `${getPageNameForLintingRule(name)}.md`);
-		result[filepath] = await rule();
-	}
-
-	return result;
-}
-
 /** Maps file-names to their content, the 'main' file is named 'main' */
 async function getTexts(parser: KnownParser, ctx: GeneralDocContext): Promise<Record<string, string> & { main: string }> {
-	const tagTypes = getTypesFromFolder({
-		rootFolder:  path.resolve('./src/linter/'),
-		inlineTypes: mermaidHide
-	});
+	const tagTypes = getTypesFromFolder({ rootFolder: path.resolve('./src/linter/'), inlineTypes: mermaidHide });
 
 	return {
 		'main':                                           await getTextMainPage(parser, tagTypes, ctx),
@@ -630,9 +594,7 @@ async function getTexts(parser: KnownParser, ctx: GeneralDocContext): Promise<Re
 	};
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Linter
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Linter */
 export class WikiLinter extends DocMaker<'wiki/Linter.md'> {
 	constructor() {
 		super('wiki/Linter.md', module.filename, 'linter');

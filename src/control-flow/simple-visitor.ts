@@ -82,9 +82,7 @@ export function visitCfgInOrder(
 	return visited;
 }
 
-/**
- * Check if a node can reach another node in the control flow graph.
- */
+/** Check if a node can reach another node in the control flow graph. */
 export function canReach(
 	graph: ControlFlowGraph,
 	from: NodeId[],

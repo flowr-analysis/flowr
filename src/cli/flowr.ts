@@ -11,22 +11,9 @@ import type { Server } from './repl/server/net';
 import { flowrVersion, printVersionInformation } from '../util/version';
 import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
-import {
-	ansiFormatter,
-	ColorEffect,
-	Colors,
-	FontStyles,
-	formatter,
-	italic,
-	setFormatter,
-	voidFormatter
-} from '../util/text/ansi';
+import { ansiFormatter, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/text/ansi';
 import commandLineArgs from 'command-line-args';
-import {
-	type EngineConfig,
-	FlowrConfig,
-	type KnownEngines,
-} from '../config';
+import { type EngineConfig, FlowrConfig, type KnownEngines } from '../config';
 import { guard } from '../util/assert';
 import { type ScriptInformation, scripts } from './common/scripts-info';
 import { waitOnScript } from './repl/execute';
@@ -89,10 +76,7 @@ export const optionHelp = [
 			`$ ${toolName} {bold slicer} {bold --help}`,
 		]
 	},
-	{
-		header:     'Options',
-		optionList: flowrMainOptionDefinitions
-	}
+	{ header: 'Options', optionList: flowrMainOptionDefinitions }
 ];
 
 const options = commandLineArgs(flowrMainOptionDefinitions) as FlowrCliOptions;
@@ -141,7 +125,6 @@ function createConfig(): FlowrConfig {
 				: FlowrConfig.fromFile(defaultConfigFile, process.cwd(), options['trust-config']);
 		}
 	}
-
 
 	// for all options that we manually supply that have a config equivalent, set them in the config
 	config = FlowrConfig.amend(config, c => {
@@ -278,7 +261,6 @@ async function mainServer(useWebSocket: boolean) {
 	const backend: Server = useWebSocket ? new WebSocketServerWrapper(options['ws-allow-origin']) : new NetServer();
 	await new FlowRServer(engines.engines, engines.default, options['r-session-access'], config, backend).start(options.port);
 }
-
 
 async function main() {
 	try {

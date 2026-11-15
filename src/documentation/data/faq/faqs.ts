@@ -8,7 +8,6 @@ import { getCliLongOptionOf } from '../../doc-util/doc-cli-option';
 import { setMinLevelOfAllLogs } from '../../../../test/functionality/_helper/log';
 import { expensiveTrace, FlowrLogger } from '../../../util/log';
 
-
 /**
  * Registers the wiki's frequently asked questions, so a page may link to one by id.
  * @param ctx - the documentation context to register them with
@@ -120,9 +119,7 @@ If you want to create your own project using flowR as a library, check out the
 Use ${ctx.linkConfig('specializeConfig')}: it overwrites (parts of) the configuration depending on the kind of project flowR detects (e.g. \`${ProjectKind.ShinyApp}\`).
 This is how a shiny app gets its ${ctx.linkConfig('project.implicitSources')} out of the box, as shiny loads these files without any \`source()\` call:
 ${codeBlock('json', JSON.stringify({
-	specializeConfig: {
-		[ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } }
-	}
+	specializeConfig: { [ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } } }
 }, null, 2))}
 Anything you configure directly wins over the value the project kind defaults to, so setting \`project.implicitSources\` yourself overrides the list above.
 `);

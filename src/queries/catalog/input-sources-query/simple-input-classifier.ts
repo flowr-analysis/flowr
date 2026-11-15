@@ -975,9 +975,7 @@ export interface InputSource extends MergeableRecord {
 	declaredAt?: NodeId[]
 }
 
-/**
- * The input sources of a criterion, each classified with an {@link InputSource} object.
- */
+/** The input sources of a criterion, each classified with an {@link InputSource} object. */
 export type InputSources = InputSource[];
 
 /**
@@ -1000,13 +998,9 @@ function callMeans(called: Identifier, id: Identifier, packages?: ReadonlySet<Br
 		&& (namespace === undefined || packages === undefined || packages.has(namespace));
 }
 
-/**
- * For the specifications of `pure` etc. please have a look at {@link InputClassifierFunctionIdentifiers}.
- */
+/** For the specifications of `pure` etc. please have a look at {@link InputClassifierFunctionIdentifiers}. */
 export interface InputClassifierConfig<Functions extends InputClassifierFunctionIdentifiers | FlowrSearchLike = readonly Identifier[] | FlowrSearchLike> extends Partial<Record<InputType, Functions>> {
-	/**
-	 * Functions which are considered to be pure (i.e., deterministic, trusted, safe, idempotent on the lub of the input types)
-	 */
+	/** Functions which are considered to be pure (i.e., deterministic, trusted, safe, idempotent on the lub of the input types) */
 	[InputTraceType.Pure]?: Functions
 	/**
 	 * Objects provided by a framework rather than by the code itself, like shiny's `input`.

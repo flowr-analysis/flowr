@@ -6,9 +6,7 @@ import { functionPropertyQuery } from '../../query-function-property';
 import { CallGraph } from '../../../dataflow/graph/call-graph';
 import { QueryFunctionFilter } from '../../query-function-filter';
 
-/**
- * Execute recursion function inspection queries on the given analyzer.
- */
+/** Execute recursion function inspection queries on the given analyzer. */
 export async function executeRecursionQuery({ analyzer }: BasicQueryData, queries: readonly InspectRecursionQuery[]): Promise<Record<NodeId, boolean>> {
 	const { cg, fns } = await QueryFunctionFilter.inCallGraph(queries, analyzer);
 

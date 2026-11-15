@@ -13,11 +13,7 @@ class BranchPathsInterpreter extends AbstractInterpreter<Paths> implements Branc
 	constructor(config: AbsintVisitorConfiguration) {
 		super(config, {
 			domains:   { paths: BranchPathDomain.start() },
-			semantics: {
-				paths: {
-					handleFunctionDefinition: (state, vertex) => state.set(vertex.id, BranchPathDomain.start())
-				}
-			}
+			semantics: { paths: { handleFunctionDefinition: (state, vertex) => state.set(vertex.id, BranchPathDomain.start()) } }
 		});
 	}
 

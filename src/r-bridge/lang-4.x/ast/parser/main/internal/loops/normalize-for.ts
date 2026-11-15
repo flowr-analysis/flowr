@@ -14,8 +14,6 @@ import type { RComment } from '../../../../model/nodes/r-comment';
 import type { JsonEntry, NamedJsonEntry } from '../../../json/format';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
-
-
 /**
  * Normalizes a `for(<variable> in <vector>) <body>`, `undefined` if the entry is not one.
  * @param data      - the normalizer's state
@@ -49,11 +47,7 @@ export function tryNormalizeFor(
     RDelimiter.is(parseBody)
 	) {
 		throw new ParseError(
-			`unexpected under-sided for-loop, received ${JSON.stringify([
-				parsedVariable,
-				parsedVariable,
-				parseBody,
-			])}`
+			`unexpected under-sided for-loop, received ${JSON.stringify([parsedVariable, parsedVariable, parseBody])}`
 		);
 	}
 
@@ -65,11 +59,7 @@ export function tryNormalizeFor(
 		vector:   parsedVector,
 		body:     ensureExpressionList(parseBody),
 		lexeme:   content,
-		info:     {
-			fullRange:  data.currentRange,
-			adToks:     comments,
-			fullLexeme: data.currentLexeme,
-		},
+		info:     { fullRange: data.currentRange, adToks: comments, fullLexeme: data.currentLexeme },
 		location
 	};
 }

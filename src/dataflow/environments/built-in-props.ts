@@ -310,10 +310,7 @@ export const CallProps = {
 	/** Keep only the properties in the stated properties that are in the property selector. */
 	filter(this: void, stated: StatedProps | undefined, selector: PropSelector): StatedProps {
 		const mask = getPropMask(selector);
-		return {
-			props: (stated?.props ?? 0) & mask.props,
-			tags:  stated?.tags?.filter(prop => mask.tags.has(prop))
-		};
+		return { props: (stated?.props ?? 0) & mask.props, tags: stated?.tags?.filter(prop => mask.tags.has(prop)) };
 	},
 	/** Transforms a property selector into a unique string identifier. */
 	key(this: void, selector: PropSelector): string {
@@ -425,7 +422,6 @@ function maskOfNames(this: void, of: Record<string, string | number>, names: rea
 	}
 	return mask;
 }
-
 
 /** The words for whichever of `mask`'s bits appear in `entries`, shared by {@link ArgProps.words} and {@link CallProps.words}. */
 function wordsOf(this: void, entries: readonly (readonly [number, string])[], mask: number | undefined): string[] {

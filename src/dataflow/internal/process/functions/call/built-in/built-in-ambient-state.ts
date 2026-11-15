@@ -1,4 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import type { ResolveInfo } from '../../../../../eval/resolve/alias-tracking';
 import { type ControlDependency, DataflowInformation, type ExitPoint, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -37,8 +38,8 @@ import { RNull } from '../../../../../../r-bridge/lang-4.x/convert-values';
 import { RIfThenElse } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { uniqueArray, uniqueArrayMerge } from '../../../../../../util/collections/arrays';
 import { AmbientAccess } from '../../../../../graph/ambient-access';
-import { type AmbientFamily, AmbientStateName, GraphicsDevices, MessageSinks, OutputSinks, KeyedAccumulators, KeyedState, UnknownKey } from '../../../../../environments/ambient-state-name';
-import { flagValue, keysOf, keyedWrites, stringValuesOf } from './built-in-ambient-keys';
+import { type AmbientFamily, AmbientStateName, GraphicsDevices, MessageSinks, OutputSinks, KeyedAccumulators, KeyedState, PlainPackageName, UnknownKey } from '../../../../../environments/ambient-state-name';
+import { flagValue, forwardsDots, keysOf, keyedWrites, stringValuesOf } from './built-in-ambient-keys';
 import { Ternary, TernaryLogic } from '../../../../../../util/logic';
 import { OperatorUsedAs } from '../../../../../environments/default-builtin-config/base-operators';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
@@ -89,7 +90,6 @@ interface AmbientWrite {
 	readonly mode:     AmbientWriteMode
 	readonly assumed?: true
 }
-
 
 /** a write that may not happen: it reads what was there, so it can still replace the state and keep everything before reachable */
 function maybe(name: AmbientStateName): AmbientWrite {
@@ -150,10 +150,7 @@ export function reachesBuiltInLate(call: DataflowGraphVertexFunctionCall): boole
 
 /** A call into code flowR cannot see may read any option, draw random numbers (with `draws` advancing the generator), and with `graphics` draw on the device. */
 export function readsAllAmbientState<OtherInfo>(res: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, graphics: boolean, draws = true): DataflowInformation {
-	const reads: AmbientStateName[] = [AmbientStateName.allOptions, AmbientStateName.rng, AmbientStateName.allOf(KeyedState.Env)];
-	if(graphics) {
-		reads.push(AmbientStateName.graphics, AmbientStateName.palette);
-	}
+	const reads = [AmbientStateName.allOptions, AmbientStateName.rng, AmbientStateName.allOf(KeyedState.Env), ...graphics ? [AmbientStateName.graphics, AmbientStateName.palette] : []];
 	return withAccess(res, rootId, data, reads, draws ? [{ ...maybe(AmbientStateName.rng), assumed: true }] : []);
 }
 
@@ -272,11 +269,7 @@ export function makeAmbientWritesMaybe(after: REnvironmentInformation, before: R
 
 /** The states written in `after` that `before` does not hold, as by a promise (`delayedAssign`) whose writes only happen once a read forces it. */
 export function ambientWritesBetween(after: REnvironmentInformation, before: REnvironmentInformation): AmbientStateName[] {
-	const names = new Set<AmbientStateName>();
-	for(const [name] of ambientDefinitionsBetween(after, before, false)) {
-		names.add(name);
-	}
-	return [...names];
+	return uniqueArray(ambientDefinitionsBetween(after, before, false).map(([name]) => name));
 }
 
 /** Notes that a definition binds a promise or a text connection, which reads have to look for from now on. */
@@ -335,10 +328,8 @@ function ambientReadsOfSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 		return [AmbientStateName.anyFile];
 	} else if(name === AmbientStateName.rngVariable) {
 		return [AmbientStateName.rng, AmbientStateName.rngKind];
-	} else if(name !== '.Options') {
-		return [];
 	}
-	return optionsVariableReads(symbol, data);
+	return name === '.Options' ? optionsVariableReads(symbol, data) : [];
 }
 
 /** `.Options$digits` (or `.Options[["digits"]]`) reads that option, anything else done with `.Options` reads all of them. */
@@ -348,12 +339,7 @@ function optionsVariableReads<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 		return optionReads(undefined);
 	}
 	const value = RArgument.valueOf(parent.access[0]);
-	if(RString.is(value)) {
-		return optionReads([value.content.str]);
-	} else if(parent.operator === '$' && RSymbol.is(value)) {
-		return optionReads([Identifier.getName(value.content)]);
-	}
-	return optionReads(undefined);
+	return optionReads(RString.is(value) ? [value.content.str] : parent.operator === '$' && RSymbol.is(value) ? [Identifier.getName(value.content)] : undefined);
 }
 
 /** Options affecting calls we cannot name (`scipen` changes every number-to-string conversion), so setting one stays an unknown side effect. */
@@ -371,8 +357,6 @@ const GlobalEffectEnv = /^(TZ|LANG|LANGUAGE|LC_\w+|R_\w+|TMPDIR|TEMP|TMP|HOME|PA
 function keyedReads(state: KeyedState, keys: readonly BrandedIdentifier[]): AmbientStateName[] {
 	return keys.length === 0 || keys.includes(UnknownKey) ? [AmbientStateName.allOf(state)] : [...keys.map(k => AmbientStateName.keyed(state, k)), AmbientStateName.keyed(state, UnknownKey)];
 }
-
-
 
 /** Where each part of the global state lives, which gives every {@link AmbientEffect} its reads and writes. */
 interface FamilyState {
@@ -397,6 +381,7 @@ const Families: Readonly<Record<AmbientFamilyName, FamilyState>> = {
 	[KeyedState.Env]:               { state: AmbientStateName.allOf(KeyedState.Env), keyed: KeyedState.Env },
 	[KeyedState.Locale]:            { state: AmbientStateName.allOf(KeyedState.Locale), keyed: KeyedState.Locale },
 	[KeyedState.SearchPath]:        { state: AmbientStateName.allOf(KeyedState.SearchPath), keyed: KeyedState.SearchPath },
+	[KeyedState.InstalledPackages]: { state: AmbientStateName.allOf(KeyedState.InstalledPackages), keyed: KeyedState.InstalledPackages },
 	[AmbientPart.Rng]:              { state: AmbientStateName.rng },
 	[AmbientPart.RngKind]:          { state: AmbientStateName.rngKind },
 	[AmbientPart.WorkingDirectory]: { state: AmbientStateName.workingDirectory },
@@ -422,25 +407,60 @@ function changes(effect: AmbientEffect): boolean {
 	return effect.access !== AmbientVerb.Reads && effect.access !== AmbientVerb.Builds;
 }
 
-/** Whether the `condition` holds for the arguments `args`, what values are known decided with `data`. */
-export function holds<OtherInfo>(condition: AmbientCondition, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data?: DataflowProcessorInformation<OtherInfo & ParentInformation>): Ternary {
+/** What the arguments decide of an {@link AmbientCondition}: whether it holds, and the argument nodes that decided it. */
+export interface ConditionDecision {
+	readonly holds:     Ternary
+	readonly decidedBy: readonly NodeId[]
+}
+
+/** What to decide a condition against: the state of a processor, or the {@link ResolveInfo} of a finished analysis. */
+export type DecidedAgainst<OtherInfo> = DataflowProcessorInformation<OtherInfo & ParentInformation> | ResolveInfo;
+
+function isProcessorInfo<OtherInfo>(data: DecidedAgainst<OtherInfo> | undefined): data is DataflowProcessorInformation<OtherInfo & ParentInformation> {
+	return data !== undefined && 'completeAst' in data;
+}
+
+/** Whether the `condition` holds for the arguments `args`, what values are known decided with `data`, see {@link decide}. */
+export function holds<OtherInfo>(condition: AmbientCondition, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data?: DecidedAgainst<OtherInfo>): Ternary {
+	return decide(condition, args, data).holds;
+}
+
+/**
+ * Whether the `condition` holds for the arguments `args`, what values are known decided with `data`, and the argument nodes that decided it.
+ * A forwarded `...` may hold any argument, so what it could give leaves a condition open.
+ */
+export function decide<OtherInfo>(condition: AmbientCondition, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data?: DecidedAgainst<OtherInfo>): ConditionDecision {
+	const dots = args.some(forwardsDots);
+	const given = args.filter((a): a is RArgument<OtherInfo & ParentInformation> => a !== EmptyArgument && !forwardsDots(a));
+	const all = { decidedBy: args.flatMap(a => a === EmptyArgument ? [] : [a.info.id]) };
+	const open = (known: Ternary, never = Ternary.Never) => dots && known === never ? Ternary.Maybe : known;
 	if(condition === 'no-arguments') {
-		return args.length === 0 ? Ternary.Always : Ternary.Never;
+		return { holds: given.length > 0 ? Ternary.Never : dots ? Ternary.Maybe : Ternary.Always, ...all };
 	} else if(condition === 'query') {
-		return isQuery(args) ? Ternary.Always : Ternary.Never;
+		return { holds: open(isQuery(given) ? Ternary.Always : Ternary.Never, Ternary.Always), ...all };
 	} else if('flag' in condition) {
-		const flag = args.find(a => a !== EmptyArgument && a.name !== undefined && Identifier.getName(a.name.content) === condition.flag);
-		return flag === undefined || flag === EmptyArgument ? Ternary.Never : RLogical.is(flag.value) ? flag.value.content ? Ternary.Always : Ternary.Never : data === undefined ? Ternary.Maybe : flagValue(flag.value, data);
-	} else if('calls' in condition) {
-		return argumentCalls(MatchArgs.toNames(args, condition.formals).get(condition.arg), condition.calls, data);
+		const flag = given.find(a => a.name !== undefined && Identifier.getName(a.name.content) === condition.flag);
+		if(flag === undefined) {
+			return { holds: open(Ternary.Never), decidedBy: [] };
+		}
+		return { holds: RLogical.is(flag.value) ? flag.value.content ? Ternary.Always : Ternary.Never : data === undefined ? Ternary.Maybe : flagValue(flag.value, data), decidedBy: [flag.info.id] };
 	} else if('arg' in condition) {
-		return argumentIs(MatchArgs.toNames(args, condition.formals).get(condition.arg), condition.is, data);
+		const arg = MatchArgs.toNames(args, condition.formals).get(condition.arg);
+		if(arg !== undefined && forwardsDots(arg)) {
+			return { holds: Ternary.Maybe, decidedBy: [arg.info.id] };
+		}
+		const known = 'calls' in condition ? argumentCalls(arg, condition.calls, data) : argumentIs(arg, condition.is, data);
+		return { holds: arg === undefined && dots ? Ternary.Maybe : known, decidedBy: arg === undefined ? [] : [arg.info.id] };
 	}
-	return args.some((a, i) => a !== EmptyArgument && (a.name === undefined ? i >= condition.besides.length : !condition.besides.includes(Identifier.getName(a.name.content)))) ? Ternary.Always : Ternary.Never;
+	const besides = given.some(a => {
+		const at = args.indexOf(a);
+		return a.name === undefined ? at >= condition.besides.length : !condition.besides.includes(Identifier.getName(a.name.content));
+	});
+	return { holds: besides ? Ternary.Always : open(Ternary.Never), ...all };
 }
 
 /** Whether the argument is one of the strings `is`, `null` standing for a missing or `NULL` argument. */
-function argumentIs<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation> | undefined, is: readonly (string | null)[], data: DataflowProcessorInformation<OtherInfo & ParentInformation> | undefined): Ternary {
+function argumentIs<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation> | undefined, is: readonly (string | null)[], data: DecidedAgainst<OtherInfo> | undefined): Ternary {
 	const value = RArgument.valueOf(arg);
 	if(value === undefined || (RSymbol.is(value) && value.content === RNull)) {
 		return is.includes(null) ? Ternary.Always : Ternary.Never;
@@ -456,18 +476,19 @@ function argumentIs<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation> | u
 	return known.every(Boolean) ? Ternary.Always : known.some(Boolean) ? Ternary.Maybe : Ternary.Never;
 }
 
-/** Whether the argument is a call of one of the functions `calls`, or a variable bound to one. */
-function argumentCalls<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation> | undefined, calls: readonly BrandedIdentifier[], data: DataflowProcessorInformation<OtherInfo & ParentInformation> | undefined): Ternary {
+/** Whether the argument is a call of one of the functions `calls`, or a variable bound to one (which only a processor tracks, after it a variable is left open). */
+function argumentCalls<OtherInfo>(arg: RArgument<OtherInfo & ParentInformation> | undefined, calls: readonly BrandedIdentifier[], data: DecidedAgainst<OtherInfo> | undefined): Ternary {
 	if(arg === undefined) {
 		return Ternary.Never;
 	}
-	const values = data === undefined ? [RArgument.valueOf(arg)].filter(isNotUndefined) : boundValues(arg.info.id, data);
+	const direct = RArgument.valueOf(arg);
+	const values = isProcessorInfo(data) ? boundValues(arg.info.id, data) : RSymbol.is(direct) ? [] : [direct].filter(isNotUndefined);
 	const known = values.map(v => RFunctionCall.isNamed(v, new Set(calls)));
 	return known.length === 0 ? Ternary.Maybe : known.every(Boolean) ? Ternary.Always : known.some(Boolean) ? Ternary.Maybe : Ternary.Never;
 }
 
 /** Whether the effect happens for the arguments `args`, see {@link AmbientEffect#when}. */
-function applies<OtherInfo>(effect: AmbientEffect, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data?: DataflowProcessorInformation<OtherInfo & ParentInformation>): Ternary {
+export function applies<OtherInfo>(effect: AmbientEffect, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data?: DecidedAgainst<OtherInfo>): Ternary {
 	return TernaryLogic.and(effect.when === undefined ? Ternary.Always : holds(effect.when, args, data), effect.unless === undefined ? Ternary.Always : TernaryLogic.negate(holds(effect.unless, args, data)));
 }
 
@@ -523,7 +544,9 @@ function applyEffect<OtherInfo>(res: DataflowInformation, args: readonly Potenti
 	if(instances !== undefined) {
 		return instanceAccess(res, rootId, data, effect, instances, args.length > 0);
 	}
-	const keys = effect.member === undefined || effect.member === 'every' ? undefined : keysOf(effect.member, args, data);
+	const named = effect.member === undefined || effect.member === 'every' ? undefined : keysOf(effect.member, args, data);
+	/* a path, url, or remote (`user/repo`) does not tell which package it installs */
+	const keys = effect.family === KeyedState.InstalledPackages ? named?.map(k => PlainPackageName.test(k) ? k : UnknownKey) : named;
 	switch(effect.family) {
 		case KeyedState.Option:
 			return effect.access === AmbientVerb.Reads ? readOptions(res, args, rootId, data, effect, keys) : setOptions(res, args, rootId, data);
@@ -633,8 +656,7 @@ function mayHoldPlot<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | und
 	}
 	seen.add(node.info.id);
 	if(RFunctionCall.isNamed(node)) {
-		return (statedFunctions(node.functionName.content, data.environment) ?? [])
-			.some(t => hiddenAccess(t).some(a => a.family === AmbientPart.Plot && a.access === AmbientVerb.Builds));
+		return (statedFunctions(node.functionName.content, data.environment) ?? []).some(t => hiddenAccess(t).some(a => a.family === AmbientPart.Plot && a.access === AmbientVerb.Builds));
 	} else if(RBinaryOp.is(node)) {
 		return node.operator === '+' && (mayHoldPlot(node.lhs, data, seen) || mayHoldPlot(node.rhs, data, seen));
 	} else if(RIfThenElse.is(node)) {
@@ -730,8 +752,7 @@ function callsTagged<OtherInfo>(node: RNodeWithParent<OtherInfo> | undefined, da
 /** Whether the resource argument `id` names no file: `""` (the console for `cat`), `NULL`, or a console connection like `stdout()`. */
 function namesNoFile<OtherInfo>(id: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
 	const values = boundValues(id, data);
-	return values.length > 0 && values.every(v => (RString.is(v) && v.content.str === '') || (RSymbol.is(v) && v.content === RNull)
-		|| callsTagged(v, data, SemanticCallTag.Console));
+	return values.length > 0 && values.every(v => (RString.is(v) && v.content.str === '') || (RSymbol.is(v) && v.content === RNull) || callsTagged(v, data, SemanticCallTag.Console));
 }
 
 /** The stems of the files the call names, `undefined` unless every file argument is a known path to a file with an extension (a device's `plot%03d.png` or a directory may stand for others). */
@@ -925,8 +946,7 @@ export function hiddenSideEffects(graph: DataflowGraph, environment: REnvironmen
 	for(const target of targets) {
 		const builtIn = target.type === ReferenceType.BuiltInFunction ? target : undefined;
 		const processor = builtIn?.processorName;
-		const effect = builtIn?.config?.hasUnknownSideEffects
-			?? (processor !== undefined && WritesEnvironment.has(processor));
+		const effect = builtIn?.config?.hasUnknownSideEffects ?? (processor !== undefined && WritesEnvironment.has(processor));
 		if(effect) {
 			handleUnknownSideEffect(graph, environment, callId, effect === true ? undefined : effect);
 		} else if(processor !== undefined && WritesSearchPath.has(processor)) {
@@ -977,24 +997,9 @@ function setOptions<OtherInfo>(res: DataflowInformation, args: readonly Potentia
 	}
 	/* the call returns the previous values of what it sets, which only matters if that value is used */
 	const previous = resultIsUsed(rootId, data) ? written : [];
-	const reads: AmbientStateName[] = [...queried.map(AmbientStateName.option), ...previous];
-	if(args.length === 0 || unknownKeys) {
-		reads.push(AmbientStateName.allOptions);
-	}
-	if(reads.length > 0) {
-		reads.push(AmbientStateName.unknownOption);
-	}
-	const writes = [...written];
-	if(unknownKeys) {
-		writes.push(AmbientStateName.unknownOption);
-	}
-	if(warnsAsErrors) {
-		writes.push(AmbientStateName.warnsAsErrors);
-	}
-	if(writes.length > 0) {
-		writes.push(AmbientStateName.allOptions);
-	}
-	return withAccess(res, rootId, data, reads, writes);
+	const reads = [...queried.map(AmbientStateName.option), ...previous, ...args.length === 0 || unknownKeys ? [AmbientStateName.allOptions] : []];
+	const writes = [...written, ...unknownKeys ? [AmbientStateName.unknownOption] : [], ...warnsAsErrors ? [AmbientStateName.warnsAsErrors] : []];
+	return withAccess(res, rootId, data, reads.length > 0 ? [...reads, AmbientStateName.unknownOption] : [], writes.length > 0 ? [...writes, AmbientStateName.allOptions] : []);
 }
 
 /** Whether the call to `fn` only queries the state it may set, as `par("mar")`, `options("digits")` and `palette()` do, which hand that state back visibly where setting it returns the previous one invisibly. */
@@ -1011,8 +1016,7 @@ function onlyQueries<OtherInfo>(effects: readonly AmbientEffect[], args: readonl
 
 /** `par()`, `par("mar", "usr")`, and `par(no.readonly = TRUE)` only query the graphics state */
 function isQuery<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]): boolean {
-	return args.every(a => a === EmptyArgument
-		|| (a.name === undefined ? RString.is(a.value) : Identifier.getName(a.name.content) === 'no.readonly'));
+	return args.every(a => a === EmptyArgument || (a.name === undefined ? RString.is(a.value) : Identifier.getName(a.name.content) === 'no.readonly'));
 }
 
 /** Whether the call's value may be used: anything but a non-final statement or, unless it is `printed` there, a top-level statement of the script (the last of a block is its value). */
@@ -1423,10 +1427,7 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 
 /** Whether `node` branches or loops on a value R may reject: a condition that is not `TRUE` or `FALSE` (`if(NA)`, `if(logical(0))`) or a vector that is not a constant. */
 export function testsValue(node: RNode<ParentInformation>): boolean {
-	if(RIfThenElse.is(node) || RWhileLoop.is(node)) {
-		return !RLogical.is(node.condition);
-	}
-	return RForLoop.is(node) && !RConstant.is(node.vector);
+	return RIfThenElse.is(node) || RWhileLoop.is(node) ? !RLogical.is(node.condition) : RForLoop.is(node) && !RConstant.is(node.vector);
 }
 
 /** The handlers of a `withCallingHandlers` whose first handler muffles every `warning` of its `expr`, `undefined` otherwise. */

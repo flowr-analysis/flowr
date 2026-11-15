@@ -19,4 +19,20 @@ describe('Ambient writes through indirect calls, checked against R', withTreeSit
 	for(const [name, code, line, writes, imprecise] of cases) {
 		writesLikeR(parser, name, code, line, writes, imprecise === undefined ? {} : { imprecise });
 	}
+	describe('through functions the program defines', () => {
+		const env = '\nif(Sys.getenv("FLOWR_T") == "1") cat("ok")';
+		const own: [string, string, number, string[], string?][] = [
+			['an option handed on by name', 'g <- function(d) options(digits = d)\ng(3)' + ok, 2, ['#option:digits']],
+			['an option from the default of a parameter', 'g <- function(d = 3) options(digits = d)\ng()' + ok, 2, ['#option:digits']],
+			['an option handed on through the dots', 'g <- function(...) options(...)\ng(digits = 3)' + ok, 2, ['#option:digits'], 'the dots stand for any option while the graph is built, so it writes some option'],
+			['an option handed on through two functions', 'g <- function(...) options(...)\nh <- function(...) g(...)\nh(digits = 3)' + ok, 3, ['#option:digits'], 'the dots stand for any option while the graph is built, so it writes some option'],
+			['an option handed on by a recursive function', 'g <- function(n, ...) if(n > 0) g(n - 1, ...) else options(...)\ng(2, digits = 3)' + ok, 2, ['#option:digits'], 'the dots stand for any option while the graph is built, so it writes some option'],
+			['an option a flag handed on switches on', 'g <- function(set = FALSE) if(set) options(digits = 3)\nh <- function(...) g(...)\nh(set = TRUE)' + ok, 3, ['#option:digits']],
+			['an environment variable handed on through the dots', 'g <- function(...) Sys.setenv(...)\ng(FLOWR_T = "1")' + env, 2, ['#env:FLOWR_T'], 'the dots stand for any variable while the graph is built, so it writes some variable'],
+			['an option handed on through do.call of the dots', 'g <- function(...) do.call(options, list(...))\ng(digits = 3)' + ok, 2, ['#option:digits'], 'the dots stand for any option while the graph is built, so it writes some option']
+		];
+		for(const [name, code, line, writes, imprecise] of own) {
+			writesLikeR(parser, name, code, line, writes, imprecise === undefined ? {} : { imprecise });
+		}
+	});
 }));

@@ -2,7 +2,6 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 
-
 /**
  * Represents a node during the slicing process, together with the environment it is traversed in
  * (modified by function calls) and whether it is only used for its side effects.
@@ -29,9 +28,7 @@ export interface SliceProgress {
 	readonly frontier: number;
 }
 
-/**
- * The result of the slice step
- */
+/** The result of the slice step */
 export interface SliceResult {
 	/**
 	 * Number of times the set threshold was hit (i.e., the same node was visited too often).
@@ -39,13 +36,9 @@ export interface SliceResult {
 	 * seldom causes more ids to be included in the slice.
 	 */
 	readonly timesHitThreshold: number
-	/**
-	 * The ids of the nodes in the normalized ast that are part of the slice.
-	 */
+	/** The ids of the nodes in the normalized ast that are part of the slice. */
 	readonly result:            ReadonlySet<NodeId>
-	/**
-	 * The ids of the nodes in the normalized ast that were used as seed ids for slicing. This is a subset of {@link result}.
-	 */
+	/** The ids of the nodes in the normalized ast that were used as seed ids for slicing. This is a subset of {@link result}. */
 	readonly slicedFor:         readonly NodeId[]
 	/**
 	 * Set when the {@link GasFeatureKey.Slicer|gas guard} stopped the traversal before the queue drained, so

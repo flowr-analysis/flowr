@@ -14,11 +14,7 @@ import { FnPropNames, type SigDbContent } from '../../project/sigdb/schema';
 import type { SigDbBaseCounts, SigDbCounts } from './stats';
 
 /** what a temporal tier of a bundle keeps, in the words the wiki uses for it */
-const KindOfTier: Record<string, string> = {
-	current: 'latest only',
-	full:    'full history',
-	history: 'older only'
-};
+const KindOfTier: Record<string, string> = { current: 'latest only', full: 'full history', history: 'older only' };
 
 const ManifestFile = /\.manifest\.json(\.(br|zst|gz))?$/;
 

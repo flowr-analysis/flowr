@@ -47,11 +47,7 @@ export class FlowrLogger extends Logger<ILogObj> {
 	 */
 	public logToFile(
 		filename = 'flowr.log',
-		options: Options = {
-			size:     '10M',
-			interval: '1d',
-			compress: 'gzip',
-		}
+		options: Options = { size: '10M', interval: '1d', compress: 'gzip' }
 	): void {
 		const stream = rotatingStream(filename, options) ?? createWriteStream(filename, { flags: 'a' });
 
@@ -99,11 +95,7 @@ function getActiveLog(): FlowrLogger {
 		type:            'pretty',
 		name:            'main',
 		stylePrettyLogs: true,
-		prettyLogStyles: {
-			logLevelName: {
-				'*': ['bold', 'black', 'dim']
-			}
-		}
+		prettyLogStyles: { logLevelName: { '*': ['bold', 'black', 'dim'] } }
 	});
 }
 

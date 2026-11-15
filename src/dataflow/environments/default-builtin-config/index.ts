@@ -64,7 +64,6 @@ export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuilti
 	return stated;
 }
 
-
 /** Contains the built-in definitions recognized by flowR, as they are written down: {@link DefaultBuiltinConfig} is what {@link markGenerics} makes of them, and a test checks that this is all it changes. */
 export const WrittenBuiltinDefinitions = [
 	...OperatorDefinitions,

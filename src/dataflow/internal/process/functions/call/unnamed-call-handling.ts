@@ -23,7 +23,6 @@ import { Dataflow } from '../../../../graph/df-helper';
 import { UnnamedFunctionCallPrefix } from '../../../../environments/built-in-kinds';
 export { UnnamedFunctionCallPrefix } from '../../../../environments/built-in-kinds';
 
-
 /** Whether a `$`/`[[` access callee resolved a field to a stored function: a resolved dispatch (`dispatch$foo()`) carries a `Returns` edge from the access node to the field target (in addition to the base `Returns` to `accessedId`), while an opaque object (`g$greet()` on an untracked `g`) only carries the base `Returns`. */
 function accessResolvesToField(graph: DataflowGraph, accessId: NodeId, accessedId: NodeId): boolean {
 	const base = NodeId.normalize(accessedId);

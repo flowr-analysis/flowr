@@ -15,21 +15,16 @@ import { type AsyncParser, type RShellInformation, ParserName } from './parser';
 import { type RParseRequest, retrieveParseDataFromRCode } from './retriever';
 import { SecureMode } from '../util/secure-mode';
 
-
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
 export interface CollectorTimeout extends MergeableRecord {
-	/**
-	 * number of milliseconds to wait for the collection to finish
-	 */
+	/** number of milliseconds to wait for the collection to finish */
 	ms:             number
 	/*
 	 * if true, the timeout will reset whenever we receive new data
 	 */
 	resetOnNewData: boolean
-	/**
-	 * invoked when the timeout is reached. If not set, the promise will be rejected with an error.
-	 */
+	/** invoked when the timeout is reached. If not set, the promise will be rejected with an error. */
 	onTimeout?:     (resolve: (value: AsyncOrSync<string[]>) => void, reject: (value: AsyncOrSync<string[]>) => void, partialResult: string[]) => void
 }
 
@@ -59,12 +54,9 @@ export interface OutputCollectorConfiguration extends MergeableRecord {
 }
 
 export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguration = {
-	from:      'stdout',
-	postamble: `🐧${'-'.repeat(5)}🐧`,
-	timeout:   {
-		ms:             750_000,
-		resetOnNewData: true
-	},
+	from:                    'stdout',
+	postamble:               `🐧${'-'.repeat(5)}🐧`,
+	timeout:                 { ms: 750_000, resetOnNewData: true },
 	keepPostamble:           false,
 	automaticallyTrimOutput: true,
 	errorStopsWaiting:       true
@@ -276,16 +268,13 @@ export class RShell implements AsyncParser<string> {
 		return versions;
 	}
 
-	/**
-	 * checks if a given package is already installed on the system!
-	 */
+	/** checks if a given package is already installed on the system! */
 	public async isPackageInstalled(packageName: string): Promise<boolean> {
 		this.log.debug(`checking if package "${packageName}" is installed`);
 		const result = await this.sendCommandWithOutput(
 			`cat(system.file(package="${packageName}")!="","${this.options.eol}")`);
 		return result.length === 1 && result[0] === 'TRUE';
 	}
-
 
 	/**
 	 * Send a command and collect the output
@@ -323,9 +312,7 @@ export class RShell implements AsyncParser<string> {
 		}
 	}
 
-	/**
-	 * clears the R environment using the `rm` command.
-	 */
+	/** clears the R environment using the `rm` command. */
 	public clearEnvironment(): void {
 		this.log.debug('clearing environment');
 		// run rm(list=ls()) but ignore 'flowr_get_ast', which is the compile command installed
@@ -360,9 +347,7 @@ export class RShell implements AsyncParser<string> {
 	}
 }
 
-/**
- * Used to deal with the underlying input-output streams of the R process
- */
+/** Used to deal with the underlying input-output streams of the R process */
 class RShellSession {
 	private readonly bareSession:   ChildProcessWithoutNullStreams;
 	private readonly sessionStdOut: readline.Interface;
@@ -380,14 +365,8 @@ class RShellSession {
 			cwd:         options.cwd,
 			windowsHide: true
 		});
-		this.sessionStdOut = readline.createInterface({
-			input:    this.bareSession.stdout,
-			terminal: false
-		});
-		this.sessionStdErr = readline.createInterface({
-			input:    this.bareSession.stderr,
-			terminal: false
-		});
+		this.sessionStdOut = readline.createInterface({ input: this.bareSession.stdout, terminal: false });
+		this.sessionStdErr = readline.createInterface({ input: this.bareSession.stderr, terminal: false });
 		this.onExit(() => {
 			this.end();
 		});

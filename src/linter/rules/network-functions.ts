@@ -16,16 +16,12 @@ import { ArgProp, SemanticCallTag } from '../../dataflow/environments/built-in-p
 import type { BuiltInIndex, BuiltInParam } from '../../dataflow/environments/query-fn-props';
 
 export interface NetworkFunctionsConfig extends MergeableRecord {
-	/**
-	 * The list of function names or more detailed {@link NetworkFunction} information that should be marked in the given context if their arguments match.
-	 */
+	/** The list of function names or more detailed {@link NetworkFunction} information that should be marked in the given context if their arguments match. */
 	fns: readonly (Identifier | NetworkFunction)[]
 }
 
 export interface NetworkFunction extends MergeableRecord {
-	/**
-	 * The name of the network function to find.
-	 */
+	/** The name of the network function to find. */
 	name:                     Identifier,
 	/**
 	 * The {@link FunctionInfo} to use for querying the argument whose value should match {@link onlyTriggerWithArgument}.
@@ -138,8 +134,6 @@ export const NETWORK_FUNCTIONS = {
 		// ensures all network functions found are actually network functions through its limited config, but doesn't find all network functions since the config is pre-crawled, and the DFG may be over-approximated
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds functions that execute network operations, such as downloading files or making HTTP requests.',
-		defaultConfig: ctx => ({
-			fns: ctx.env.deriveFromIndex(networkFunctions)
-		})
+		defaultConfig: ctx => ({ fns: ctx.env.deriveFromIndex(networkFunctions) })
 	}
 } as const satisfies LintingRule<FunctionsResult, FunctionsMetadata, NetworkFunctionsConfig>;

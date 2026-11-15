@@ -2,11 +2,7 @@ import type { BrandedIdentifier } from '../environments/identifier';
 import { deepMergeObject } from '../../util/objects';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	type DataflowFunctionFlowInformation,
-	DataflowGraph,
-	FunctionArgument
-} from './graph';
+import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from './graph';
 import type { IEnvironment, REnvironmentInformation } from '../environments/environment';
 import { type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexArgument,
@@ -180,12 +176,8 @@ export class DataflowGraphBuilder<
 			name,
 			cds:         undefined,
 			environment: undefined
-		}, {
-			...info,
-			cds: normalizeCds(info?.cds)
-		} as Partial<DataflowGraphVertexUse>), asRoot);
+		}, { ...info, cds: normalizeCds(info?.cds) } as Partial<DataflowGraphVertexUse>), asRoot);
 	}
-
 
 	/** Adds a **vertex** for a **constant value** (V6). */
 	public constant(id: NodeId, options?: { cds?: readonly ControlDependency[] }, asRoot: boolean = true) {

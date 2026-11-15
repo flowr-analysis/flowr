@@ -13,9 +13,7 @@ export interface ShowSearchOptions {
 	readonly collapseResult?: boolean;
 }
 
-/**
- * Visualizes a search and its results in markdown format.
- */
+/** Visualizes a search and its results in markdown format. */
 export async function showSearch(shell: RShell, code: string, search: FlowrSearchLike, { collapseResult = true }: ShowSearchOptions = {}): Promise<string> {
 	const now = performance.now();
 	const analyzer = await new FlowrAnalyzerBuilder()

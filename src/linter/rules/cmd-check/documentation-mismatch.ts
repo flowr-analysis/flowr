@@ -1,6 +1,7 @@
 import { escapeRegex } from '../../../util/text/strings';
+import { scanRCode, splitRCodeArgs } from '../../../util/text/args';
 import { contentOf } from '../../../dataflow/eval/values/string/string-constants';
-import { prettyPrint, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -21,6 +22,7 @@ import { type BrandedIdentifier, Identifier } from '../../../dataflow/environmen
 import path from 'path';
 import { rootDescriptionFile } from './package-files';
 import { type CmdCheckResult, formalNames, packageInfo, topLevelDefinitions } from './cmd-check-util';
+import { MessageAtLocation } from './file-checks';
 
 /** The sub-check of `R CMD check` a finding belongs to. */
 export type DocumentationMismatchKind =
@@ -78,58 +80,6 @@ function unquote(name: string): string {
 	return /^[`"']/.test(name) ? name.slice(1, -1) : name;
 }
 
-/** the index of the bracket closing the one at `open`, string-aware */
-function closing(text: string, open: number): number | undefined {
-	let depth = 0;
-	let quote: string | undefined;
-	for(let i = open; i < text.length; i++) {
-		const c = text[i];
-		if(quote !== undefined) {
-			if(c === '\\') {
-				i++;
-			} else if(c === quote) {
-				quote = undefined;
-			}
-		} else if(c === '"' || c === '\'' || c === '`') {
-			quote = c;
-		} else if(c === '(' || c === '[' || c === '{') {
-			depth++;
-		} else if((c === ')' || c === ']' || c === '}') && --depth === 0) {
-			return i;
-		}
-	}
-	return undefined;
-}
-
-/** splits `text` at the commas outside of brackets and strings */
-function splitArgs(text: string): string[] {
-	const parts: string[] = [];
-	let depth = 0;
-	let quote: string | undefined;
-	let from = 0;
-	for(let i = 0; i < text.length; i++) {
-		const c = text[i];
-		if(quote !== undefined) {
-			if(c === '\\') {
-				i++;
-			} else if(c === quote) {
-				quote = undefined;
-			}
-		} else if(c === '"' || c === '\'' || c === '`') {
-			quote = c;
-		} else if(c === '(' || c === '[' || c === '{') {
-			depth++;
-		} else if(c === ')' || c === ']' || c === '}') {
-			depth--;
-		} else if(c === ',' && depth === 0) {
-			parts.push(text.slice(from, i));
-			from = i + 1;
-		}
-	}
-	parts.push(text.slice(from));
-	return parts.map(p => p.trim());
-}
-
 /**
  * What a `\usage` entry states: a call (or replacement call) with its arguments, `'ignored'` for a bare variable or
  * a `data()` call, and `undefined` for anything else (operators, indexing, ...), which is not understood.
@@ -144,7 +94,7 @@ function parseUsageEntry(entry: string): UsageCall | 'ignored' | undefined {
 		return undefined;
 	}
 	const open = head[0].length - 1;
-	const close = closing(text, open);
+	const close = scanRCode(text, (_c, _i, depth) => depth === 0, open);
 	if(close === undefined) {
 		return undefined;
 	}
@@ -159,7 +109,7 @@ function parseUsageEntry(entry: string): UsageCall | 'ignored' | undefined {
 	}
 	const inner = text.slice(open + 1, close);
 	const args: UsageArg[] = [];
-	for(const part of inner.trim() === '' ? [] : splitArgs(inner)) {
+	for(const part of inner.trim() === '' ? [] : splitRCodeArgs(inner)) {
 		if(part === '') {
 			continue;
 		}
@@ -246,8 +196,6 @@ function findIn(raw: string | undefined, from: RegExp | undefined, needles: read
 	return [line, start + best.index - before.lastIndexOf('\n'), best.length];
 }
 
-const quoteRe = escapeRegex;
-
 function rdLoc(file: string, raw: string | undefined, from: RegExp | undefined, needles: readonly RegExp[]): SourceLocation {
 	const found = findIn(raw, from, needles) ?? findIn(raw, undefined, [/\\usage/]);
 	return found === undefined ? [1, 1, 1, 1, file] : [found[0], found[1], found[0], found[1] + Math.max(found[2] - 1, 0), file];
@@ -256,9 +204,9 @@ function rdLoc(file: string, raw: string | undefined, from: RegExp | undefined, 
 /** the spellings an entry name may have in the Rd source: `print.foo` as `\method{print}{foo}` too */
 function usageNeedles(name: string): RegExp[] {
 	const plain = name.replace(/<-$/, '');
-	const needles = [new RegExp(`${quoteRe(plain)}(?=\\s*\\()`)];
+	const needles = [new RegExp(`${escapeRegex(plain)}(?=\\s*\\()`)];
 	for(let i = plain.indexOf('.', 1); i >= 0; i = plain.indexOf('.', i + 1)) {
-		needles.push(new RegExp(`\\\\(?:S3)?method\\{${quoteRe(plain.slice(0, i))}\\}\\{${quoteRe(plain.slice(i + 1))}\\}`));
+		needles.push(new RegExp(`\\\\(?:S3)?method\\{${escapeRegex(plain.slice(0, i))}\\}\\{${escapeRegex(plain.slice(i + 1))}\\}`));
 	}
 	return needles;
 }
@@ -357,10 +305,8 @@ export const DOCUMENTATION_MISMATCH = {
 		}
 		return { results, '.meta': { consideredObjects, consideredPages: pages.length } };
 	},
-	prettyPrint: prettyPrint(
-		result => `${result.message} at ${SourceLocation.format(result.loc)}`
-	),
-	info: {
+	prettyPrint: MessageAtLocation,
+	info:        {
 		name:          'Documentation Mismatch',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Documentation, LintingRuleTag.Bug],
 		certainty:     LintingRuleCertainty.BestEffort,
@@ -457,10 +403,10 @@ function checkPage(page: RdPage, rdName: string, path: string, raw: string | und
 	const usageText = page.usage.join('\n').replace(/\\l?dots/g, '...');
 	for(const arg of page.arguments.keys()) {
 		const simple = /^[\w.]+$/.test(arg);
-		if(usageArgs.has(arg) || simple && new RegExp(`(^|\\W)${quoteRe(arg)}($|\\W)`).test(usageText)) {
+		if(usageArgs.has(arg) || simple && new RegExp(`(^|\\W)${escapeRegex(arg)}($|\\W)`).test(usageText)) {
 			continue;
 		}
 		add('documented-argument-not-in-usage', arg, `Documented arguments not in \\usage in Rd file '${rdName}': '${arg}'`,
-			rdLoc(path, raw, ArgumentsStart, [new RegExp(`\\\\item\\s*\\{[^}]*${quoteRe(arg)}[^}]*\\}`)]));
+			rdLoc(path, raw, ArgumentsStart, [new RegExp(`\\\\item\\s*\\{[^}]*${escapeRegex(arg)}[^}]*\\}`)]));
 	}
 }

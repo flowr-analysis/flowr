@@ -21,7 +21,6 @@ const OneTruth: ReturnedValue = { types: Logical, scalar: true, notNA: true };
 const SingleResult: GuardFacts = { computes: true, singleResult: true, returns: OneTruth };
 const OpensFrame: GuardFacts = { opensFrame: true };
 
-
 /* what R fails on by itself, each read off R; a dispatching one lets a classed value through, which may bring a method */
 const Mathematical = dispatched(is('is.numeric', 'is.logical', 'is.complex'), 'non-numeric argument to mathematical function');
 /* the members of the `Math` group with no complex version, which fail with 'unimplemented complex function' for one */
@@ -142,14 +141,9 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		/* a data frame of atomic columns, whatever the file holds */
 		...each(Returns(List, { elements: Atomic }), 'read.csv', 'read.csv2', 'read.delim', 'read.delim2', 'read.table', 'read.fwf')
 	},
-	[PkgName.Methods]: {
-		'is':     Computes,
-		'hasArg': Computes
-	},
-	[PkgName.AssertThat]: {
-		'assert_that': { asserts: ['msg', 'env'] }
-	},
-	[PkgName.Rlang]: {
+	[PkgName.Methods]:    { 'is': Computes, 'hasArg': Computes },
+	[PkgName.AssertThat]: { 'assert_that': { asserts: ['msg', 'env'] } },
+	[PkgName.Rlang]:      {
 		'is_null':             exact(Null),
 		'is_logical':          predicate(Logical),
 		'is_integer':          predicate(Integer),

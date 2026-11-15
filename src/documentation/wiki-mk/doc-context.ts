@@ -1,9 +1,4 @@
-import type {
-	FnElementInfo,
-	MermaidClassDiagramArguments,
-	PrintHierarchyArguments,
-	TypeElementKind
-} from '../doc-util/doc-types';
+import type { FnElementInfo, MermaidClassDiagramArguments, PrintHierarchyArguments, TypeElementKind } from '../doc-util/doc-types';
 import { visualizeMermaidClassDiagram, printCodeOfElement, printHierarchy, shortLinkFile, shortLink, getDocumentationForType, getTypesFromFolder, printCodeOfFile } from '../doc-util/doc-types';
 import path from 'path';
 import { guard } from '../../util/assert';
@@ -22,15 +17,12 @@ import {
 	FlowrWikiBaseRef
 } from '../doc-util/doc-files';
 import type { scripts } from '../../cli/common/scripts-info';
-import type { ScriptOptions } from '../doc-util/doc-cli-option';
-import { getReplCommand, getCliLongOptionOf, getConfigOption } from '../doc-util/doc-cli-option';
+import { type ScriptOptions, getReplCommand, getCliLongOptionOf, getConfigOption } from '../doc-util/doc-cli-option';
 import type { FlowrConfig } from '../../config';
 import type { AutocompletablePaths } from '../../util/objects';
 import type { ReplCommandNames } from '../../cli/repl/commands/repl-commands';
 
-/**
- * Context available when generating documentation for a wiki in markdown format
- */
+/** Context available when generating documentation for a wiki in markdown format */
 export interface ElementFilter {
 	/** In case names collide, you can use this to further distinguish between them */
 	readonly file?:  RegExp;
@@ -40,17 +32,11 @@ export interface ElementFilter {
 	readonly fuzzy?: boolean;
 }
 
-/**
- * Formatting options for links to code elements
- */
+/** Formatting options for links to code elements */
 export interface LinkFormat {
-	/**
-	 * Whether to use md code font for the link text
-	 */
+	/** Whether to use md code font for the link text */
 	codeFont?:        boolean;
-	/**
-	 * Wrapper for the real name (if specified), e.g., to italicize or bold it
-	 */
+	/** Wrapper for the real name (if specified), e.g., to italicize or bold it */
 	realNameWrapper?: 'i' | 'b';
 }
 
@@ -365,27 +351,20 @@ export function makeDocContextForTypes(
 			return getDocumentationForType(getNameFromElementIdOrRef(element), info, '', filter);
 		},
 		docM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, filter?: Omit<ElementFilter, 'file'>): string {
-			const className = cls.prototype.constructor.name;
-			const fullName = `${className}::${String(element)}`;
-			return this.doc(fullName, filter);
+			return this.doc(`${cls.prototype.constructor.name}::${String(element)}`, filter);
 		},
 		docO<T extends object & { name: string }>(obj: T, element: keyof T, filter?: Omit<ElementFilter, 'file'>): string {
-			const fullName = `${obj.name}::${String(element)}`;
-			return this.doc(fullName, filter);
+			return this.doc(`${obj.name}::${String(element)}`, filter);
 		},
 		link(this: void, element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
 			guard(filter?.file === undefined, 'filtering for files is not yet supported for link');
 			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper, filter?.fuzzy, filter?.type);
 		},
 		linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string {
-			const className = cls.prototype.constructor.name;
-			const sep = (fmt?.hideClass) ? ':::' : '::';
-			const fullName = `${className}${sep}${String(element)}`;
-			return this.link(fullName, fmt, filter);
+			return this.link(`${cls.prototype.constructor.name}${fmt?.hideClass ? ':::' : '::'}${String(element)}`, fmt, filter);
 		},
 		linkO<T extends object &  { name: string }>(obj: T, element: keyof T, fmt?: LinkFormat, filter?: ElementFilter): string {
-			const fullName = `${obj.name}::${String(element)}`;
-			return this.link(fullName, fmt, filter);
+			return this.link(`${obj.name}::${String(element)}`, fmt, filter);
 		},
 		linkE<E>(enumName: string, element: keyof E, fmt?: LinkFormat, filter?: ElementFilter): string {
 			return this.link(`${enumName}::${String(element)}`, fmt, filter);
@@ -395,34 +374,21 @@ export function makeDocContextForTypes(
 		},
 		hierarchy(this: void, element: ElementIdOrRef, fmt?: Omit<PrintHierarchyArguments, 'info' | 'program' | 'root'>, filter?: ElementFilter): string {
 			guard(filter === undefined, 'ElementFilter is not yet supported for hierarchy');
-			return printHierarchy({
-				program, info,
-				root: getNameFromElementIdOrRef(element),
-				...fmt
-			});
+			return printHierarchy({ program, info, root: getNameFromElementIdOrRef(element), ...fmt });
 		},
 		code(this: void, element: ElementIdOrRef, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string {
 			guard(filter === undefined, 'ElementFilter is not yet supported for code');
-			return printCodeOfElement({
-				program, info,
-				...fmt,
-			}, getNameFromElementIdOrRef(element));
+			return printCodeOfElement({ program, info, ...fmt }, getNameFromElementIdOrRef(element));
 		},
 		codeFile(this: void, path: string, fmt?: Omit<FnElementInfo, 'info' | 'program'>): string {
-			return printCodeOfFile({
-				program, info,
-				...fmt,
-			}, path);
+			return printCodeOfFile({ program, info, ...fmt }, path);
 		},
 		async header(this: void, filename: string, purpose: string): Promise<string> {
 			const rVersion = (await shell?.usedRVersion())?.format();
 			return autoGenHeader({ filename, purpose, rVersion });
 		},
 		mermaid(this: void, element: ElementIdOrRef, options?: MermaidClassDiagramArguments): string {
-			return visualizeMermaidClassDiagram(info, {
-				typeNameForMermaid: getNameFromElementIdOrRef(element),
-				...options
-			}) as string;
+			return visualizeMermaidClassDiagram(info, { typeNameForMermaid: getNameFromElementIdOrRef(element), ...options }) as string;
 		},
 		linkPage(this: void, pageName: ValidWikiDocumentTargetsNoSuffix | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string {
 			let link: string;

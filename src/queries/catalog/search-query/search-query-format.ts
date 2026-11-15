@@ -9,9 +9,7 @@ import { Mermaid } from '../../../util/mermaid/mermaid';
 import { metaSince } from '../../query-meta';
 import { runSearch } from '../../../search/flowr-search-executor';
 
-/**
- * Executes the given search queries using the provided analyzer.
- */
+/** Executes the given search queries using the provided analyzer. */
 export async function executeSearch({ analyzer }: BasicQueryData, queries: readonly SearchQuery[]): Promise<SearchQueryResult> {
 	const start = Date.now();
 	const results: { ids: NodeId[], search: FlowrSearch }[] = [];
@@ -20,16 +18,10 @@ export async function executeSearch({ analyzer }: BasicQueryData, queries: reado
 
 		const searchResult = await runSearch(search, analyzer);
 
-		results.push({
-			ids: searchResult.getElements().map(({ node }) => node.info.id),
-			search
-		});
+		results.push({ ids: searchResult.getElements().map(({ node }) => node.info.id), search });
 	}
 
-	return {
-		...metaSince(start),
-		results
-	};
+	return { ...metaSince(start), results };
 }
 
 export interface SearchQuery extends BaseQueryFormat {

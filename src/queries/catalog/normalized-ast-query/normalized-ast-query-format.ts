@@ -4,27 +4,17 @@ import { queryHeader } from '../../query-print';
 import { normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { log } from '../../../util/log';
-import { metaSince } from '../../query-meta';
+import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
-/**
- * Executes the normalized-AST query.
- */
+/** Executes the normalized-AST query. */
 export async function executeNormalizedAstQuery({ analyzer }: BasicQueryData, queries: readonly NormalizedAstQuery[]): Promise<NormalizedAstQueryResult> {
-	if(queries.length !== 1) {
-		log.warn('Normalized-Ast query expects only up to one query, but got', queries.length);
-	}
+	warnUnlessSingleQuery('Normalized-Ast', queries);
 	const startTime = Date.now();
 	const normalized = await analyzer.normalize();
-	return {
-		...metaSince(startTime),
-		normalized
-	};
+	return { ...metaSince(startTime), normalized };
 }
 
-/**
- * Simple re-returns the normalized AST of the analysis.
- */
+/** Simple re-returns the normalized AST of the analysis. */
 export interface NormalizedAstQuery extends BaseQueryFormat {
 	readonly type: 'normalized-ast';
 }

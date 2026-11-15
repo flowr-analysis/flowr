@@ -51,10 +51,7 @@ export async function executeLocationMapQuery({ analyzer }: BasicQueryData, quer
 	const start = Date.now();
 	const requested = queries.flatMap(q => q.ids ?? []);
 	const criteriaOfInterest = new Set(requested.map(c => SlicingCriterion.tryParse(c, ast.idMap)).filter(isNotUndefined));
-	const locationMap: LocationMapQueryResult['map'] = {
-		files: {},
-		ids:   {}
-	};
+	const locationMap: LocationMapQueryResult['map'] = { files: {}, ids: {} };
 	let count = 0;
 	const inverseMap = new Map<string, number>();
 	await analyzer.dataflow(); // ensure all files are considered
@@ -69,17 +66,11 @@ export async function executeLocationMapQuery({ analyzer }: BasicQueryData, quer
 		/* asking for ids none of which resolve yields nothing, not everything */
 		if(node.location && (requested.length === 0 || criteriaOfInterest.has(id))) {
 			const file = fuzzyFindFile(node, ast.idMap);
-			locationMap.ids[id] = [
-				inverseMap.get(file) ?? -1,
-				rangeOf(node, ast.idMap, span)
-			];
+			locationMap.ids[id] = [inverseMap.get(file) ?? -1, rangeOf(node, ast.idMap, span)];
 		}
 	}
 
-	return {
-		...metaSince(start),
-		map: locationMap
-	};
+	return { ...metaSince(start), map: locationMap };
 }
 
 /**
@@ -117,14 +108,7 @@ function locationMapLineParser(_output: ReplOutput, line: readonly string[], _co
 	const criteria = sliceCriteriaParser(line[0]);
 	const rest = criteria ? line.slice(1) : line;
 	const span = (Object.values(LocationMapSpan) as string[]).includes(rest[0]) ? rest[0] as LocationMapSpan : undefined;
-	return {
-		query: {
-			type: 'location-map',
-			ids:  criteria,
-			...(span ? { span } : {})
-		},
-		rCode: queryLineCode(rest, span ? 1 : 0)
-	};
+	return { query: { type: 'location-map', ids: criteria, ...(span ? { span } : {}) }, rCode: queryLineCode(rest, span ? 1 : 0) };
 }
 
 export const LocationMapQueryDefinition = {

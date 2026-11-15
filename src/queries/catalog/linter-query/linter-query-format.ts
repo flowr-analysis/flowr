@@ -8,7 +8,7 @@ import { type LintingResultsError, type ConfiguredLintingRule, LintingPrettyPrin
 import { bold, italic, ColorEffect, Colors, FontStyles, type OutputFormatter } from '../../../util/text/ansi';
 import type { FlowrConfig } from '../../../config';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { CommandCompletions } from '../../../cli/repl/completion';
+import { type CommandCompletions, completeCommaList } from '../../../cli/repl/completion';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { getGuardIssueUrl, isNotUndefined } from '../../../util/assert';
 import { type LintResultsByRule, LinterOutputFormat, formatLints } from '../../../linter/linter-output';
@@ -64,11 +64,7 @@ export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: 
 	/* rendered here, not when printing, so an api client gets it too */
 	const format = queries.map(q => q.format).find(isNotUndefined);
 	const formatted = format ? formatLints((results as LinterQueryResult).results, format, flowrVersion().toString()) : undefined;
-	return {
-		...results,
-		...(formatted ? { formatted } : {}),
-		...metaSince(start)
-	};
+	return { ...results, ...(formatted ? { formatted } : {}), ...metaSince(start) };
 }
 
 export interface LinterQuery extends BaseQueryFormat {
@@ -85,9 +81,7 @@ export interface LinterQuery extends BaseQueryFormat {
 }
 
 export interface LinterQueryResult extends BaseQueryResult {
-	/**
-	 * The results of the linter query, which returns a set of linting results for each rule that was executed.
-	 */
+	/** The results of the linter query, which returns a set of linting results for each rule that was executed. */
 	readonly results:    LintResultsByRule
 	/** The findings rendered in the requested {@link LinterQuery#format|format}, if one was requested. */
 	readonly formatted?: string
@@ -160,22 +154,7 @@ function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, 
 		const wanted = current.slice(formatPrefix.length);
 		return { completions: Object.values(LinterOutputFormat).filter(f => f !== wanted), argumentPart: wanted };
 	} else if(current.startsWith(rulesPrefix)) {
-		const usedRules = current.slice(rulesPrefix.length).split(',').map(r => r.trim());
-		const allRules = Object.keys(LintingRules);
-		const unusedRules = allRules.filter(r => !usedRules.includes(r));
-		const lastRule = usedRules[usedRules.length - 1];
-		const lastRuleIsUnfinished = !allRules.includes(lastRule);
-
-		if(lastRuleIsUnfinished) {
-			// Return all rules that have not been added yet
-			return { completions: unusedRules, argumentPart: lastRule };
-		} else if(unusedRules.length > 0) {
-			// Add a comma, if the current last rule is complete
-			return { completions: [','], argumentPart: '' };
-		} else {
-			// All rules are used, complete with a space
-			return { completions: [' '], argumentPart: '' };
-		}
+		return completeCommaList(current.slice(rulesPrefix.length), Object.keys(LintingRules));
 	}
 	/* both are optional and may come in any order, so offer whatever is not given yet */
 	const given = startingNewArg ? line : line.slice(0, -1);
@@ -248,10 +227,7 @@ export const LinterQueryDefinition = {
 			format: Joi.string().valid(...Object.values(LinterOutputFormat)).optional().description('Print the findings in a machine-readable format instead of the human-readable summary.'),
 			rules:  Joi.array().items(
 				Joi.string().valid(...Object.keys(LintingRules)),
-				Joi.object({
-					name:   Joi.string().valid(...Object.keys(LintingRules)).required(),
-					config: Joi.object()
-				})
+				Joi.object({ name: Joi.string().valid(...Object.keys(LintingRules)).required(), config: Joi.object() })
 			).description('The rules to lint for. If unset, all rules will be included.'),
 			tags: Joi.array().items(Joi.string().valid(...Object.values(LintingRuleTag))).optional().description('Lint for every rule carrying one of these tags, e.g. cmd-check for the R CMD check rules.')
 		}).description('The linter query lints for the given set of rules and returns the result.');

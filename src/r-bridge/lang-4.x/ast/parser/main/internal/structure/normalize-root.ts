@@ -10,7 +10,6 @@ import type { JsonEntry } from '../../../json/format';
 import type { RProject } from '../../../../model/nodes/r-project';
 import { RComment } from '../../../../model/nodes/r-comment';
 
-
 /**
  * Takes the parse data as object and produces an undecorated, normalized AST.
  * @see {@link normalize} - for a version that also decorates the AST
@@ -44,11 +43,7 @@ export function normalizeRootObjToAst(
 					children: nodes as RNode[],
 					grouping: undefined,
 					lexeme:   undefined,
-					info:     {
-						fullRange:  data.currentRange,
-						adToks:     delimiters,
-						fullLexeme: data.currentLexeme
-					}
+					info:     { fullRange: data.currentRange, adToks: delimiters, fullLexeme: data.currentLexeme }
 				}
 			}
 		]

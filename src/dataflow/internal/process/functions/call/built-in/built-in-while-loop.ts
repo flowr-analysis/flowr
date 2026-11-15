@@ -12,9 +12,7 @@ import {
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard, isUndefined } from '../../../../../../util/assert';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type {
-	PotentiallyEmptyRArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -23,10 +21,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import {
-	applyCdsToAllInGraphButConstants,
-	applyCdToReferences
-} from '../../../../../environments/reference-to-maybe';
+import { applyCdsToAllInGraphButConstants, applyCdToReferences } from '../../../../../environments/reference-to-maybe';
 import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';

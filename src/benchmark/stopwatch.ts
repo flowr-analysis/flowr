@@ -45,7 +45,6 @@ class Stopwatch implements IStoppableStopwatch {
 	}
 }
 
-
 /**
  * Allows to measure keys of type `T` with a `Stopwatch`.
  *
@@ -78,7 +77,6 @@ export class Measurements<T> {
 		return result;
 	}
 
-
 	/**
 	 * Similar to {@link measure}, but await the promise as part of the measurement
 	 * @param key - The key to write the resulting measurement to
@@ -91,9 +89,7 @@ export class Measurements<T> {
 		stopwatch.stop();
 		return result;
 	}
-	/**
-	 * Retrieve all measure-results, requires that all stop-watches that have been started have also been stopped.
-	 */
+	/** Retrieve all measure-results, requires that all stop-watches that have been started have also been stopped. */
 	public get(): Map<T, bigint> {
 		const result = new Map<T, bigint>();
 		for(const [key, stopwatch] of this.measurements) {

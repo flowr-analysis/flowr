@@ -25,9 +25,7 @@ function walkBack(cfg: ControlFlowGraph, b: NodeId, stop: (current: NodeId, cd: 
 	return false;
 }
 
-/**
- * Determines if node `a` happens before node `b` in the control flow graph.
- */
+/** Determines if node `a` happens before node `b` in the control flow graph. */
 export function happensBefore(cfg: ControlFlowGraph, a: NodeId, b: NodeId): Ternary {
 	return happensBeforeEach(cfg, new Set([a]), b).get(a) ?? Ternary.Never;
 }

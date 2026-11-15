@@ -1,11 +1,10 @@
 import { type BasicQueryData, filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
-import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
+import { functionBullet, queryHeader } from '../../query-print';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
-import { SourceLocation } from '../../../util/range';
 import type { FunctionArgumentRoles } from '../../../dataflow/fn/argument-roles';
 import type { StatedProps, ArgProps, PropMask } from '../../../dataflow/environments/built-in-props';
 import { ArgProp, CallProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
@@ -16,7 +15,6 @@ import { uniqueArrayMerge } from '../../../util/collections/arrays';
 import { metaSince } from '../../query-meta';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { QueryFunctionFilter } from '../../query-function-filter';
-
 
 /** every bit, for a query naming no properties to keep */
 const AllProps = ~0;
@@ -74,7 +72,6 @@ export async function executeFnPropsQuery({ analyzer }: BasicQueryData, queries:
 	};
 }
 
-
 /** refuses a query that can only answer with nothing: `formals` narrowing an answer that carries none, or `props` naming only properties the single half it asks for cannot state */
 function rejectEmptyAnswer(query: InspectFnPropsQuery, helpers: Joi.CustomHelpers): InspectFnPropsQuery {
 	const { only, formals, props } = query;
@@ -116,16 +113,14 @@ export const InspectFnPropsQueryDefinition = {
 	executor:        executeFnPropsQuery,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'inspect-fn-props'>['inspect-fn-props'];
-		result.push(`Query: ${bold('inspect-fn-props', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+		result.push(queryHeader('inspect-fn-props', formatter, out['.meta'].timing, true));
 		const idMap = (await processed.normalize()).idMap;
 		for(const id of new Set([...Object.keys(out.roles), ...Object.keys(out.props)])) {
-			const node = idMap.get(NodeId.normalize(id));
-			const loc = node ? SourceLocation.fromNode(node) : undefined;
 			const formals = Object.entries(out.roles[id] ?? {})
 				.map(([formal, props]) => `${NodeId.recoverName(NodeId.normalize(formal), idMap) ?? formal}: ${FunctionSemantics.call.argument.words(props).join(', ')}`)
 				.join(', ');
 			const states = FunctionSemantics.call.props.labels(out.props[id]).join(', ');
-			result.push(`  - Function ${bold(id, formatter)} (${SourceLocation.format(loc)}) ${formals}${states.length > 0 ? ` [${states}]` : ''}`);
+			result.push(`${functionBullet(id, formatter, idMap)} ${formals}${states.length > 0 ? ` [${states}]` : ''}`);
 		}
 		return true;
 	},

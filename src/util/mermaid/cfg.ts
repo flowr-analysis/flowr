@@ -17,7 +17,6 @@ import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-f
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RTrue } from '../../r-bridge/lang-4.x/convert-values';
 
-
 export interface MermaidCfgGraphPrinterInfo extends MermaidGraphPrinterInfo {
 	/** The style to apply to mark an entry point marker node */
 	entryPointStyle?:          MermaidMarkStyle['vertex'];
@@ -128,7 +127,6 @@ function conditionName(cfg: ControlFlowInformation, normalizedAst: NormalizedAst
 	const lexeme = RNode.lexeme(normalizedAst.idMap.get(condition));
 	return lexeme ? `${lexeme} (${condition})` : String(condition);
 }
-
 
 function shouldIncludeNode(simplify: boolean, v: CfgVertex, include: ReadonlySet<MermaidMarkdownMark>): boolean {
 	if(simplify) {
@@ -284,16 +282,12 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 	return output;
 }
 
-/**
- * Use mermaid to visualize the normalized AST.
- */
+/** Use mermaid to visualize the normalized AST. */
 export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, info?: MermaidCfgGraphPrinterInfo): string {
 	return Mermaid.codeToUrl(cfgToMermaid(cfg, normalizedAst, info ?? {}));
 }
 
-/**
- * Limits a string to n chars, after which the remainder will be replaced with ...
- */
+/** Limits a string to n chars, after which the remainder will be replaced with ... */
 function limitTo(str: string, limit: number): string {
 	if(str.length <= limit) {
 		return str;

@@ -60,9 +60,7 @@ export interface Source {
 	 * This allows inline-comments!
 	 */
 	adToks?:     OtherInfoNode[]
-	/**
-	 * The file in which the respective node is located
-	 */
+	/** The file in which the respective node is located */
 	file?:       string
 }
 
@@ -130,9 +128,7 @@ export const RConstant = {
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RConstant<Info> {
 		return node !== undefined && RConstant.constantTypes.has(node.type);
 	},
-	/**
-	 * A set of all types of constants in the normalized AST, i.e. number, string, and logical constants.
-	 */
+	/** A set of all types of constants in the normalized AST, i.e. number, string, and logical constants. */
 	constantTypes: new Set([RType.Number, RType.String, RType.Logical]) as ReadonlySet<RType>
 } as const;
 /**
@@ -153,14 +149,10 @@ export const RSingleNode = {
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RSingleNode<Info> {
 		return node !== undefined && RSingleNode.singleNodeTypes.has(node.type);
 	},
-	/**
-	 * A set of all types of single nodes in the normalized AST, i.e. comment, symbol, constant, break, next, and line directive nodes.
-	 */
+	/** A set of all types of single nodes in the normalized AST, i.e. comment, symbol, constant, break, next, and line directive nodes. */
 	singleNodeTypes: new Set([RType.Comment, RType.Symbol, RType.Break, RType.Next, RType.LineDirective, ...RConstant.constantTypes]) as ReadonlySet<RType>
 } as const;
-/**
- * This subtype of {@link RNode} represents all looping constructs in the normalized AST.
- */
+/** This subtype of {@link RNode} represents all looping constructs in the normalized AST. */
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>;
 /**
  * Helper for working with {@link RLoopConstructs} AST nodes.
@@ -175,9 +167,7 @@ export const RLoopConstructs = {
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RLoopConstructs<Info> {
 		return node !== undefined && RLoopConstructs.loopConstructTypes.has(node.type);
 	},
-	/**
-	 * A set of all types of loop constructs in the normalized AST, i.e. for, repeat and while loops.
-	 */
+	/** A set of all types of loop constructs in the normalized AST, i.e. for, repeat and while loops. */
 	loopConstructTypes: new Set([RType.ForLoop, RType.RepeatLoop, RType.WhileLoop]) as ReadonlySet<RType>,
 	/** Whether `id` may run again in the same frame, as part of a loop not left through a function definition. */
 	encloses<OtherInfo>(this: void, id: NodeId, idMap: AstIdMap<OtherInfo & ParentInformation>): boolean {
@@ -203,9 +193,7 @@ export const RConstructs = {
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RConstructs<Info> {
 		return node !== undefined && RConstructs.constructTypes.has(node.type);
 	},
-	/**
-	 * A set of all types of constructs in the normalized AST, i.e. for, repeat and while loops and if-then-else constructs.
-	 */
+	/** A set of all types of constructs in the normalized AST, i.e. for, repeat and while loops and if-then-else constructs. */
 	constructTypes: new Set([...RLoopConstructs.loopConstructTypes, RType.IfThenElse]) as ReadonlySet<RType>
 } as const;
 /**
@@ -226,9 +214,7 @@ export const RFunctions = {
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RFunctions<Info> {
 		return node !== undefined && RFunctions.functionTypes.has(node.type);
 	},
-	/**
-	 * A set of all types of function-related nodes in the normalized AST, i.e. function definitions, function calls, parameters, and arguments.
-	 */
+	/** A set of all types of function-related nodes in the normalized AST, i.e. function definitions, function calls, parameters, and arguments. */
 	functionTypes: new Set([RType.FunctionDefinition, RType.FunctionCall, RType.Parameter, RType.Argument]) as ReadonlySet<RType>
 } as const;
 /**
@@ -288,9 +274,7 @@ export const RNode = {
 	getLocation(this: void, node: RNode | undefined): SourceLocation | undefined {
 		return SourceLocation.fromNode(node);
 	},
-	/**
-	 * A helper function to retrieve the id of a given node, `undefined` if there is no node.
-	 */
+	/** A helper function to retrieve the id of a given node, `undefined` if there is no node. */
 	getId: ((node?: RNode<ParentInformation>) => node?.info.id) as Accessor<RNode<ParentInformation>, NodeId>,
 	/**
 	 * An identity for `node` that two analyses of the same source agree on, unlike {@link RNode.getId|the numeric
@@ -353,9 +337,7 @@ export const RNode = {
 		const parent = idMap.get(id)?.info.parent;
 		return parent === undefined ? undefined : RNode.findEnclosing(parent, idMap, RFunctionDefinition.is);
 	},
-	/**
-	 * A helper function to retrieve the type of a given node.
-	 */
+	/** A helper function to retrieve the type of a given node. */
 	getType(this: void, node: RNode): RType {
 		return node.type;
 	},
@@ -382,9 +364,7 @@ export const RNode = {
 		});
 		return ids;
 	},
-	/**
-	 * Collects all direct children of a given node, i.e. all nodes that are directly reachable via a property of the given node.
-	 */
+	/** Collects all direct children of a given node, i.e. all nodes that are directly reachable via a property of the given node. */
 	directChildren<OtherInfo>(this: void, node: RNode<OtherInfo>): readonly (RNode<OtherInfo> | typeof EmptyArgument)[] {
 		const type = node.type;
 		switch(type) {
@@ -416,9 +396,7 @@ export const RNode = {
 	directParent<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation>, idMap: AstIdMap<OtherInfo & ParentInformation>): RNode<OtherInfo & ParentInformation> | undefined {
 		return node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
 	},
-	/**
-	 * Returns an iterable of all parents of a node, starting with the direct parent and ending with the root node.
-	 */
+	/** Returns an iterable of all parents of a node, starting with the direct parent and ending with the root node. */
 	*iterateParents<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation> | undefined, idMap: AstIdMap<OtherInfo & ParentInformation>): Generator<RNode<OtherInfo & ParentInformation>> {
 		let current = node === undefined ? undefined : RNode.directParent(node, idMap);
 		while(current !== undefined) {

@@ -36,9 +36,7 @@ export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name'];
  */
 export type PipelineStep<P extends Pipeline> = P extends Pipeline<infer U> ? U : never;
 
-/**
- * Meta-information attached to every step result
- */
+/** Meta-information attached to every step result */
 export interface PipelinePerStepMetaInformation {
 	readonly '.meta': {
 		/**
@@ -94,7 +92,6 @@ export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep
 export type PipelinePerRequestInput<P extends Pipeline> = {
 	[K in PipelineStepNames<P>]: PipelineStepWithName<P, K>['executed'] extends PipelineStepStage.OncePerFile ? never : PipelineStepWithName<P, K>['requiredInput']
 }[PipelineStepNames<P>];
-
 
 /**
  * Returns an object type that represents the types of the outputs that will result from running the given pipeline, each as the step's name mapped to its PipelineStepOutputWithName.

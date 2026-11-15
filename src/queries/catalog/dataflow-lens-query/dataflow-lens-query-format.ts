@@ -4,8 +4,7 @@ import { queryHeader } from '../../query-print';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
-import { log } from '../../../util/log';
-import { metaSince } from '../../query-meta';
+import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 import { reduceDfg } from '../../../util/simple-df/dfg-view';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { escapeRegExp } from '../../../abstract-interpretation/data-frame/arguments';
@@ -22,13 +21,9 @@ const HiddenLexemes = `^(${
 		.map(name => escapeRegExp(name)).join('|')
 })$`;
 
-/**
- * Executes the given dataflow lens queries using the provided analyzer.
- */
+/** Executes the given dataflow lens queries using the provided analyzer. */
 export async function executeDataflowLensQuery({ analyzer }: BasicQueryData, queries: readonly DataflowLensQuery[]): Promise<DataflowLensQueryResult> {
-	if(queries.length !== 1) {
-		log.warn('Dataflow query expects only up to one query, but got', queries.length);
-	}
+	warnUnlessSingleQuery('Dataflow', queries);
 
 	const now = Date.now();
 	const simplifiedGraph = reduceDfg((await analyzer.dataflow()).graph, {
@@ -41,15 +36,10 @@ export async function executeDataflowLensQuery({ analyzer }: BasicQueryData, que
 		}
 	}, analyzer.inspectContext().env.makeCleanEnv());
 
-	return {
-		...metaSince(now),
-		simplifiedGraph
-	};
+	return { ...metaSince(now), simplifiedGraph };
 }
 
-/**
- * Returns a simplified view on the dataflow graph of the analysis
- */
+/** Returns a simplified view on the dataflow graph of the analysis */
 export interface DataflowLensQuery extends BaseQueryFormat {
 	readonly type: 'dataflow-lens';
 }

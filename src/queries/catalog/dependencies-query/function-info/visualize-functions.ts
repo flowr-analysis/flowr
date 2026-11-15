@@ -5,9 +5,7 @@ import { GgPlotAddons,
 	TinyPlotCrate
 } from '../../../../dataflow/environments/default-builtin-config';
 
-const LinkToPlotCreation = [
-	{ type: 'link-to-last-call', callName: PlotCreate }
-] as const satisfies DependencyInfoLink[];
+const LinkToPlotCreation = [{ type: 'link-to-last-call', callName: PlotCreate }] as const satisfies DependencyInfoLink[];
 
 /** the {@link FunctionInfo} for a ggplot-style call, qualified with the package that really exports it */
 function ggStyle(name: string, linkTo?: typeof LinkToPlotCreation): FunctionInfo {

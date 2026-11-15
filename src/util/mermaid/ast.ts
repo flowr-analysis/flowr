@@ -17,9 +17,7 @@ function identifyMermaidDirection(prefix: string): string {
 	return 'TD';
 }
 
-/**
- * Serialize the normalized AST to mermaid format
- */
+/** Serialize the normalized AST to mermaid format */
 export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeWithParent, { prefix = 'flowchart TD\n', markStyle = MermaidDefaultMarkStyle, includeOnlyIds, mark }: MermaidGraphPrinterInfo = {}): string {
 	let output = prefix;
 	function showNode(n: RNodeWithParent): void {
@@ -76,9 +74,7 @@ export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeW
 	return output;
 }
 
-/**
- * Use mermaid to visualize the normalized AST.
- */
+/** Use mermaid to visualize the normalized AST. */
 export function normalizedAstToMermaidUrl(ast: RProject<ParentInformation> | RNodeWithParent, info?: MermaidGraphPrinterInfo): string {
 	return Mermaid.codeToUrl(normalizedAstToMermaid(ast, info ?? {}));
 }

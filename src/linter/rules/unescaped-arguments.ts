@@ -35,9 +35,7 @@ import { LintingRuleTag } from '../linter-tags';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { uniqueArray } from '../../util/collections/arrays';
 
-/**
- * The kinds of critical operations to check for unescaped arguments.
- */
+/** The kinds of critical operations to check for unescaped arguments. */
 export enum UnescapedArgumentCategory {
 	/** Functions performing system commands, e.g. `system` */
 	System = 'system',
@@ -64,24 +62,13 @@ const AcceptedInputs: readonly InputType[] = [InputType.Constant, InputType.Deri
 const UncertainInputs: readonly InputType[] = [InputType.Unknown, InputType.Parameter, InputType.Scope];
 
 interface UnescapedArgumentsEntry {
-	/**
-	 * The call properties of critical functions calls that perform a critical operation
-	 * @see {@link PropSelector}
-	 */
+	/** The call properties ({@link PropSelector}) of critical functions calls that perform a critical operation */
 	readonly criticalCalls: PropSelector;
-	/**
-	 * The argument properties of critical arguments of critical functions
-	 * @see {@link ArgProps}
-	 */
+	/** The argument properties ({@link ArgProps}) of critical arguments of critical functions */
 	readonly criticalArgs:  ArgProps;
-	/**
-	 * The functions that escape an unescaped argument of a critical function
-	 */
+	/** The functions that escape an unescaped argument of a critical function */
 	readonly sanitizers:    readonly Identifier[];
-	/**
-	 * The function to wrap an unescaped expression in as quick fix
-	 * @see {@link EscapeQuickFix}
-	 */
+	/** The function to wrap an unescaped expression in as quick fix, see {@link EscapeQuickFix} */
 	readonly quickFix?:     EscapeQuickFix;
 	/** Methods whose unnamed arguments are critical, called on an object by `$` */
 	readonly methods?:      readonly CriticalMethod[];
@@ -124,9 +111,7 @@ export interface UnescapedArgumentsMetadata extends MergeableRecord {
 }
 
 export interface UnescapedArgumentsConfig extends MergeableRecord {
-	/**
-	 * The target, critical functions, critical arguments, sanitizers and quick fixes for each category
-	 */
+	/** The target, critical functions, critical arguments, sanitizers and quick fixes for each category */
 	readonly categories:         Record<UnescapedArgumentCategory, UnescapedArgumentsEntry>;
 	/**
 	 * The categories that should be disabled and not checked
@@ -138,9 +123,7 @@ export interface UnescapedArgumentsConfig extends MergeableRecord {
 	 * @see {@link InputType}
 	 */
 	readonly acceptedInputs:     readonly InputType[];
-	/**
-	 * The maximum depth to descent to find unescaped parts of an argument
-	 */
+	/** The maximum depth to descent to find unescaped parts of an argument */
 	readonly maxDecentDepth:     number;
 }
 
@@ -181,21 +164,14 @@ function getEnabledCriticalCalls(config: UnescapedArgumentsConfig, index: BuiltI
 }
 
 /** Gets all critical arguments of critical function calls in the data flow graph */
-function getCriticalTargets(
-	elements: readonly FlowrSearchElement<ParentInformation>[],
-	graph: DataflowGraph,
-	config: UnescapedArgumentsConfig,
-	builtIns: BuiltInIndex
-): CriticalTarget[] {
+function getCriticalTargets(elements: readonly FlowrSearchElement<ParentInformation>[], graph: DataflowGraph, config: UnescapedArgumentsConfig, builtIns: BuiltInIndex): CriticalTarget[] {
 	const criticalCalls = Map.groupBy(getEnabledCriticalCalls(config, builtIns), call => Identifier.getName(call.name));
 	const targets: CriticalTarget[] = [];
 	const ids = new Set(elements.map(({ node }) => node.info.id));
 	/* calls of an alias (`s <- system; s(x)`) link to the built-in they resolve to */
 	const aliases = new Map(graph.verticesOfType(VertexType.FunctionCall).map(([id]) => [id, new Set<BrandedIdentifier>([...linkedBuiltIns(graph, id, EdgeType.Calls), ...wrappedBuiltIns(graph, id)])] as const));
-	for(const [id, names] of aliases) {
-		if(names.values().some(name => criticalCalls.has(name))) {
-			ids.add(id);
-		}
+	for(const [id] of aliases.entries().filter(([, names]) => names.values().some(name => criticalCalls.has(name)))) {
+		ids.add(id);
 	}
 	const locate = (arg: NodeId) => {
 		const node = graph.idMap?.get(arg);
@@ -333,18 +309,10 @@ function isCertainlyCritical(source: InputSource, config: UnescapedArgumentsConf
 	return source.types.some(type => !config.acceptedInputs.includes(type) && !UncertainInputs.includes(type));
 }
 
-/**
- * Gets all unescaped sources for the critical target calls of the given category
- */
-async function getUnescapedSources(
-	category: UnescapedArgumentCategory,
-	targets: readonly CriticalTarget[],
-	config: UnescapedArgumentsConfig,
-	data: ReadonlyFlowrAnalysisProvider,
-	graph: DataflowGraph
-): Promise<Map<CriticalTarget, InputSource[]>> {
+/** Gets all unescaped sources for the critical target calls of the given category */
+async function getUnescapedSources(category: UnescapedArgumentCategory, targets: readonly CriticalTarget[], config: UnescapedArgumentsConfig, data: ReadonlyFlowrAnalysisProvider, graph: DataflowGraph): Promise<Map<CriticalTarget, InputSource[]>> {
 	const sanitizers = config.categories[category].sanitizers ?? [];
-	const sanitizerNames = new Set(sanitizers.map(call => Identifier.getName(call)));
+	const sanitizerNames = new Set(sanitizers.map(Identifier.getName));
 	const builtIns = data.inspectContext().env.builtInIndex;
 	/* a count or a logical carries nothing that could be injected, even when it depends on the input */
 	const queryConfig = { narrowing: narrowingFunctions(builtIns), sanitizers: [...contentFreeFunctions(builtIns), ...sanitizers] };
@@ -399,12 +367,7 @@ function escapeFix(fix: EscapeQuickFix, target: CriticalTarget, source: InputSou
 		leading = `${first}, `;
 	}
 	const call = Identifier.toString(fix.call);
-	return {
-		type:        'replace',
-		loc:         location,
-		description: `Escape the value with \`${call}\``,
-		replacement: `${call}(${leading}${lexeme})`
-	};
+	return { type: 'replace', loc: location, description: `Escape the value with \`${call}\``, replacement: `${call}(${leading}${lexeme})` };
 }
 
 function createResult(target: CriticalTarget, sources: InputSource[], config: UnescapedArgumentsConfig, idMap: AstIdMap): UnescapedArgumentsResult {
@@ -452,16 +415,11 @@ export const UNESCAPED_ARGUMENTS = {
 				}
 			}
 		}
-		return {
-			results,
-			'.meta': { totalCriticalArguments: targets.length, totalEscapedArguments: escaped }
-		};
+		return { results, '.meta': { totalCriticalArguments: targets.length, totalEscapedArguments: escaped } };
 	},
 	prettyPrint: prettyPrint(
-		result =>
-			`Unescaped ${result.category} argument of \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)}`,
-		result =>
-			`The argument of \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)} reaches a ${result.category} call unescaped (input: ${result.input.join(', ')})`
+		result => `Unescaped ${result.category} argument of \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)}`,
+		result => `The argument of \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)} reaches a ${result.category} call unescaped (input: ${result.input.join(', ')})`
 	),
 	info: {
 		name:          'Unescaped Arguments',
@@ -479,46 +437,26 @@ export const UNESCAPED_ARGUMENTS = {
 				[UnescapedArgumentCategory.Eval]: {
 					criticalCalls: [SemanticCallTag.Eval, CallProp.Lang],
 					criticalArgs:  ArgProp.Injectable,
-					sanitizers:    [
-						Identifier.from(['match.arg', PkgName.Base]),
-						Identifier.from(['make.names', PkgName.Base]),
-						Identifier.from(['arg_match', PkgName.Rlang])
-					]
+					sanitizers:    [...Identifier.fromAll(PkgName.Base, ['match.arg', 'make.names']), Identifier.from(['arg_match', PkgName.Rlang])]
 				},
 				[UnescapedArgumentCategory.Database]: {
 					criticalCalls: SemanticCallTag.Database,
 					criticalArgs:  ArgProp.Injectable,
-					sanitizers:    [
-						Identifier.from(['dbQuoteLiteral', PkgName.Dbi]),
-						Identifier.from(['dbQuoteString', PkgName.Dbi]),
-						Identifier.from(['dbQuoteIdentifier', PkgName.Dbi]),
-						Identifier.from(['sqlInterpolate', PkgName.Dbi]),
-						Identifier.from(['glue_sql', PkgName.Glue]),
-						Identifier.from(['glue_data_sql', PkgName.Glue])
-					],
-					quickFix: { call: Identifier.from(['dbQuoteLiteral', PkgName.Dbi]), firstArg: ArgProp.Handle, partsOnly: true }
+					sanitizers:    [...Identifier.fromAll(PkgName.Dbi, ['dbQuoteLiteral', 'dbQuoteString', 'dbQuoteIdentifier', 'sqlInterpolate']), ...Identifier.fromAll(PkgName.Glue, ['glue_sql', 'glue_data_sql'])],
+					quickFix:      { call: Identifier.from(['dbQuoteLiteral', PkgName.Dbi]), firstArg: ArgProp.Handle, partsOnly: true }
 				},
 				[UnescapedArgumentCategory.Html]: {
 					criticalCalls: SemanticCallTag.Html,
 					criticalArgs:  ArgProp.Injectable,
-					sanitizers:    [
-						Identifier.from(['htmlEscape', PkgName.HtmlTools]),
-						Identifier.from(['html_escape', 'xfun']),
-						Identifier.from(['URLencode', PkgName.Utils])
-					],
-					quickFix: { call: Identifier.from(['htmlEscape', PkgName.HtmlTools]) }
+					sanitizers:    [Identifier.from(['htmlEscape', PkgName.HtmlTools]), Identifier.from(['html_escape', 'xfun']), Identifier.from(['URLencode', PkgName.Utils])],
+					quickFix:      { call: Identifier.from(['htmlEscape', PkgName.HtmlTools]) }
 				},
 				[UnescapedArgumentCategory.JavaScript]: {
 					criticalCalls: SemanticCallTag.JavaScript,
 					criticalArgs:  ArgProp.Injectable,
-					sanitizers:    [
-						Identifier.from(['toJSON', PkgName.Jsonlite]),
-						Identifier.from(['serializeJSON', PkgName.Jsonlite]),
-						Identifier.from(['toJSON', 'RJSONIO']),
-						Identifier.from(['toJSON', 'rjson'])
-					],
-					quickFix: { call: Identifier.from(['toJSON', PkgName.Jsonlite]), partsOnly: true },
-					methods:  [
+					sanitizers:    [...Identifier.fromAll(PkgName.Jsonlite, ['toJSON', 'serializeJSON']), ...Identifier.fromAllIn(['RJSONIO', 'rjson'], ['toJSON'])],
+					quickFix:      { call: Identifier.from(['toJSON', PkgName.Jsonlite]), partsOnly: true },
+					methods:       [
 						...['eval', 'call', 'source'].flatMap(method => Identifier.fromAll('V8', ['v8', 'new_context']).map(receiver => ({ receiver, method }))),
 						...Identifier.fromAllIn([PkgName.HtmlTools, PkgName.Shiny], ['tags']).map(receiver => ({ receiver, method: 'script' }))
 					]

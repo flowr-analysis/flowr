@@ -27,12 +27,8 @@ export function optimize<
 		searchToOptimize = optimizeSearch(searchToOptimize, generator);
 		fingerprint = fingerPrintTransformer(searchToOptimize);
 	}
-	return {
-		generator,
-		search: searchToOptimize
-	};
+	return { generator, search: searchToOptimize };
 }
-
 
 function optimizeGenerator(generator: FlowrSearchGeneratorNode): FlowrSearchGeneratorNode {
 	return dropAnyNameRegex(generator);
@@ -71,13 +67,7 @@ function dropDuplicateNoops(transformers: FlowrSearchTransformerNode[]): FlowrSe
 function selectWithSingleCanBeIndex(transformers: FlowrSearchTransformerNode[]): FlowrSearchTransformerNode[]  {
 	return transformers.map(transformer => {
 		if(transformer.name === 'select' && transformer.args.select.length === 1) {
-			return {
-				...transformer,
-				name: 'index',
-				args: {
-					index: transformer.args.select[0]
-				}
-			};
+			return { ...transformer, name: 'index', args: { index: transformer.args.select[0] } };
 		}
 		return transformer;
 	});
@@ -88,17 +78,7 @@ function dropAnyNameRegex(generator: FlowrSearchGeneratorNode): FlowrSearchGener
 		return generator;
 	}
 	if(generator.args.filter.name === '.*') {
-		return {
-			...generator,
-			args: {
-				...generator.args,
-				filter: {
-					...generator.args.filter,
-					name:        undefined,
-					nameIsRegex: undefined
-				}
-			}
-		};
+		return { ...generator, args: { ...generator.args, filter: { ...generator.args.filter, name: undefined, nameIsRegex: undefined } } };
 	}
 	return generator;
 }

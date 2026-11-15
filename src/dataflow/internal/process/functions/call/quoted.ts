@@ -117,7 +117,7 @@ export const Quoted = {
 		/* every call of a function lists the arguments of all its calls, so each is linked once per forces it meets */
 		const linkedWith = new DefaultMap<NodeId, Set<ForceSites>>(() => new Set());
 		/* per parameter, the forces all of its arguments were linked with */
-		const settled = new Map<NodeId, { readonly forces: ForceSites, readonly arguments: number }>();
+		const settled = new Map<NodeId, { readonly forces: ForceSites, readonly edges: number }>();
 		for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 			const masks = Nse.dropResolvedMask(graph, id, vertex.name);
 			if(masks !== undefined) {
@@ -165,13 +165,17 @@ export const Quoted = {
 					continue;
 				}
 				for(const parameter of Dataflow.calleesOf(graph, id).flatMap(Dataflow.parametersOf)) {
-					const bound = [...Dataflow.argumentsBoundTo(graph, parameter)];
-					/* every call of the function comes here with the same parameter and the same arguments, which are done once they all met these forces */
+					/*
+					 * every call of the function comes here with the same parameter and the same arguments, which are done once they all met
+					 * these forces; the parameter's edges, which bind its arguments, only grow, so an unchanged count means the same arguments
+					 */
 					const first = forcesOf(graph, parameter, flow, forcing, reachOf);
+					const edges = graph.edgesFrom(parameter).size;
 					const done = settled.get(parameter);
-					if(first !== undefined && done?.forces === first && done.arguments === bound.length) {
+					if(first !== undefined && done?.forces === first && done.edges === edges) {
 						continue;
 					}
+					const bound = [...Dataflow.argumentsBoundTo(graph, parameter)];
 					let stable = true;
 					for(const argument of bound) {
 						const index = namesOnce();
@@ -182,8 +186,9 @@ export const Quoted = {
 							Deferred.link(graph, argument, index, idMap, forces, true);
 						}
 					}
-					if(stable && first !== undefined) {
-						settled.set(parameter, { forces: first, arguments: bound.length });
+					/* only if linking bound no further argument while it ran, which the loop above would not have seen */
+					if(stable && first !== undefined && graph.edgesFrom(parameter).size === edges) {
+						settled.set(parameter, { forces: first, edges });
 					}
 				}
 			}

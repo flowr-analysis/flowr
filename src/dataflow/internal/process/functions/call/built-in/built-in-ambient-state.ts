@@ -1370,21 +1370,27 @@ function unanalyzed<OtherInfo>(id: NodeId, graph: DataflowGraph, data: DataflowP
 
 /** what may warn when `root` runs, see {@link WarningSiteMode}, `bodies` holds what may in the bodies of the closures seen so far */
 function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, bodies: Map<NodeId, readonly NodeId[]>, mode: WarningSiteMode): NodeId[] {
-	const sites: NodeId[] = [];
+	/* a set: a body called from many places would otherwise be listed once per call, and spreading such a list overflows the stack */
+	const sites = new Set<NodeId>();
+	const add = (more: Iterable<NodeId>) => {
+		for(const site of more) {
+			sites.add(site);
+		}
+	};
 	const { signal } = mode;
 	RNode.visitAst(root, node => {
 		if(RFunctionDefinition.is(node) || unanalyzed(node.info.id, graph, data)) {
 			return true;
 		} else if(RBinaryOp.is(node) ? RBinaryOp.getOperatorInfo(node)?.usedAs !== OperatorUsedAs.Assignment : RUnaryOp.is(node) || RAccess.is(node)) {
-			sites.push(node.info.id);
+			sites.add(node.info.id);
 		} else if(signal !== undefined && (RSymbol.is(node) ? readMaySignal(node, graph, data.environment, data.completeAst.idMap) : testsValue(node))) {
-			sites.push(node.info.id);
+			sites.add(node.info.id);
 		} else if(RFunctionCall.is(node)) {
 			const targets = node.named ? Resolve.byNameAndType(node.functionName.content, data.environment, ReferenceType.Function) ?? [] : [];
 			const classes = signal === undefined ? undefined : signaledClasses(node, targets);
 			if(signal !== undefined && classes !== undefined) {
 				if(catches(signal, classes)) {
-					sites.push(node.info.id);
+					sites.add(node.info.id);
 				}
 				return false;
 			}
@@ -1393,35 +1399,37 @@ function warningSites<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, gra
 			}
 			const handlers = mode.muffled ? muffledHandlers(node, graph, data) : undefined;
 			if(handlers !== undefined) {
-				sites.push(...handlers.flatMap(h => warningSites(h, graph, data, bodies, mode)));
+				for(const h of handlers) {
+					add(warningSites(h, graph, data, bodies, mode));
+				}
 				return true;
 			}
 			/* a name the construct does not see, as a global called in a function body, runs what the linker bound to the call */
 			const callees = targets.length === 0 ? Dataflow.calleeIdsOf(graph, node.info.id).map(id => data.completeAst.idMap.get(id))
 				: targets.flatMap(t => hidesBody(t) ? [undefined] : (t as Partial<InGraphIdentifierDefinition>).value?.map(id => data.completeAst.idMap.get(id)) ?? [undefined]);
 			if(callees.length === 0 || !callees.every(RFunctionDefinition.is)) {
-				sites.push(node.info.id);
+				sites.add(node.info.id);
 				return false;
 			}
 			if(signal !== undefined && ErrorClasses.includes(signal.condition) && callees.some(c => rejectsArguments(c, node))) {
-				sites.push(node.info.id);
+				sites.add(node.info.id);
 			}
 			/* the body runs in the function's own scope, we resolve what it calls where the construct is, which is where most functions live */
-			const within = callees.flatMap(c => bodySites(c, graph, data, bodies, mode));
+			const within = new Set(callees.flatMap(c => bodySites(c, graph, data, bodies, mode)));
 			if(!mode.link) {
-				sites.push(...within);
+				add(within);
 				return false;
 			}
 			for(const site of within) {
 				graph.addEdge(node.info.id, site, EdgeType.Reads);
 			}
-			if(within.length > 0) {
-				sites.push(node.info.id);
+			if(within.size > 0) {
+				sites.add(node.info.id);
 			}
 		}
 		return false;
 	});
-	return sites;
+	return [...sites];
 }
 
 /** Whether `node` branches or loops on a value R may reject: a condition that is not `TRUE` or `FALSE` (`if(NA)`, `if(logical(0))`) or a vector that is not a constant. */

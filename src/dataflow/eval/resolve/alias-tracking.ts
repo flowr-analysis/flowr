@@ -596,19 +596,38 @@ class LoopRuns {
 
 	/** Whether a loop that surely runs at least once, standing before the read `from` in a block that holds it, surely redefines what `to`, made before the loop, defines, so the read no longer sees `to`. */
 	private redefinedByLoop(from: NodeId, to: NodeId, edges: ReadonlyMap<NodeId, DfEdge>): boolean {
-		for(const [t, e] of edges) {
-			if(t === to || !DfEdge.includesType(e, EdgeType.Reads | EdgeType.DefinedByOnCall) || this.graph.getVertex(t)?.cds?.some(cd => isCountedLoop(this.idMap.get(cd.id))) !== true
-				|| !DfgVertex.isVariableDefinition(this.graph.getVertex(t))) {
-				continue;
-			}
-			const loop = this.loopsAround(t, false)[0];
-			if(loop !== undefined && this.surelyIn(t, loop) && this.after(from, loop, true) && !this.after(to, loop)
+		for(const { t, loop } of this.loopDefinitionsBefore(from, edges)) {
+			if(t !== to && !this.after(to, loop)
 				&& RNode.strictlyEnclosingFunction(to, this.idMap) === RNode.strictlyEnclosingFunction(loop, this.idMap)
 				&& !RNode.iterateParents(this.idMap.get(to), this.idMap).some(p => p.info.id === loop) && (this.runCount(loop) ?? 0) > 0) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	/** per read and its edges, the definitions {@link LoopRuns#redefinedByLoop} weighs, as only `to` differs between its questions */
+	private readonly loopDefinitions = new Map<NodeId, { edges: ReadonlyMap<NodeId, DfEdge>, found: { t: NodeId, loop: NodeId }[] }>();
+
+	/** The definitions among the `edges` of the read `from` that a loop surely makes, standing before `from` in a block holding it. */
+	private loopDefinitionsBefore(from: NodeId, edges: ReadonlyMap<NodeId, DfEdge>): readonly { t: NodeId, loop: NodeId }[] {
+		const known = this.loopDefinitions.get(from);
+		if(known?.edges === edges) {
+			return known.found;
+		}
+		const found: { t: NodeId, loop: NodeId }[] = [];
+		for(const [t, e] of edges) {
+			if(!DfEdge.includesType(e, EdgeType.Reads | EdgeType.DefinedByOnCall) || this.graph.getVertex(t)?.cds?.some(cd => isCountedLoop(this.idMap.get(cd.id))) !== true
+				|| !DfgVertex.isVariableDefinition(this.graph.getVertex(t))) {
+				continue;
+			}
+			const loop = this.loopsAround(t, false)[0];
+			if(loop !== undefined && this.surelyIn(t, loop) && this.after(from, loop, true)) {
+				found.push({ t, loop });
+			}
+		}
+		this.loopDefinitions.set(from, { edges, found });
+		return found;
 	}
 
 	/** Whether another definition among the `edges` of the read `from` in run `k` of the loop surely runs after `to` (made in run `toRun`, or before the loop if that is `undefined`) and before `from`, so the read no longer sees `to`. */

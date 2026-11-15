@@ -146,12 +146,13 @@ export class DefinitionsBehind {
 			}
 			// `frame.id` roots a component: pop it, and give every member the same answer
 			const members: NodeId[] = [];
-			let m: NodeId | undefined;
-			do{
-				m = stack.pop();
+			for(let m = stack.pop(); m !== undefined; m = stack.pop()) {
 				onStack.delete(m);
 				members.push(m);
-			} while(m !== frame.id);
+				if(m === frame.id) {
+					break;
+				}
+			}
 			const found = new Set<NodeId>();
 			const inside = new Set(members);
 			for(const member of members) {

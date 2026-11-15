@@ -304,7 +304,8 @@ export function linkHandlersToSignalSites<OtherInfo>(graph: DataflowGraph, envir
 				/* no construct encloses what signals to a handler of the session, so each site that may runs it */
 				const runs = config.block === undefined ? Dataflow.callTargetsOf(handler, graph).filter(t => DfgVertex.isFunctionDefinition(graph.getVertex(t))) : [];
 				const at = graph.getVertex(handler)?.environment;
-				const sites = (writes.length === 0 && runs.length === 0) || at === undefined ? [] : blocks.flatMap(b => signalSites(b as RNode<OtherInfo & ParentInformation>, Identifier.getName(condition), graph, { ...data, environment: at }, false));
+				/* a site reached along several paths is listed once per path, which for a handler of the session is thousands of times */
+				const sites = (writes.length === 0 && runs.length === 0) || at === undefined ? [] : new Set(blocks.flatMap(b => signalSites(b as RNode<OtherInfo & ParentInformation>, Identifier.getName(condition), graph, { ...data, environment: at }, false)));
 				for(const site of sites) {
 					for(const write of writes) {
 						edges.add(write, site, EdgeType.Reads);

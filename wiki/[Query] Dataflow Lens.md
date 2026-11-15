@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6), do not edit directly._
 <h2 id="Dataflow Lens Query">Dataflow Lens Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns a simplified view on the dataflow graph, reduced to definitions, uses, and calls.\
@@ -28,7 +28,7 @@ print(y)
 
 _Results (prettified and summarized):_
 
-Query: **dataflow-lens** (13 ms)\
+Query: **dataflow-lens** (15 ms)\
 &nbsp;&nbsp;&nbsp;╰ [Simplified Graph](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMFtcImAqKmYqKiAoTC4gMSlcbipSU3ltYm9sKmBcIl1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciAwXG4gICAgOVtcImAqKngqKiAoTC4gMilcbipSU3ltYm9sKmBcIl1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciA5XG4gICAgMTQoW1wiYCoqeCoqIChMLiAzKVxuKlJTeW1ib2wqYFwiXSlcbiAgICAxNltbXCJgKipmKiogKEwuIDMpXG4qUkZ1bmN0aW9uQ2FsbCpgXCJdXVxuICAgIDEyW1wiYCoqeSoqIChMLiAzKVxuKlJTeW1ib2wqYFwiXVxuICAgIDE5KFtcImAqKnkqKiAoTC4gNClcbipSU3ltYm9sKmBcIl0pXG4gICAgMjFbW1wiYGJhc2UjNTg7IzU4OyoqcHJpbnQqKiAoTC4gNClcbipSRnVuY3Rpb25DYWxsKmBcIl1dXG4gICAgMTQgLS0+fFwicmVhZHNcInwgOVxuICAgIDE2IC0tPnxcInJlYWRzLCBhcmdcInwgMTRcbiAgICAxNiAtLT58XCJyZWFkc1wifCAwXG4gICAgMTIgLS0+fFwiZGVmaW5lZC1ieVwifCAxNlxuICAgIDE5IC0tPnxcInJlYWRzXCJ8IDEyXG4gICAgMjEgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ1wifCAxOSIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -53,6 +53,6 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Dataflow Lens Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dataflow-lens-query/dataflow-lens-query-format.ts#L28"><code><span title="Executes the given dataflow lens queries using the provided analyzer.">executeDataflowLensQuery</span></code></a>.
+The Dataflow Lens Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dataflow-lens-query/dataflow-lens-query-format.ts#L25"><code><span title="Executes the given dataflow lens queries using the provided analyzer.">executeDataflowLensQuery</span></code></a>.
 
 </details>

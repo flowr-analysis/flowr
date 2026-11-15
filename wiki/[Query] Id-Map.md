@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6), do not edit directly._
 <h2 id="Id-Map Query">Id-Map Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the id-map of the normalized AST of the given code.\
@@ -43,6 +43,6 @@ x + 1
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Id-Map Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/id-map-query/id-map-query-format.ts#L12"><code><span title="Executes the given ID map queries using the provided analyzer.">executeIdMapQuery</span></code></a>.
+The Id-Map Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/id-map-query/id-map-query-format.ts#L9"><code><span title="Executes the given ID map queries using the provided analyzer.">executeIdMapQuery</span></code></a>.
 
 </details>

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6), do not edit directly._
 <h2 id="Config Query">Config Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the current configuration of flowR.\
@@ -156,6 +156,6 @@ enables quick statistics after each REPL command. Likewise, <a href="https://git
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Config Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/config-query/config-query-format.ts#L20"><code><span title="Executes the given configuration queries using the provided analyzer.">executeConfigQuery</span></code></a>.
+The Config Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/config-query/config-query-format.ts#L18"><code><span title="Executes the given configuration queries using the provided analyzer.">executeConfigQuery</span></code></a>.
 
 </details>

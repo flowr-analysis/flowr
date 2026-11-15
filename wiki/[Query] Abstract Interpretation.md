@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6), do not edit directly._
 <h2 id="Abstract Interpretation Query">Abstract Interpretation Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the abstract values inferred for every expression or at specific locations.\
@@ -13,7 +13,7 @@ This query infers all shapes of dataframes within the code using abstract interp
 
 _Results (prettified and summarized):_
 
-Query: **absint** (4 ms)\
+Query: **absint** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ $7: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])\
 &nbsp;&nbsp;&nbsp;╰ $14: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ $0: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])
@@ -78,6 +78,6 @@ df <- data.frame(id = 1:3) |>
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Abstract Interpretation Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/absint-query/absint-query-format.ts#L27"><code><span title="Executes the given abstract interpretation queries using the provided analyzer.">executeAbsintQuery</span></code></a>.
+The Abstract Interpretation Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/absint-query/absint-query-format.ts#L25"><code><span title="Executes the given abstract interpretation queries using the provided analyzer.">executeAbsintQuery</span></code></a>.
 
 </details>

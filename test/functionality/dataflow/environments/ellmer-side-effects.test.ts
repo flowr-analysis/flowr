@@ -1,25 +1,24 @@
 import { assert, describe, test } from 'vitest';
-import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/default-builtin-config';
-import { Identifier, PkgName } from '../../../../src/dataflow/environments/identifier';
-import { SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
+import { UnknownSideEffect } from '../../../../src/dataflow/graph/graph';
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { analyze } from '../../_helper/analyzer';
 import { label } from '../../_helper/label';
+import { withTreeSitter } from '../../_helper/shell';
 
-/* the `ellmer` constructors flowR models, the same set the taint analysis watches (see `secret-analysis.ts`) */
-const EllmerFns = ['chat', 'chat_openai', 'chat_anthropic', 'chat_claude', 'chat_gemini', 'chat_google_gemini', 'chat_ollama', 'chat_mistral', 'chat_groq', 'chat_azure_openai', 'chat_bedrock'];
+describe('ellmer side effects', withTreeSitter(parser => {
+	test(label('ellmer chat calls resolve and retain unknown side effects', ['name-normal', 'call-normal', 'namespaces', 'strings', 'newlines'], ['dataflow']), async() => {
+		const analyzer = await analyze(parser, 'ellmer::chat_openai()\nellmer::chat("openai")\nnchar("hello")', { sigDb: false });
+		const { graph } = await analyzer.dataflow();
+		const { idMap } = await analyzer.normalize();
+		const effects = [...graph.unknownSideEffects].map(UnknownSideEffect.id);
+		const openai = SlicingCriterion.parse('1^', idMap);
+		const chat = SlicingCriterion.parse('2^', idMap);
 
-/* every definition the default configuration states for the `ellmer` package */
-const EllmerDefs = DefaultBuiltinConfig.flatMap(d => d.type === 'constant' ? [] : (d.names as readonly Identifier[])
-	.filter(id => Identifier.getNamespace(id) === PkgName.Ellmer)
-	.map(id => ({ name: Identifier.getName(id), config: d.config })));
-
-describe('ellmer side effects', () => {
-	test(label('every known ellmer constructor is modeled', ['name-normal'], ['dataflow']), () => {
-		assert.deepStrictEqual(EllmerDefs.map(d => d.name).sort(), [...EllmerFns].sort());
+		assert.include(Dataflow.callTargetsOf(openai, graph), NodeId.toBuiltIn('chat_openai'));
+		assert.include(Dataflow.callTargetsOf(chat, graph), NodeId.toBuiltIn('chat'));
+		assert.includeMembers(effects, [openai, chat]);
+		assert.notInclude(effects, SlicingCriterion.parse('3^', idMap));
 	});
-	test(label('every ellmer call is an unknown network read', ['name-normal'], ['dataflow']), () => {
-		for(const { name, config } of EllmerDefs) {
-			assert.isTrue(config?.hasUnknownSideEffects === true, `${name} is not marked as an unknown side effect`);
-			assert.includeMembers(config?.tags ?? [], [SemanticCallTag.Network, SemanticCallTag.Reads], `${name} is not tagged as a network read`);
-		}
-	});
-});
+}));

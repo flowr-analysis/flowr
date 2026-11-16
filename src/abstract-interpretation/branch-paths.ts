@@ -99,10 +99,17 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 		if(!other.isValue()) {
 			return this.create(other.value);
 		}
-		const theirs: readonly string[] = [...other.value];
-		const mine: readonly string[] = [...this.value as ReadonlySet<string>];
-		const both = mine.flatMap(a => theirs.map(b => encodePath(stepsOf(a).union(stepsOf(b)))));
-		return this.create(both);
+		const theirs = [...other.value].map(stepsOf);
+		const mine = [...this.value as ReadonlySet<string>].map(stepsOf);
+		/*
+		 * past the limit, `create` keeps only the steps every pair takes, which are the steps all of mine take together with the steps
+		 * all of theirs take, as `(a1 | b1) & (a1 | b2) & ... = (a1 & a2 ...) | (b1 & b2 ...)`; so the pairs are not built at all
+		 */
+		if(mine.length * theirs.length > this.limit) {
+			const common = mine.reduce((a, b) => a.intersection(b)).union(theirs.reduce((a, b) => a.intersection(b)));
+			return new BranchPathDomain([encodePath(common)], this.limit) as this;
+		}
+		return this.create(mine.flatMap(a => theirs.map(b => encodePath(a.union(b)))));
 	}
 
 	/** Every path continued by taking the branch. */

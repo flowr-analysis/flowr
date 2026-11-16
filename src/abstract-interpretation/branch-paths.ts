@@ -57,8 +57,28 @@ function stepsOf(path: string): Set<string> {
 	return new Set(sortedSteps(path));
 }
 
+/** per path and step, the path taking it: a loop is interpreted until nothing changes, so the same continuations come up again */
+const continued = new Map<string, Map<string, string>>();
+
 /** The path with `step` taken as well, the same string as `encodePath(stepsOf(path).add(step))` without splitting and sorting again. */
 function withStep(path: string, step: string): string {
+	let byStep = continued.get(path);
+	if(byStep === undefined) {
+		if(continued.size >= MaxParsedPaths) {
+			continued.clear();
+		}
+		byStep = new Map();
+		continued.set(path, byStep);
+	}
+	let next = byStep.get(step);
+	if(next === undefined) {
+		next = insertStep(path, step);
+		byStep.set(step, next);
+	}
+	return next;
+}
+
+function insertStep(path: string, step: string): string {
 	const steps = sortedSteps(path);
 	let low = 0;
 	let high = steps.length;
@@ -130,6 +150,32 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 			return new BranchPathDomain([commonPath(paths)], this.limit) as this;
 		}
 		return new BranchPathDomain(value, this.limit) as this;
+	}
+
+	/** the steps all paths take, worked out once per value, as each join past the limit needs it of both sides */
+	private common: ReadonlySet<string> | undefined;
+
+	private commonSteps(this: this & BranchPathDomain): ReadonlySet<string> {
+		if(this.common === undefined) {
+			let common: ReadonlySet<string> | undefined;
+			for(const path of this.value as ReadonlySet<string>) {
+				common = common === undefined ? new Set(sortedSteps(path)) : common.intersection(new Set(sortedSteps(path)));
+			}
+			this.common = common ?? new Set();
+		}
+		return this.common;
+	}
+
+	/** Past the limit, the joined paths are the one path of the steps both sides' paths all take, so only those are intersected. */
+	protected override joinValue(this: this & BranchPathDomain, other: BoundedSetDomain<string>): this {
+		if(!other.isValue() || !(other instanceof BranchPathDomain)) {
+			return super.joinValue(other as never);
+		}
+		const union = (this.value as ReadonlySet<string>).union(other.value);
+		if(union.size <= this.limit) {
+			return this.create(union);
+		}
+		return new BranchPathDomain([encodePath(this.commonSteps().intersection((other as BranchPathDomain & this).commonSteps()))], this.limit) as this;
 	}
 
 	/** Reached without any branch, as the start of a function body is. */

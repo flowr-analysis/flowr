@@ -538,11 +538,12 @@ testFuncCorrect(1:5, sum)
 			.definedBy('g', 'f2');
 		expect(Dataflow.callTargetsOf('c', graph)).toContain('f2');
 	});
-	/* the shared walks go through the body of a function once for all calls running it, and bind its parameters per call */
+	/* the shared walks go through the body of a function once for all calls running it, and bind its parameters per call, also for a call running several bodies */
 	test('shared target walks bind the parameters of each call of a function calling itself', async() => {
 		const analyzer = await analyze(ts, [
 			'pick <- function(f, g, n) { if(n > 0) pick(f, g, n - 1) else f }',
 			'a <- function() 1', 'b <- function() 2', 'id <- function(h) h',
+			'if(u) k <- function(p) p else k <- function(p) id(p)', 'k(a)()', 'k(b)()',
 			'pick(a, b, 2)()', 'pick(b, a, 3)()', 'id(a)()', 'id(b)()'
 		].join('\n'));
 		const graph = (await analyzer.dataflow()).graph;

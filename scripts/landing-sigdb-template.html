@@ -21,6 +21,14 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 <!--FOOTER-CSS-->
 
 .when { font-size: .9em; }
+.support { margin: .4rem 0 1rem; font-size: .9rem; }
+.support summary { cursor: pointer; color: var(--muted); }
+.support .scroll { overflow-x: auto; }
+.support table { border-collapse: collapse; margin-top: .5rem; }
+.support th, .support td { padding: .25rem .7rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.support td.y { color: var(--fg, inherit); }
+.support td.n { color: var(--muted); }
+.support p { color: var(--muted); margin: .4rem 0 0; max-width: 46rem; }
 .search input {
 	flex: 1 1 auto; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 	padding-right: 2.4rem;
@@ -363,6 +371,27 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 	<a href="https://github.com/flowr-analysis/flowr/wiki/Signature-Database" target="_blank" rel="noopener">signature database</a>
 	<span class="when">(last updated <!--UPDATED-->, only most recent package versions)</span>.
 </p>
+
+<details class="support">
+	<summary>What the database knows, by language</summary>
+	<div class="scroll"><table>
+		<thead><tr><th></th><th>R</th><th>C</th><th>C++</th><th>Fortran</th><th>Rust</th></tr></thead>
+		<tbody>
+			<tr><th>exists, signature</th><td class="y">formals, defaults</td><td class="y">registered name, arity</td><td class="y">registered name, arity</td><td class="y">name, arity</td><td class="n">not yet</td></tr>
+			<tr><th>arguments</th><td class="y">roles, forced, read</td><td class="y">read, written, escapes</td><td class="y">some (Rcpp often unknown)</td><td class="y">read, written (<code>INTENT</code>)</td><td class="n">not yet</td></tr>
+			<tr><th>contracts</th><td class="y">yes</td><td class="n">no</td><td class="n">no</td><td class="n">no</td><td class="n">no</td></tr>
+			<tr><th>recycling</th><td class="y">yes</td><td class="n">no</td><td class="n">no</td><td class="n">no</td><td class="n">no</td></tr>
+			<tr><th>global state</th><td class="y">options, env, RNG, files, ...</td><td class="y">globals, RNG, I/O, env</td><td class="y">some</td><td class="y"><code>COMMON</code>, I/O</td><td class="n">not yet</td></tr>
+			<tr><th>pure, errors</th><td class="y">yes</td><td class="y">yes, pure only if every callee is known</td><td class="y">some</td><td class="y">yes (<code>STOP</code>)</td><td class="n">not yet</td></tr>
+			<tr><th>parallel, hardware</th><td class="n">no</td><td class="y">OpenMP, threads, SIMD, asm</td><td class="y">same</td><td class="y"><code>!$OMP</code></td><td class="n">not yet</td></tr>
+			<tr><th>calls</th><td class="y">callees, S3/S4 dispatch</td><td colspan="3" class="y"><code>.Call</code>, <code>.C</code>, <code>.Fortran</code>, <code>.External</code> calls point to the routine</td><td class="n">not yet</td></tr>
+		</tbody>
+	</table></div>
+	<p>
+		Facts on C, C++ and Fortran come from reading the sources with libclang and gfortran, nothing is compiled or run.
+		Only the <code>#ifdef</code> branches of one Linux build are read. A fact that could not be established is unknown, not false.
+	</p>
+</details>
 
 <div class="search">
 	<span class="qwrap">

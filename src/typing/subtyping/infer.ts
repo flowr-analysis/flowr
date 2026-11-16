@@ -8,13 +8,13 @@ import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataTypeInfo } from '../types';
-import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, RNullType, RS4Type, REnvironmentType, DataTypeTag } from '../types';
+import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, RNullType, RS4Type, REnvironmentType, DataTypeTag, RTypeIntersection, RAtomicVectorType } from '../types';
 import type { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../../util/assert';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall, RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { FunctionArgument } from '../../dataflow/graph/graph';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import { CfgVertex, CfgVertexType, extractCfg } from '../../control-flow/control-flow-graph';
@@ -27,9 +27,9 @@ import type { UnresolvedDataType } from './types';
 import { constrain, getIndexedElementTypeFromList, getParameterTypeFromFunction, prune, resolve, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeIntersection, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Identifier } from '../../dataflow/environments/identifier';
-import type { KnownTypes } from '../adapter/known-types';
+import type { KnownOriginConditions, KnownTypes } from '../adapter/known-types';
 import { knownTypesOf } from '../adapter/known-types';
-import { RIfThenElse } from '@eagleoutice/flowr/r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import { RIfThenElse } from '../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 
 
 /**
@@ -47,6 +47,25 @@ export function inferDataTypes<Info extends ParentInformation & { typeVariable?:
 		{ ast: astWithTypeVars, dfg: dataflowInfo.graph, ctx },
 		['unique-cf-sets', 'analyze-dead-code']
 	);
+	// TODO!
+	const knownOriginConditions: KnownOriginConditions = new Map();
+	const rVec = (ty: (() => UnresolvedDataType)) => () => new UnresolvedRAtomicVectorType(new UnresolvedRTypeVariable([ty()], [ty()]));
+	const intersectWith = (fix: (() => UnresolvedDataType)) => (ty: UnresolvedDataType) => new UnresolvedRTypeIntersection(ty, fix());
+	const conditions = (fix: (() => UnresolvedDataType)): [OriginCondition, OriginCondition] => [
+		intersectWith(fix),
+		(ty: UnresolvedDataType) => ty,
+	];
+	knownOriginConditions.set("is.logical", conditions(rVec(() => new RLogicalType())));
+	knownOriginConditions.set("is.integer", conditions(rVec(() => new RIntegerType())));
+	knownOriginConditions.set("is.single", conditions(rVec(() => new RDoubleType())));
+	knownOriginConditions.set("is.double", conditions(rVec(() => new RDoubleType())));
+	knownOriginConditions.set("is.numeric", conditions(rVec(() => new RDoubleType())));
+	knownOriginConditions.set("is.complex", conditions(rVec(() => new RComplexType())));
+	knownOriginConditions.set("is.character", conditions(() => new RStringType()));
+	// TODO
+	// knownOriginConditions.set("is.finite", /* returns a vec! */);
+	// knownOriginConditions.set("is.infinite", /* see is.finite */);
+	// knownOriginConditions.set("is.vector", /* needs special functions to transform all (non-)vec types into (non-)vec types);
 	const config = {
 		normalizedAst:        astWithTypeVars,
 		controlFlow:          controlFlowInfo,
@@ -55,6 +74,7 @@ export function inferDataTypes<Info extends ParentInformation & { typeVariable?:
 		defaultVisitingOrder: 'forward' as const,
 		ctx,
 		knownTypes,
+		knownOriginConditions,
 	};
 	const visitor = new TypeInferringCfgGuidedVisitor(config);
 	visitor.start();
@@ -62,17 +82,18 @@ export function inferDataTypes<Info extends ParentInformation & { typeVariable?:
 	return resolveTypeVariables(astWithTypeVars);
 }
 
+export type OriginCondition = (ty: UnresolvedDataType) => UnresolvedDataType | undefined;
+
 type UnresolvedTypeInfo = {
 	typeVariable: UnresolvedRTypeVariable;
-	originConditions: Map<NodeId, (ty: UnresolvedDataType) => UnresolvedDataType | undefined>;
+	originConditions: Map<NodeId, OriginCondition> | boolean;
 };
 
 function decorateTypeVariables<Info extends ParentInformation>(ast: NormalizedAst<Info>): NormalizedAst<Info & UnresolvedTypeInfo> {
 	return mapNormalizedAstInfo(ast, node => {
 		const typeVariable = new UnresolvedRTypeVariable();
 		if (node.info.fullLexeme) typeVariable.lexeme = node.info.fullLexeme;
-		const originConditions: Map<NodeId, (ty: UnresolvedDataType) => UnresolvedDataType | undefined> = new Map();
-		return { ...node.info, typeVariable, originConditions }
+		return { ...node.info, typeVariable, originConditions: false }
 	});
 }
 
@@ -91,6 +112,7 @@ export interface TypeInferringCfgGuidedVisitorConfiguration<
 > extends Omit<SemanticCfgGuidedVisitorConfiguration<UnresolvedTypeInfo & OtherInfo, ControlFlow, Ast>, 'dataflow'> {
 	dataflowInfo: Dataflow;
 	knownTypes:   KnownTypes;
+	knownOriginConditions: KnownOriginConditions;
 }
 
 class TypeInferringCfgGuidedVisitor<
@@ -167,7 +189,7 @@ class TypeInferringCfgGuidedVisitor<
 			let originConditions = [];
 			let parent: RNode<UnresolvedTypeInfo & ParentInformation> | undefined = node;
 			while (parent) {
-				const cond = parent.info.originConditions.get(readNode.info.id);
+				const cond: OriginCondition | undefined = typeof parent.info.originConditions != "boolean" ? parent.info.originConditions.get(readNode.info.id) : undefined;
 				if (cond) originConditions.push(cond);
 				parent = parent.info.parent ? this.getNormalizedAst(parent.info.parent) : undefined;
 			}
@@ -175,10 +197,8 @@ class TypeInferringCfgGuidedVisitor<
 			let lowerBound: UnresolvedDataType | undefined = readNode.info.typeVariable;
 			for (const cond of originConditions) {
 				if (lowerBound === undefined) break;
-				// console.log(" - ", lowerBound);
 				lowerBound = cond(lowerBound);
 			}
-			// console.log("-> ", lowerBound);
 			if (lowerBound) {
 				this.constrainNodeType(node, { lowerBound });
 				lowerBounds.add(lowerBound);
@@ -203,59 +223,18 @@ class TypeInferringCfgGuidedVisitor<
 	}
 
 	override onVariableUse(data: { vertex: DataflowGraphVertexUse }): void {
-		let potentialConditionNode = this.getNormalizedAst(data.vertex.id);
-		// TODO: this is for testing and UNSOUND-ish xd
-		while (potentialConditionNode && potentialConditionNode.info.parent !== undefined) {
-			const parentNode = this.getNormalizedAst(potentialConditionNode.info.parent);
-			if (!parentNode) break;
-			if (RIfThenElse.is(parentNode) && parentNode.condition.info.id == potentialConditionNode.info.id) {
-				const conditionNode = potentialConditionNode;
-				if (conditionNode && RSymbol.is(conditionNode)) {
-					const thenNode = parentNode.then;
-					const condition = thenNode.info.originConditions.get(conditionNode.info.id);
-					const origins = this.getOrigins(data.vertex.id)?.filter((origin) => origin.type === OriginType.ReadVariableOrigin) ?? [];
-					// if there are multiple origins, we can't restrict all of them as, at runtime, only one will be checked.
-					// thus, our flow typing is useless when multiple origins exist...
-					if (origins.length == 1) {
-						// TODO: don't print
-						// console.log("ADDING CONDITION TO NODE ", thenNode.info.id, " IN ", conditionNode.info.id, " FOR NODE ", origins[0].id);
-						function filterType(ty: UnresolvedDataType): UnresolvedDataType | undefined {
-								if (ty.tag === DataTypeTag.Logical || ty.tag === DataTypeTag.Integer || ty.tag === DataTypeTag.Double) {
-									return ty;
-								} else if (ty.tag === DataTypeTag.Variable) {
-									// same as calling filterType on ty.lowerBound (and ty.upperBound?),
-									// should probably not duplicate the code but oh well
-									let out = new UnresolvedRTypeUnion();
-									for (const t of ty.lowerBound.types) {
-										const filtered = filterType(t);
-										if (filtered) out.types.add(filtered);
-									}
-									// ty.upperBound -> new UnresolvedRTypeIntersection(new RLogicalType(), ...ty.upperBound.types)
-									return new UnresolvedRTypeVariable(out, ty.upperBound);
-								} else if (ty.tag === DataTypeTag.Union) {
-									// remove everything which filterType would exclude
-									let out = new UnresolvedRTypeUnion();
-									for (const t of ty.types) {
-										const filtered = filterType(t);
-										if (filtered) out.types.add(filtered);
-									}
-									return out;
-								} else if (ty.tag === DataTypeTag.Intersection) {
-									// we require that this is a logical
-									// return new UnresolvedRTypeIntersection(new RLogicalType(), ...ty.types);
-									return ty;
-								} else {
-									return undefined;
-								}
-						}
-						thenNode.info.originConditions.set(origins[0].id, condition
-							? condition
-							: (ty) => filterType(ty));
-					}
-				}
+		// build origin conditions for parent if-then-else statements before infering anything else
+		const node = this.getNormalizedAst(data.vertex.id);
+		guard(node !== undefined, 'Expected AST node to be defined');
+		this.findParentIfThenElses(node, (parent, child) => {
+			// if we are in a (positive or negative) branch of a marked if-then-else
+			// whose origin conditions have not yet been inferred, infer them.
+			if (parent.then.info.originConditions === true && (parent.then.info.id == child.info.id || (parent.otherwise !== undefined && parent.otherwise.info.id == child.info.id))) {
+				parent.then.info.originConditions = new Map();
+				this.buildOriginConditionsIfThenElse(parent);
 			}
-			potentialConditionNode = parentNode;
-		}
+			return false;
+		}, 50);
 
 		const isArgumentOfGetCall = this.config.dfg.ingoingEdges(data.vertex.id)?.entries().some(([source, edge]) => {
 			return DfEdge.includesType(edge, EdgeType.Argument) &&
@@ -266,8 +245,6 @@ class TypeInferringCfgGuidedVisitor<
 			return;
 		}
 
-		const node = this.getNormalizedAst(data.vertex.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
 		if(RArgument.is(node)) {
 			if(node.value !== undefined) {
 				this.constrainNodeType(node, node.value.info.typeVariable);
@@ -333,6 +310,22 @@ class TypeInferringCfgGuidedVisitor<
 			if(contextualTypes !== undefined && contextualTypes.size > 0) {
 				// console.log('Constraining node', data.call.id, 'with contextual types for', data.call.name);
 				constrain(new UnresolvedRTypeIntersection(...contextualTypes.values()), calledFunctionType, this.constraintCache, this.prunableVariables);
+			}
+			// for flow typing: if this variable causes origin conditions, mark the if-then-else for processing
+			const conditions = this.config.knownOriginConditions.get(data.call.name.toString());
+			// TODO: remove `true ||`
+			if (true || conditions !== undefined) {
+				this.findParentIfThenElses(this.getNormalizedAst(data.call.id), (parent, child) => {
+					// if this function is used in an if-then-else's condition
+					if (parent.condition.info.id == child.info.id) {
+						if (parent.then.info.originConditions === false) {
+							// indicates that the origin conditions for this if-then-else's conditions
+							// should be inferred once we process it's positive (or negative) branch.
+							parent.then.info.originConditions = true;
+						}
+					}
+					return false;
+				});
 			}
 		}
 
@@ -662,4 +655,73 @@ class TypeInferringCfgGuidedVisitor<
 			}
 		}
 	}
+
+	protected findParentIfThenElses(node: RNode<UnresolvedTypeInfo & OtherInfo & ParentInformation> | undefined, event: (parent: RIfThenElse<UnresolvedTypeInfo & OtherInfo & ParentInformation>, child: RNode<UnresolvedTypeInfo & OtherInfo & ParentInformation>) => boolean, maxdepth: number = 0) {
+		let potentialConditionNode: RNode<UnresolvedTypeInfo & OtherInfo & ParentInformation> | undefined = node;
+		while (potentialConditionNode && potentialConditionNode.info.parent !== undefined) {
+			const parentNode = this.getNormalizedAst(potentialConditionNode.info.parent);
+			if (!parentNode) break;
+			if (RIfThenElse.is(parentNode) && event(parentNode, potentialConditionNode)) break;
+			if (--maxdepth == 0) break;
+			potentialConditionNode = parentNode;
+		}
+	}
+
+	protected buildOriginConditionsIfThenElse(node: RIfThenElse<UnresolvedTypeInfo & OtherInfo & ParentInformation>) {
+		const [pos, neg] = this.buildOriginConditionsNode(node.condition);
+		node.then.info.originConditions = pos;
+		if (node.otherwise) node.otherwise.info.originConditions = neg;
+	}
+
+	protected buildOriginConditionsNode(node: RNode<UnresolvedTypeInfo & OtherInfo & ParentInformation> | undefined): [Map<NodeId, OriginCondition>, Map<NodeId, OriginCondition>] {
+		const [pos, neg]: [Map<NodeId, OriginCondition>, Map<NodeId, OriginCondition>] = [new Map(), new Map()];
+		if (!node) return [pos, neg];
+		if (RFunctionCall.is(node) && node.named) {
+			if (node.arguments.length == 1 && node.arguments[0] != EmptyArgument && node.arguments[0].value !== undefined && RSymbol.is(node.arguments[0].value)) {
+				const functionName = node.functionName.content.toString();
+				const argument: RSymbol<UnresolvedTypeInfo & OtherInfo & ParentInformation> = node.arguments[0].value;
+				const conditions = this.config.knownOriginConditions.get(functionName);
+				if (conditions !== undefined) {
+					const [p, n] = conditions;
+					const origins = this.getOrigins(argument.info.id)?.filter((origin) => origin.type === OriginType.ReadVariableOrigin) ?? [];
+					for (const origin of origins) {
+						pos.set(origin.id, p);
+						neg.set(origin.id, n);
+					}
+				}
+			}
+		}
+		return [pos, neg];
+	}
+}
+
+// TODO: this is just for testing
+function filterType(ty: UnresolvedDataType): UnresolvedDataType | undefined {
+		if (ty.tag === DataTypeTag.Logical || ty.tag === DataTypeTag.Integer || ty.tag === DataTypeTag.Double) {
+			return ty;
+		} else if (ty.tag === DataTypeTag.Variable) {
+			// same as calling filterType on ty.lowerBound (and ty.upperBound?),
+			// should probably not duplicate the code but oh well
+			let out = new UnresolvedRTypeUnion();
+			for (const t of ty.lowerBound.types) {
+				const filtered = filterType(t);
+				if (filtered) out.types.add(filtered);
+			}
+			// ty.upperBound -> new UnresolvedRTypeIntersection(new RLogicalType(), ...ty.upperBound.types)
+			return new UnresolvedRTypeVariable(out, ty.upperBound);
+		} else if (ty.tag === DataTypeTag.Union) {
+			// remove everything which filterType would exclude
+			let out = new UnresolvedRTypeUnion();
+			for (const t of ty.types) {
+				const filtered = filterType(t);
+				if (filtered) out.types.add(filtered);
+			}
+			return out;
+		} else if (ty.tag === DataTypeTag.Intersection) {
+			// we require that this is a logical
+			// return new UnresolvedRTypeIntersection(new RLogicalType(), ...ty.types);
+			return ty;
+		} else {
+			return undefined;
+		}
 }

@@ -3,9 +3,12 @@ import { Identifier as IdentifierHelper } from '../../dataflow/environments/iden
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { fnInfo } from '../../dataflow/environments/query-fn-props';
 import type { UnresolvedDataType } from '../subtyping/types';
+import { OriginCondition } from '../subtyping/infer';
 
 /** The corpus type signatures for a name, keyed by the bare name and, where known, by {@link qualifiedTypeKey|`pkg::name`}. */
 export type KnownTypes = Map<string, Set<UnresolvedDataType>>;
+/** OriginConditions for the positive and negative branch, by condition function as {@link qualifiedTypeKey|`pkg::name`}. */
+export type KnownOriginConditions = Map<string, [OriginCondition, OriginCondition]>;
 
 /** The key holding the types of `name` as `pkg` defines it, spelled the way R source qualifies a name. */
 export function qualifiedTypeKey(pkg: string, name: string): string {

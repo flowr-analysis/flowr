@@ -66,7 +66,7 @@ export interface CheckingCall {
 
 /** A condition R checks of the value bound to a formal, stated as data so that a configuration can change it. */
 export type RCondition =
-	/** the predicate holds of the value, or of what `of` reads off it, like `is.null(dim(x))` */
+	/** the predicate holds of the value, or of what `of` reads off it, like `is.null(dim(x))`, either written `pkg::name` for one of a package */
 	| { readonly is: BrandedIdentifier, readonly of?: BrandedIdentifier }
 	| { readonly not: RCondition }
 	| { readonly any: readonly RCondition[] }
@@ -102,6 +102,30 @@ export interface RFailure extends RVersions {
 	readonly when?:       { readonly of: BrandedIdentifier, readonly holds: RCondition }
 }
 
+/**
+ * How R recycles the values of several formals to one size, failing unless their sizes fit, as `data.frame` and `vctrs::vec_recycle_common` do.
+ * A call says nothing of a value given as an argument the caller does not know the value of, or one passing {@link RRecycling.skips}.
+ */
+export interface RRecycling extends RVersions {
+	/** the formals whose values are recycled, `...` standing for each value the dots take */
+	readonly among:   readonly BrandedIdentifier[]
+	/** what reads the size off a value, `pkg::name` for one of a package, like `NROW` or `vctrs::vec_size` */
+	readonly size:    BrandedIdentifier
+	/**
+	 * `one` if each size is the common one or 1 (as vctrs has it), `divides` if each is the largest one or a positive divisor of it (as `data.frame` has it),
+	 * `single` if each is 1 (as `tibble::tibble_row` has it)
+	 */
+	readonly rule:    'one' | 'divides' | 'single'
+	/** a value passing this is left out (`one`), or leaves the sizes open (`divides`), as `NULL` is for vctrs and a classed value for `data.frame` */
+	readonly skips?:  RCondition
+	/** the formal stating the size, the first element counting, which the values are recycled to instead of to each other's size (`one` only) */
+	readonly to?:     BrandedIdentifier
+	/** the formal that, when given, lets each value through, as `.size` of `vctrs::vec_size_common` */
+	readonly unless?: BrandedIdentifier
+	/** what R says if the sizes do not fit */
+	readonly message: string
+}
+
 /** What the value a function returns is like, whatever it was handed. */
 export interface ReturnedValue {
 	readonly types:         RValueTypes
@@ -135,6 +159,10 @@ export interface GuardFacts {
 	readonly asserts?:      readonly BrandedIdentifier[]
 	/** what R fails on for the value of each formal on top of evaluating it, a `callable` condition marking the formal holding what it applies at once */
 	readonly asks?:         Readonly<Record<BrandedIdentifier, readonly RFailure[]>>
+	/** how it recycles values to a common size, see {@link RRecycling} */
+	readonly recycles?:     readonly RRecycling[]
+	/** it evaluates its arguments with what it creates from them in reach, as `tibble(x = 1, y = x)` reads the column `x`, so an argument naming another one may not hold what the caller has of that name */
+	readonly masks?:        boolean
 	/** the formals a call has to hand a value, as R fails on a call without one even though nothing evaluates it */
 	readonly required?:     readonly BrandedIdentifier[]
 	/** it yields one logical, no matter how long its arguments are */

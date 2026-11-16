@@ -37,8 +37,9 @@ import { bindsOutside, type BuiltInLookup } from '../frame-reflection';
 import { definitionsBehind } from '../higher-order-function';
 import { memoize } from '../../../util/collections/defaultmap';
 import { GuardTerm, RConstantNames, type GuardArgument, type GuardBinding, type GuardCall, type GuardConstant, type GuardOuter } from './guard-term';
-import type { GuardFacts, GuardFactsLookup, RFailure } from '../../environments/guard-facts';
-import { type FormalTerms, asksCallable, callable, composesName, getAsExists, guardFactsOf, ImplicitClasses, messageFor, onlyComputesBy, passes, succeeds } from './guard-knowledge';
+import type { GuardFacts, GuardFactsLookup, RFailure, RRecycling } from '../../environments/guard-facts';
+import { uniqueArray } from '../../../util/collections/arrays';
+import { type FormalTerms, asksCallable, callable, composesName, getAsExists, guardFactsOf, ImplicitClasses, messageFor, onlyComputesBy, passes, recyclingConditions, succeeds } from './guard-knowledge';
 import { s3GroupGenericOf } from '../../environments/group-generics';
 import { groupMethodConditions } from './group-method-guards';
 import { s4CandidatesFor, s4MethodsOf, type S4Method } from '../dispatch';
@@ -814,12 +815,18 @@ function conditionRequirement(this: void, construct: BrandedIdentifier, part: Br
 /** What the call of a built-in asks of what it was handed, on top of evaluating it. */
 function builtInRequirements(this: void, name: BrandedIdentifier, vertex: DataflowGraphVertexFunctionCall, path: Path, run: Run): void {
 	const { state, scope } = run;
-	const asks = state.facts(name)?.asks;
+	const facts = state.facts(name);
+	const asks = facts?.asks;
+	if(asks === undefined && facts?.recycles === undefined) {
+		return;
+	}
+	const stated = [...Object.keys(asks ?? {}), ...(facts?.recycles ?? []).flatMap(r => [...r.among, ...[r.to, r.unless].filter(f => f !== undefined)])];
+	const bound = boundArguments(vertex, state.info(vertex.name)?.sig?.map(([formal]) => formal) ?? uniqueArray(stated), state);
+	const termOfNode = (n: RNodeWithParent) => termOf(n, scope, state);
+	recyclingRequirements(facts?.recycles ?? [], facts?.masks === true, bound, termOfNode, vertex, path, run);
 	if(asks === undefined) {
 		return;
 	}
-	const bound = boundArguments(vertex, state.info(vertex.name)?.sig?.map(([formal]) => formal) ?? Object.keys(asks), state);
-	const termOfNode = (n: RNodeWithParent) => termOf(n, scope, state);
 	/* an operator also dispatches on its other operand, which has to be stated to be ruled out */
 	const operands = Object.keys(asks).length === 2 ? [...bound.values()].flat() : [];
 	/* what another formal was handed, as far as it is one of the caller's, as a literal would only spell out what is known of it */
@@ -837,6 +844,87 @@ function builtInRequirements(this: void, name: BrandedIdentifier, vertex: Datafl
 			const stated = failures.filter(f => term !== undefined && (term.kind === 'formal' || asksCallable(f)) && (!f.dispatches || otherNode === undefined || other !== undefined));
 			if(term !== undefined) {
 				addFailures(stated, term, vertex.id, path, run, other, formals);
+			}
+		}
+	}
+}
+
+/**
+ * Where the call masks the variables of the caller, see {@link GuardFacts.masks}: per value handed over, the names an argument before it gives,
+ * `undefined` once an unnamed one before it may bring names of its own, as a data frame does.
+ */
+function maskedNames(this: void, vertex: DataflowGraphVertexFunctionCall, termOfNode: (n: RNodeWithParent) => GuardTerm | undefined, graph: DataflowGraph): Map<NodeId, ReadonlySet<string> | undefined> {
+	const masked = new Map<NodeId, ReadonlySet<string> | undefined>();
+	let names: Set<string> | undefined = new Set();
+	for(const arg of vertex.args) {
+		if(!FunctionArgument.isNotEmpty(arg)) {
+			continue;
+		}
+		const value = valueOfArgument(arg.nodeId, vertex, graph);
+		if(value !== undefined) {
+			masked.set(value.info.id, names === undefined ? undefined : new Set(names));
+		}
+		if(FunctionArgument.isNamed(arg)) {
+			names?.add(String(arg.name));
+		} else if(value === undefined || termOfNode(value)?.kind !== 'constant') {
+			names = undefined;
+		}
+	}
+	return masked;
+}
+
+/**
+ * The formal a name the dataflow leaves unlinked as masked (see {@link GuardFacts.masks}) reads if there is no column of that name:
+ * a formal of that name the function never binds anew, whose value is what it was handed wherever the call is.
+ */
+function maskedFormal(this: void, name: BrandedIdentifier, scope: Scope, state: GuardState): GuardTerm | undefined {
+	if(scope.frameIsOpen || !isFormalName(name, scope) || [...scope.formals].some(([id, formal]) => formal === name && scope.drifting.has(id))) {
+		return undefined;
+	}
+	const rebinds = scope.vertex.subflow.graph.values().some(id => {
+		const vertex = state.graph.getVertex(id);
+		return DfgVertex.isVariableDefinition(vertex) && !scope.formals.has(id) && NodeId.recoverBareName(id, state.graph.idMap) === name;
+	});
+	return rebinds ? undefined : GuardTerm.formal(name);
+}
+
+/** What the call asks of the sizes of the values it recycles, see {@link RRecycling}, for the values the caller can state. */
+function recyclingRequirements(this: void, recycles: readonly RRecycling[], masks: boolean, bound: ReadonlyMap<BrandedIdentifier, readonly RNodeWithParent[]>, termOfNode: (n: RNodeWithParent) => GuardTerm | undefined, vertex: DataflowGraphVertexFunctionCall, path: Path, run: Run): void {
+	if(recycles.length === 0) {
+		return;
+	}
+	const { state } = run;
+	const masked = masks ? maskedNames(vertex, termOfNode, state.graph) : undefined;
+	/* with masking, only a literal or a formal no argument before it names is known to be what the caller has */
+	const stated = (node: RNodeWithParent): GuardTerm | undefined => {
+		const term = termOfNode(node);
+		if(masked === undefined || term === undefined || term.kind === 'constant') {
+			return term;
+		}
+		const names = masked.get(node.info.id);
+		const formal = term.kind === 'free' && RSymbol.is(node) ? maskedFormal(term.name, run.scope, state) : term;
+		return formal?.kind === 'formal' && names !== undefined && !names.has(String(formal.name)) ? formal : undefined;
+	};
+	const single = (formal: BrandedIdentifier | undefined): GuardTerm | 'none' | undefined => {
+		const nodes = formal === undefined ? [] : bound.get(formal) ?? [];
+		const term = nodes.length === 1 ? stated(nodes[0]) : undefined;
+		return nodes.length === 0 || (term?.kind === 'constant' && term.lexeme === 'NULL') ? 'none' : term;
+	};
+	const handsOnDots = MatchArgs.handsOnDots(vertex.args, state.graph);
+	for(const recycling of recycles) {
+		const to = single(recycling.to);
+		if(single(recycling.unless) !== 'none' || to === undefined) {
+			continue;
+		}
+		const terms = recycling.among.flatMap(formal => bound.get(formal) ?? []).map(stated);
+		/* the largest size is only known with every value */
+		if(recycling.rule === 'divides' && (handsOnDots || terms.includes(undefined))) {
+			continue;
+		}
+		const known = terms.filter(t => t !== undefined);
+		for(const condition of recyclingConditions(recycling, known, to === 'none' ? undefined : to, n => isDefined(n, state))) {
+			if(GuardTerm.formalsOf(condition).size > 0) {
+				addClause(run, path, condition, vertex.id, { kind: 'implicit', message: recycling.message });
 			}
 		}
 	}

@@ -1,9 +1,10 @@
 import type { AnyBuiltInDefinition, BuiltInDefinitions } from '../built-in-config';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp } from '../built-in-props';
-import { RValueType, type CheckingCall, type GuardFacts, type RFailure, type ReturnedValue, type RValueTypes, type TypePredicate } from '../guard-facts';
+import { RValueType, type CheckingCall, type GuardFacts, type RCondition, type RFailure, type RRecycling, type ReturnedValue, type RValueTypes, type TypePredicate } from '../guard-facts';
 import { Identifier, PkgName, type BrandedIdentifier, type BrandedNamespace } from '../identifier';
 import { AttachedBasePackageSet } from '../../../util/r-base-packages';
+import { NseArguments } from '../../internal/process/functions/call/nse-kind';
 import { base, fn, pkg, Primitive } from './define-helpers';
 import { Forced, sig } from './shared-signatures';
 import { PrimitiveLanguageGuardFacts } from './guards-primitive-lang';
@@ -75,6 +76,18 @@ function camelCased(this: void, name: BrandedIdentifier): BrandedIdentifier {
 	return `assert${name.split('_').map(part => part[0].toUpperCase() + part.slice(1)).join('')}`;
 }
 
+/*
+ * recycling, each read off the package: `data.frame` recycles the rows of each value to the largest number of them if they divide it, which flowR reads off a
+ * vector or matrix without a class (`NROW`), as another value converts by a method of its own; vctrs and tibble recycle sizes of 1 only, leaving out `NULL`
+ */
+const Unsized: RCondition = { any: [{ is: 'is.object' }, { not: { is: 'is.atomic' } }] };
+const DataFrameRows: RRecycling = { among: ['...'], size: 'NROW', rule: 'divides', skips: Unsized, message: 'arguments imply differing number of rows' };
+const VecSize = 'vctrs::vec_size';
+const VecNull: RCondition = { is: 'is.null' };
+const vctrsRecycled = (more: Partial<RRecycling> = {}): RRecycling => ({ among: ['...'], size: VecSize, rule: 'one', skips: VecNull, message: "Can't recycle `..1` (size ...) to match `..2` (size ...)", ...more });
+/* a tibble takes an expression vector as a column of its length, and a row wraps what is no vector */
+const TibbleSizes = (rule: RRecycling['rule'], skips: RCondition, message: string, more: Partial<RRecycling> = {}): GuardFacts => ({ recycles: [{ among: ['...'], size: VecSize, rule, skips, message, ...more }], masks: true });
+
 /**
  * What every function has to do with guards, per package, each verified against the package providing it.
  * `is.numeric` is false for a factor, so it is not exact.
@@ -134,6 +147,7 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		...each(Computes, 'stopifnot', 'xor', '|>', 'all.equal'),
 		'%in%':             { ...Computes, ...Returns(Logical, { notNA: true }) },
 		'identity':         { returns: 'argument' },
+		'data.frame':       { recycles: [DataFrameRows] },
 		...each(Returns(Character), 'paste', 'paste0', 'toupper', 'tolower'),
 		...each(OpensFrame, 'rm', 'remove', 'list2env', 'makeActiveBinding', 'eval', 'evalq', 'eval.parent', 'source', 'sys.source', 'attach', 'sys.frame', 'sys.frames')
 	},
@@ -168,6 +182,17 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'check_required':      { check: { present: true } },
 		...each(OpensFrame, 'env_poke', 'env_bind', 'caller_env', 'current_env')
 	},
+	[PkgName.Vctrs]: {
+		'vec_size':           { measures: 'single' },
+		'vec_recycle':        { recycles: [vctrsRecycled({ among: ['x'], to: 'size', message: "Can't recycle input of size ... to size ..." })] },
+		'vec_recycle_common': { recycles: [vctrsRecycled({ to: '.size' })] },
+		/* with a size given it does not look at the values */
+		'vec_size_common':    { recycles: [vctrsRecycled({ unless: '.size' })] }
+	},
+	[PkgName.Tibble]: {
+		'tibble':     TibbleSizes('one', { any: [VecNull, { is: 'is.expression' }] }, 'Tibble columns must have compatible sizes.', { to: '.rows' }),
+		'tibble_row': TibbleSizes('single', { any: [VecNull, { not: { is: 'vctrs::obj_is_vector' } }] }, 'All vectors must be size one, use `list()` to wrap.')
+	},
 	'checkmate': Object.fromEntries(Object.entries(CheckmateChecks).flatMap(([name, check]) => [[`assert_${name}`, { check }], [camelCased(name), { check }]]))
 };
 
@@ -187,6 +212,10 @@ export const GuardDefinitions = [
 		BuiltInProcName.DefaultReadAllArgs, { libFn: true, props: CallProp.Pure }),
 	fn(pkg(PkgName.Rlang, 'arg_match', 'arg_match0', 'check_required'), BuiltInProcName.DefaultReadAllArgs, { libFn: true, props: CallProp.Throws }),
 	fn(pkg(PkgName.Rlang, 'env_poke', 'env_bind', 'caller_env', 'current_env'), BuiltInProcName.DefaultReadAllArgs, { libFn: true }),
+	fn(pkg(PkgName.Vctrs, 'vec_size'), BuiltInProcName.DefaultReadAllArgs, { libFn: true, props: CallProp.Pure, sig: sig({ x: Forced.Value }) }),
+	fn(pkg(PkgName.Vctrs, 'vec_recycle'), BuiltInProcName.DefaultReadAllArgs, { libFn: true, props: CallProp.Pure, sig: sig({ x: Forced.Value, size: Forced.Value }) }),
+	fn(pkg(PkgName.Vctrs, 'vec_recycle_common', 'vec_size_common'), BuiltInProcName.DefaultReadAllArgs, { libFn: true, props: CallProp.Pure, sig: sig({ '...': Forced.Value, '.size': Forced.Value }) }),
+	fn(pkg(PkgName.Tibble, 'tibble_row'), BuiltInProcName.DefaultReadAllArgs, { libFn: true, props: CallProp.Pure, markArgsAsMasked: NseArguments.All }),
 	fn(pkg('checkmate', ...Object.keys(CheckmateChecks).flatMap(name => [snakeCased(name), camelCased(name)])), BuiltInProcName.DefaultReadAllArgs, { libFn: true, props: CallProp.Invisible | CallProp.Throws })
 ] as const satisfies AnyBuiltInDefinition[];
 

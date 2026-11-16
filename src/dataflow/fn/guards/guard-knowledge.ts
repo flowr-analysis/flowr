@@ -1,7 +1,7 @@
 import { type BrandedIdentifier, Identifier } from '../../environments/identifier';
 import type { BuiltInDefinitions } from '../../environments/built-in-config';
 import { DefaultBuiltinConfig } from '../../environments/default-builtin-config';
-import { RValueType, type GuardFacts, type GuardFactsLookup, type RCondition, type RFailure, type RValueTypes, type RVersions } from '../../environments/guard-facts';
+import { RValueType, type GuardFacts, type GuardFactsLookup, type RCondition, type RFailure, type RRecycling, type RValueTypes, type RVersions } from '../../environments/guard-facts';
 import { compareRVersions } from '../../../util/r-version-order';
 import { RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
 import { GuardTerm, type GuardCall } from './guard-term';
@@ -30,7 +30,8 @@ export function holdsIn(this: void, { since, until }: RVersions, version: string
 function factsIn(this: void, { changed, ...facts }: GuardFacts, version: string): GuardFacts {
 	const merged = (changed ?? []).filter(c => holdsIn(c, version)).reduce<GuardFacts>((acc, c) => ({ ...acc, ...c.facts }), facts);
 	const asks = merged.asks === undefined ? undefined : Object.fromEntries(Object.entries(merged.asks).map(([formal, failures]) => [formal, failures.filter(f => holdsIn(f, version))]));
-	return asks === undefined ? merged : { ...merged, asks };
+	const recycles = merged.recycles?.filter(r => holdsIn(r, version));
+	return { ...merged, ...(asks === undefined ? {} : { asks }), ...(recycles === undefined ? {} : { recycles }) };
 }
 
 /** The classes S3 dispatch sees for a value without a class attribute, as `.class2` names them, beyond `default`. */
@@ -104,9 +105,51 @@ export function callable(this: void, of: GuardTerm, resolves: (name: BrandedIden
 /** The term of the value bound to a formal of the same call, `undefined` if flowR cannot state it. */
 export type FormalTerms = (formal: BrandedIdentifier) => GuardTerm | undefined;
 
+/** `reader(of)`, for a reader written `pkg::name` a call of the function of that package. */
+function readerOf(this: void, reader: BrandedIdentifier, of: GuardTerm): GuardTerm {
+	const at = reader.indexOf('::');
+	return at < 0 ? is(reader, of) : { kind: 'call', fn: reader.slice(at + 2), pkg: reader.slice(0, at), known: true, args: [{ value: of }] };
+}
+
 /** `of` with each of the readers applied, the outermost first. */
 function readOff(this: void, readers: readonly BrandedIdentifier[] | undefined, of: GuardTerm): GuardTerm {
-	return (readers ?? []).reduceRight((inner, reader) => is(reader, inner), of);
+	return (readers ?? []).reduceRight((inner, reader) => readerOf(reader, inner), of);
+}
+
+const number = (value: number): GuardTerm => ({ kind: 'constant', lexeme: String(value), value });
+
+/**
+ * What it takes for the values a call recycles by `recycling` not to make R fail, one condition per pair or per value, see {@link RRecycling}.
+ * `values` are all the values the call hands to {@link RRecycling.among} for `divides`, which has to know the largest size, and any of them for the others;
+ * `to` is what the call hands to {@link RRecycling.to}, if anything.
+ */
+export function recyclingConditions(this: void, recycling: RRecycling, values: readonly GuardTerm[], to: GuardTerm | undefined, resolves: (name: BrandedIdentifier) => boolean): GuardTerm[] {
+	const { rule, skips } = recycling;
+	const size = (of: GuardTerm) => readerOf(recycling.size, of);
+	const skipped = (of: GuardTerm) => skips === undefined ? GuardTerm.False : conditionOn(skips, of, resolves, () => undefined);
+	const eq = (a: GuardTerm, b: GuardTerm) => GuardTerm.known('==', a, b);
+	const one = (of: GuardTerm) => eq(size(of), number(1));
+	if(rule === 'single') {
+		return values.map(v => GuardTerm.any(skipped(v), one(v)));
+	} else if(rule === 'one' && to !== undefined) {
+		/* R takes the first element of the size it is told, and recycles to no size for `NULL` */
+		const [target, unsized] = to.kind === 'constant' ? [to, GuardTerm.False] : [GuardTerm.known('[', to, number(1)), GuardTerm.known('is.null', to)];
+		return values.map(v => GuardTerm.any(skipped(v), unsized, eq(size(v), target), one(v)));
+	} else if(rule === 'one') {
+		return values.flatMap((a, at) => values.slice(at + 1).map(b => GuardTerm.any(skipped(a), skipped(b), eq(size(a), size(b)), one(a), one(b))));
+	} else if(values.length < 2) {
+		return [];
+	}
+	/* `divides`: a value of a size flowR cannot read leaves the largest size open */
+	const open = values.map(skipped);
+	const positive = (of: GuardTerm) => GuardTerm.known('>', size(of), number(0));
+	const divides = (a: GuardTerm, b: GuardTerm) => eq(GuardTerm.known('%%', b, a), number(0));
+	if(values.length === 2) {
+		const [a, b] = values;
+		return [GuardTerm.any(...open, eq(size(a), size(b)), GuardTerm.all(positive(a), positive(b), GuardTerm.any(divides(size(a), size(b)), divides(size(b), size(a)))))];
+	}
+	const largest = GuardTerm.known('max', ...values.map(size));
+	return values.map(v => GuardTerm.any(...open, eq(size(v), largest), GuardTerm.all(positive(v), divides(size(v), largest))));
 }
 
 /**
@@ -116,7 +159,7 @@ function readOff(this: void, readers: readonly BrandedIdentifier[] | undefined, 
 function conditionOn(this: void, condition: RCondition, of: GuardTerm, resolves: (name: BrandedIdentifier) => boolean, formals: FormalTerms, positive = true): GuardTerm {
 	const unknown = positive ? GuardTerm.True : GuardTerm.False;
 	if('is' in condition) {
-		return is(condition.is, condition.of === undefined ? of : is(condition.of, of));
+		return readerOf(condition.is, condition.of === undefined ? of : readerOf(condition.of, of));
 	} else if('not' in condition) {
 		const inner = conditionOn(condition.not, of, resolves, formals, !positive);
 		return GuardTerm.isTrue(inner) ? GuardTerm.False : GuardTerm.isFalse(inner) ? GuardTerm.True : GuardTerm.known('!', inner);

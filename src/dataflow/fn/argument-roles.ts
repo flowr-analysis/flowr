@@ -70,10 +70,12 @@ interface RoleState extends LookupState {
 	readonly args:       Map<NodeId, ArgumentProps>
 	/** what {@link identityFrom} found per node and depth, for the walks that may reuse it; lives for the one run as well */
 	readonly identities: Map<NodeId, Identity[]>
+	/** what {@link sameValueAs} answered per node, which every walk through the node asks again */
+	readonly sameValue:  Map<NodeId, readonly [branches: readonly NodeId[], steps: readonly NodeId[]]>
 }
 
 function roleStateOf(graph: DataflowGraph, { ctx, maxDepth = DefaultDepth }: ArgumentRolesOptions): RoleState {
-	return { graph, info: builtInLookup(ctx), maxDepth, args: new Map(), identities: new Map() };
+	return { graph, info: builtInLookup(ctx), maxDepth, args: new Map(), identities: new Map(), sameValue: new Map() };
 }
 
 function rolesOf(id: NodeId, state: RoleState): FunctionArgumentRoles {
@@ -179,7 +181,16 @@ function intersect(sets: readonly ReadonlySet<NodeId>[]): Set<NodeId> {
 }
 
 /** The nodes the value of `node` may be, split into the branches it picks one of and the steps it always takes. */
-function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps: NodeId[]] {
+function sameValueAs(node: NodeId, state: RoleState): readonly [branches: readonly NodeId[], steps: readonly NodeId[]] {
+	let known = state.sameValue.get(node);
+	if(known === undefined) {
+		known = sameValueAsUncached(node, state);
+		state.sameValue.set(node, known);
+	}
+	return known;
+}
+
+function sameValueAsUncached(node: NodeId, state: RoleState): [branches: NodeId[], steps: NodeId[]] {
 	const graph = state.graph;
 	const vertex = graph.getVertex(node);
 	const returns = takesApart(vertex) ? [] : Dataflow.targetsOf(graph, node, EdgeType.Returns);

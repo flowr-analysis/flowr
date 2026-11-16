@@ -5,6 +5,7 @@ import { BoundedSetDomain, type BoundedSetLift } from './domains/bounded-set-dom
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { CacheScope, GlobalCaches } from '../util/global-caches';
+import { getOrSet } from '../util/collections/defaultmap';
 
 /**
  * One branch taken on the way to a node: the construct deciding it (`if`, `while`, `&&`, `||`, `switch`, ...), which
@@ -36,56 +37,29 @@ function encodePath(steps: ReadonlySet<string>): string {
 	return [...steps].sort().join(StepSeparator);
 }
 
-/** the sorted steps of each path seen lately: the same paths flow through the whole interpretation, so they are split once */
-const parsedPaths = new Map<string, readonly string[]>();
-/** bounds what {@link parsedPaths} keeps, so a large package does not hold every path it ever saw */
+/* both memos hold node ids of the analyzed code, so a reset releases them, and are bounded, so a large package does not hold every path it saw */
 const MaxParsedPaths = 100_000;
+/** the sorted steps of each path seen lately: the same paths flow through the whole interpretation, so they are split once */
+const parsedPaths = GlobalCaches.map<string, readonly string[]>('branch-paths', CacheScope.Analysis, MaxParsedPaths);
+/** per path and step, the path taking it: a loop is interpreted until nothing changes, so the same continuations come up again */
+const continued = GlobalCaches.map<string, Map<string, string>>('branch-path-steps', CacheScope.Analysis, MaxParsedPaths);
 
 /** The steps of the path, sorted as {@link encodePath} sorts them. */
 function sortedSteps(path: string): readonly string[] {
-	let steps = parsedPaths.get(path);
-	if(steps === undefined) {
-		if(parsedPaths.size >= MaxParsedPaths) {
-			parsedPaths.clear();
-		}
-		steps = path === '' ? [] : path.split(StepSeparator);
-		parsedPaths.set(path, steps);
-	}
-	return steps;
+	return getOrSet(parsedPaths, path, () => path === '' ? [] : path.split(StepSeparator));
 }
 
 function stepsOf(path: string): Set<string> {
 	return new Set(sortedSteps(path));
 }
 
-/** per path and step, the path taking it: a loop is interpreted until nothing changes, so the same continuations come up again */
-const continued = new Map<string, Map<string, string>>();
-/* both hold node ids of the analyzed code, so a reset releases them */
-GlobalCaches.register('branch-paths', CacheScope.Analysis, () => parsedPaths.size + continued.size, () => {
-	parsedPaths.clear();
-	continued.clear();
-}, 2 * MaxParsedPaths);
-
 /** The path with `step` taken as well, the same string as `encodePath(stepsOf(path).add(step))` without splitting and sorting again. */
 function withStep(path: string, step: string): string {
-	let byStep = continued.get(path);
-	if(byStep === undefined) {
-		if(continued.size >= MaxParsedPaths) {
-			continued.clear();
-		}
-		byStep = new Map();
-		continued.set(path, byStep);
-	}
-	let next = byStep.get(step);
-	if(next === undefined) {
-		next = insertStep(path, step);
-		byStep.set(step, next);
-	}
-	return next;
+	return getOrSet(getOrSet(continued, path, () => new Map<string, string>()), step, () => insertStep(path, step));
 }
 
-function insertStep(path: string, step: string): string {
-	const steps = sortedSteps(path);
+/** Where `step` is or belongs in the sorted `steps`. */
+function positionOf(steps: readonly string[], step: string): number {
 	let low = 0;
 	let high = steps.length;
 	while(low < high) {
@@ -96,22 +70,18 @@ function insertStep(path: string, step: string): string {
 			high = mid;
 		}
 	}
+	return low;
+}
+
+function insertStep(path: string, step: string): string {
+	const steps = sortedSteps(path);
+	const low = positionOf(steps, step);
 	return steps[low] === step ? path : [...steps.slice(0, low), step, ...steps.slice(low)].join(StepSeparator);
 }
 
 /** Whether the sorted `steps` have `step`. */
 function hasStep(steps: readonly string[], step: string): boolean {
-	let low = 0;
-	let high = steps.length;
-	while(low < high) {
-		const mid = (low + high) >>> 1;
-		if(steps[mid] < step) {
-			low = mid + 1;
-		} else {
-			high = mid;
-		}
-	}
-	return steps[low] === step;
+	return steps[positionOf(steps, step)] === step;
 }
 
 /** The steps all of the paths take: what is common shrinks fast, so each further path is only searched for what is left, never split into a set. */
@@ -226,16 +196,16 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 		if(!other.isValue()) {
 			return this.create(other.value);
 		}
-		const theirs = [...other.value].map(stepsOf);
-		const mine = [...this.value as ReadonlySet<string>].map(stepsOf);
 		/*
 		 * past the limit, `create` keeps only the steps every pair takes, which are the steps all of mine take together with the steps
 		 * all of theirs take, as `(a1 | b1) & (a1 | b2) & ... = (a1 & a2 ...) | (b1 & b2 ...)`; so the pairs are not built at all
 		 */
-		if(mine.length * theirs.length > this.limit) {
-			const common = mine.reduce((a, b) => a.intersection(b)).union(theirs.reduce((a, b) => a.intersection(b)));
+		if((this.value as ReadonlySet<string>).size * other.value.size > this.limit) {
+			const common = new Set(stepsInAll(this.value as ReadonlySet<string>)).union(new Set(stepsInAll(other.value)));
 			return new BranchPathDomain([encodePath(common)], this.limit) as this;
 		}
+		const theirs = [...other.value].map(stepsOf);
+		const mine = [...this.value as ReadonlySet<string>].map(stepsOf);
 		return this.create(mine.flatMap(a => theirs.map(b => encodePath(a.union(b)))));
 	}
 

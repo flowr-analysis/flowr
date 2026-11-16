@@ -12,7 +12,7 @@ import type {
 } from './call-context-query-format';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { memoize } from '../../../util/collections/defaultmap';
-import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexInfo, DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
@@ -27,6 +27,7 @@ import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../..
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { quotedForWorker } from '../../../dataflow/environments/query-fn-props';
 import { ArrayQueue } from '../../../util/collections/queue';
+import { StronglyConnected } from '../../../util/fixpoint';
 import { baseRExportOwner } from '../../../util/r-base-packages';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 
@@ -125,24 +126,13 @@ function calleesOf(id: NodeId, call: DataflowGraphVertexFunctionCall, outgoing: 
 	).map(([target]) => target).toArray();
 }
 
-/* maybe we want to add caches to this */
 /**
  * Whether the name at a vertex the alias walk reaches names a function there: a built-in, a function definition,
  * and a use reading one, a function definition's binding, or nothing (an unknown function), like the `print` of
  * `f <- print`. Not a binding, which holds what its value names, nor a use of one, like the `print` of
  * `print <- gar; f <- print`, which names `gar`.
  */
-function namesFunction(id: NodeId, graph: DataflowGraph, known: Map<NodeId, boolean>): boolean {
-	let names = known.get(id);
-	if(names === undefined) {
-		names = decideNamesFunction(id, graph);
-		known.set(id, names);
-	}
-	return names;
-}
-
-/** Whether the vertex at `id` names a function, a definition or a use reading one or reading nothing at all. */
-function decideNamesFunction(id: NodeId, graph: DataflowGraph): boolean {
+function namesFunction(id: NodeId, graph: DataflowGraph): boolean {
 	const vertex = graph.get(id);
 	if(vertex === undefined || DfgVertex.isFunctionDefinition(vertex[0])) {
 		return true;
@@ -168,7 +158,7 @@ function decideNamesFunction(id: NodeId, graph: DataflowGraph): boolean {
  * Given `below` (see {@link wantedBelow}), the walk only gives the functions asked for and, past the callee, only enters a vertex
  * from which it can still find one it has not found yet.
  */
-function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: boolean, known: Map<NodeId, boolean>, wanted: WantedBelow | undefined, asked: (name: string) => boolean): Map<string, NodeId[]> {
+function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: boolean, namesFunction: (id: NodeId) => boolean, wanted: WantedBelow | undefined, asked: (name: string) => boolean): Map<string, NodeId[]> {
 	/* we want the names of all functions called at the source id, including synonyms and returns */
 	const aliases: Map<string, NodeId[]> = new Map();
 
@@ -189,7 +179,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: bo
 		visited.add(id);
 		if(id !== nodeId) {
 			found |= wanted?.bits.get(id) ?? 0n;
-			if(asked(str) && namesFunction(id, graph, known)) {
+			if(asked(str) && namesFunction(id)) {
 				const present = aliases.get(str);
 				if(present) {
 					present.push(id);
@@ -202,42 +192,20 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: bo
 			}
 		}
 
-		const vertex = graph.get(id);
-		if(vertex === undefined) {
+		const info = graph.getVertex(id);
+		if(info === undefined) {
 			continue;
 		}
-		const [info, outgoing] = vertex;
-
-		if(DfgVertex.isFunctionDefinition(info)) {
-			/* the function itself, what it reads (like the `library` call providing a package's) makes no alias */
-			continue;
-		} else if(!DfgVertex.isFunctionCall(info)) {
-			const wantedTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
-			const x = outgoing.entries()
-				.filter(([,e]) => DfEdge.includesType(e, wantedTypes))
-				.map(([t]) => [NodeId.recoverContent(t, graph) ?? '', t] as const)
-				.toArray();
-			/** only follow defined-by and reads */
-			for(const e of x) {
-				/* past the callee, what reaches no name asked for only names functions nobody asks about */
-				if(leadsOn(e[1])) {
-					queue.enqueue(e);
-				}
-			}
-			continue;
-		}
-
 		/* a call reached on the way is an alias only for what it hands back, not for what it reads or calls */
-		const out = id === nodeId ? calleesOf(id, info, outgoing, graph)
-			: outgoing.entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Returns)).map(([t]) => t);
-
-		for(const call of out) {
-			if(id === nodeId) {
-				firstLevel.add(call);
-			} else if(!leadsOn(call)) {
+		const isStart = id === nodeId && DfgVertex.isFunctionCall(info);
+		for(const step of isStart ? calleesOf(id, info, graph.edgesFrom(id), graph) : aliasSteps(graph, id, info)) {
+			if(isStart) {
+				firstLevel.add(step);
+			} else if(!leadsOn(step)) {
+				/* past the callee, what reaches no name asked for only names functions nobody asks about */
 				continue;
 			}
-			queue.enqueue([NodeId.recoverContent(call, graph) ?? NodeId.recoverContent(id, graph) ?? '', call]);
+			queue.enqueue([stepName(graph, id, info, step), step]);
 		}
 	}
 
@@ -256,102 +224,48 @@ interface WantedBelow {
 	readonly bits:  ReadonlyMap<NodeId, bigint>
 }
 
+/** What the alias walk of {@link retrieveAllCallAliases} follows past `id`: what a call hands back, or what anything else reads or is defined by. */
+function aliasSteps(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexInfo): NodeId[] {
+	if(DfgVertex.isFunctionDefinition(info)) {
+		return [];
+	}
+	const types = DfgVertex.isFunctionCall(info) ? EdgeType.Returns : EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
+	return graph.edgesFrom(id).entries().filter(([, e]) => DfEdge.includesType(e, types)).map(([t]) => t).toArray();
+}
+
+/** The name an alias step from `id` to `target` carries: the target's, or for a call without one, the call's. */
+function stepName(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexInfo, target: NodeId): string {
+	return NodeId.recoverContent(target, graph) ?? (DfgVertex.isFunctionCall(info) ? NodeId.recoverContent(id, graph) : undefined) ?? '';
+}
+
 /** {@link WantedBelow} of the graph. */
-function wantedBelow(graph: DataflowGraph, wanted: (name: string) => boolean, known: Map<NodeId, boolean>): WantedBelow {
-	const out = new Map<NodeId, NodeId[]>();
-	const into = new Map<NodeId, NodeId[]>();
+function wantedBelow(graph: DataflowGraph, wanted: (name: string) => boolean, namesFunction: (id: NodeId) => boolean): WantedBelow {
 	const bits = new Map<NodeId, bigint>();
 	for(const [id, info] of graph.vertices(true)) {
-		if(DfgVertex.isFunctionDefinition(info)) {
-			continue;
-		}
-		const call = DfgVertex.isFunctionCall(info);
-		const types = call ? EdgeType.Returns : EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
-		const targets: NodeId[] = [];
-		for(const [target, edge] of graph.edgesFrom(id)) {
-			if(!DfEdge.includesType(edge, types)) {
-				continue;
-			}
-			targets.push(target);
-			const name = NodeId.recoverContent(target, graph) ?? (call ? NodeId.recoverContent(id, graph) : undefined) ?? '';
-			if(!bits.has(target) && wanted(name) && namesFunction(target, graph, known)) {
+		for(const target of aliasSteps(graph, id, info)) {
+			if(!bits.has(target) && wanted(stepName(graph, id, info, target)) && namesFunction(target)) {
 				bits.set(target, 1n << BigInt(bits.size));
 			}
-			const sources = into.get(target);
-			if(sources) {
-				sources.push(id);
-			} else {
-				into.set(target, [id]);
-			}
-		}
-		out.set(id, targets);
-	}
-	/* only what reaches a wanted function matters */
-	const reaching = new Set(bits.keys());
-	const back = new ArrayQueue<NodeId>([...reaching]);
-	for(let next = back.dequeue(); next !== undefined; next = back.dequeue()) {
-		for(const source of into.get(next) ?? []) {
-			if(!reaching.has(source)) {
-				reaching.add(source);
-				back.enqueue(source);
-			}
 		}
 	}
-	for(const [id, targets] of out) {
-		out.set(id, targets.filter(t => reaching.has(t)));
-	}
-	/* the strongly connected components of what reaches one (Tarjan, without recursion), each complete after those it reaches */
 	const below = new Map<NodeId, bigint>();
-	const index = new Map<NodeId, number>();
-	const low = new Map<NodeId, number>();
-	const stack: NodeId[] = [];
-	const onStack = new Set<NodeId>();
-	for(const root of reaching) {
-		if(index.has(root)) {
-			continue;
-		}
-		const frames: [NodeId, number][] = [[root, 0]];
-		index.set(root, index.size);
-		low.set(root, index.get(root) as number);
-		stack.push(root);
-		onStack.add(root);
-		while(frames.length > 0) {
-			const frame = frames[frames.length - 1];
-			const [v] = frame;
-			const succ = out.get(v) ?? [];
-			if(frame[1] < succ.length) {
-				const w = succ[frame[1]++];
-				if(!index.has(w)) {
-					index.set(w, index.size);
-					low.set(w, index.get(w) as number);
-					stack.push(w);
-					onStack.add(w);
-					frames.push([w, 0]);
-				} else if(onStack.has(w)) {
-					low.set(v, Math.min(low.get(v) as number, index.get(w) as number));
-				}
-				continue;
-			}
-			frames.pop();
-			if(frames.length > 0) {
-				const parent = frames[frames.length - 1][0];
-				low.set(parent, Math.min(low.get(parent) as number, low.get(v) as number));
-			}
-			if(low.get(v) === index.get(v)) {
-				const members = stack.splice(stack.lastIndexOf(v));
-				members.forEach(m => onStack.delete(m));
-				let mask = 0n;
-				for(const m of members) {
-					mask |= bits.get(m) ?? 0n;
-					for(const t of out.get(m) ?? []) {
-						mask |= below.get(t) ?? 0n;
-					}
-				}
-				for(const m of members) {
-					below.set(m, mask);
-				}
+	const components = new StronglyConnected<NodeId>(id => {
+		const info = graph.getVertex(id);
+		return info ? aliasSteps(graph, id, info) : [];
+	}, (members, successorsOf) => {
+		let mask = 0n;
+		for(const m of members) {
+			mask |= bits.get(m) ?? 0n;
+			for(const t of successorsOf(m)) {
+				mask |= below.get(t) ?? 0n;
 			}
 		}
+		if(mask !== 0n) {
+			members.forEach(m => below.set(m, mask));
+		}
+	});
+	for(const [id] of graph.vertices(true)) {
+		components.visit(id);
 	}
 	return { below, bits };
 }
@@ -461,7 +375,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 	/* only the aliases some query asks for count */
 	const asksAliases = (name: string) => queriesFor(name).some(q => q.includeAliases);
 	/* whether a vertex names a function is the same for every call reaching it */
-	const namesFunctionOf = new Map<NodeId, boolean>();
+	const namesFunctionOf = memoize((id: NodeId) => namesFunction(id, dataflow.graph));
 	/* a call whose own name asks for no aliases only has some if its walk reaches a function asked for */
 	const wanted = followAliases ? wantedBelow(dataflow.graph, asksAliases, namesFunctionOf) : undefined;
 	for(const [nodeId, info] of dataflow.graph.verticesOfType(VertexType.FunctionCall)) {

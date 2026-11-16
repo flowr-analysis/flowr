@@ -46,7 +46,8 @@ import { dataflowLogger } from './logger';
 import { type DataflowBudgetTracker, GasFeatureKey, GasLevel, GasWikiRef, withDataflowBudget } from '../gas';
 import { DefaultTransitiveSideEffectRounds } from '../config';
 import { Dataflow, ProvenanceEdges } from './graph/df-helper';
-import { ReachSummaries, unionOfAllSets, unionOfSets } from '../util/fixpoint';
+import { ReachSummaries } from '../util/fixpoint';
+import { Monoid } from '../util/monoid';
 import { mayForce } from './internal/process/functions/call/built-in/built-in-ambient-state';
 import { AmbientStateName, MessageSinks, OutputSinks } from './environments/ambient-state-name';
 import { AmbientAccess, AmbientAccessKind } from './graph/ambient-access';
@@ -57,7 +58,7 @@ import { isBaseRPackage } from '../util/r-base-packages';
 import { StackEnvBuiltins } from './environments/default-builtin-config/shared-configs';
 import { replayedAt } from './internal/process/functions/call/built-in/built-in-deferred-env-ops';
 import { partitionArray, uniqueArray } from '../util/collections/arrays';
-import { DefaultMap, memoize } from '../util/collections/defaultmap';
+import { DefaultMap, getOrSet, memoize } from '../util/collections/defaultmap';
 import { MatchArgs } from './graph/match-args';
 import { ArgProp, FnSig, SemanticCallTag, type ArgProps, type BuiltInFnInfo } from './environments/built-in-props';
 import { type BuiltInIndex, callFnProps, queryFnProps } from './environments/query-fn-props';
@@ -231,24 +232,8 @@ function linkEnvironmentsHandedToUnseenBodies(graph: DataflowGraph, environment:
 		return holders.get(producer);
 	}
 	/* both are asked of the same vertices over and over (every value an argument may hold), and the edges added below change neither */
-	const unseen = new Map<NodeId, boolean>();
-	const callsUnseen = (id: NodeId): boolean => {
-		let known = unseen.get(id);
-		if(known === undefined) {
-			known = callsUnseenBody(id, graph);
-			unseen.set(id, known);
-		}
-		return known;
-	};
-	const producing = new Map<NodeId, boolean>();
-	const produces = (id: NodeId): boolean => {
-		let known = producing.get(id);
-		if(known === undefined) {
-			known = producesEnvironment(id, graph, callsUnseen);
-			producing.set(id, known);
-		}
-		return known;
-	};
+	const callsUnseen = memoize((id: NodeId) => callsUnseenBody(id, graph));
+	const produces = memoize((id: NodeId) => producesEnvironment(id, graph, callsUnseen));
 	/*
 	 * an unknown side effect forgets every value the environment holds, so a writer only needs it once; the effects and edges
 	 * are applied once every call is looked at, as any change to the graph drops what was resolved over it
@@ -597,7 +582,6 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 		return DfgVertex.isFunctionCall(call) && call.name !== undefined && Identifier.getName(call.name) === 'tempfile'
 			&& FunctionSemantics.call.props.hasAll(callFnProps(v, { graph, environment }), [SemanticCallTag.TempFile]);
 	});
-	const noTempFiles: ReadonlySet<NodeId> = new Set();
 	const tempFilesBehind = new ReachSummaries<NodeId, ReadonlySet<NodeId>>(current => {
 		const vertex = graph.get(current);
 		if(vertex === undefined) {
@@ -613,7 +597,7 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 			next.push(cd.id);
 		}
 		return next;
-	}, v => isTempFile(v) ? new Set([v]) : undefined, { empty: noTempFiles, concat: unionOfSets, concatAll: unionOfAllSets });
+	}, v => isTempFile(v) ? new Set([v]) : undefined, Monoid.set());
 	const tempFiles = (id: NodeId) => tempFilesBehind.of(RArgument.valueOf(graph.idMap?.get(id))?.info.id ?? id);
 	function sameResource(a: NodeId, b: NodeId): boolean {
 		if(a === b) {
@@ -691,12 +675,7 @@ function fileWriteLevels(writer: NodeId, graph: DataflowGraph, idMap: AstIdMap, 
 	const callsOf = new Map<NodeId, NodeId[]>();
 	for(const call of affected) {
 		for(const target of new Set(Dataflow.targetsOf(graph, call, EdgeType.Calls))) {
-			const known = callsOf.get(target);
-			if(known === undefined) {
-				callsOf.set(target, [call]);
-			} else {
-				known.push(call);
-			}
+			getOrSet(callsOf, target, () => []).push(call);
 		}
 	}
 	const levels: FileWriteLevel[] = [];

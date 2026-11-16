@@ -20,21 +20,17 @@ const removedNames = new Set<BrandedIdentifier>();
  */
 const MaxRemovedNames = 65_536;
 let saturated = false;
-GlobalCaches.register('removed-names', CacheScope.Process, () => removedNames.size, () => {
-	/* forgetting names is unsafe, so releasing it means giving up on the shortcut */
+/* forgetting names is unsafe, so releasing them means giving up on the shortcut */
+function saturate(): void {
 	saturated = true;
 	removedNames.clear();
-}, MaxRemovedNames);
+}
+GlobalCaches.register('removed-names', CacheScope.Process, () => removedNames.size, saturate, MaxRemovedNames);
 
 /** Records that a {@link removalMarkerOf|marker} was written for `name`; see {@link anyRemovalMarker}. */
 export function noteRemovalMarker(name: BrandedIdentifier): void {
-	if(saturated) {
-		return;
-	} else if(removedNames.size >= MaxRemovedNames) {
-		saturated = true;
-		removedNames.clear();
-	} else {
-		removedNames.add(name);
+	if(!saturated && removedNames.add(name).size > MaxRemovedNames) {
+		saturate();
 	}
 }
 

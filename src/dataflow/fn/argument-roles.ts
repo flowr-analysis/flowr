@@ -22,6 +22,7 @@ import { Identifier, type BrandedIdentifier } from '../environments/identifier';
 import { RLogical } from '../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { happensInEveryBranch } from '../info';
+import { getOrSet } from '../../util/collections/defaultmap';
 
 /** What a call states about one of its arguments, paired with the node that argument is. */
 type ArgumentProps = readonly (readonly [props: ArgProps, argument: NodeId])[];
@@ -182,12 +183,7 @@ function intersect(sets: readonly ReadonlySet<NodeId>[]): Set<NodeId> {
 
 /** The nodes the value of `node` may be, split into the branches it picks one of and the steps it always takes. */
 function sameValueAs(node: NodeId, state: RoleState): readonly [branches: readonly NodeId[], steps: readonly NodeId[]] {
-	let known = state.sameValue.get(node);
-	if(known === undefined) {
-		known = sameValueAsUncached(node, state);
-		state.sameValue.set(node, known);
-	}
-	return known;
+	return getOrSet(state.sameValue, node, () => sameValueAsUncached(node, state));
 }
 
 function sameValueAsUncached(node: NodeId, state: RoleState): [branches: NodeId[], steps: NodeId[]] {

@@ -12,6 +12,7 @@ import {
 	DfgVertex
 } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
+import { getOrSet } from '../../util/collections/defaultmap';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { BrandedIdentifier, Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -839,12 +840,8 @@ export class PendingEdges {
 
 	/** Notes the edge `from -> to` of the given type. */
 	public add(from: NodeId, to: NodeId, type: EdgeType | number): void {
-		const targets = this.edges.get(from);
-		if(targets === undefined) {
-			this.edges.set(from, new Map([[to, type]]));
-		} else {
-			targets.set(to, (targets.get(to) ?? 0) | type);
-		}
+		const targets = getOrSet(this.edges, from, () => new Map<NodeId, number>());
+		targets.set(to, (targets.get(to) ?? 0) | type);
 	}
 
 	/** Adds every noted edge to `graph`. */

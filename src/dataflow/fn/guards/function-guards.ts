@@ -163,18 +163,13 @@ interface GuardState {
 	/** the ways each node of every body is reached, see {@link pathsAt} */
 	paths?:                 BranchPaths
 	/** the origins of each node asked about, see {@link originsOf}: resolving them walks the call targets, and the graph does not change meanwhile */
-	origins?:               Map<NodeId, Origin[] | undefined>
+	origins?:               (id: NodeId) => Origin[] | undefined
 }
 
 /** {@link Dataflow.origin} of the node, worked out once per node and guard state. */
 function originsOf(this: void, state: GuardState, id: NodeId): Origin[] | undefined {
-	state.origins ??= new Map();
-	if(state.origins.has(id)) {
-		return state.origins.get(id);
-	}
-	const origins = Dataflow.origin(state.graph, id);
-	state.origins.set(id, origins);
-	return origins;
+	state.origins ??= memoize(n => Dataflow.origin(state.graph, n));
+	return state.origins(id);
 }
 
 /** Whether the call runs the given built-in behavior for sure, rather than maybe a function of the program with the same name. */

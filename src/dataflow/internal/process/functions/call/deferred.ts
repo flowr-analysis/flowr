@@ -1,3 +1,4 @@
+import { getOrSet } from '../../../../../util/collections/defaultmap';
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -50,31 +51,23 @@ const touchedCache = new WeakMap<AstIdMap, Map<NodeId, readonly Touched[]>>();
 
 /** The calls and symbols below `expr`, not descending into function definitions, whose bodies run only when called. */
 function touchedWithin<Info>(expr: NodeId, idMap: AstIdMap<Info & ParentInformation>): readonly Touched[] {
-	let perAst = touchedCache.get(idMap);
-	if(perAst === undefined) {
-		perAst = new Map();
-		touchedCache.set(idMap, perAst);
-	}
-	const known = perAst.get(expr);
-	if(known !== undefined) {
-		return known;
-	}
-	const touched: Touched[] = [];
-	const callees = new Set<NodeId>();
-	RNode.visitAst<Info & ParentInformation>(idMap.get(expr), inner => {
-		/* a definition only creates its closure, the body runs when it is called and that call carries its effects */
-		if(RFunctionDefinition.is(inner)) {
-			return true;
-		} else if(RFunctionCall.isNamed(inner)) {
-			callees.add(inner.functionName.info.id);
-			touched.push({ call: true, id: inner.info.id, name: Identifier.getName(inner.functionName.content) });
-		} else if(RSymbol.is(inner) && !callees.has(inner.info.id)) {
-			touched.push({ call: false, id: inner.info.id, name: Identifier.getName(inner.content) });
-		}
-		return false;
+	return getOrSet(getOrSet(touchedCache, idMap, () => new Map<NodeId, readonly Touched[]>()), expr, () => {
+		const touched: Touched[] = [];
+		const callees = new Set<NodeId>();
+		RNode.visitAst<Info & ParentInformation>(idMap.get(expr), inner => {
+			/* a definition only creates its closure, the body runs when it is called and that call carries its effects */
+			if(RFunctionDefinition.is(inner)) {
+				return true;
+			} else if(RFunctionCall.isNamed(inner)) {
+				callees.add(inner.functionName.info.id);
+				touched.push({ call: true, id: inner.info.id, name: Identifier.getName(inner.functionName.content) });
+			} else if(RSymbol.is(inner) && !callees.has(inner.info.id)) {
+				touched.push({ call: false, id: inner.info.id, name: Identifier.getName(inner.content) });
+			}
+			return false;
+		});
+		return touched;
 	});
-	perAst.set(expr, touched);
-	return touched;
 }
 
 /** The names a deferred expression touches, each with the node touching it and whether it is written. */
@@ -166,14 +159,8 @@ export const Deferred = {
 			|| (!forces.sites.includes(use) && (reach.after ??= reachableFrom(forces.cfg, forces.sites)).has(use));
 		/* the bindings of a name some force can see, asked again by every expression these forces evaluate (`eval` deep in a function meets thousands of bindings of `x`) */
 		function seenByAForceNamed(name: BrandedIdentifier): readonly NodeId[] {
-			const byName = (reach.seen ??= new WeakMap()).get(index.definitions) ?? new Map<BrandedIdentifier, readonly NodeId[]>();
-			reach.seen.set(index.definitions, byName);
-			let seen = byName.get(name);
-			if(seen === undefined) {
-				seen = (index.definitions.get(name) ?? []).filter(seenByAForce);
-				byName.set(name, seen);
-			}
-			return seen;
+			const byName = getOrSet(reach.seen ??= new WeakMap(), index.definitions, () => new Map<BrandedIdentifier, readonly NodeId[]>());
+			return getOrSet(byName, name, () => (index.definitions.get(name) ?? []).filter(seenByAForce));
 		}
 		/* whether some force always happens before `use`, asked again by every write of the bound name */
 		let sites: ReadonlySet<NodeId> | undefined;

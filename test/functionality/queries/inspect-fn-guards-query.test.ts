@@ -1009,10 +1009,13 @@ describe('Guards hold in R', { sequential: true }, withShell(shell => withTreeSi
 		}
 		return typeof value === 'boolean' ? (value ? 'TRUE' : 'FALSE') : JSON.stringify(value);
 	}
-	/* the packages may not be around, what is special about them was checked when writing their entries */
-	const NeedsPackage = /checkmate|assertthat|rlang|vctrs|tibble/;
+	/* a case using a package R does not have is left out, what is special about it was checked when writing its entry */
+	const Packages = ['checkmate', 'assertthat', 'rlang', 'vctrs', 'tibble'] as const;
 	test(label('no normal return breaks a claim', ['name-normal'], ['other']), async() => {
 		await shell.sendCommandWithOutput(`source(${JSON.stringify(Oracle)})`);
+		const installed = await shell.sendCommandWithOutput(`cat(${Packages.map(p => `requireNamespace(${JSON.stringify(p)}, quietly = TRUE)`).join(', ')}, sep = "\\n")`);
+		const missing = Packages.filter((_, at) => installed[at]?.trim() !== 'TRUE');
+		const NeedsPackage = missing.length === 0 ? /$^/ : new RegExp(missing.join('|'));
 		/* what R fails on changes between versions, so ask for the guards in the version this R has */
 		const version = (await shell.usedRVersion())?.format();
 		const broken: string[] = [];

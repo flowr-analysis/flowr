@@ -161,6 +161,19 @@ interface GuardState {
 	readonly ctx:           ReadOnlyFlowrAnalyzerContext
 	/** the ways each node of every body is reached, see {@link pathsAt} */
 	paths?:                 BranchPaths
+	/** the origins of each node asked about, see {@link originsOf}: resolving them walks the call targets, and the graph does not change meanwhile */
+	origins?:               Map<NodeId, Origin[] | undefined>
+}
+
+/** {@link Dataflow.origin} of the node, worked out once per node and guard state. */
+function originsOf(this: void, state: GuardState, id: NodeId): Origin[] | undefined {
+	state.origins ??= new Map();
+	if(state.origins.has(id)) {
+		return state.origins.get(id);
+	}
+	const origins = Dataflow.origin(state.graph, id);
+	state.origins.set(id, origins);
+	return origins;
 }
 
 /** Whether the call runs the given built-in behavior for sure, rather than maybe a function of the program with the same name. */
@@ -235,7 +248,7 @@ export function readsViaParameter(this: void, origins: readonly Origin[], graph:
 
 /** The definition a call runs for sure, if there is exactly one and nothing else it could be. */
 function soleCallee(this: void, id: NodeId, state: GuardState): NodeId | undefined {
-	const origins = Dataflow.origin(state.graph, id) ?? [];
+	const origins = originsOf(state, id) ?? [];
 	const callees = origins.filter(o => o.type === OriginType.FunctionCallOrigin);
 	return callees.length === 1 && !readsViaParameter(origins, state.graph) && !origins.some(o => o.type === OriginType.BuiltInFunctionOrigin) ? callees[0].id : undefined;
 }
@@ -247,7 +260,7 @@ function packageOf(this: void, facts: GuardFacts | undefined): BrandedNamespace 
 
 /** Whether the call may run a function of the program, an operator linked to the `Ops` methods of the program still being the operator. */
 function mayRunOwn(this: void, id: NodeId, vertex: DataflowGraphVertexFunctionCall, state: GuardState): boolean {
-	return DfgVertex.hasOrigin(vertex, BuiltInProcName.Function) && Dataflow.origin(state.graph, id)?.some(o => o.type !== OriginType.BuiltInFunctionOrigin) === true;
+	return DfgVertex.hasOrigin(vertex, BuiltInProcName.Function) && originsOf(state, id)?.some(o => o.type !== OriginType.BuiltInFunctionOrigin) === true;
 }
 
 /** The name of the function a call runs, if it is what R or the named package ships with rather than something the program defines. */
@@ -316,7 +329,7 @@ function symbolTerm(this: void, node: RNodeWithParent, scope: Scope, state: Guar
 	} else if(scope.frameIsOpen) {
 		return undefined;
 	}
-	const found = Dataflow.origin(state.graph, node.info.id)?.filter(o => !scope.skips.has(o.id));
+	const found = originsOf(state, node.info.id)?.filter(o => !scope.skips.has(o.id));
 	/* the target of `names(x) <- v` is defined there, while the replacement function reads what it held before */
 	const origins = found !== undefined && found.length > 1 ? found.filter(o => o.id !== node.info.id) : found;
 	if(origins === undefined || origins.length === 0) {
@@ -600,7 +613,7 @@ function termOfUncached(this: void, node: RNodeWithParent, scope: Scope, state: 
 				return seen;
 			}
 			/* a function of the body's own has no name a caller could call it by */
-			if(Dataflow.origin(state.graph, node.info.id)?.some(o => o.type === OriginType.FunctionCallOrigin && scope.vertex.subflow.graph.has(o.id))) {
+			if(originsOf(state, node.info.id)?.some(o => o.type === OriginType.FunctionCallOrigin && scope.vertex.subflow.graph.has(o.id))) {
 				return undefined;
 			}
 			const args = vertex !== undefined && CallProps.hasAny(state.info(vertex.name), ImpureProps) ? undefined : argumentTerms(node.arguments, scope, state, depth);
@@ -975,7 +988,7 @@ function decidedMethods(this: void, dispatch: DataflowGraphVertexFunctionCall, v
 		decided ||= at.within === undefined;
 		level = at.within;
 	}
-	return decided ? (Dataflow.origin(state.graph, dispatch.id) ?? []).filter(o => o.type === OriginType.FunctionCallOrigin && !ruledOut.has(o.id)).map(o => o.id) : undefined;
+	return decided ? (originsOf(state, dispatch.id) ?? []).filter(o => o.type === OriginType.FunctionCallOrigin && !ruledOut.has(o.id)).map(o => o.id) : undefined;
 }
 
 /** The formals a function rebinds anywhere, which `NextMethod` hands on with the value they have by then. */
@@ -1120,7 +1133,7 @@ function operatorMethods(this: void, name: BrandedIdentifier, vertex: DataflowGr
 /** `FUN(x)` for a formal `FUN`: a formal not holding a function makes R look for a function of the same name. */
 function calledFormal(this: void, call: RFunctionCall<ParentInformation> & { readonly named: true }, path: Path, run: Run): void {
 	const { state, scope } = run;
-	const reads = Dataflow.origin(state.graph, call.info.id)?.filter(o => o.type === OriginType.ReadVariableOrigin) ?? [];
+	const reads = originsOf(state, call.info.id)?.filter(o => o.type === OriginType.ReadVariableOrigin) ?? [];
 	const formal = reads.length === 1 ? scope.formals.get(reads[0].id) : undefined;
 	if(formal !== undefined && formal === Identifier.getName(call.functionName.content)) {
 		addClause(run, path, callable(GuardTerm.formal(formal), n => isDefined(n, state), false), call.info.id, { kind: 'implicit' });

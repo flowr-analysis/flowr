@@ -20,6 +20,7 @@ import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processin
 import { ExitPointType } from '../../../../../src/dataflow/info';
 import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 import { analyze } from '../../../_helper/analyzer';
+import { SourceRange } from '../../../../../src/util/range';
 
 describe('Function Call', withTreeSitter(ts => {
 	describe('Calling previously defined functions', () => {
@@ -536,5 +537,32 @@ testFuncCorrect(1:5, sum)
 		graph.defineFunction('f2', ['r2'], { out: [], in: [], unknownReferences: [], entryPoint: 'r2', graph: new Set(['r2']), environment: defaultEnv() })
 			.definedBy('g', 'f2');
 		expect(Dataflow.callTargetsOf('c', graph)).toContain('f2');
+	});
+	/* the shared walks go through the body of a function once for all calls running it, and bind its parameters per call */
+	test('shared target walks bind the parameters of each call of a function calling itself', async() => {
+		const analyzer = await analyze(ts, [
+			'pick <- function(f, g, n) { if(n > 0) pick(f, g, n - 1) else f }',
+			'a <- function() 1', 'b <- function() 2', 'id <- function(h) h',
+			'pick(a, b, 2)()', 'pick(b, a, 3)()', 'id(a)()', 'id(b)()'
+		].join('\n'));
+		const graph = (await analyzer.dataflow()).graph;
+		const calls = graph.vertices(true).filter(([, v]) => DfgVertex.isFunctionCall(v)).map(([id]) => id).toArray();
+		const alone = graph.withoutSharedTargetWalks(() => calls.map(c => Dataflow.callTargetsOf(c, graph).toSorted()));
+		expect(calls.map(c => Dataflow.callTargetsOf(c, graph).toSorted())).toEqual(alone);
+		/* the function defined on the given line */
+		const definitionOn = (line: number) => graph.vertices(true).find(([id, v]) => DfgVertex.isFunctionDefinition(v) && SourceRange.getStartLine(graph.idMap?.get(id)?.location) === line)?.[0];
+		const unnamed = calls.filter(c => {
+			const vertex = graph.getVertex(c);
+			return DfgVertex.isFunctionCall(vertex) && Identifier.getName(vertex.name).startsWith(UnnamedFunctionCallPrefix);
+		});
+		const [a, b] = [definitionOn(2), definitionOn(3)];
+		expect(a).toBeDefined();
+		expect(b).toBeDefined();
+		/* the call to `id` binds `h` to what it passes */
+		const lastTwo = unnamed.slice(-2).map(c => Dataflow.callTargetsOf(c, graph));
+		expect(lastTwo[0]).toContain(a);
+		expect(lastTwo[0]).not.toContain(b);
+		expect(lastTwo[1]).toContain(b);
+		expect(lastTwo[1]).not.toContain(a);
 	});
 }));

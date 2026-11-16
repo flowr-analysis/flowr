@@ -45,7 +45,7 @@ import { Dataflow } from '../graph/df-helper';
 import { ClosureFrames } from '../graph/closure-frames';
 import { AmbientStateName } from '../environments/ambient-state-name';
 import { instanceBindingsOfMethod } from '../fn/class-declaration';
-import { ReachSummaries, unionOfSets } from '../../util/fixpoint';
+import { ReachSummaries, unionOfAllSets, unionOfSets } from '../../util/fixpoint';
 import { dataLoadNodesForNamespace } from './process/functions/call/built-in/built-in-library';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
@@ -634,8 +634,11 @@ function subsets(node: RNode<ParentInformation> | undefined): boolean {
 	return RAccess.is(node) && node.operator === '[';
 }
 
-/** One step of the walk for the function definitions that reads may evaluate to: hands each state the walk goes on to from `id` to `next`, or returns `id` if the walk ends at it, being a built-in or a function definition. */
-function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: boolean, call: NodeId | undefined, scopes: CallScopes, next: (id: NodeId, viaAccess: boolean, call: NodeId | undefined) => void): NodeId | undefined {
+/**
+ * One step of the walk for the function definitions that reads may evaluate to: hands each state the walk goes on to from `id` to `next`, or returns `id` if the walk ends at it, being a built-in or a function definition.
+ * With `bindsLater`, the step leaves the parameters the call may bind to it: it gets the arguments a parameter at `id` may hold, whose states (without a call) the walk goes on to, and the call keeps just those it passes, if it passes any.
+ */
+function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: boolean, call: NodeId | undefined, scopes: CallScopes, next: (id: NodeId, viaAccess: boolean, call: NodeId | undefined) => void, bindsLater?: (arguments_: readonly NodeId[], viaAccess: boolean) => void): NodeId | undefined {
 	if(NodeId.isBuiltIn(id)) {
 		return id;
 	}
@@ -669,6 +672,18 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 		}
 	}
 	if(!hasReturnEdge && followTargets) {
+		if(bindsLater !== undefined && call !== undefined) {
+			const bindable = followTargets.filter(([, onCall]) => onCall).map(([target]) => target);
+			if(bindable.length > 0) {
+				bindsLater(bindable, nextViaAccess);
+			}
+			for(const [target, onCall] of followTargets) {
+				if(!onCall) {
+					next(target, nextViaAccess, scopedTo(graph, scopes, call, target));
+				}
+			}
+			return undefined;
+		}
 		/* a parameter the call binds holds only what that call passes, the walk then goes on in the caller */
 		const passed = call === undefined ? undefined : new Set(Dataflow.targetsOf(graph, call, EdgeType.Argument));
 		const bound = followTargets.some(([target, onCall]) => onCall && passed?.has(target));
@@ -679,6 +694,17 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 		}
 	}
 	return undefined;
+}
+
+/** The arguments a parameter may hold that `call` binds it to: those it passes, all of them if it passes none (see {@link walkLinkedDefinitions}). */
+function boundBy(graph: DataflowGraph, call: NodeId, arguments_: readonly NodeId[], passedBy: Map<NodeId, ReadonlySet<NodeId>>): readonly NodeId[] {
+	let passed = passedBy.get(call);
+	if(passed === undefined) {
+		passed = new Set(Dataflow.targetsOf(graph, call, EdgeType.Argument));
+		passedBy.set(call, passed);
+	}
+	const bound = arguments_.filter(a => passed.has(a));
+	return bound.length > 0 ? bound : arguments_;
 }
 
 /** A string where a function is wanted names the function (`match.fun`, `do.call` and the apply family look it up), which is resolved where the string is written, by the environment of the call it is passed to. */
@@ -706,17 +732,24 @@ function scopedTo(graph: DataflowGraph, scopes: CallScopes, call: NodeId | undef
 	if(call === undefined || idMap === undefined) {
 		return call;
 	}
-	let bodies = scopes.get(call);
-	if(bodies === undefined) {
-		bodies = new Set(Dataflow.targetsOf(graph, call, EdgeType.Calls | EdgeType.Returns).map(t => RNode.findEnclosing(t, idMap, RFunctionDefinition.is)).filter(isNotUndefined));
-		scopes.set(call, bodies);
-	}
+	const bodies = bodiesRunBy(graph, scopes, call);
 	for(let node = idMap.get(target); node !== undefined; node = RNode.directParent(node, idMap)) {
 		if(bodies.has(node.info.id)) {
 			return call;
 		}
 	}
 	return undefined;
+}
+
+/** The function definitions whose bodies `call` runs, see {@link scopedTo}. */
+function bodiesRunBy(graph: DataflowGraph, scopes: CallScopes, call: NodeId): ReadonlySet<NodeId> {
+	let bodies = scopes.get(call);
+	if(bodies === undefined) {
+		const idMap = graph.idMap;
+		bodies = idMap === undefined ? new Set() : new Set(Dataflow.targetsOf(graph, call, EdgeType.Calls | EdgeType.Returns).map(t => RNode.findEnclosing(t, idMap, RFunctionDefinition.is)).filter(isNotUndefined));
+		scopes.set(call, bodies);
+	}
+	return bodies;
 }
 
 /** What a state of {@link LinkedFunctionResolver} reaches, the ids of function definitions and built-ins. */
@@ -728,15 +761,39 @@ export class LinkedFunctionResolver {
 	private readonly graph:     DataflowGraph;
 	/** the number of each state, by whether an access led to it, its vertex, and its call */
 	private readonly numbers:   readonly [Map<NodeId, Map<NodeId | undefined, number>>, Map<NodeId, Map<NodeId | undefined, number>>] = [new Map(), new Map()];
-	private readonly states:    [id: NodeId, viaAccess: boolean, call: NodeId | undefined][] = [];
+	/** a state of the walk, or (with `region`) the state of {@link LinkedFunctionResolver#regions} the walk is in under any call running the same bodies */
+	private readonly states:    [id: NodeId, viaAccess: boolean, call: NodeId | undefined, region?: number][] = [];
 	/** the built-ins and function definitions the walk ends at, by their state */
 	private readonly ends =     new Map<number, Reached>();
 	private readonly scopes:    CallScopes = new Map();
+	private readonly passedBy = new Map<NodeId, ReadonlySet<NodeId>>();
 	private readonly summaries: ReachSummaries<number, Reached>;
+	/**
+	 * Within the bodies a call runs, the walk goes the same way under every call running them, but for the parameters it binds:
+	 * a function calling itself (as `[.data.table` does with each `x[...]`) would else have the walk visit its body once per call.
+	 * So the walk in these bodies is done once per set of bodies, by `region`, with `scope` standing for any call running them, and
+	 * leaves the parameters it reaches (`hit`) to each call.
+	 */
+	private readonly regions = {
+		numbers:  new Map<NodeId, readonly [Map<NodeId, number>, Map<NodeId, number>]>(),
+		states:   [] as [id: NodeId, viaAccess: boolean, scope: NodeId][],
+		/* by region state, filled once it is expanded */
+		within:   [] as (readonly number[])[],
+		leaving:  [] as (readonly number[])[],
+		hit:      new Map<number, readonly [arguments_: readonly NodeId[], viaAccess: boolean]>(),
+		/** the region states, by their scope, that hold the outer state of the walk in them */
+		outer:    new Map<number, number>(),
+		/** the scope standing for each call, by the bodies it runs */
+		scopeOf:  new Map<NodeId, NodeId>(),
+		byBodies: new Map<string, NodeId>()
+	};
+	/** the region states whose parameters a walk from a region state reaches */
+	private readonly hits: ReachSummaries<number, ReadonlySet<number>>;
 
 	constructor(graph: DataflowGraph) {
 		this.graph = graph;
-		this.summaries = new ReachSummaries(state => this.expand(state), state => this.ends.get(state), { empty: ReachesNothing, concat: unionOfSets });
+		this.summaries = new ReachSummaries(state => this.expand(state), state => this.ends.get(state), { empty: ReachesNothing, concat: unionOfSets, concatAll: unionOfAllSets });
+		this.hits = new ReachSummaries<number, ReadonlySet<number>>(region => this.expandRegion(region).within, region => this.regions.hit.has(region) ? new Set([region]) : undefined, { empty: new Set<number>(), concat: unionOfSets, concatAll: unionOfAllSets });
 	}
 
 	/** The function definitions and built-ins the reads with the given ids may evaluate to. */
@@ -768,9 +825,91 @@ export class LinkedFunctionResolver {
 		return state;
 	}
 
+	/** The scope standing for every call that runs the same bodies as `call`. */
+	private scopeOf(call: NodeId): NodeId {
+		let scope = this.regions.scopeOf.get(call);
+		if(scope === undefined) {
+			const bodies = bodiesRunBy(this.graph, this.scopes, call);
+			const key = [...bodies].map(String).sort().join(',');
+			scope = this.regions.byBodies.get(key);
+			if(scope === undefined) {
+				/* no vertex has this id, the walk only asks the scopes for the bodies it runs */
+				scope = `\u0000bodies:${key}`;
+				this.scopes.set(scope, bodies);
+				this.regions.byBodies.set(key, scope);
+			}
+			this.regions.scopeOf.set(call, scope);
+		}
+		return scope;
+	}
+
+	private regionState(id: NodeId, viaAccess: boolean, scope: NodeId): number {
+		let byId = this.regions.numbers.get(scope);
+		if(byId === undefined) {
+			byId = [new Map(), new Map()];
+			this.regions.numbers.set(scope, byId);
+		}
+		let region = byId[viaAccess ? 1 : 0].get(id);
+		if(region === undefined) {
+			region = this.regions.states.push([id, viaAccess, scope]) - 1;
+			byId[viaAccess ? 1 : 0].set(id, region);
+		}
+		return region;
+	}
+
+	/** The state of the walk that is `region`. */
+	private outerOf(region: number): number {
+		let state = this.regions.outer.get(region);
+		if(state === undefined) {
+			const [id, viaAccess, scope] = this.regions.states[region];
+			state = this.states.push([id, viaAccess, scope, region]) - 1;
+			this.regions.outer.set(region, state);
+		}
+		return state;
+	}
+
+	/** The steps from a region state, to the states of its scope it goes on to (`within`), and to the others (`leaving`). */
+	private expandRegion(region: number): { within: readonly number[], leaving: readonly number[] } {
+		const known = this.regions.within[region];
+		if(known !== undefined) {
+			return { within: known, leaving: this.regions.leaving[region] };
+		}
+		const [id, viaAccess, scope] = this.regions.states[region];
+		const within: number[] = [];
+		const leaving: number[] = [];
+		const end = walkLinkedDefinitions(this.graph, id, viaAccess, scope, this.scopes, (target, nextViaAccess, nextCall) => {
+			if(nextCall === scope) {
+				within.push(this.regionState(target, nextViaAccess, scope));
+			} else {
+				leaving.push(this.state(target, nextViaAccess, nextCall));
+			}
+		}, (arguments_, nextViaAccess) => this.regions.hit.set(region, [arguments_, nextViaAccess]));
+		if(end !== undefined) {
+			this.ends.set(this.outerOf(region), new Set([end]));
+		}
+		this.regions.within[region] = within;
+		this.regions.leaving[region] = leaving;
+		return { within, leaving };
+	}
+
 	/** The states the walk goes on to from `state`, none for a built-in or function definition it ends at. */
 	private expand(state: number): readonly number[] {
-		const [id, viaAccess, call] = this.states[state];
+		const [id, viaAccess, call, region] = this.states[state];
+		if(region !== undefined) {
+			const { within, leaving } = this.expandRegion(region);
+			return [...within.map(r => this.outerOf(r)), ...leaving];
+		} else if(call !== undefined) {
+			/* the walk in the bodies the call runs, and the arguments of the call the parameters it reaches there are bound to */
+			const entry = this.regionState(id, viaAccess, this.scopeOf(call));
+			const successors = [this.outerOf(entry)];
+			for(const hit of this.hits.of(entry)) {
+				const [arguments_, nextViaAccess] = this.regions.hit.get(hit) as readonly [readonly NodeId[], boolean];
+				for(const argument of boundBy(this.graph, call, arguments_, this.passedBy)) {
+					successors.push(this.state(argument, nextViaAccess, undefined));
+				}
+			}
+			return successors;
+		}
 		const successors: number[] = [];
 		const end = walkLinkedDefinitions(this.graph, id, viaAccess, call, this.scopes, (target, nextViaAccess, nextCall) => {
 			successors.push(this.state(target, nextViaAccess, nextCall));

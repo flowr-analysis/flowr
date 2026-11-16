@@ -405,7 +405,37 @@ function mayBeFunctionSource(graph: DataflowGraph, info: DataflowGraphVertexFunc
 	}
 	const vertex = graph.getVertex(target);
 	return DfgVertex.hasOrigin(info, BuiltInProcName.Unnamed) || !DfgVertex.isFunctionCall(vertex)
-		|| (!unbound && (vertex.origin === 'unnamed' || vertex.origin.some(o => o !== BuiltInProcName.Default)));
+		|| (!unbound && (vertex.origin === 'unnamed' || vertex.origin.some(o => o !== BuiltInProcName.Default))
+			/* a call only reaching built-ins finds its function among the calls of its scope (`library(dplyr)`), what it reads elsewhere it waits for (a site signaling to a handler that leads to it) */
+			&& (!info.onlyBuiltin || isInScopeOf(graph, info.id, target)));
+}
+
+/** Whether `target` lies in the body of a function enclosing `call` (or at the top level), where a call may bind a name `call` sees. */
+function isInScopeOf(graph: DataflowGraph, call: NodeId, target: NodeId): boolean {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return true;
+	}
+	const own = enclosingFunctionOf(target, idMap);
+	if(own === undefined) {
+		return true;
+	}
+	for(let fn = enclosingFunctionOf(call, idMap); fn !== undefined; fn = enclosingFunctionOf(fn, idMap)) {
+		if(fn === own) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/** The nearest function definition `id` lies in, none at the top level. */
+function enclosingFunctionOf(id: NodeId, idMap: AstIdMap): NodeId | undefined {
+	for(let node = idMap.get(id), parent = node && RNode.directParent(node, idMap); parent !== undefined; parent = RNode.directParent(parent, idMap)) {
+		if(RFunctionDefinition.is(parent)) {
+			return parent.info.id;
+		}
+	}
+	return undefined;
 }
 
 /** Whether `target` lies within an argument of `call`, which the call reads when it forces that argument, not to find its function. */

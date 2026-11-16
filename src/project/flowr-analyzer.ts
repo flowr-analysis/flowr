@@ -224,6 +224,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	private parserInfo:      KnownParserInformation | undefined;
 	/** the graph whose calls are already being qualified in the background, see {@link qualifyInBackground} */
 	private qualifying:      DataflowGraph | undefined;
+	/** stops the background qualification of {@link qualifying}, so a dropped graph is neither worked on nor kept */
+	private stopQualifying:  (() => void) | undefined;
 
 	/**
 	 * Create a new analyzer instance.
@@ -260,22 +262,32 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public reset() {
+		this.stopBackgroundWork();
 		this.ctx.reset();
 		this.cache.reset();
 	}
 
+	private stopBackgroundWork(): void {
+		this.stopQualifying?.();
+		this.stopQualifying = undefined;
+		this.qualifying = undefined;
+	}
+
 	public receive(event: InvalidationEvent): void {
+		this.stopBackgroundWork();
 		this.ctx.receive(event);
 		this.cache.receive(event);
 	}
 
 	public updateConfig(update: DeepPartial<FlowrConfig>): void {
+		this.stopBackgroundWork();
 		this.ctx.updateConfig(update);
 		// the parse/dataflow results were computed under the previous config, so they must be recomputed
 		this.cache.reset();
 	}
 
 	public resetConfig(): void {
+		this.stopBackgroundWork();
 		this.ctx.resetConfig();
 		this.cache.reset();
 	}
@@ -325,8 +337,9 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	public async dataflow(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['dataflow']>> {
 		const dataflow = await this.cache.dataflow(force);
 		if(this.qualifying !== dataflow.graph) {
+			this.stopBackgroundWork();
 			this.qualifying = dataflow.graph;
-			qualifyInBackground(dataflow.graph);
+			this.stopQualifying = qualifyInBackground(dataflow.graph, () => this.cache.peekDataflow()?.graph === dataflow.graph);
 		}
 		return dataflow;
 	}
@@ -379,27 +392,44 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	 * Closing is only required for an RShell/remote engine, but this also frees the cached parse trees.
 	 */
 	public close() {
+		this.stopBackgroundWork();
 		this.cache.reset();
 		return this.parser?.close();
 	}
 }
 
-/** Qualifies calls (see {@link Dataflow.qualify}) in idle time on unreferenced timers, so later queries find it done. */
-function qualifyInBackground(graph: DataflowGraph): void {
+/**
+ * Qualifies calls (see {@link Dataflow.qualify}) in idle time on unreferenced timers, so later queries find it done.
+ * Stops once the graph is no longer `current`, and returns how to stop it right away: a pending timer keeps the graph alive.
+ */
+function qualifyInBackground(graph: DataflowGraph, current: () => boolean): () => void {
 	const calls = Array.from(graph.verticesOfType(VertexType.FunctionCall), ([id]) => id);
 	let next = 0;
+	let timer: ReturnType<typeof setTimeout> | undefined;
 	function step() {
+		timer = undefined;
+		if(!current()) {
+			return;
+		}
 		for(const end = Math.min(next + 256, calls.length); next < end; next++) {
 			Dataflow.qualify(calls[next], graph, false);
 		}
 		if(next < calls.length) {
-			later(step);
+			timer = later(step);
 		}
 	}
-	later(step);
+	timer = later(step);
+	return () => {
+		if(timer !== undefined) {
+			clearTimeout(timer);
+			timer = undefined;
+		}
+	};
 }
 
 /** an unreferenced timer where there are such (node), a plain one elsewhere (the browser returns a number) */
-function later(step: () => void): void {
-	(setTimeout(step, 0) as { unref?: () => void }).unref?.();
+function later(step: () => void): ReturnType<typeof setTimeout> {
+	const timer = setTimeout(step, 0);
+	(timer as { unref?: () => void }).unref?.();
+	return timer;
 }

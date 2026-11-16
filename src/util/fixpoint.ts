@@ -1,5 +1,6 @@
 import { Monoid } from './monoid';
 import { isNotUndefined } from './assert';
+import { uniqueArray } from './collections/arrays';
 /** the number of a node whose component is complete, see {@link StronglyConnected} */
 const Complete = -1;
 
@@ -105,6 +106,34 @@ export class ReachSummaries<K, V> {
 		this.components.visit(node);
 		return this.values.get(node) as V;
 	}
+}
+
+/**
+ * The union of all sets, one of them if it holds all others: joining them pairwise copies what was joined so far for every set
+ * that adds to it, which for a large component of {@link ReachSummaries} (thousands of successors with sets of their own) is quadratic.
+ */
+export function unionOfAllSets<T>(sets: readonly ReadonlySet<T>[]): ReadonlySet<T> {
+	/* the successors of a component often share the summary of one component they lead to */
+	const distinct = uniqueArray(sets);
+	if(distinct.length === 0) {
+		return new Set();
+	}
+	let largest = distinct[0];
+	for(const set of distinct) {
+		if(set.size > largest.size) {
+			largest = set;
+		}
+	}
+	if(distinct.every(set => set === largest || set.isSubsetOf(largest))) {
+		return largest;
+	}
+	const union = new Set(largest);
+	for(const set of distinct) {
+		for(const item of set) {
+			union.add(item);
+		}
+	}
+	return union;
 }
 
 /** The union of both sets, one of them if it holds the other, so summaries share their sets wherever they can. */

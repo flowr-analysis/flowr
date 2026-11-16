@@ -1,4 +1,4 @@
-import { unionOfSets } from './fixpoint';
+import { unionOfAllSets, unionOfSets } from './fixpoint';
 
 /** Values that combine: `concat` is associative and `empty` changes nothing. */
 export interface Monoid<T> {
@@ -31,6 +31,6 @@ export const Monoid = {
 	any: { empty: false, concat: (a: boolean, b: boolean) => a || b } as Monoid<boolean>,
 	/** The union of sets, which shares a set wherever it holds the other, see {@link unionOfSets}. */
 	set<T>(this: void): Monoid<ReadonlySet<T>> {
-		return { empty: new Set<T>(), concat: unionOfSets };
+		return { empty: new Set<T>(), concat: unionOfSets, concatAll: unionOfAllSets };
 	}
 } as const;

@@ -207,6 +207,17 @@ export class DataflowGraph<
 
 	/* the qualified call names, built on demand and dropped on every change, as vertices and edges both decide them */
 	private qualifiedNames?: QualificationCache;
+	/* what views of the graph derive from it, per key, dropped on every change like the qualified names */
+	private derived?:        Map<symbol, unknown>;
+
+	/** What `create` derives from the graph, made once and kept under `key` until the graph changes. */
+	public derivedUntilChanged<T>(key: symbol, create: () => T): T {
+		this.derived ??= new Map();
+		if(!this.derived.has(key)) {
+			this.derived.set(key, create());
+		}
+		return this.derived.get(key) as T;
+	}
 
 	toJSON(): DataflowGraphJson {
 		return {
@@ -379,6 +390,7 @@ export class DataflowGraph<
 		guard(!this.consumed, 'this graph was consumed by a merge and must not be changed any more');
 		this.qualifiedNames = undefined;
 		this.targetWalks = undefined;
+		this.derived = undefined;
 	}
 
 	/** For a node of the normalized AST: `nodeId` if it is a DFG vertex itself, else the DFG vertices linked to it, else `undefined`. */

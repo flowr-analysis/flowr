@@ -603,11 +603,11 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	}
 
 	outgoingEdges(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
-		return this.isView ? controlFlowEdges((this.dfg as DataflowGraph).outgoingEdges(node)) : this.edgeInfos.get(node);
+		return this.isView ? viewEdges(this.dfg as DataflowGraph, ViewOutgoing, node, dfg => dfg.outgoingEdges(node)) : this.edgeInfos.get(node);
 	}
 
 	ingoingEdges(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
-		return this.isView ? controlFlowEdges((this.dfg as DataflowGraph).ingoingEdges(node)) : this.reverse().get(node);
+		return this.isView ? viewEdges(this.dfg as DataflowGraph, ViewIngoing, node, dfg => dfg.ingoingEdges(node)) : this.reverse().get(node);
 	}
 
 	/** @see {@link ReadOnlyControlFlowGraph#edgesFrom|edgesFrom()} */
@@ -847,6 +847,24 @@ function deleteNestedEdge(map: Map<NodeId, Map<NodeId, CfgEdge>>, from: NodeId, 
 	if(edges?.size === 0) {
 		map.delete(from);
 	}
+}
+
+/** the keys under which a view keeps the control flow part of each vertex's edges with the dataflow graph, see {@link viewEdges} */
+const ViewOutgoing = Symbol('cfg-view-outgoing');
+const ViewIngoing = Symbol('cfg-view-ingoing');
+
+/**
+ * The control flow part of the edges `edgesOf` gives for `node`, filtered once per vertex until the graph changes:
+ * a vertex read from many places has thousands of dataflow edges, and walks over the control flow ask for them again and again.
+ */
+function viewEdges(dfg: DataflowGraph, key: symbol, node: NodeId, edgesOf: (dfg: DataflowGraph) => ReadonlyMap<NodeId, DfEdge> | undefined): ReadonlyMap<NodeId, CfgEdge> | undefined {
+	const known = dfg.derivedUntilChanged(key, () => new Map<NodeId, ReadonlyMap<NodeId, CfgEdge> | undefined>());
+	if(known.has(node)) {
+		return known.get(node);
+	}
+	const edges = controlFlowEdges(edgesOf(dfg));
+	known.set(node, edges);
+	return edges;
 }
 
 /** The control flow part of the given edges, or `undefined` if none of them carries any. */

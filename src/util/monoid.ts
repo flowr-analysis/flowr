@@ -20,7 +20,7 @@ export const Monoid = {
 	name: 'Monoid',
 	/** Combines all values, `empty` if there are none. */
 	fold<T>(this: void, monoid: Monoid<T>, values: Iterable<T>): T {
-		const all = [...values];
+		const all: readonly T[] = Array.isArray(values) ? values : [...values];
 		return monoid.concatAll?.(all) ?? all.reduce((a, b) => monoid.concat(a, b), monoid.empty);
 	},
 	/** Combines what `f` makes of each item, `empty` if there are none. */

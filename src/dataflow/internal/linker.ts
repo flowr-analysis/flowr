@@ -400,14 +400,37 @@ export type CalledFunctions = {
 function mayBeFunctionSource(graph: DataflowGraph, info: DataflowGraphVertexFunctionCall, target: NodeId, e: DfEdge, unbound = false): boolean {
 	if(DfEdge.includesType(e, EdgeType.Calls | EdgeType.DefinedByOnCall)) {
 		return true;
-	} else if(isWithinArgumentOf(graph, info.id, target)) {
+	} else if(DfEdge.includesType(e, EdgeType.Returns) || isWithinArgumentOf(graph, info.id, target)) {
+		/* what a call returns (a method a built-in runs, `message(cnd)` going on with `conditionMessage`) is its value, not its function */
 		return false;
 	}
 	const vertex = graph.getVertex(target);
-	return DfgVertex.hasOrigin(info, BuiltInProcName.Unnamed) || !DfgVertex.isFunctionCall(vertex)
-		|| (!unbound && (vertex.origin === 'unnamed' || vertex.origin.some(o => o !== BuiltInProcName.Default))
-			/* a call only reaching built-ins finds its function among the calls of its scope (`library(dplyr)`), what it reads elsewhere it waits for (a site signaling to a handler that leads to it) */
-			&& (!info.onlyBuiltin || isInScopeOf(graph, info.id, target)));
+	if(DfgVertex.hasOrigin(info, BuiltInProcName.Unnamed)) {
+		return true;
+	} else if(info.environment === undefined) {
+		/*
+		 * a call that only reached built-ins when it was processed keeps no environment, so its name is bound by a definition or a built-in call of its scope binding names (`library(dplyr)`);
+		 * a use, a call of the code (what it lets escape is read at its definition) or a call elsewhere is what it waits for (an earlier call that may raise, a site signaling to a handler that leads to it)
+		 */
+		return (!DfgVertex.isUse(vertex) || isWithinCall(graph, info.id, target)) && (!DfgVertex.isFunctionCall(vertex)
+			|| (vertex.origin !== 'unnamed' && vertex.origin.some(o => o !== BuiltInProcName.Default) && !DfgVertex.hasOrigin(vertex, BuiltInProcName.Function) && isInScopeOf(graph, info.id, target)));
+	}
+	/* a use outside the call is one it waits for (an earlier one forcing a promise that may raise), not one naming its function */
+	return (!DfgVertex.isUse(vertex) || isWithinCall(graph, info.id, target)) && (!DfgVertex.isFunctionCall(vertex) || (!unbound && (vertex.origin === 'unnamed' || vertex.origin.some(o => o !== BuiltInProcName.Default))));
+}
+
+/** Whether `target` is part of `call` (true without the AST to tell). */
+function isWithinCall(graph: DataflowGraph, call: NodeId, target: NodeId): boolean {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return true;
+	}
+	for(let node = idMap.get(target); node !== undefined; node = RNode.directParent(node, idMap)) {
+		if(node.info.id === call) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /** Whether `target` lies in the body of a function enclosing `call` (or at the top level), where a call may bind a name `call` sees. */

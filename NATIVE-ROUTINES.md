@@ -102,6 +102,22 @@ means which fact. They are a finite, reviewable list in the script, each entry i
 of the function (WRE, POSIX, ISO C/C++), and an entry missing from them only makes routines *open*. It
 never gives them a wrong fact.
 
+### Rust
+
+Rust in `src/rust/` (extendr, savvy, roxido, plain `extern "C"`) is read by `native/rust_facts.py` in the
+tracker: a scanner over the source text, no compiler and no `syn`. It finds the symbols R calls
+(`wrap__f`, `savvy_f__ffi`, `#[no_mangle]` functions) and the same fact families as for C, plus:
+
+| fact | from |
+|---|---|
+| `error:panic` | `panic!`, `unwrap`, `expect`, indexing; the frameworks turn a panic into an R error |
+| `parallel:rayon`, `parallel:std-thread`, `parallel:async` | rayon iterators, `std::thread`, async runtimes |
+| `rust:unsafe` | an `unsafe` block or function |
+| `platform:target_os=windows`, ... | `cfg(...)` attributes, in Rust's `key=value` form |
+
+A Rust routine is never closed: the scanner cannot tell which crate or trait a method call goes to, so
+its facts are a lower bound. Vendored crates are counted, not read.
+
 ## 4. Schema (flowR `src/project/sigdb/schema.ts`)
 
 Per package version, next to `functions` and `classes`:
@@ -113,7 +129,7 @@ interface SigNativeRoutineInfo {
   name:       string            // registered name, or the symbol the R code names
   iface?:     '.Call' | '.C' | '.Fortran' | '.External'   // registered interface
   symbol?:    string            // linker symbol when different (`forder`, `qpgen2_`)
-  lang?:      'c' | 'c++' | 'fortran'
+  lang?:      'c' | 'c++' | 'fortran' | 'rust'
   file?, line?                   // definition
   arity?:     number            // registered nargs (absent: not registered or -1 = any)
   rNames?:    string[]          // R variables binding it (useDynLib .fixes / explicit symbols)

@@ -167,9 +167,9 @@ export type SigClass = [nameIdx: number, system: SigClassSystem, props: number, 
 	| [nameIdx: number, system: SigClassSystem, props: number, supers: number[], slots: SigSlot[], pkgIdx: number];
 
 /** the language a native routine is written in, one on-disk number (`0` = not known) */
-export const enum NativeLang { Unknown = 0, C = 1, Cxx = 2, Fortran = 3 }
+export const enum NativeLang { Unknown = 0, C = 1, Cxx = 2, Fortran = 3, Rust = 4 }
 /** the {@link NativeLang} values in order, with their names (for decoding) */
-export const NativeLangNames = [undefined, 'c', 'c++', 'fortran'] as const;
+export const NativeLangNames = [undefined, 'c', 'c++', 'fortran', 'rust'] as const;
 /** the interface a routine is registered for (`R_registerRoutines`), one on-disk number (`0` = not registered) */
 export const enum NativeIface { None = 0, Call = 1, C = 2, Fortran = 3, External = 4 }
 /** the {@link NativeIface} values in order, with the R function calling through them (for decoding) */

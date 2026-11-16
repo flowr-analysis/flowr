@@ -21,6 +21,7 @@ const Natives: SigNativeRoutineInfo[] = [
 	{ name: 'C_lxw_version', iface: '.Call', lang: 'c', file: 'src/write_xlsx.c', line: 214, arity: 0, params: [], facts: [], closed: true, pure: true },
 	{ name:   'qpgen2', iface:  '.Fortran', symbol: 'qpgen2_', lang:   'fortran', file:   'src/solve.QP.f', line:   81, arity:  17,
 		params: [{ name: 'dmat', read: true, written: true, escapes: true }, { name: 'meq', read: true, written: false }], facts:  [], closed: false },
+	{ name: 'wrap__to_snake', iface: '.Call', lang: 'rust', file: 'src/rust/src/lib.rs', line: 12, arity: 1, params: [{ name: 'x', read: true, written: false }], facts: ['error:panic'], closed: false },
 	{ name: 'ghost', iface: '.Call', arity: 1, undefined: true, closed: false }
 ];
 

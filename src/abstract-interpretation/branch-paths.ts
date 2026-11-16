@@ -171,15 +171,28 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 		if(paths !== undefined && paths.length > this.limit) {
 			return new BranchPathDomain([commonPath(paths)], this.limit) as this;
 		}
-		return new BranchPathDomain(value, this.limit) as this;
+		const created = new BranchPathDomain(value, this.limit) as this;
+		/* a copy of the same paths (as a product copies its entries) takes the same steps */
+		return value === this.value ? BranchPathDomain.withCommon(created, this.common) : created;
 	}
 
-	/** the steps all paths take, worked out once per value, as each join past the limit needs it of both sides */
+	/**
+	 * the steps all paths take, as each join past the limit needs them of both sides: carried along by the operations
+	 * when known, which is cheap (see {@link withCommon}), else worked out once per value
+	 */
 	private common: ReadonlySet<string> | undefined;
 
 	private commonSteps(this: this & BranchPathDomain): ReadonlySet<string> {
 		this.common ??= new Set(stepsInAll(this.value as ReadonlySet<string>));
 		return this.common;
+	}
+
+	/** The domain, knowing that its paths all take the `common` steps (if given) and no other step all of them take. */
+	private static withCommon<D extends BranchPathDomain>(domain: D, common: ReadonlySet<string> | undefined): D {
+		if(common !== undefined && domain.isValue()) {
+			(domain as BranchPathDomain).common ??= common;
+		}
+		return domain;
 	}
 
 	/** Past the limit, the joined paths are the one path of the steps both sides' paths all take, so only those are intersected. */
@@ -189,7 +202,8 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 		}
 		const union = (this.value as ReadonlySet<string>).union(other.value);
 		if(union.size <= this.limit) {
-			return this.create(union);
+			/* the steps all paths of either side take */
+			return BranchPathDomain.withCommon(this.create(union), this.common !== undefined && (other as BranchPathDomain).common !== undefined ? this.common.intersection((other as BranchPathDomain & this).common as ReadonlySet<string>) : undefined);
 		}
 		const common = this.commonSteps().intersection((other as BranchPathDomain & this).commonSteps());
 		const collapsed = new BranchPathDomain([encodePath(common)], this.limit);
@@ -200,7 +214,7 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 
 	/** Reached without any branch, as the start of a function body is. */
 	public static start(): BranchPathDomain {
-		return new BranchPathDomain(['']);
+		return BranchPathDomain.withCommon(new BranchPathDomain(['']), new Set());
 	}
 
 	protected override meetValue(this: this & BranchPathDomain, other: BoundedSetDomain<string>): this {
@@ -226,7 +240,8 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 			return this;
 		}
 		const taken = encodeStep(step);
-		return this.create([...this.value].map(path => withStep(path, taken)));
+		const common = (this as BranchPathDomain).common;
+		return BranchPathDomain.withCommon(this.create([...this.value].map(path => withStep(path, taken))), common === undefined ? undefined : new Set(common).add(taken));
 	}
 
 	/**

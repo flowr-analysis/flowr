@@ -171,9 +171,8 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 		if(paths !== undefined && paths.length > this.limit) {
 			return new BranchPathDomain([commonPath(paths)], this.limit) as this;
 		}
-		const created = new BranchPathDomain(value, this.limit) as this;
-		/* a copy of the same paths (as a product copies its entries) takes the same steps */
-		return value === this.value ? BranchPathDomain.withCommon(created, this.common) : created;
+		/* a domain never changes its paths, so a copy of the same ones (as a product copies its entries) is the domain itself */
+		return value === this.value ? this : new BranchPathDomain(value, this.limit) as this;
 	}
 
 	/**

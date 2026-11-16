@@ -10,6 +10,7 @@ import { SigDbExt, type SigDbPkgMetaIndex, type SigDbShard, type SigDbTier } fro
 import type { ByteRange, SigDbIndexWire, SigShardIndexWire } from './index-format';
 import { CompressedExtPattern, compressedExtOf, decompressSyncFor, readableExtsPreferred, stripCompressedExt, writeCodecs } from './codec';
 import { sigDbCacheDir } from './decompress';
+import { CacheScope, GlobalCaches } from '../../util/global-caches';
 
 export const SigDbManifestMagic = 'flowr-sigdb-manifest';
 export const SigDbManifestSchema = 2;
@@ -195,7 +196,7 @@ export function defaultSigDbPath(scope?: SigDbScope, searchRoots?: readonly stri
  * repeats it for nothing. Kept honest by remembering the modification time of every directory the scan read: a
  * bundle dropped next to the shipped ones bumps that directory and the next call rescans.
  */
-const defaultSigDbPathsMemo = new Map<string, { paths: readonly string[], watched: readonly (readonly [string, number])[] }>();
+const defaultSigDbPathsMemo = GlobalCaches.map<string, { paths: readonly string[], watched: readonly (readonly [string, number])[] }>('default-sigdb-paths', CacheScope.Process, 64);
 
 /** Whether every directory the memoized scan read still carries the modification time it had back then */
 function memoizedScanStillCurrent(watched: readonly (readonly [string, number])[]): boolean {

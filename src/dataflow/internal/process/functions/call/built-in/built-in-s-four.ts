@@ -38,6 +38,11 @@ export function s4ClassName(cls: ClassName): Identifier {
 	return S4ClassMark + cls;
 }
 
+/** Whether the name is one of {@link s4ClassName}, an entry of the class registry rather than a variable. */
+export function isS4ClassName(name: BrandedIdentifier): boolean {
+	return name.startsWith(S4ClassMark);
+}
+
 /** Which arguments of a call name S4 registrations it depends on rather than declares. */
 export interface S4UseConfig {
 	/** the argument naming the S4 generic the call answers or asks about (`f` in `setMethod`) */

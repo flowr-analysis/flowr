@@ -92,8 +92,17 @@ export function releasesOf(blob: Readonly<PkgBlob> | undefined): VersionRelease[
 		.sort((a, b) => RVersion.compare(a.version.str, b.version.str) || (a.date.getTime() - b.date.getTime()));
 }
 
-/** the version with the newest release date (falling back to `latest`, then the highest by R-version order) */
+/**
+ * The version a package's latest stands for: the `latest` its metadata records, which the builder chose
+ * knowing which repository still offers what; else the version with the newest release date; else the
+ * highest by R-version order. The dates come only second because they do not say which release is the
+ * current one: a GitHub build of the next version is dated after the CRAN release it builds on, and a
+ * version listed without a date would lose to every older one.
+ */
 export function newestVersion(blob: Readonly<PkgBlob>, latest: string): string | undefined {
+	if(blob.versions[latest]) {
+		return latest;
+	}
 	let best: string | undefined;
 	let bestDay = -Infinity;
 	for(const [ver, day] of Object.entries(blob.dates)) {
@@ -102,14 +111,8 @@ export function newestVersion(blob: Readonly<PkgBlob>, latest: string): string |
 			best = ver;
 		}
 	}
-	if(best !== undefined) {
-		return best;
-	}
-	if(blob.versions[latest]) {
-		return latest;
-	}
-	// no dates and no recorded latest: pick the highest by R's numeric-version order (not string order)
-	return RVersion.highest(Object.keys(blob.versions));
+	// no recorded latest and no dates: the highest by R's numeric-version order (not string order)
+	return best ?? RVersion.highest(Object.keys(blob.versions));
 }
 
 /** pick the version tuple: requested, else the package's latest, else the highest present by R-version order */

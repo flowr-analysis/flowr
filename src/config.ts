@@ -28,6 +28,7 @@ import { InputType } from './queries/catalog/input-sources-query/input-types';
 import { uniqueArray } from './util/collections/arrays';
 import { SecureMode } from './util/secure-mode';
 import type { BrandedNamespace } from './dataflow/environments/identifier';
+import { CacheScope, GlobalCaches } from './util/global-caches';
 
 /** Marks an option that decides what flowR executes or loads, it is dropped from untrusted configs (see {@link FlowrConfig.fromFile}). */
 function securitySensitive<T extends Joi.Schema>(schema: T): T {
@@ -1116,7 +1117,8 @@ export function persistSigDbPathToGlobalConfig(dbPath: string): string {
 	return file;
 }
 
-const taggedPathsCache = new Map<string, readonly (readonly string[])[]>();
+/** per schema meta tag, of which there are a handful */
+const taggedPathsCache = GlobalCaches.map<string, readonly (readonly string[])[]>('config-tagged-paths', CacheScope.Process, 64);
 
 function taggedPaths(meta: string): readonly (readonly string[])[] {
 	let paths = taggedPathsCache.get(meta);

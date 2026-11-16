@@ -1,5 +1,5 @@
 import { Monoid } from './monoid';
-import { isNotUndefined } from './assert';
+import { uniqueArray } from './collections/arrays';
 /** the number of a node whose component is complete, see {@link StronglyConnected} */
 const Complete = -1;
 
@@ -90,11 +90,25 @@ export class ReachSummaries<K, V> {
 	/**
 	 * @param next   - the nodes a node leads to, asked for once per node
 	 * @param own    - what a node contributes itself, asked for once per node after its successors
-	 * @param monoid - joins the values, its `concat` may return either of them if it subsumes the other but must not change them
+	 * @param monoid - joins the values, its `concat` may return either of them if it subsumes the other but must not change them; joining a value again changes nothing, so each is joined once
 	 */
 	constructor(next: (node: K) => Iterable<K>, own: (node: K) => V | undefined, monoid: Monoid<V>) {
 		this.components = new StronglyConnected(next, (members, successorsOf) => {
-			const value = Monoid.fold(monoid, members.flatMap(m => [own(m), ...successorsOf(m).map(s => this.values.get(s))]).filter(isNotUndefined));
+			/* each value once: a component may have millions of successors sharing the values of few components, and the members have none yet */
+			const values = new Set<V>();
+			for(const m of members) {
+				const mine = own(m);
+				if(mine !== undefined) {
+					values.add(mine);
+				}
+				for(const s of successorsOf(m)) {
+					const theirs = this.values.get(s);
+					if(theirs !== undefined) {
+						values.add(theirs);
+					}
+				}
+			}
+			const value = Monoid.fold(monoid, [...values]);
 			for(const m of members) {
 				this.values.set(m, value);
 			}
@@ -105,6 +119,34 @@ export class ReachSummaries<K, V> {
 		this.components.visit(node);
 		return this.values.get(node) as V;
 	}
+}
+
+/**
+ * The union of all sets, one of them if it holds all others: joining them pairwise copies what was joined so far for every set
+ * that adds to it, which for a large component of {@link ReachSummaries} (thousands of successors with sets of their own) is quadratic.
+ */
+export function unionOfAllSets<T>(sets: readonly ReadonlySet<T>[]): ReadonlySet<T> {
+	/* the successors of a component often share the summary of one component they lead to */
+	const distinct = uniqueArray(sets);
+	if(distinct.length === 0) {
+		return new Set();
+	}
+	let largest = distinct[0];
+	for(const set of distinct) {
+		if(set.size > largest.size) {
+			largest = set;
+		}
+	}
+	if(distinct.every(set => set === largest || set.isSubsetOf(largest))) {
+		return largest;
+	}
+	const union = new Set(largest);
+	for(const set of distinct) {
+		for(const item of set) {
+			union.add(item);
+		}
+	}
+	return union;
 }
 
 /** The union of both sets, one of them if it holds the other, so summaries share their sets wherever they can. */

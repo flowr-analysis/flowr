@@ -4,6 +4,8 @@ import { Top } from './domains/lattice';
 import { BoundedSetDomain, type BoundedSetLift } from './domains/bounded-set-domain';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { CacheScope, GlobalCaches } from '../util/global-caches';
+import { getOrSet } from '../util/collections/defaultmap';
 
 /**
  * One branch taken on the way to a node: the construct deciding it (`if`, `while`, `&&`, `||`, `switch`, ...), which
@@ -35,8 +37,67 @@ function encodePath(steps: ReadonlySet<string>): string {
 	return [...steps].sort().join(StepSeparator);
 }
 
+/* both memos hold node ids of the analyzed code, so a reset releases them, and are bounded, so a large package does not hold every path it saw */
+const MaxParsedPaths = 100_000;
+/** the sorted steps of each path seen lately: the same paths flow through the whole interpretation, so they are split once */
+const parsedPaths = GlobalCaches.map<string, readonly string[]>('branch-paths', CacheScope.Analysis, MaxParsedPaths);
+/** per path and step, the path taking it: a loop is interpreted until nothing changes, so the same continuations come up again */
+const continued = GlobalCaches.map<string, Map<string, string>>('branch-path-steps', CacheScope.Analysis, MaxParsedPaths);
+
+/** The steps of the path, sorted as {@link encodePath} sorts them. */
+function sortedSteps(path: string): readonly string[] {
+	return getOrSet(parsedPaths, path, () => path === '' ? [] : path.split(StepSeparator));
+}
+
 function stepsOf(path: string): Set<string> {
-	return new Set(path === '' ? [] : path.split(StepSeparator));
+	return new Set(sortedSteps(path));
+}
+
+/** The path with `step` taken as well, the same string as `encodePath(stepsOf(path).add(step))` without splitting and sorting again. */
+function withStep(path: string, step: string): string {
+	return getOrSet(getOrSet(continued, path, () => new Map<string, string>()), step, () => insertStep(path, step));
+}
+
+/** Where `step` is or belongs in the sorted `steps`. */
+function positionOf(steps: readonly string[], step: string): number {
+	let low = 0;
+	let high = steps.length;
+	while(low < high) {
+		const mid = (low + high) >>> 1;
+		if(steps[mid] < step) {
+			low = mid + 1;
+		} else {
+			high = mid;
+		}
+	}
+	return low;
+}
+
+function insertStep(path: string, step: string): string {
+	const steps = sortedSteps(path);
+	const low = positionOf(steps, step);
+	return steps[low] === step ? path : [...steps.slice(0, low), step, ...steps.slice(low)].join(StepSeparator);
+}
+
+/** Whether the sorted `steps` have `step`. */
+function hasStep(steps: readonly string[], step: string): boolean {
+	return steps[positionOf(steps, step)] === step;
+}
+
+/** The steps all of the paths take: what is common shrinks fast, so each further path is only searched for what is left, never split into a set. */
+function stepsInAll(paths: Iterable<string>): string[] {
+	let common: string[] | undefined;
+	for(const path of paths) {
+		const steps = sortedSteps(path);
+		common = common === undefined ? [...steps] : common.filter(step => hasStep(steps, step));
+	}
+	return common ?? [];
+}
+
+/** The steps all of the paths take, encoded as a path. */
+function commonPath(paths: readonly string[]): string {
+	/* the steps stay sorted, so they already are the path */
+	return stepsInAll(paths).join(StepSeparator);
 }
 
 /** The other way the step goes, the same branch taken the other way. */
@@ -84,25 +145,68 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 	public override create(value: BoundedSetLift<string> | string[]): this {
 		const paths = value === Top ? undefined : [...value as Iterable<string>];
 		if(paths !== undefined && paths.length > this.limit) {
-			const common = paths.map(stepsOf).reduce((a, b) => a.intersection(b));
-			return new BranchPathDomain([encodePath(common)], this.limit) as this;
+			return new BranchPathDomain([commonPath(paths)], this.limit) as this;
 		}
-		return new BranchPathDomain(value, this.limit) as this;
+		/* a domain never changes its paths, so a copy of the same ones (as a product copies its entries) is the domain itself */
+		return value === this.value ? this : new BranchPathDomain(value, this.limit) as this;
+	}
+
+	/**
+	 * the steps all paths take, as each join past the limit needs them of both sides: carried along by the operations
+	 * when known, which is cheap (see {@link withCommon}), else worked out once per value
+	 */
+	private common: ReadonlySet<string> | undefined;
+
+	private commonSteps(this: this & BranchPathDomain): ReadonlySet<string> {
+		this.common ??= new Set(stepsInAll(this.value as ReadonlySet<string>));
+		return this.common;
+	}
+
+	/** The domain, knowing that its paths all take the `common` steps (if given) and no other step all of them take. */
+	private static withCommon<D extends BranchPathDomain>(domain: D, common: ReadonlySet<string> | undefined): D {
+		if(common !== undefined && domain.isValue()) {
+			(domain as BranchPathDomain).common ??= common;
+		}
+		return domain;
+	}
+
+	/** Past the limit, the joined paths are the one path of the steps both sides' paths all take, so only those are intersected. */
+	protected override joinValue(this: this & BranchPathDomain, other: BoundedSetDomain<string>): this {
+		if(!other.isValue() || !(other instanceof BranchPathDomain)) {
+			return super.joinValue(other as never);
+		}
+		const union = (this.value as ReadonlySet<string>).union(other.value);
+		if(union.size <= this.limit) {
+			/* the steps all paths of either side take */
+			return BranchPathDomain.withCommon(this.create(union), this.common !== undefined && (other as BranchPathDomain).common !== undefined ? this.common.intersection((other as BranchPathDomain & this).common as ReadonlySet<string>) : undefined);
+		}
+		const common = this.commonSteps().intersection((other as BranchPathDomain & this).commonSteps());
+		const collapsed = new BranchPathDomain([encodePath(common)], this.limit);
+		/* its one path is these steps, so its own next join past the limit need not split it again */
+		collapsed.common = common;
+		return collapsed as this;
 	}
 
 	/** Reached without any branch, as the start of a function body is. */
 	public static start(): BranchPathDomain {
-		return new BranchPathDomain(['']);
+		return BranchPathDomain.withCommon(new BranchPathDomain(['']), new Set());
 	}
 
 	protected override meetValue(this: this & BranchPathDomain, other: BoundedSetDomain<string>): this {
 		if(!other.isValue()) {
 			return this.create(other.value);
 		}
-		const theirs: readonly string[] = [...other.value];
-		const mine: readonly string[] = [...this.value as ReadonlySet<string>];
-		const both = mine.flatMap(a => theirs.map(b => encodePath(stepsOf(a).union(stepsOf(b)))));
-		return this.create(both);
+		/*
+		 * past the limit, `create` keeps only the steps every pair takes, which are the steps all of mine take together with the steps
+		 * all of theirs take, as `(a1 | b1) & (a1 | b2) & ... = (a1 & a2 ...) | (b1 & b2 ...)`; so the pairs are not built at all
+		 */
+		if((this.value as ReadonlySet<string>).size * other.value.size > this.limit) {
+			const common = new Set(stepsInAll(this.value as ReadonlySet<string>)).union(new Set(stepsInAll(other.value)));
+			return new BranchPathDomain([encodePath(common)], this.limit) as this;
+		}
+		const theirs = [...other.value].map(stepsOf);
+		const mine = [...this.value as ReadonlySet<string>].map(stepsOf);
+		return this.create(mine.flatMap(a => theirs.map(b => encodePath(a.union(b)))));
 	}
 
 	/** Every path continued by taking the branch. */
@@ -111,7 +215,8 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 			return this;
 		}
 		const taken = encodeStep(step);
-		return this.create([...this.value].map(path => encodePath(stepsOf(path).add(taken))));
+		const common = (this as BranchPathDomain).common;
+		return BranchPathDomain.withCommon(this.create([...this.value].map(path => withStep(path, taken))), common === undefined ? undefined : new Set(common).add(taken));
 	}
 
 	/**

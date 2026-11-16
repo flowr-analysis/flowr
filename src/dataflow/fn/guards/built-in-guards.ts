@@ -21,6 +21,7 @@ import { s3GroupGenericOf } from '../../environments/group-generics';
 import { uniqueArray, uniqueArrayMerge } from '../../../util/collections/arrays';
 import type { Column } from '../../../util/range';
 import { StoredLocation } from './stored-location';
+import { CacheScope, GlobalCaches } from '../../../util/global-caches';
 
 /**
  * Where a {@link StatedGuards} comes from: read off the closure of a function (by `scripts/gen-base-guards.ts` into the base table, or when the signature
@@ -272,7 +273,7 @@ export function builtInGuards(this: void, name: BrandedIdentifier, pkg: BrandedN
 }
 
 /** {@link builtInGuards} per `pkg::name`, as the table and the facts do not change while flowR runs */
-const builtInGuardsCache = new Map<string, StatedGuards | undefined>();
+const builtInGuardsCache = GlobalCaches.map<string, StatedGuards | undefined>('built-in-guards', CacheScope.Process, 16_384);
 
 function readBuiltInGuards(this: void, name: BrandedIdentifier, owner: BrandedNamespace): StatedGuards | undefined {
 	const stored = RBaseGuards()[String(owner)]?.[String(name)];

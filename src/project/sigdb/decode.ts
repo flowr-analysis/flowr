@@ -6,6 +6,7 @@ import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environ
  */
 import type { SigDict } from './dict';
 import {
+	NativeArgProp, NativeFlag, NativeIfaceNames, NativeLangNames, type SigNativeParamInfo, type SigNativeRoutineInfo,
 	ClassProp, DefaultCranBase, FnProp, FnPropNames, SigClassSystemNames,
 	type DepType, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigClassInfo, type SigDbPkgMeta,
 	type SigDefinitionLocation, type SigSlotInfo
@@ -52,6 +53,9 @@ function hasEntries(record: Readonly<Record<string, unknown>> | undefined): bool
  */
 export function blobTuple(b: Readonly<PkgBlob>): PkgBlobTuple {
 	const head = [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion] as const;
+	if(b.natives?.length) {
+		return [...head, b.dates, b.sources ?? {}, b.classes ?? [], b.classesByVersion ?? {}, b.contracts ?? [], b.contractOf ?? {}, b.natives, b.nativesByVersion ?? {}];
+	}
 	if(b.contracts?.length) {
 		return [...head, b.dates, b.sources ?? {}, b.classes ?? [], b.classesByVersion ?? {}, b.contracts, b.contractOf ?? {}];
 	}
@@ -65,7 +69,7 @@ export function blobTuple(b: Readonly<PkgBlob>): PkgBlobTuple {
 }
 /** the inverse of {@link blobTuple}: rebuild a {@link PkgBlob} from its on-disk tuple */
 export function tupleToBlob(t: PkgBlobTuple): PkgBlob {
-	return { sigs: t[0], cgs: t[1], fns: t[2], versions: t[3], noncran: t[4]?.length ? t[4] : undefined, deps: t[5] ?? [], depsByVersion: t[6] ?? {}, dates: t[7] ?? {}, sources: t[8], classes: t[9]?.length ? t[9] : undefined, classesByVersion: t[10], contracts: t[11]?.length ? t[11] : undefined, contractOf: t[12] };
+	return { sigs: t[0], cgs: t[1], fns: t[2], versions: t[3], noncran: t[4]?.length ? t[4] : undefined, deps: t[5] ?? [], depsByVersion: t[6] ?? {}, dates: t[7] ?? {}, sources: t[8], classes: t[9]?.length ? t[9] : undefined, classesByVersion: t[10], contracts: t[11]?.length ? t[11] : undefined, contractOf: t[11]?.length ? t[12] : undefined, natives: t[13]?.length ? t[13] : undefined, nativesByVersion: t[13]?.length ? t[14] : undefined };
 }
 
 /** one decoded parameter of a function signature */
@@ -145,6 +149,46 @@ export function decodeFunction(strings: SigDict, blob: Readonly<PkgBlob>, fnIdx:
 		signature,
 		callees
 	});
+}
+
+/** decode the native routines of one blob version (empty when it has none / the bundle omits them) */
+export function decodeNatives(strings: SigDict, blob: Readonly<PkgBlob>, ver: string): SigNativeRoutineInfo[] {
+	const list = blob.nativesByVersion?.[ver];
+	const pool = blob.natives;
+	if(list === undefined || pool === undefined) {
+		return [];
+	}
+	const out: SigNativeRoutineInfo[] = [];
+	let prev = 0;
+	for(const delta of list) {
+		const rec = pool[prev += delta];
+		if(rec === undefined) {
+			continue;
+		}
+		const [nameIdx, flags, symbolIdx, fileIdx, line, arity, rNames, params, facts] = rec;
+		out.push(compactRecord({
+			name:   strings.at(nameIdx),
+			iface:  NativeIfaceNames[(flags >> 3) & 0b111],
+			symbol: symbolIdx >= 0 ? strings.at(symbolIdx) : undefined,
+			lang:   NativeLangNames[flags & 0b111],
+			file:   fileIdx >= 0 ? strings.at(fileIdx) : undefined,
+			line:   line >= 0 ? line : undefined,
+			arity:  arity >= 0 ? arity : undefined,
+			rNames: rNames.length ? rNames.map(i => strings.at(i)) : undefined,
+			params: params.map(([n, props, t]): SigNativeParamInfo => compactRecord({
+				name:    strings.at(n),
+				type:    t === undefined ? undefined : strings.at(t),
+				read:    (props & NativeArgProp.Read) !== 0,
+				written: props & NativeArgProp.Written ? true : props & NativeArgProp.NotWritten ? false : undefined,
+				escapes: props & NativeArgProp.Escapes ? true : undefined
+			})),
+			facts:     facts.map(i => strings.at(i)),
+			closed:    (flags & NativeFlag.Closed) !== 0,
+			pure:      flags & NativeFlag.Pure ? true : undefined,
+			undefined: flags & NativeFlag.Undefined ? true : undefined
+		}));
+	}
+	return out;
 }
 
 /** a decoded package dependency of one version (`type` is the compact {@link DepType} enum; map to a label via {@link DepTypeNames}) */

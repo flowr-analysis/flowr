@@ -25,6 +25,7 @@ import { FlowrAnalyzerGasContext, type ReadOnlyFlowrAnalyzerGasContext } from '.
 import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { type FnInfo, fnInfo } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
+import { CacheScope, GlobalCaches } from '../../util/global-caches';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -306,8 +307,12 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		return fnInfo(typeof name === 'string' ? Identifier.parse(name) : name, this, version);
 	}
 
-	/** Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders. */
+	/**
+	 * Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders.
+	 * This also releases the module-level caches holding data of the analyzed program (see {@link GlobalCaches}).
+	 */
 	public reset(): void {
+		GlobalCaches.clear(CacheScope.Analysis);
 		this.files.reset();
 		this.deps.reset();
 		this.meta.reset();

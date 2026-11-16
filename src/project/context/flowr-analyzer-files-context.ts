@@ -226,6 +226,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		this.rootResolved = false;
 		this.caseIndex = undefined;
 		this.readdirCache.clear();
+		this.implicitSourceDirs.clear();
 	}
 
 	private addRoot(root: string): void {

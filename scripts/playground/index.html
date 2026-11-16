@@ -422,6 +422,8 @@ code, pre { font-family: var(--mono); }
 .contract .crow { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: start; padding: .05rem .35rem; border-radius: .35rem; font-size: .78rem; }
 /* formals that depend on each other are a group, a line apart from the next */
 .contract .crow.gstart { margin-top: .2rem; border-top: 1px solid var(--border); border-top-left-radius: 0; border-top-right-radius: 0; padding-top: .25rem; }
+.contract .crow.within { margin-left: 1.2rem; border-left: 2px solid var(--border); border-radius: 0 .4rem .4rem 0; }
+.contract .crow.escapes .unless.word { font-style: italic; color: var(--muted); }
 .contract .crow:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .contract .crow.condition { grid-template-columns: minmax(0, 1fr); gap: 0; }
 .contract code { font-family: var(--mono); }

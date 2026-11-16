@@ -34,9 +34,57 @@ export interface NamespaceInfo {
 	exportedPatterns:     string[];
 	importedPackages:     Map<BrandedNamespace, BrandedIdentifier[] | 'all'>;
 	loadsWithSideEffects: boolean;
+	/** the `useDynLib()` directives, with the R names they bind to native routines (absent when there are none) */
+	dynLibs?:             DynLibDirective[];
 	callable:             BrandedIdentifier[];
 	/** Present only in complex parsed NAMESPACE files. Maps conditions to the parts they gate. */
 	conditional?:         Map<RNode<ParentInformation>, NamespaceInfo>;
+}
+
+/**
+ * One `useDynLib(lib, ...)` directive, as R's `parseNamespaceFile` reads it: `useDynLib(pkg, foo, bar = baz)` binds
+ * the R names `foo` and `bar` to the native routines `foo` and `baz`; with `.registration = TRUE`, every registered
+ * routine is bound, prefixed by `.fixes` (`useDynLib(pkg, .registration = TRUE, .fixes = "C_")` binds `C_foo`).
+ */
+export interface DynLibDirective {
+	/** the shared library, usually the package's own name */
+	readonly library:      string;
+	/** whether `.registration` is `TRUE` */
+	readonly registration: boolean;
+	/** the prefix of `.fixes` (its first element), `''` when not given */
+	readonly prefix:       string;
+	/** the suffix of `.fixes` (its second element), `''` when not given */
+	readonly suffix:       string;
+	/** the routines named explicitly: `{ rName: 'bar', routine: 'baz' }` for `bar = baz`, prefix and suffix applied to `rName` */
+	readonly symbols:      readonly { readonly rName: string, readonly routine: string }[];
+}
+
+/** the strings of a `.fixes` value as written: `"C_"` or `c("C_", "_x")` */
+function fixesOf(value: string): [string, string] {
+	const parts = [...value.matchAll(/(["'])((?:\\.|(?!\1).)*)\1/g)].map(m => m[2]);
+	return [parts[0] ?? '', parts[1] ?? ''];
+}
+
+/** read a `useDynLib` directive's arguments the way R's `parseNamespaceFile` does */
+function dynLibDirective(args: readonly DirectiveArgument[]): DynLibDirective | undefined {
+	const [lib, ...rest] = args.filter(a => a.name === undefined || !a.name.startsWith('.'));
+	if(lib === undefined || lib.name !== undefined) {
+		return undefined;
+	}
+	const option = (name: string) => args.find(a => a.name === name)?.value;
+	const registration = /^(TRUE|T)$/.test(option('.registration')?.trim() ?? '');
+	const fixes = option('.fixes');
+	const [prefix, suffix] = fixes === undefined ? ['', ''] : fixesOf(fixes);
+	return {
+		library: RString.unquote(lib.value),
+		registration,
+		prefix,
+		suffix,
+		symbols: rest.map(a => {
+			const routine = RString.unquote(a.value);
+			return { rName: prefix + (a.name === undefined ? routine : RString.unquote(a.name)) + suffix, routine };
+		})
+	};
 }
 
 export interface NamespaceFormat {
@@ -350,6 +398,12 @@ const DirectiveOptions: ReadonlyMap<BrandedIdentifier, ReadonlySet<BrandedIdenti
 
 /** Applies the directive `name` (if it is one) with its `args` to `g`. */
 function applyDirective(g: NamespaceFormat, name: BrandedIdentifier, args: readonly DirectiveArgument[]): NamespaceFormat {
+	if(name === 'useDynLib') {
+		const dyn = dynLibDirective(args);
+		if(dyn !== undefined) {
+			(g.current.dynLibs ??= []).push(dyn);
+		}
+	}
 	const options = DirectiveOptions.get(name);
 	NamespaceDirectives.get(name)?.(g, args.filter(a => a.name === undefined || !options?.has(a.name)).map(a => a.value));
 	return g;
@@ -434,7 +488,9 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 
 	const s3MethodFunctions = target.s3MethodFunctions || source.s3MethodFunctions
 		? new Map([...target.s3MethodFunctions ?? [], ...source.s3MethodFunctions ?? []]) : undefined;
+	const dynLibs = target.dynLibs || source.dynLibs ? [...target.dynLibs ?? [], ...source.dynLibs ?? []] : undefined;
 	return {
+		...(dynLibs ? { dynLibs } : {}),
 		...(s3MethodFunctions ? { s3MethodFunctions } : {}),
 		...(mergedConditional.size > 0 ? { conditional: mergedConditional } : {}),
 		callable:             [...target.callable, ...source.callable],

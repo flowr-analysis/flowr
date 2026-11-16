@@ -173,11 +173,13 @@
   "overrides": {
     "lodash.isequal": "npm:fast-deep-equal@^3.1.3",
     "get-uri": {
-      "basic-ftp": "6.2.3"
+      "basic-ftp": "^6.2.4"
     },
     "release-it": {
       "undici": "^7.30.1"
-    }
+    },
+    "glob": "^14.0.2",
+    "minimatch": "^11.0.1"
   },
   "devDependencies": {
     "@codemirror/autocomplete": "^6.20.4",

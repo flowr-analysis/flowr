@@ -58,6 +58,7 @@ import { resolveAttachPosition } from './built-in-envir-utils';
 import { uniqueArray } from '../../../../../../util/collections/arrays';
 import { datasetShape, datasetsOf } from '../../../../../../util/r-datasets';
 import { sexpTypeToReferenceType } from './built-in-load';
+import { CacheScope, GlobalCaches } from '../../../../../../util/global-caches';
 
 /** Controls how {@link processLibrary} brings a package into scope. */
 export interface LibraryProcessorConfig extends BuiltInFnInfo {
@@ -627,7 +628,7 @@ function attachedInEveryBranch(layer: Environment): boolean {
 }
 
 /** Immutable base-layer chains, shared across analyses (layers clone before mutating); building one is O(N^2) in exports, so cache and reparent. */
-const baseNamespaceLayerCache = new Map<string, REnvironmentInformation['current']>();
+const baseNamespaceLayerCache = GlobalCaches.map<string, REnvironmentInformation['current']>('base-namespace-layers', CacheScope.Process, 8);
 
 function baseNamespaceCacheKey(ctx: FlowrAnalyzerContext, basePackages: readonly BrandedNamespace[]): string {
 	return `${String(ctx.env.getCleanEnvFingerprint())}|${ctx.resolvedRVersion}|${basePackages.join(',')}|${ctx.deps.baseRSourceFingerprint()}`;

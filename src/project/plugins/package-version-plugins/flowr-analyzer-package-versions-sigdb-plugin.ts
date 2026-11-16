@@ -17,6 +17,7 @@ import { isSigDbEnabled, resolveAssumedRVersion, VersionSelection, type FlowrCon
 import { RRange, RVersion } from '../../../util/r-version';
 import { baseRPackages } from '../../../util/r-base-packages';
 import { DefaultMap } from '../../../util/collections/defaultmap';
+import { BoundedMap } from '../../../util/collections/bounded-map';
 import { uniqueArray } from '../../../util/collections/arrays';
 import { RReexports } from '../../../data/r-reexports.generated';
 import { SecureMode } from '../../../util/secure-mode';
@@ -78,12 +79,14 @@ export function reconstructS3Generics(exported: readonly BrandedIdentifier[]): M
  * source; this stays proportional to what a run actually asks about rather than scanning all ~1.1M export names up front.
  */
 const exportOwnersBySource = new WeakMap<PackageSignatureSource, DefaultMap<BrandedIdentifier, readonly BrandedNamespace[]>>();
+/** bounds the names {@link exportOwnersBySource} keeps per source, which lives as long as the process */
+const MaxExportOwnersPerSource = 65_536;
 
 /** The packages of `src` exporting `name`, most downloaded first, scanning only the first time a name is asked. */
 function exportOwners(src: PackageSignatureSource, name: BrandedIdentifier): readonly BrandedNamespace[] {
 	let byName = exportOwnersBySource.get(src);
 	if(byName === undefined) {
-		byName = new DefaultMap(n => src.packagesExporting(n));
+		byName = new DefaultMap(n => src.packagesExporting(n), new BoundedMap(MaxExportOwnersPerSource));
 		exportOwnersBySource.set(src, byName);
 	}
 	return byName.get(name);

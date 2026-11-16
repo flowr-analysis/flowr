@@ -1,3 +1,4 @@
+import { getOrSet } from '../../../../../util/collections/defaultmap';
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -22,7 +23,7 @@ export interface ForceSites {
 	/** the name the deferred expression is bound to, whose binding its own writes replace */
 	readonly binding: NodeId
 	/** what reaches the sites and what they reach, filled on first use and shared by everyone handed these sites */
-	readonly reach?:  { before?: ReadonlySet<NodeId>, after?: ReadonlySet<NodeId>, always?: Map<NodeId, boolean> }
+	readonly reach?:  { before?: ReadonlySet<NodeId>, after?: ReadonlySet<NodeId>, always?: Map<NodeId, boolean>, seen?: WeakMap<NodesByName, Map<BrandedIdentifier, readonly NodeId[]>> }
 }
 
 /** Where a name is bound and where it is read, so that a deferred expression can reach either. */
@@ -38,36 +39,57 @@ export function verticesByName<Info>(graph: DataflowGraph, type: VertexType, idM
 	return Map.groupBy(named, id => NodeId.recoverBareName(id, idMap) as string);
 }
 
+/** A call or a symbol of a deferred expression, in the order the expression holds them. */
+interface Touched {
+	readonly call: boolean
+	readonly id:   NodeId
+	readonly name: BrandedIdentifier
+}
+
+/** Per AST, what each deferred expression holds: the syntax does not change, so every link of the same expression shares one walk. */
+const touchedCache = new WeakMap<AstIdMap, Map<NodeId, readonly Touched[]>>();
+
+/** The calls and symbols below `expr`, not descending into function definitions, whose bodies run only when called. */
+function touchedWithin<Info>(expr: NodeId, idMap: AstIdMap<Info & ParentInformation>): readonly Touched[] {
+	return getOrSet(getOrSet(touchedCache, idMap, () => new Map<NodeId, readonly Touched[]>()), expr, () => {
+		const touched: Touched[] = [];
+		const callees = new Set<NodeId>();
+		RNode.visitAst<Info & ParentInformation>(idMap.get(expr), inner => {
+			/* a definition only creates its closure, the body runs when it is called and that call carries its effects */
+			if(RFunctionDefinition.is(inner)) {
+				return true;
+			} else if(RFunctionCall.isNamed(inner)) {
+				callees.add(inner.functionName.info.id);
+				touched.push({ call: true, id: inner.info.id, name: Identifier.getName(inner.functionName.content) });
+			} else if(RSymbol.is(inner) && !callees.has(inner.info.id)) {
+				touched.push({ call: false, id: inner.info.id, name: Identifier.getName(inner.content) });
+			}
+			return false;
+		});
+		return touched;
+	});
+}
+
 /** The names a deferred expression touches, each with the node touching it and whether it is written. */
 function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): readonly (readonly [NodeId, BrandedIdentifier, boolean])[] {
 	const names: (readonly [NodeId, BrandedIdentifier, boolean])[] = [];
-	const callees = new Set<NodeId>();
-	RNode.visitAst<Info & ParentInformation>(idMap.get(expr), inner => {
-		/* a definition only creates its closure, the body runs when it is called and that call carries its effects */
-		if(RFunctionDefinition.is(inner)) {
-			return true;
-		} else if(RFunctionCall.isNamed(inner)) {
-			callees.add(inner.functionName.info.id);
+	for(const { call, id, name } of touchedWithin(expr, idMap)) {
+		const vertex = graph.getVertex(id);
+		if(call) {
 			/* a call reads the function it names, so `eval(quote(f()))` needs the definition of `f` */
-			if(DfgVertex.isFunctionCall(graph.getVertex(inner.info.id))) {
-				names.push([inner.info.id, Identifier.getName(inner.functionName.content), false]);
-				for(const def of Dataflow.sourcesOf(graph, inner.info.id, EdgeType.SideEffectOnCall)) {
-					const name = NodeId.recoverBareName(def, idMap);
-					if(name !== undefined) {
-						names.push([def, name, true]);
+			if(DfgVertex.isFunctionCall(vertex)) {
+				names.push([id, name, false]);
+				for(const def of Dataflow.sourcesOf(graph, id, EdgeType.SideEffectOnCall)) {
+					const written = NodeId.recoverBareName(def, idMap);
+					if(written !== undefined) {
+						names.push([def, written, true]);
 					}
 				}
 			}
-			return false;
-		} else if(!RSymbol.is(inner) || callees.has(inner.info.id)) {
-			return false;
+		} else if(DfgVertex.isUse(vertex) || DfgVertex.isVariableDefinition(vertex)) {
+			names.push([id, name, DfgVertex.isVariableDefinition(vertex)]);
 		}
-		const vertex = graph.getVertex(inner.info.id);
-		if(DfgVertex.isUse(vertex) || DfgVertex.isVariableDefinition(vertex)) {
-			names.push([inner.info.id, Identifier.getName(inner.content), DfgVertex.isVariableDefinition(vertex)]);
-		}
-		return false;
-	});
+	}
 	return names;
 }
 
@@ -135,6 +157,11 @@ export const Deferred = {
 		/* the forcing read yields the promise's value, so only reads after it observe what the promise wrote */
 		const reachedByAForce = (use: NodeId) => forces === undefined
 			|| (!forces.sites.includes(use) && (reach.after ??= reachableFrom(forces.cfg, forces.sites)).has(use));
+		/* the bindings of a name some force can see, asked again by every expression these forces evaluate (`eval` deep in a function meets thousands of bindings of `x`) */
+		function seenByAForceNamed(name: BrandedIdentifier): readonly NodeId[] {
+			const byName = getOrSet(reach.seen ??= new WeakMap(), index.definitions, () => new Map<BrandedIdentifier, readonly NodeId[]>());
+			return getOrSet(byName, name, () => (index.definitions.get(name) ?? []).filter(seenByAForce));
+		}
 		/* whether some force always happens before `use`, asked again by every write of the bound name */
 		let sites: ReadonlySet<NodeId> | undefined;
 		function alwaysAfterAForce(use: NodeId): boolean {
@@ -167,7 +194,7 @@ export const Deferred = {
 					}
 				}
 			} else {
-				const seen = (index.definitions.get(name) ?? []).filter(d => seenByAForce(d) && (!inCallerFrame || visibleFrom(expr, d, graph, idMap)));
+				const seen = inCallerFrame ? (index.definitions.get(name) ?? []).filter(d => seenByAForce(d) && visibleFrom(expr, d, graph, idMap)) : seenByAForceNamed(name);
 				for(const definition of seen) {
 					graph.addEdge(node, definition, EdgeType.Reads);
 				}

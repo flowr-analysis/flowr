@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { once } from 'events';
 import {
+	NativeArgProp, NativeFlag, NativeIfaceNames, NativeLangNames, type SigNative, type SigNativeParam, type SigNativeRoutineInfo,
 	ClassProp, DefaultCranBase, MaxDefaultLength, SigClassSystem, SigClassSystemNames, SigDbExt, SigDbMagic, SigDbSchema,
 	type PkgBlob, type Sig, type SigDb, type SigDbFeatures, type SigDbPkgMeta, type SigDbPkgMetaIndex, type SigDbShard, type SigDbTier,
 	type SigClass, type SigClassInfo, type SigDep, type SigDependencyInfo, type SigFn, type SigFunctionInfo, type SigParamInfo, type SigVersionInfo } from './schema';
@@ -38,7 +39,8 @@ function resolveFeatures(f: SigDbFeatures | undefined): Required<SigDbFeatures> 
 		locations:    f?.locations    ?? true,
 		dependencies: f?.dependencies ?? true,
 		classes:      f?.classes      ?? true,
-		contracts:    f?.contracts    ?? true
+		contracts:    f?.contracts    ?? true,
+		natives:      f?.natives      ?? true
 	};
 }
 
@@ -134,6 +136,7 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 	const classes = new Pool<SigClass>();
 	const contracts = new Pool<StatedGuards>();
 	const contractOf: Record<number, number> = {};
+	const natives = new Pool<SigNative>();
 
 	function sig(params: readonly SigParamInfo[]): number {
 		if(!feats.signatures || params.length === 0) {
@@ -199,7 +202,25 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 		return classes.intern(JSON.stringify(rec), rec);
 	}
 
+	/** one native routine record, pooled like a class so versions that change nothing about a routine share it */
+	function native(n: SigNativeRoutineInfo): number {
+		const lang = Math.max(0, NativeLangNames.indexOf(n.lang));
+		const iface = Math.max(0, NativeIfaceNames.indexOf(n.iface));
+		const flags = lang | (iface << 3) | (n.closed ? NativeFlag.Closed : 0) | (n.pure ? NativeFlag.Pure : 0) | (n.undefined ? NativeFlag.Undefined : 0);
+		const params = (n.params ?? []).map((par): SigNativeParam => {
+			const props = (par.read ? NativeArgProp.Read : 0) | (par.written === true ? NativeArgProp.Written : 0)
+				| (par.written === false ? NativeArgProp.NotWritten : 0) | (par.escapes ? NativeArgProp.Escapes : 0);
+			return par.type === undefined ? [strings.str(par.name), props] : [strings.str(par.name), props, strings.str(par.type)];
+		});
+		const sorted = (xs: readonly string[] | undefined) => uniqueSortedNumbers(Array.from(xs ?? [], x => strings.str(x)).sort((a, b) => a - b));
+		const rec: SigNative = [strings.str(n.name), flags, n.symbol !== undefined && n.symbol !== n.name ? strings.str(n.symbol) : -1,
+			feats.locations && n.file ? strings.str(n.file) : -1, feats.locations ? n.line ?? -1 : -1, n.arity ?? -1,
+			sorted(n.rNames), params, sorted(n.facts)];
+		return natives.intern(JSON.stringify(rec), rec);
+	}
+
 	const versions: Record<string, number[]> = {};
+	const nativesByVersion: Record<string, number[]> = {};
 	const classesByVersion: Record<string, number[]> = {};
 	const depsByVersion: Record<string, number> = {};
 	const dates: Record<string, number> = {};
@@ -222,6 +243,11 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 				.map(cls).sort((a, b) => a - b);
 			classesByVersion[version] = deltaEncode(uniqueSortedNumbers(classIdxs));
 		}
+		if(feats.natives && info.natives && info.natives.length > 0) {
+			nativesByVersion[version] = deltaEncode(uniqueSortedNumbers(info.natives
+				.toSorted((a, b) => a.name.localeCompare(b.name) || (a.iface ?? '').localeCompare(b.iface ?? ''))
+				.map(native).sort((a, b) => a - b)));
+		}
 		if(info.date !== undefined && Number.isFinite(info.date)) {
 			dates[version] = Math.round(info.date / 86_400_000); // days since the Unix epoch (compact; day precision)
 		}
@@ -234,7 +260,7 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 			sources[version] = strings.str(info.source);
 		}
 	}
-	const blob: PkgBlob = { sigs: sigs.items, cgs: cgs.items, fns: fns.items, versions, deps: deps.items, depsByVersion, dates, noncran: noncran.length ? noncran : undefined, sources: Object.keys(sources).length ? sources : undefined, classes: classes.items.length ? classes.items : undefined, classesByVersion: Object.keys(classesByVersion).length ? classesByVersion : undefined, contracts: contracts.items.length ? contracts.items : undefined, contractOf: contracts.items.length ? contractOf : undefined };
+	const blob: PkgBlob = { sigs: sigs.items, cgs: cgs.items, fns: fns.items, versions, deps: deps.items, depsByVersion, dates, noncran: noncran.length ? noncran : undefined, sources: Object.keys(sources).length ? sources : undefined, classes: classes.items.length ? classes.items : undefined, classesByVersion: Object.keys(classesByVersion).length ? classesByVersion : undefined, contracts: contracts.items.length ? contracts.items : undefined, contractOf: contracts.items.length ? contractOf : undefined, natives: natives.items.length ? natives.items : undefined, nativesByVersion: natives.items.length ? nativesByVersion : undefined };
 	return { blob, versionCount, functionCount };
 }
 
@@ -522,6 +548,20 @@ function mapStringRefs(blob: PkgBlob, map: (i: number) => number): void {
 		if(c.length === 6) {
 			c[5] = at(c[5]);
 		}
+	}
+	/* a native routine names itself, its symbol, file, R names, parameters, their types, and its facts */
+	for(const r of blob.natives ?? []) {
+		r[0] = at(r[0]);
+		r[2] = at(r[2]);
+		r[3] = at(r[3]);
+		r[6] = r[6].map(at).sort((x, y) => x - y);
+		for(const par of r[7]) {
+			par[0] = at(par[0]);
+			if(par.length === 3) {
+				par[2] = at(par[2]);
+			}
+		}
+		r[8] = r[8].map(at).sort((x, y) => x - y);
 	}
 }
 

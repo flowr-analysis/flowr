@@ -597,6 +597,55 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		assert.deepStrictEqual(guards?.relations[0].unlessClaim, { formal: 'x', claim: { unclassedTypes: ['integer', 'double'], bounds: { length: [1, 1], value: [0, null] } } });
 	});
 
+	/* recycling: R fails on sizes it cannot recycle to a common one, each read off R 4.6.1, vctrs, and tibble */
+	const DataFrameXY = 'is.object(x) || !is.atomic(x) || is.object(y) || !is.atomic(y) || NROW(x) == NROW(y) || NROW(x) > 0 && NROW(y) > 0 && (NROW(y) %% NROW(x) == 0 || NROW(x) %% NROW(y) == 0)';
+	const VecSizeXY = 'is.null(x) || is.null(y) || vctrs::vec_size(x) == vctrs::vec_size(y) || vctrs::vec_size(x) == 1 || vctrs::vec_size(y) == 1';
+	const TibbleXY = 'is.null(x) || is.expression(x) || is.null(y) || is.expression(y) || vctrs::vec_size(x) == vctrs::vec_size(y) || vctrs::vec_size(x) == 1 || vctrs::vec_size(y) == 1';
+	guards('f <- function(x, y) data.frame(a = x, b = y)', DataFrameXY);
+	guards('f <- function(x, y) { data.frame(x, y); 1 }', DataFrameXY);
+	guards('h <- function(x, y) data.frame(x, y); f <- function(x, y) h(x, y)', DataFrameXY);
+	guards('f <- function(x, y, z) data.frame(x, y, z)', ['x', 'y', 'z'].map(v => `(is.object(x) || !is.atomic(x) || is.object(y) || !is.atomic(y) || is.object(z) || !is.atomic(z) || NROW(${v}) == max(NROW(x), NROW(y), NROW(z)) || NROW(${v}) > 0 && max(NROW(x), NROW(y), NROW(z)) %% NROW(${v}) == 0)`).join(' && '));
+	/* the row names are no column, and what the dots hand on may be of any size */
+	guards('f <- function(x, r) data.frame(x, row.names = r)', '');
+	guards('f <- function(x, ...) data.frame(x, ...)', '');
+	guards('f <- function(x, y) vctrs::vec_recycle_common(x, y)', VecSizeXY);
+	guards('f <- function(x, y) vctrs::vec_size_common(x, y)', VecSizeXY);
+	guards('h <- function(x, y) vctrs::vec_size_common(x, y); f <- function(x, y) h(x, y)', VecSizeXY);
+	/* with a size to recycle to, each value has to fit that one, of which R takes the first element, and `vec_size_common` checks nothing */
+	guards('f <- function(x, y, n) vctrs::vec_recycle_common(x, y, .size = n)', '(is.null(x) || is.null(n) || vctrs::vec_size(x) == n[1] || vctrs::vec_size(x) == 1) && (is.null(y) || is.null(n) || vctrs::vec_size(y) == n[1] || vctrs::vec_size(y) == 1)');
+	guards('f <- function(x, y) vctrs::vec_size_common(x, y, .size = 3L)', '');
+	guards('f <- function(x, n) vctrs::vec_recycle(x, n)', 'is.null(x) || is.null(n) || vctrs::vec_size(x) == n[1] || vctrs::vec_size(x) == 1');
+	guards('f <- function(x) vctrs::vec_recycle(x, 3)', 'is.null(x) || vctrs::vec_size(x) == 3 || vctrs::vec_size(x) == 1');
+	guards('f <- function(x, y) tibble::tibble(a = x, b = y)', TibbleXY);
+	guards('f <- function(x, y) tibble::tibble(x = x, y = y)', TibbleXY);
+	guards('h <- function(x, y) tibble::tibble(a = x, b = y); f <- function(x, y) h(x, y)', TibbleXY);
+	guards('f <- function(x, y) tibble::tibble_row(a = x, b = y)', '(is.null(x) || !vctrs::obj_is_vector(x) || vctrs::vec_size(x) == 1) && (is.null(y) || !vctrs::obj_is_vector(y) || vctrs::vec_size(y) == 1)');
+	/* a column made before masks the formal of its name, and a data frame handed over unnamed may bring columns of any name */
+	guards('f <- function(x, y) tibble::tibble(x = 1:2, b = x, c = y)', '');
+	guards('f <- function(x, y) tibble::tibble(x, b = y)', '');
+	guards('f <- function(x, y) { x <- 1:2; tibble::tibble(a = x, b = y) }', '');
+	/* R only warns on what does not recycle evenly here */
+	guards('f <- function(x, y) mapply(function(a, b) a + b, x, y)', '');
+	guards('f <- function(x, y) Map(function(a, b) a + b, x, y)', '');
+	guards('f <- function(x, n) matrix(x, n)', '');
+	guards('f <- function(x, n) rep_len(x, n)', '');
+	guards('f <- function(x, y) cbind(x, y)', '');
+	guards('f <- function(t, x, y) ifelse(t, x, y)', '');
+	guards('f <- function(x, y) paste(x, y)', '');
+
+	test('a recycling relation between formals', async() => {
+		const relations = async(code: string) => (await guardsOfF(parser, code))?.relations.map(({ holds, unless }) => ({ holds, unless }));
+		assert.deepStrictEqual(await relations('h <- function(x, y) data.frame(x, y); f <- function(u, v) h(u, v)'), [
+			{ holds: 'NROW(u) == NROW(v)', unless: 'is.object(u) || !is.atomic(u) || is.object(v) || !is.atomic(v) || NROW(u) > 0 && NROW(v) > 0 && (NROW(v) %% NROW(u) == 0 || NROW(u) %% NROW(v) == 0)' }
+		]);
+		assert.deepStrictEqual(await relations('h <- function(x, y) vctrs::vec_recycle_common(x, y); f <- function(u, v) h(u, v)'), [
+			{ holds: 'vctrs::vec_size(u) == vctrs::vec_size(v)', unless: 'is.null(u) || is.null(v) || vctrs::vec_size(u) == 1 || vctrs::vec_size(v) == 1' }
+		]);
+		assert.deepStrictEqual(await relations('f <- function(x, n) vctrs::vec_recycle(x, n)'), [{ holds: 'vctrs::vec_size(x) == n[1]', unless: 'is.null(x) || is.null(n) || vctrs::vec_size(x) == 1' }]);
+		/* base arithmetic only warns on lengths that do not recycle evenly, only arrays have to conform */
+		assert.isTrue((await relations('f <- function(x, y) x + y'))?.every(r => r.unless?.includes('is.null(dim(')));
+	});
+
 	test('a claim that holds unless another formal lets the call through', async() => {
 		const guards = await guardsOfF(parser, 'f <- function(package, character.only) { if(!missing(package)) stopifnot(is.logical(character.only)); 1 }');
 		assert.deepStrictEqual(guards?.conditional, [{ formal: 'character.only', claim: { types: ['logical'] }, unless: 'missing(package)' }]);
@@ -960,10 +1009,13 @@ describe('Guards hold in R', { sequential: true }, withShell(shell => withTreeSi
 		}
 		return typeof value === 'boolean' ? (value ? 'TRUE' : 'FALSE') : JSON.stringify(value);
 	}
-	/* the packages may not be around, what is special about them was checked when writing their entries */
-	const NeedsPackage = /checkmate|assertthat|rlang/;
+	/* a case using a package R does not have is left out, what is special about it was checked when writing its entry */
+	const Packages = ['checkmate', 'assertthat', 'rlang', 'vctrs', 'tibble'] as const;
 	test(label('no normal return breaks a claim', ['name-normal'], ['other']), async() => {
 		await shell.sendCommandWithOutput(`source(${JSON.stringify(Oracle)})`);
+		const installed = await shell.sendCommandWithOutput(`cat(${Packages.map(p => `requireNamespace(${JSON.stringify(p)}, quietly = TRUE)`).join(', ')}, sep = "\\n")`);
+		const missing = Packages.filter((_, at) => installed[at]?.trim() !== 'TRUE');
+		const NeedsPackage = missing.length === 0 ? /$^/ : new RegExp(missing.join('|'));
 		/* what R fails on changes between versions, so ask for the guards in the version this R has */
 		const version = (await shell.usedRVersion())?.format();
 		const broken: string[] = [];

@@ -1,6 +1,7 @@
 /*
- * How a condition of a contract groups, without anything else of flowR, so the pages showing contracts can use it as well.
+ * How a condition of a contract groups, with nothing of flowR but a collection helper, so the pages showing contracts can use it as well.
  */
+import { uniqueArrayMerge } from '../../../util/collections/arrays';
 
 /** The parts of `text` separated by `separator` outside of any parentheses, brackets, braces, or strings. */
 export function splitTopLevel(this: void, text: string, separator: string): string[] {
@@ -65,6 +66,53 @@ export function linkedGroups(this: void, formals: readonly string[], links: read
 		merged.forEach(f => groupOf.set(f, merged));
 	}
 	return formals.filter((f, at) => formals.findIndex(g => groupOf.get(g) === groupOf.get(f)) === at).map(first => formals.filter(f => groupOf.get(first) === groupOf.get(f)));
+}
+
+/** The condition and the `||`-joined ways through its outermost `unless`, none if it has no `unless`. */
+function escapesOf(this: void, condition: string): [holds: string, escapes: string[]] {
+	const [holds, ...unless] = splitTopLevel(bare(condition), ' unless ');
+	return [holds, unless.flatMap(u => splitTopLevel(bare(u), ' || '))];
+}
+
+/** `condition unless unless`, one `unless` with every way through for a condition that has one of its own: `(a unless b) unless c` reads `a unless b || c`. */
+export function withUnless(this: void, condition: string, unless: string): string {
+	const [holds, own] = escapesOf(condition);
+	const escapes = uniqueArrayMerge(own, splitTopLevel(bare(unless), ' || '));
+	return grouped(`${holds} unless ${escapes.join(' || ')}`);
+}
+
+/**
+ * The ways through that rows of a contract share, so they are said once for all of them: of what two conditions both offer, the ways through
+ * that the most rows have times how many they are, none if fewer than two rows have any. A row is the conditions all of which have to hold.
+ */
+export function sharedEscapes(this: void, rows: readonly (readonly string[])[]): string[] {
+	const escapes = rows.map(row => row.map(c => escapesOf(c)[1]));
+	/* the candidates are what two conditions both offer, the best one shared by many rows and saying much */
+	const offered = escapes.flat().filter(e => e.length > 0);
+	let best: string[] = [], score = 0;
+	for(let i = 0; i < offered.length; i++) {
+		for(let j = i + 1; j < offered.length; j++) {
+			const common = offered[i].filter(e => offered[j].includes(e));
+			const having = common.length === 0 ? 0 : escapes.filter(row => row.length > 0 && row.every(c => common.every(e => c.includes(e)))).length;
+			if(having >= 2 && common.length * having > score) {
+				best = common;
+				score = common.length * having;
+			}
+		}
+	}
+	return best;
+}
+
+/** Whether every condition of the row lets the call through by each of the `escapes`. */
+export function hasEscapes(this: void, row: readonly string[], escapes: readonly string[]): boolean {
+	return escapes.length > 0 && row.length > 0 && row.every(c => escapes.every(e => escapesOf(c)[1].includes(e)));
+}
+
+/** The condition without the given ways through its `unless`, without the `unless` if none is left. */
+export function withoutEscapes(this: void, condition: string, escapes: readonly string[]): string {
+	const [holds, own] = escapesOf(condition);
+	const rest = own.filter(e => !escapes.includes(e));
+	return own.length === 0 ? condition : rest.length === 0 ? grouped(holds) : grouped(`${holds} unless ${rest.join(' || ')}`);
 }
 
 /** the comparisons a relation is written with, each with the one that reads the same with its sides swapped */

@@ -184,6 +184,7 @@ export const enum PkgName {
 	Tseries      = 'tseries',
 	TuneR        = 'tuneR',
 	UseThis      = 'usethis',
+	Vctrs        = 'vctrs',
 	VisNetwork   = 'visNetwork',
 	Vroom        = 'vroom',
 	Whisker      = 'whisker',

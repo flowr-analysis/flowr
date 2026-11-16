@@ -6,7 +6,7 @@ import { functionPropertyQuery } from '../../query-function-property';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { QueryFunctionFilter } from '../../query-function-filter';
-import type { ArgumentFacts } from '../../../dataflow/fn/higher-order-function';
+import { type ArgumentFacts, DefinitionsBehind } from '../../../dataflow/fn/higher-order-function';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 
 /** Execute higher-order function inspection queries on the given analyzer. */
@@ -23,9 +23,10 @@ export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, quer
 	}
 
 	const argumentFacts = new Map<NodeId, ArgumentFacts>();
+	const definitionsBehind = new DefinitionsBehind(graph);
 	const result: Record<NodeId, boolean> = {};
 	for(const id of fns) {
-		result[id] = FunctionSemantics.isHigherOrder(id, graph, { ctx: analyzer.inspectContext(), invertedGraph, argumentFacts });
+		result[id] = FunctionSemantics.isHigherOrder(id, graph, { ctx: analyzer.inspectContext(), invertedGraph, argumentFacts, definitionsBehind });
 	}
 
 	return result;

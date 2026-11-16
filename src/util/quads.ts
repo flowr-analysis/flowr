@@ -32,6 +32,7 @@ const literal = (v: string, n?: string | RDF.NamedNode) => n3().DataFactory.lite
 import { log } from './log';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type * as RDF from '@rdfjs/types';
+import { CacheScope, GlobalCaches } from './global-caches';
 
 const domain = 'https://uni-ulm.de/r-ast/';
 
@@ -112,9 +113,13 @@ export function serialize2quads(obj: RecordForQuad, config: QuadSerializationCon
 	guard(isObjectOrArray(obj), 'cannot serialize non-object to rdf!');
 	guard(!Array.isArray(obj), 'cannot serialize arrays (must wrap in object)!');
 
-	store = new Set();
 	const quads: Quad[] = [];
-	serializeObject(obj, quads, useConfig);
+	try {
+		serializeObject(obj, quads, useConfig);
+	} finally {
+		/* the objects seen are the analysis serialized, which must not outlive the call */
+		store.clear();
+	}
 	return writer().quadsToString(quads);
 }
 
@@ -233,7 +238,9 @@ function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads
 	}
 }
 
-let store = new Set();
+/** the objects already serialized by the running {@link serialize2quads}, against cycles */
+const store = new Set<unknown>();
+GlobalCaches.register('quad-cycle-guard', CacheScope.Analysis, () => store.size, () => store.clear());
 
 function guardCycle(obj: unknown) {
 	// @ts-expect-error we do not care about the type here

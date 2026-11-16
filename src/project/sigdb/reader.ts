@@ -539,6 +539,11 @@ export class SigDatabase extends HistorySource implements PackageSignatureSource
 	private readonly nameIdsOfBlob = new Map<number, Int32Array>();
 	/** dictionary id per name asked for, so only the names someone actually queried are ever resolved */
 	private readonly nameIds = new Map<BrandedIdentifier, number>();
+	/**
+	 * per package, what the version lookups need of its blob: every name resolved asks for a package's latest version, and a blob
+	 * the shared budget dropped would be read and decoded again just for that; at most one per package of the bundle
+	 */
+	private readonly outlines = new Map<BrandedNamespace, { readonly latest: RVersion | undefined, readonly versions: ReadonlySet<string> }>();
 	private readonly fd:       number;
 	readonly strings:          SigDict;
 	readonly index:            SigDbIndex;
@@ -751,7 +756,25 @@ export class SigDatabase extends HistorySource implements PackageSignatureSource
 
 	/** whether this bundle actually carries the given version of a package (not just the package) */
 	public hasVersion(pkg: BrandedNamespace, version: string): boolean {
-		return this.blob(pkg)?.versions[version] !== undefined;
+		return this.outline(pkg)?.versions.has(version) ?? false;
+	}
+
+	public override latestVersion(pkg: BrandedNamespace): RVersion | undefined {
+		return this.outline(pkg)?.latest;
+	}
+
+	/** the {@link outlines} entry of the package, read off its blob the first time */
+	private outline(pkg: BrandedNamespace): { readonly latest: RVersion | undefined, readonly versions: ReadonlySet<string> } | undefined {
+		let outline = this.outlines.get(pkg);
+		if(outline === undefined) {
+			const blob = this.blob(pkg);
+			if(blob === undefined) {
+				return undefined;
+			}
+			outline = { latest: super.latestVersion(pkg), versions: new Set(Object.keys(blob.versions)) };
+			this.outlines.set(pkg, outline);
+		}
+		return outline;
 	}
 
 	public isCranVersion(pkg: BrandedNamespace, version: string): boolean {

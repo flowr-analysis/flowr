@@ -175,7 +175,11 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 		if(union.size <= this.limit) {
 			return this.create(union);
 		}
-		return new BranchPathDomain([encodePath(this.commonSteps().intersection((other as BranchPathDomain & this).commonSteps()))], this.limit) as this;
+		const common = this.commonSteps().intersection((other as BranchPathDomain & this).commonSteps());
+		const collapsed = new BranchPathDomain([encodePath(common)], this.limit);
+		/* its one path is these steps, so its own next join past the limit need not split it again */
+		collapsed.common = common;
+		return collapsed as this;
 	}
 
 	/** Reached without any branch, as the start of a function body is. */

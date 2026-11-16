@@ -10,9 +10,11 @@ import { QueryFunctionFilter } from '../../query-function-filter';
 export async function executeRecursionQuery({ analyzer }: BasicQueryData, queries: readonly InspectRecursionQuery[]): Promise<Record<NodeId, boolean>> {
 	const { cg, fns } = await QueryFunctionFilter.inCallGraph(queries, analyzer);
 
+	const ids = [...fns].map(([id]) => id);
+	const recursive = CallGraph.recursiveAmong(ids, cg);
 	const result: Record<NodeId, boolean> = {};
-	for(const [id] of fns) {
-		result[id] = CallGraph.isRecursive(id, cg);
+	for(const id of ids) {
+		result[id] = recursive.has(id);
 	}
 
 	return result;

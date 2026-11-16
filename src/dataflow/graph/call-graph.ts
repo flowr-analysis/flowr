@@ -1,3 +1,4 @@
+import { StronglyConnected } from '../../util/fixpoint';
 import { DataflowGraph } from './graph';
 import {
 	type DataflowGraphVertexFunctionCall,
@@ -291,6 +292,28 @@ export const CallGraph = {
 		return result;
 	},
 
+	/**
+	 * The definitions among `ids` that are recursive (see {@link CallGraph.isRecursive}), for all of them in one walk: a definition is
+	 * recursive exactly if it lies on a cycle, so its strongly connected component has another member or it calls itself.
+	 */
+	recursiveAmong(this: void, ids: Iterable<NodeId>, graph: CallGraph): Set<NodeId> {
+		const recursive = new Set<NodeId>();
+		const components = new StronglyConnected<NodeId>(id => graph.edgesFrom(id).keys(), (members, successorsOf) => {
+			for(const m of members) {
+				if(members.length > 1 || successorsOf(m).includes(m)) {
+					recursive.add(m);
+				}
+			}
+		});
+		const asked = new Set<NodeId>();
+		for(const id of ids) {
+			if(DfgVertex.isFunctionDefinition(graph.getVertex(id))) {
+				asked.add(id);
+				components.visit(id);
+			}
+		}
+		return recursive.intersection(asked);
+	},
 	/** Whether the function definition with the given id (transitively) calls itself; `false` for ids that are no function definition. */
 	isRecursive(this: void, id: NodeId, graph: CallGraph): boolean {
 		if(!DfgVertex.isFunctionDefinition(graph.getVertex(id))) {

@@ -410,8 +410,13 @@ function mayBeFunctionSource(graph: DataflowGraph, info: DataflowGraphVertexFunc
 	} else if(info.environment === undefined) {
 		/*
 		 * a call that only reached built-ins when it was processed keeps no environment, so its name is bound by a definition or a built-in call of its scope binding names (`library(dplyr)`);
-		 * a use, a call of the code (what it lets escape is read at its definition) or a call elsewhere is what it waits for (an earlier call that may raise, a site signaling to a handler that leads to it)
+		 * a use, a call of the code (what it lets escape is read at its definition) or a call elsewhere is what it waits for (an earlier call that may raise, a site signaling to a handler that leads to it),
+		 * and a definition of another name is what it hands on (the parameters `NextMethod` passes to the next method)
 		 */
+		if(DfgVertex.isVariableDefinition(vertex)) {
+			const defined = graph.idMap === undefined ? undefined : NodeId.recoverBareName(target, graph.idMap);
+			return defined === undefined || info.name === undefined || defined === Identifier.getName(info.name);
+		}
 		return (!DfgVertex.isUse(vertex) || isWithinCall(graph, info.id, target)) && (!DfgVertex.isFunctionCall(vertex)
 			|| (vertex.origin !== 'unnamed' && vertex.origin.some(o => o !== BuiltInProcName.Default) && !DfgVertex.hasOrigin(vertex, BuiltInProcName.Function) && isInScopeOf(graph, info.id, target)));
 	}

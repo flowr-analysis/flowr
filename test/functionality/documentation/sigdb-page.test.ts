@@ -5,7 +5,8 @@ import { assert, describe, test } from 'vitest';
 import { contractFormals, spokenOf } from '../../../scripts/sigdb-page/contract-formals';
 import { answersAll, contractTokens, takeContractSpecs } from '../../../scripts/sigdb-page/contract-search';
 import { builtInKinds, guardsForPage } from '../../../scripts/sigdb-index';
-import { linkedGroups, mergedRelations } from '../../../src/dataflow/fn/guards/condition-grouping';
+import { hasEscapes, linkedGroups, mergedRelations, sharedEscapes, withoutEscapes, withUnless } from '../../../src/dataflow/fn/guards/condition-grouping';
+import { guardsTuple } from '../../../scripts/sigdb-page/contract-tuple';
 
 const Root = path.join(__dirname, '..', '..', '..');
 
@@ -76,6 +77,44 @@ describe('Signature database page', () => {
 			{ holds: 'x > n', unless: 'c || (p && q && r)' },
 			{ holds: 'y >= 1', unless: undefined }
 		]);
+	});
+
+	test('a claim with a way through of its own and another one reads with one unless', () => {
+		assert.strictEqual(withUnless('typeof(d) not in {function, environment} unless is.object(d)', '(big.mark != "" || !is.character(x))'),
+			'typeof(d) not in {function, environment} unless (is.object(d) || big.mark != "" || !is.character(x))');
+		assert.strictEqual(withUnless('is.numeric(x) && length(x) == 1', 'is.null(y)'), '(is.numeric(x) && length(x) == 1) unless is.null(y)');
+	});
+
+	test('what lets most rows of a contract through is said once, each row keeping its own ways through', () => {
+		/* the shape of `prettyNum`: two formals and a relation share `big.mark != "" || small.mark != ""` */
+		const rows = [
+			['!missing(x)', 'typeof(x) not in character unless (big.mark != "" || small.mark != "" || is.object(x))'],
+			['typeof(d) not in {function, environment} unless (is.object(d) || big.mark != "" || small.mark != "" || !is.character(x))'],
+			['typeof(i) not in {function, environment} unless (is.object(i) || big.mark != "" || small.mark != "")'],
+			['length(d) == length(i) unless big.mark != "" || small.mark != "" || is.null(dim(d))'],
+			['typeof(big.mark) not in {function, environment} unless is.object(big.mark)']
+		];
+		const shared = sharedEscapes(rows);
+		assert.deepStrictEqual(shared, ['big.mark != ""', 'small.mark != ""']);
+		/* `!missing(x)` holds whatever the marks are, so `x` keeps its row as it is */
+		assert.deepStrictEqual(rows.map(r => hasEscapes(r, shared)), [false, true, true, true, false]);
+		assert.strictEqual(withoutEscapes(rows[1][0], shared), 'typeof(d) not in {function, environment} unless (is.object(d) || !is.character(x))');
+		assert.strictEqual(withoutEscapes(rows[3][0], shared), 'length(d) == length(i) unless is.null(dim(d))');
+		assert.strictEqual(withoutEscapes('a == b unless big.mark != "" || small.mark != ""', shared), 'a == b');
+		/* a way through only one row has is said where it is */
+		assert.deepStrictEqual(sharedEscapes([['a unless p'], ['b unless q'], ['c']]), []);
+	});
+
+	test('the same claim with several ways through is said once, holding unless all of them do', () => {
+		const tuple = guardsTuple({
+			requires:    'x',
+			conditional: [
+				{ formal: 'x', claim: { types: ['character'] }, unless: 'big.mark != "" || is.null(dim(d))' },
+				{ formal: 'x', claim: { types: ['character'] }, unless: 'big.mark != "" || length(d) <= 1' },
+				{ formal: 'y', claim: { notNA: true }, unless: 'is.null(z)' }
+			]
+		});
+		assert.deepStrictEqual(tuple?.[1], [['x', ['typeof(x) in character unless (big.mark != "" || (is.null(dim(d)) && length(d) <= 1))']], ['y', ['!anyNA(y) unless is.null(z)']]]);
 	});
 
 	test('the formals a contract relates read together, in the order of the signature', () => {

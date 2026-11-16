@@ -271,6 +271,8 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 @media (max-width: 700px) { #hits .contract .crow { grid-template-columns: minmax(0, 1fr); gap: .2rem; } #hits .contract .crow > span:first-child { max-width: none; } }
 /* formals that depend on each other are a group, a line apart from the next */
 #hits .contract .crow.gstart { margin-top: .25rem; border-top: 1px solid var(--border); border-top-left-radius: 0; border-top-right-radius: 0; padding-top: .3rem; }
+#hits .contract .crow.within { margin-left: 1.2rem; border-left: 2px solid var(--border); border-radius: 0 .4rem .4rem 0; }
+#hits .contract .crow.escapes .unless.word { font-style: italic; color: var(--muted); }
 #hits .contract .crow:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 /* a failure reads in one line under its condition rather than as a narrow column beside it */
 #hits .contract .crow.condition { grid-template-columns: minmax(0, 1fr); gap: .05rem; }

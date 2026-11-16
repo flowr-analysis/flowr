@@ -8,10 +8,10 @@ import { compareByCodeUnit } from '../../util/text/strings';
 import path from 'path';
 import readline from 'readline';
 import { RVersion, type VersionString } from '../../util/r-version';
-import { DefaultCranBase, FnProp, SigDbExt, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigClassInfo, type SigDb, type SigDbContent, type SigDbPkgMeta, type SigDbPkgMetaIndex } from './schema';
+import { DefaultCranBase, FnProp, SigDbExt, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigClassInfo, type SigNativeRoutineInfo, type SigDb, type SigDbContent, type SigDbPkgMeta, type SigDbPkgMetaIndex } from './schema';
 import { dayToMillis, releasesOf, newestVersion, resolveVersion, type VersionRelease } from './sigdb-version';
 import { decodeIndex, readSigDbIndex, type ByteRange, type SigDbIndex } from './index-format';
-import { tupleToBlob, decodeFunction, decodeDependencies, decodeClasses, deriveLibraryExports, versionFnIndices, transitiveCallees, type DecodedFunction, type ResolvedDependency } from './decode';
+import { tupleToBlob, decodeFunction, decodeDependencies, decodeClasses, decodeNatives, deriveLibraryExports, versionFnIndices, transitiveCallees, type DecodedFunction, type ResolvedDependency } from './decode';
 import { isCompressed, isUnpacked, parseHeader, sigDbStream, resolveSource, ensurePlain, ensurePlainSync } from './decompress';
 import { stripCompressedExt } from './codec';
 import { SigDict } from './dict';
@@ -146,6 +146,11 @@ export interface PackageSignatureSource {
 	 * union) -- {@link LibraryExports.s4Classes}, a flat name list, has nowhere to hang this; `version` defaults to the newest.
 	 */
 	classes(pkg: BrandedNamespace, version?: string): SigClassInfo[] | undefined;
+	/**
+	 * The native (C, C++, Fortran) routines of a package version with their tool-derived facts (see
+	 * {@link SigNativeRoutineInfo}); `version` defaults to the newest. Optional: a source without them leaves it out.
+	 */
+	nativeRoutines?(pkg: BrandedNamespace, version?: string): SigNativeRoutineInfo[] | undefined;
 	/** every package name this source can resolve */
 	packageNames(): BrandedNamespace[];
 	/** whether the package is an R-core / base package (its versions are the R releases it shipped with) */
@@ -318,6 +323,9 @@ export class MergedSignatureSource implements PackageSignatureSource {
 	}
 	public classes(pkg: BrandedNamespace, version?: string): SigClassInfo[] | undefined {
 		return this.pick(pkg, version)?.classes(pkg, version);
+	}
+	public nativeRoutines(pkg: BrandedNamespace, version?: string): SigNativeRoutineInfo[] | undefined {
+		return this.pick(pkg, version)?.nativeRoutines?.(pkg, version);
 	}
 	public packageNames(): BrandedNamespace[] {
 		return uniqueArray(this.sources.flatMap(s => s.packageNames()));
@@ -860,6 +868,10 @@ export class SigDatabase extends HistorySource implements PackageSignatureSource
 		return this.decodedFor(pkg, version, decodeClasses);
 	}
 
+	public nativeRoutines(pkg: BrandedNamespace, version?: string): SigNativeRoutineInfo[] | undefined {
+		return this.decodedFor(pkg, version, decodeNatives);
+	}
+
 	/** whether this is an R-core / base package (its versions are the R releases it shipped with; see {@link SigDbPkgMeta}) */
 	public isBaseR(pkg: BrandedNamespace): boolean {
 		return this.index.meta[pkg]?.[3] === 1;
@@ -1188,6 +1200,10 @@ export class SigDatabaseSet extends HistorySource implements PackageSignatureSou
 
 	public classes(pkg: BrandedNamespace, version?: string): SigClassInfo[] | undefined {
 		return this.firstOf(pkg, version, db => db.classes(pkg, version));
+	}
+
+	public nativeRoutines(pkg: BrandedNamespace, version?: string): SigNativeRoutineInfo[] | undefined {
+		return this.firstOf(pkg, version, db => db.nativeRoutines(pkg, version));
 	}
 
 	/** whether this is an R-core / base package (see {@link SigDatabase.isBaseR}); O(1) via the hoisted metadata */

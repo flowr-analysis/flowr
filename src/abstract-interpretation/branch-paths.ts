@@ -93,13 +93,35 @@ function insertStep(path: string, step: string): string {
 	return steps[low] === step ? path : [...steps.slice(0, low), step, ...steps.slice(low)].join(StepSeparator);
 }
 
+/** Whether the sorted `steps` have `step`. */
+function hasStep(steps: readonly string[], step: string): boolean {
+	let low = 0;
+	let high = steps.length;
+	while(low < high) {
+		const mid = (low + high) >>> 1;
+		if(steps[mid] < step) {
+			low = mid + 1;
+		} else {
+			high = mid;
+		}
+	}
+	return steps[low] === step;
+}
+
+/** The steps all of the paths take: what is common shrinks fast, so each further path is only searched for what is left, never split into a set. */
+function stepsInAll(paths: Iterable<string>): string[] {
+	let common: string[] | undefined;
+	for(const path of paths) {
+		const steps = sortedSteps(path);
+		common = common === undefined ? [...steps] : common.filter(step => hasStep(steps, step));
+	}
+	return common ?? [];
+}
+
 /** The steps all of the paths take, encoded as a path. */
 function commonPath(paths: readonly string[]): string {
-	let common = new Set(sortedSteps(paths[0]));
-	for(const path of paths.slice(1)) {
-		common = common.intersection(new Set(sortedSteps(path)));
-	}
-	return encodePath(common);
+	/* the steps stay sorted, so they already are the path */
+	return stepsInAll(paths).join(StepSeparator);
 }
 
 /** The other way the step goes, the same branch taken the other way. */
@@ -156,13 +178,7 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 	private common: ReadonlySet<string> | undefined;
 
 	private commonSteps(this: this & BranchPathDomain): ReadonlySet<string> {
-		if(this.common === undefined) {
-			let common: ReadonlySet<string> | undefined;
-			for(const path of this.value as ReadonlySet<string>) {
-				common = common === undefined ? new Set(sortedSteps(path)) : common.intersection(new Set(sortedSteps(path)));
-			}
-			this.common = common ?? new Set();
-		}
+		this.common ??= new Set(stepsInAll(this.value as ReadonlySet<string>));
 		return this.common;
 	}
 

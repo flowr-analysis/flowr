@@ -46,7 +46,7 @@ import { dataflowLogger } from './logger';
 import { type DataflowBudgetTracker, GasFeatureKey, GasLevel, GasWikiRef, withDataflowBudget } from '../gas';
 import { DefaultTransitiveSideEffectRounds } from '../config';
 import { Dataflow, ProvenanceEdges } from './graph/df-helper';
-import { ReachSummaries, unionOfSets } from '../util/fixpoint';
+import { ReachSummaries, unionOfAllSets, unionOfSets } from '../util/fixpoint';
 import { mayForce } from './internal/process/functions/call/built-in/built-in-ambient-state';
 import { AmbientStateName, MessageSinks, OutputSinks } from './environments/ambient-state-name';
 import { AmbientAccess, AmbientAccessKind } from './graph/ambient-access';
@@ -182,9 +182,10 @@ function namesStackEnvironment(id: NodeId, graph: DataflowGraph): boolean {
  * The environments the value at `id` may be: the vertices creating them, followed through the parameters of the functions
  * of the program to the arguments of their calls, and these calls, which hand the environment on.
  */
-function environmentsAt(id: NodeId, graph: DataflowGraph, parameters: ReadonlySet<NodeId>, produces: (id: NodeId) => boolean): { producers: NodeId[], via: NodeId[] } {
-	const producers: NodeId[] = [];
-	const via: NodeId[] = [];
+function environmentsAt(id: NodeId, graph: DataflowGraph, parameters: ReadonlySet<NodeId>, produces: (id: NodeId) => boolean): { producers: ReadonlySet<NodeId>, via: ReadonlySet<NodeId> } {
+	/* sets, as many paths lead to the same producers and calls (each call of a function binds its parameter again), and every pair of them makes an edge */
+	const producers = new Set<NodeId>();
+	const via = new Set<NodeId>();
 	const seen = new Set<NodeId>();
 	const todo = [id];
 	for(let at = todo.pop(); at !== undefined; at = todo.pop()) {
@@ -194,10 +195,14 @@ function environmentsAt(id: NodeId, graph: DataflowGraph, parameters: ReadonlySe
 		seen.add(at);
 		for(const source of produces(at) ? [at] : Dataflow.valueSources(at, graph) ?? []) {
 			if(produces(source)) {
-				producers.push(source);
+				producers.add(source);
 			} else if(parameters.has(source)) {
 				for(const argument of Dataflow.argumentsBoundTo(graph, source)) {
-					via.push(...Dataflow.sourcesOf(graph, argument, EdgeType.Argument).filter(c => DfgVertex.isFunctionCall(graph.getVertex(c))));
+					for(const call of Dataflow.sourcesOf(graph, argument, EdgeType.Argument)) {
+						if(DfgVertex.isFunctionCall(graph.getVertex(call))) {
+							via.add(call);
+						}
+					}
 					todo.push(argument);
 				}
 			}
@@ -256,16 +261,20 @@ function linkEnvironmentsHandedToUnseenBodies(graph: DataflowGraph, environment:
 		}
 		for(const arg of call.args) {
 			const ref = FunctionArgument.getReference(arg);
-			const { producers, via } = ref === undefined ? { producers: [], via: [] } : environmentsAt(ref, graph, parameters, produces);
+			if(ref === undefined) {
+				continue;
+			}
+			const { producers, via } = environmentsAt(ref, graph, parameters, produces);
+			const writers = [id, ...via];
 			for(const producer of producers) {
 				if(namesStackEnvironment(producer, graph)) {
-					for(const writer of [id, ...via]) {
+					for(const writer of writers) {
 						written.add(writer);
 					}
 					continue;
 				}
 				for(const holder of holdersOf(producer)) {
-					for(const writer of [id, ...via]) {
+					for(const writer of writers) {
 						reads.add(holder, writer, EdgeType.Reads);
 					}
 				}
@@ -604,7 +613,7 @@ function linkResourceReadersToWriters(graph: DataflowGraph, environment: REnviro
 			next.push(cd.id);
 		}
 		return next;
-	}, v => isTempFile(v) ? new Set([v]) : undefined, { empty: noTempFiles, concat: unionOfSets });
+	}, v => isTempFile(v) ? new Set([v]) : undefined, { empty: noTempFiles, concat: unionOfSets, concatAll: unionOfAllSets });
 	const tempFiles = (id: NodeId) => tempFilesBehind.of(RArgument.valueOf(graph.idMap?.get(id))?.info.id ?? id);
 	function sameResource(a: NodeId, b: NodeId): boolean {
 		if(a === b) {

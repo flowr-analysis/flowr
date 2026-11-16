@@ -35,8 +35,51 @@ function encodePath(steps: ReadonlySet<string>): string {
 	return [...steps].sort().join(StepSeparator);
 }
 
+/** the sorted steps of each path seen lately: the same paths flow through the whole interpretation, so they are split once */
+const parsedPaths = new Map<string, readonly string[]>();
+/** bounds what {@link parsedPaths} keeps, so a large package does not hold every path it ever saw */
+const MaxParsedPaths = 100_000;
+
+/** The steps of the path, sorted as {@link encodePath} sorts them. */
+function sortedSteps(path: string): readonly string[] {
+	let steps = parsedPaths.get(path);
+	if(steps === undefined) {
+		if(parsedPaths.size >= MaxParsedPaths) {
+			parsedPaths.clear();
+		}
+		steps = path === '' ? [] : path.split(StepSeparator);
+		parsedPaths.set(path, steps);
+	}
+	return steps;
+}
+
 function stepsOf(path: string): Set<string> {
-	return new Set(path === '' ? [] : path.split(StepSeparator));
+	return new Set(sortedSteps(path));
+}
+
+/** The path with `step` taken as well, the same string as `encodePath(stepsOf(path).add(step))` without splitting and sorting again. */
+function withStep(path: string, step: string): string {
+	const steps = sortedSteps(path);
+	let low = 0;
+	let high = steps.length;
+	while(low < high) {
+		const mid = (low + high) >>> 1;
+		if(steps[mid] < step) {
+			low = mid + 1;
+		} else {
+			high = mid;
+		}
+	}
+	return steps[low] === step ? path : [...steps.slice(0, low), step, ...steps.slice(low)].join(StepSeparator);
+}
+
+/** The steps all of the paths take, encoded as a path. */
+function commonPath(paths: readonly string[]): string {
+	let common = new Set(sortedSteps(paths[0]));
+	for(const path of paths.slice(1)) {
+		common = common.intersection(new Set(sortedSteps(path)));
+	}
+	return encodePath(common);
 }
 
 /** The other way the step goes, the same branch taken the other way. */
@@ -84,8 +127,7 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 	public override create(value: BoundedSetLift<string> | string[]): this {
 		const paths = value === Top ? undefined : [...value as Iterable<string>];
 		if(paths !== undefined && paths.length > this.limit) {
-			const common = paths.map(stepsOf).reduce((a, b) => a.intersection(b));
-			return new BranchPathDomain([encodePath(common)], this.limit) as this;
+			return new BranchPathDomain([commonPath(paths)], this.limit) as this;
 		}
 		return new BranchPathDomain(value, this.limit) as this;
 	}
@@ -118,7 +160,7 @@ export class BranchPathDomain extends BoundedSetDomain<string> {
 			return this;
 		}
 		const taken = encodeStep(step);
-		return this.create([...this.value].map(path => encodePath(stepsOf(path).add(taken))));
+		return this.create([...this.value].map(path => withStep(path, taken)));
 	}
 
 	/**

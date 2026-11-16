@@ -132,7 +132,17 @@ function calleesOf(id: NodeId, call: DataflowGraphVertexFunctionCall, outgoing: 
  * `f <- print`. Not a binding, which holds what its value names, nor a use of one, like the `print` of
  * `print <- gar; f <- print`, which names `gar`.
  */
-function namesFunction(id: NodeId, graph: DataflowGraph): boolean {
+function namesFunction(id: NodeId, graph: DataflowGraph, known: Map<NodeId, boolean>): boolean {
+	let names = known.get(id);
+	if(names === undefined) {
+		names = decideNamesFunction(id, graph);
+		known.set(id, names);
+	}
+	return names;
+}
+
+/** Whether the vertex at `id` names a function, a definition or a use reading one or reading nothing at all. */
+function decideNamesFunction(id: NodeId, graph: DataflowGraph): boolean {
 	const vertex = graph.get(id);
 	if(vertex === undefined || DfgVertex.isFunctionDefinition(vertex[0])) {
 		return true;
@@ -155,8 +165,9 @@ function namesFunction(id: NodeId, graph: DataflowGraph): boolean {
  * The names of the functions the call at `nodeId` may be a call of, each with the vertices naming it.
  * Without `follow`, only what the call reaches directly, which is all there is when no function of interest is ever
  * used as a value (`f <- read.csv`, `g(read.csv)`, `get("read.csv")`), as then nothing can be an alias of one.
+ * Past the callee, the walk only enters the `reaching` vertices, those that can reach a name asked for (see {@link reachingWanted}).
  */
-function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: boolean): Map<string, NodeId[]> {
+function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: boolean, known: Map<NodeId, boolean>, reaching: ReadonlySet<NodeId> | undefined): Map<string, NodeId[]> {
 	/* we want the names of all functions called at the source id, including synonyms and returns */
 	const aliases: Map<string, NodeId[]> = new Map();
 
@@ -171,7 +182,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: bo
 		}
 		visited.add(id);
 		if(id !== nodeId) {
-			if(namesFunction(id, graph)) {
+			if(namesFunction(id, graph, known)) {
 				const present = aliases.get(str);
 				if(present) {
 					present.push(id);
@@ -201,7 +212,10 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: bo
 				.toArray();
 			/** only follow defined-by and reads */
 			for(const e of x) {
-				queue.enqueue(e);
+				/* past the callee, what reaches no name asked for only names functions nobody asks about */
+				if(reaching === undefined || reaching.has(e[1])) {
+					queue.enqueue(e);
+				}
 			}
 			continue;
 		}
@@ -211,11 +225,56 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: bo
 			: outgoing.entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Returns)).map(([t]) => t);
 
 		for(const call of out) {
+			if(id !== nodeId && reaching !== undefined && !reaching.has(call)) {
+				continue;
+			}
 			queue.enqueue([NodeId.recoverContent(call, graph) ?? NodeId.recoverContent(id, graph) ?? '', call]);
 		}
 	}
 
 	return aliases;
+}
+
+/**
+ * The vertices from which the alias walk of {@link retrieveAllCallAliases} can reach a name that `wanted` accepts, found by one walk back
+ * from those names, so only the calls whose callees are among them need a walk of their own.
+ */
+function reachingWanted(graph: DataflowGraph, wanted: (name: string) => boolean): Set<NodeId> {
+	const into = new Map<NodeId, NodeId[]>();
+	const reaching = new Set<NodeId>();
+	const queue = new ArrayQueue<NodeId>();
+	for(const [id, info] of graph.vertices(true)) {
+		if(DfgVertex.isFunctionDefinition(info)) {
+			continue;
+		}
+		const call = DfgVertex.isFunctionCall(info);
+		const types = call ? EdgeType.Returns : EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
+		for(const [target, edge] of graph.edgesFrom(id)) {
+			if(!DfEdge.includesType(edge, types)) {
+				continue;
+			}
+			const name = NodeId.recoverContent(target, graph) ?? (call ? NodeId.recoverContent(id, graph) : undefined) ?? '';
+			if(wanted(name) && !reaching.has(target)) {
+				reaching.add(target);
+				queue.enqueue(target);
+			}
+			const sources = into.get(target);
+			if(sources) {
+				sources.push(id);
+			} else {
+				into.set(target, [id]);
+			}
+		}
+	}
+	for(let next = queue.dequeue(); next !== undefined; next = queue.dequeue()) {
+		for(const source of into.get(next) ?? []) {
+			if(!reaching.has(source)) {
+				reaching.add(source);
+				queue.enqueue(source);
+			}
+		}
+	}
+	return reaching;
 }
 
 function doesFilepathMatch(file: string | undefined, filter: FileFilter<PromotedCallTest> | undefined): boolean {
@@ -320,13 +379,18 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 		return value !== undefined && queriesFor(value).some(q => q.includeAliases);
 	});
 
+	/* whether a vertex names a function is the same for every call reaching it */
+	const namesFunctionOf = new Map<NodeId, boolean>();
+	/* a call whose own name asks for no aliases only has some if its walk reaches a function asked for */
+	const reaching = followAliases ? reachingWanted(dataflow.graph, name => queriesFor(name).some(q => q.includeAliases)) : undefined;
 	for(const [nodeId, info] of dataflow.graph.verticesOfType(VertexType.FunctionCall)) {
 		const n = Identifier.getName(info.name);
 		/* each query matching the call by its name or, if it asks for them, by the functions it is an alias of */
 		const matched = new Map<PromotedQuery, NodeId[] | undefined>(queriesFor(n).map(q => [q, undefined]));
 		/* without a function used as a value, a call is only one of its own name, whose roots only matter if it matches */
-		if(followAliases || matched.keys().some(q => q.includeAliases)) {
-			for(const [alias, ids] of retrieveAllCallAliases(nodeId, dataflow.graph, followAliases)) {
+		const ownAliases = matched.keys().some(q => q.includeAliases);
+		if(ownAliases || (reaching !== undefined && reaching.size > 0 && calleesOf(nodeId, info, dataflow.graph.edgesFrom(nodeId), dataflow.graph).some(c => reaching.has(c)))) {
+			for(const [alias, ids] of retrieveAllCallAliases(nodeId, dataflow.graph, followAliases, namesFunctionOf, reaching)) {
 				for(const query of queriesFor(alias)) {
 					if(query.includeAliases) {
 						matched.set(query, [...matched.get(query) ?? [], ...ids]);

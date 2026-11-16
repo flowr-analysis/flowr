@@ -381,7 +381,7 @@ export interface SigNativeParamInfo {
 /**
  * One native routine of a package version: where it is, how R reaches it, and the facts the C/Fortran tools
  * found for it. Facts are tool findings with a fixed vocabulary (`parallel:openmp`, `rng:r`, `io:file`,
- * `process:exit`, `error:r`, `hw:simd`, `platform:_WIN32`, `global:write`, ...; see `NATIVE-ROUTINES.md`), each
+ * `process:exit`, `error:r`, `hw:simd`, `platform:_WIN32`, `global:write`, ...; see sigdb-build's `docs/native-routines.md`), each
  * one positive evidence. An absent fact means "not found"; it means "does not happen" only when {@link closed}
  * holds, and never for `error:*`/`warning:*` (R's allocators may always raise).
  */

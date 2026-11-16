@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-16, 15:46:51 UTC (v2.17.7), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 13:32:41 UTC (v2.17.6), do not edit directly._
 <h2 id="Code Clones Query">Code Clones Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Finds code clones in all analyzed files with a configurable selection of AST, token, and fingerprint based algorithms.\
@@ -66,7 +66,7 @@ scale_it <- function(values) {
 	
 </details>
 
-In code, passing the query on its own to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L375"><code>FlowrAnalyzer::<b>query</b></code></a> returns its result directly:
+In code, passing the query on its own to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L362"><code>FlowrAnalyzer::<b>query</b></code></a> returns its result directly:
 
 ```typescript
 const { pairs } = await analyzer.query({ type: 'code-clones', algorithms: ['gst', 'winnowing'] });

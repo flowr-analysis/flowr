@@ -15,12 +15,12 @@ const meta = { date: '2026-11-16', generated: 0 };
 
 /* shaped like what the tracker's analyzer reports for data.table, writexl and quadprog */
 const Natives: SigNativeRoutineInfo[] = [
-	{ name: 'Cforder', iface: '.Call', symbol: 'forder', lang: 'c', file: 'src/forder.c', line: 470, rNames: ['Cforder'],
+	{ name:   'Cforder', iface:  '.Call', symbol: 'forder', lang:   'c', file:   'src/forder.c', line:   470, rNames: ['Cforder'],
 		params: [{ name: 'DT', type: 'SEXP', read: true, escapes: true }, { name: 'by', type: 'SEXP', read: true, written: true }],
-		facts: ['error:r', 'parallel:openmp', 'memory:malloc'], closed: true },
+		facts:  ['error:r', 'parallel:openmp', 'memory:malloc'], closed: true },
 	{ name: 'C_lxw_version', iface: '.Call', lang: 'c', file: 'src/write_xlsx.c', line: 214, arity: 0, params: [], facts: [], closed: true, pure: true },
-	{ name: 'qpgen2', iface: '.Fortran', symbol: 'qpgen2_', lang: 'fortran', file: 'src/solve.QP.f', line: 81, arity: 17,
-		params: [{ name: 'dmat', read: true, written: true, escapes: true }, { name: 'meq', read: true, written: false }], facts: [], closed: false },
+	{ name:   'qpgen2', iface:  '.Fortran', symbol: 'qpgen2_', lang:   'fortran', file:   'src/solve.QP.f', line:   81, arity:  17,
+		params: [{ name: 'dmat', read: true, written: true, escapes: true }, { name: 'meq', read: true, written: false }], facts:  [], closed: false },
 	{ name: 'ghost', iface: '.Call', arity: 1, undefined: true, closed: false }
 ];
 
@@ -107,6 +107,6 @@ describe('Foreign function call sites', withTreeSitter(parser => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 		analyzer.addRequest({ request: 'text', content: 'f <- function(x) .Call(C_foo, x)\ng <- function(y) .C("bar", y, PACKAGE = "p")\nh <- function() { .Call <- function(...) 1; .Call(C_shadowed) }' });
 		const sites = await NativeRoutines.callSites(analyzer);
-		assert.deepStrictEqual(sites.map(s => [s.iface, s.name, s.symbolic, s.package]), [['.Call', 'C_foo', true, undefined], ['.C', 'bar', false, 'p']]);
+		assert.deepStrictEqual(sites.map(s => [s.iface === undefined ? undefined : String(s.iface), s.name, s.symbolic, s.package]), [['.Call', 'C_foo', true, undefined], ['.C', 'bar', false, 'p']]);
 	});
 }));

@@ -7,8 +7,7 @@ import type { SigNativeRoutineInfo } from './schema';
 import type { DynLibDirective, NamespaceFormat } from '../plugins/file-plugins/files/flowr-namespace-file';
 import type { FlowrAnalyzer } from '../flowr-analyzer';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier  } from '../../dataflow/environments/identifier';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import { CallProp, CallProps } from '../../dataflow/environments/built-in-props';
@@ -40,11 +39,11 @@ export interface NativeCallSite extends NativeRoutineRef {
 const Formals = { '.NAME': 'name', '...': '...', 'PACKAGE': 'package' } as const;
 
 /** the interface a call goes through, as {@link SigNativeRoutineInfo.iface} names it (`.External2` reaches `.External` routines) */
-function ifaceOf(call: string | undefined): string | undefined {
-	switch(call) {
+function ifaceOf(call: BrandedIdentifier | undefined): string | undefined {
+	switch(call === undefined ? undefined : String(call)) {
 		case '.External2': case '.External.graphics': return '.External';
 		case '.Call.graphics': return '.Call';
-		default: return call;
+		default: return call === undefined ? undefined : String(call);
 	}
 }
 
@@ -153,7 +152,7 @@ export const NativeRoutines = {
 			if(nameNode !== undefined && RString.is(nameNode)) {
 				out.push({ id, iface, name: nameNode.content.str, symbolic: false, ...pkg === undefined ? {} : { package: pkg } });
 			} else if(nameNode !== undefined && RSymbol.is(nameNode)) {
-				out.push({ id, iface, name: Identifier.getName(nameNode.content), symbolic: true, ...pkg === undefined ? {} : { package: pkg } });
+				out.push({ id, iface, name: String(Identifier.getName(nameNode.content)), symbolic: true, ...pkg === undefined ? {} : { package: pkg } });
 			}
 		}
 		return out;

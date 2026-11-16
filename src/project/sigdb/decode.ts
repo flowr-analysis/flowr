@@ -167,15 +167,15 @@ export function decodeNatives(strings: SigDict, blob: Readonly<PkgBlob>, ver: st
 		}
 		const [nameIdx, flags, symbolIdx, fileIdx, line, arity, rNames, params, facts] = rec;
 		out.push(compactRecord({
-			name:      strings.at(nameIdx),
-			iface:     NativeIfaceNames[(flags >> 3) & 0b111],
-			symbol:    symbolIdx >= 0 ? strings.at(symbolIdx) : undefined,
-			lang:      NativeLangNames[flags & 0b111],
-			file:      fileIdx >= 0 ? strings.at(fileIdx) : undefined,
-			line:      line >= 0 ? line : undefined,
-			arity:     arity >= 0 ? arity : undefined,
-			rNames:    rNames.length ? rNames.map(i => strings.at(i)) : undefined,
-			params:    params.map(([n, props, t]): SigNativeParamInfo => compactRecord({
+			name:   strings.at(nameIdx),
+			iface:  NativeIfaceNames[(flags >> 3) & 0b111],
+			symbol: symbolIdx >= 0 ? strings.at(symbolIdx) : undefined,
+			lang:   NativeLangNames[flags & 0b111],
+			file:   fileIdx >= 0 ? strings.at(fileIdx) : undefined,
+			line:   line >= 0 ? line : undefined,
+			arity:  arity >= 0 ? arity : undefined,
+			rNames: rNames.length ? rNames.map(i => strings.at(i)) : undefined,
+			params: params.map(([n, props, t]): SigNativeParamInfo => compactRecord({
 				name:    strings.at(n),
 				type:    t === undefined ? undefined : strings.at(t),
 				read:    (props & NativeArgProp.Read) !== 0,

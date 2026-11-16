@@ -69,6 +69,9 @@ export const NetworkDefinitions = [
 		{ props: CallProp.Invisible, libFn: true, tags: Downloads, sig: sig({ doi: Forced.Resource, path: Forced.Resource | ArgProp.Written, '...': Forced.Value }) }),
 	fn([...pkg(PkgName.AnnotationHub, 'AnnotationHub'), ...pkg(PkgName.ExperimentHub, 'ExperimentHub')], BuiltInProcName.Default,
 		{ libFn: true, tags: [SemanticCallTag.Network, SemanticCallTag.Reads], sig: sig({ hub: Forced.Resource, '...': Forced.Value }) }),
+	/* `ellmer` chats go to a remote LLM: answers cannot be modeled, so every constructor and chat call is unknown */
+	fn(pkg(PkgName.Ellmer, 'chat', 'chat_openai', 'chat_anthropic', 'chat_claude', 'chat_gemini', 'chat_google_gemini', 'chat_ollama', 'chat_mistral', 'chat_groq', 'chat_azure_openai', 'chat_bedrock'), BuiltInProcName.Default,
+		{ libFn: true, hasUnknownSideEffects: true, tags: [SemanticCallTag.Network, SemanticCallTag.Reads], sig: sig({ '...': Forced.Value }) }),
 	fn([...pkg(PkgName.Soda, 'evalText'), ...pkg(PkgName.FastUtils, 'evalText')], BuiltInProcName.Eval,
 		{ includeFunctionCall: true, supportFunctionCall: true, keepEnvironment: true, tags: [SemanticCallTag.Eval], sig: sig({ text: Forced.Value | ArgProp.Injectable, envir: Forced.Value }) },
 		Primitive),

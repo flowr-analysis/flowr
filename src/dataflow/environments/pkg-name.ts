@@ -46,6 +46,7 @@ export const enum PkgName {
 	Dplyr        = 'dplyr',
 	EasyPackages = 'easypackages',
 	EbImage      = 'EBImage',
+	Ellmer       = 'ellmer',
 	Emmeans      = 'emmeans',
 	ExperimentHub = 'ExperimentHub',
 	Expss        = 'expss',

@@ -22,7 +22,7 @@ export interface ForceSites {
 	/** the name the deferred expression is bound to, whose binding its own writes replace */
 	readonly binding: NodeId
 	/** what reaches the sites and what they reach, filled on first use and shared by everyone handed these sites */
-	readonly reach?:  { before?: ReadonlySet<NodeId>, after?: ReadonlySet<NodeId>, always?: Map<NodeId, boolean> }
+	readonly reach?:  { before?: ReadonlySet<NodeId>, after?: ReadonlySet<NodeId>, always?: Map<NodeId, boolean>, seen?: WeakMap<NodesByName, Map<BrandedIdentifier, readonly NodeId[]>> }
 }
 
 /** Where a name is bound and where it is read, so that a deferred expression can reach either. */
@@ -164,6 +164,17 @@ export const Deferred = {
 		/* the forcing read yields the promise's value, so only reads after it observe what the promise wrote */
 		const reachedByAForce = (use: NodeId) => forces === undefined
 			|| (!forces.sites.includes(use) && (reach.after ??= reachableFrom(forces.cfg, forces.sites)).has(use));
+		/* the bindings of a name some force can see, asked again by every expression these forces evaluate (`eval` deep in a function meets thousands of bindings of `x`) */
+		function seenByAForceNamed(name: BrandedIdentifier): readonly NodeId[] {
+			const byName = (reach.seen ??= new WeakMap()).get(index.definitions) ?? new Map<BrandedIdentifier, readonly NodeId[]>();
+			reach.seen.set(index.definitions, byName);
+			let seen = byName.get(name);
+			if(seen === undefined) {
+				seen = (index.definitions.get(name) ?? []).filter(seenByAForce);
+				byName.set(name, seen);
+			}
+			return seen;
+		}
 		/* whether some force always happens before `use`, asked again by every write of the bound name */
 		let sites: ReadonlySet<NodeId> | undefined;
 		function alwaysAfterAForce(use: NodeId): boolean {
@@ -196,7 +207,7 @@ export const Deferred = {
 					}
 				}
 			} else {
-				const seen = (index.definitions.get(name) ?? []).filter(d => seenByAForce(d) && (!inCallerFrame || visibleFrom(expr, d, graph, idMap)));
+				const seen = inCallerFrame ? (index.definitions.get(name) ?? []).filter(d => seenByAForce(d) && visibleFrom(expr, d, graph, idMap)) : seenByAForceNamed(name);
 				for(const definition of seen) {
 					graph.addEdge(node, definition, EdgeType.Reads);
 				}

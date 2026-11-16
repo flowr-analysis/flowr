@@ -86,6 +86,15 @@ function tailCacheOf(env: Environment, target: ReferenceType): Map<BrandedIdenti
 	return memo;
 }
 
+/** Memoize the walk below `env`, which may be the built-in environment or a shared base layer, so bounded by {@link TailCacheCap}. */
+function rememberTail(env: Environment, target: ReferenceType, name: BrandedIdentifier, result: readonly IdentifierDefinition[] | undefined): void {
+	const memo = tailCacheOf(env, target);
+	if(memo.size >= TailCacheCap) {
+		memo.clear();
+	}
+	memo.set(name, result);
+}
+
 /** {@link resolveByName} without its two special targets, i.e. the plain walk up the environments. */
 function resolveByTargetType(id: Identifier, environment: REnvironmentInformation, target: ReferenceType): readonly IdentifierDefinition[] | undefined {
 	/* read piecewise, `Identifier.toArray` would allocate a tuple per resolution */
@@ -146,7 +155,7 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 				/* a definite definition ends the walk, the maybe ones above it still count */
 				const result = definitions ? definitions.concat(definition) : definition;
 				if(flattenAt !== undefined) {
-					tailCacheOf(flattenAt, target).set(name, result);
+					rememberTail(flattenAt, target, name, result);
 				}
 				return result;
 			}
@@ -165,11 +174,7 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 		? (builtIns === undefined || builtIns.length === 0 ? definitions : definitions.concat(builtIns))
 		: (builtIns === undefined || builtIns.length > 0 ? builtIns : undefined);
 	if(flattenAt !== undefined) {
-		const memo = tailCacheOf(flattenAt, target);
-		if(memo.size >= TailCacheCap) {
-			memo.clear();
-		}
-		memo.set(name, result);
+		rememberTail(flattenAt, target, name, result);
 	}
 	return result;
 }

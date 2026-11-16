@@ -533,6 +533,8 @@ export class SigDatabase extends HistorySource implements PackageSignatureSource
 	/** a version's function indices plus its `name -> index` view, keyed by package and version; FIFO-bounded */
 	private readonly versionFnCache = new Map<string, VersionFns>();
 	private static readonly VersionFnCacheCap = 2048;
+	/** bounds {@link nameIds}: a shared database lives as long as the process, and the names asked for come from the analyzed code */
+	private static readonly NameIdCacheCap = 65_536;
 	/** which names a package can offer at all, as sorted dictionary ids; filled the first time its blob is read */
 	private readonly nameIdsOfBlob = new Map<number, Int32Array>();
 	/** dictionary id per name asked for, so only the names someone actually queried are ever resolved */
@@ -644,7 +646,7 @@ export class SigDatabase extends HistorySource implements PackageSignatureSource
 	private nameId(name: BrandedIdentifier): number {
 		let id = this.nameIds.get(name);
 		if(id === undefined) {
-			this.nameIds.set(name, id = dictionaryIdOf(this.strings, name));
+			id = SigDatabase.cache(this.nameIds, name, dictionaryIdOf(this.strings, name), SigDatabase.NameIdCacheCap);
 		}
 		return id;
 	}

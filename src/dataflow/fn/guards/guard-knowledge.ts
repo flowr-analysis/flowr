@@ -6,6 +6,7 @@ import { compareRVersions } from '../../../util/r-version-order';
 import { RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
 import { GuardTerm, type GuardCall } from './guard-term';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import { CacheScope, GlobalCaches } from '../../../util/global-caches';
 
 const { Null, Logical, Integer, Double, Complex, Character, Raw, List, Pairlist, Function: Fn, Environment, Symbol, Language, Expression, Other } = RValueType;
 
@@ -50,7 +51,8 @@ export function guardFactsIn(this: void, definitions: BuiltInDefinitions, versio
 	return name => known.get(name);
 }
 
-const defaultFacts = new Map<string, GuardFactsLookup>();
+/** per R version asked for */
+const defaultFacts = GlobalCaches.map<string, GuardFactsLookup>('default-guard-facts', CacheScope.Process, 32);
 
 /** What the default built-in definitions state of guards, by default in the R version the guards of the base packages were read off. */
 export function defaultGuardFacts(this: void, version: string = RBaseGuardsVersion): GuardFactsLookup {

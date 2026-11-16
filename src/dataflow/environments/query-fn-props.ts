@@ -25,6 +25,8 @@ import { EdgeType } from '../graph/edge';
 import type { DataflowGraph } from '../graph/graph';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 import { DefaultMap } from '../../util/collections/defaultmap';
+import { BoundedMap } from '../../util/collections/bounded-map';
+import { CacheScope, GlobalCaches } from '../../util/global-caches';
 
 /** Where to look up what flowR knows about a function, in that order: the name as it resolves here, the built-in definitions, and the signature database for the rest. */
 export interface FnPropsSource {
@@ -236,7 +238,7 @@ function packageExporting(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerCon
 	const dependencies = ctx.deps.getDependencies().length;
 	let known = ExportingPerContext.get(ctx.deps);
 	if(known?.dependencies !== dependencies) {
-		known = { dependencies, owners: new Map() };
+		known = { dependencies, owners: new BoundedMap(MaxOwnersPerContext) };
 		ExportingPerContext.set(ctx.deps, known);
 	}
 	if(!known.owners.has(name)) {
@@ -246,7 +248,12 @@ function packageExporting(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerCon
 }
 
 /** what {@link packageExporting} answered per dependencies context, as long as it has the same number of dependencies */
-const ExportingPerContext = new WeakMap<object, { readonly dependencies: number, readonly owners: Map<BrandedIdentifier, BrandedNamespace | undefined> }>();
+let ExportingPerContext = new WeakMap<object, { readonly dependencies: number, readonly owners: Map<BrandedIdentifier, BrandedNamespace | undefined> }>();
+/** bounds the names {@link ExportingPerContext} keeps per context, as they are the names the analyzed code uses */
+const MaxOwnersPerContext = 65_536;
+GlobalCaches.register('exporting-per-context', CacheScope.Analysis, () => undefined, () => {
+	ExportingPerContext = new WeakMap();
+});
 
 function exportingPackage(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerContext): BrandedNamespace | undefined {
 	const db = signatureDbOf(ctx.deps);

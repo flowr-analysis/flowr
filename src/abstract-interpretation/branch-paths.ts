@@ -4,6 +4,7 @@ import { Top } from './domains/lattice';
 import { BoundedSetDomain, type BoundedSetLift } from './domains/bounded-set-domain';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { CacheScope, GlobalCaches } from '../util/global-caches';
 
 /**
  * One branch taken on the way to a node: the construct deciding it (`if`, `while`, `&&`, `||`, `switch`, ...), which
@@ -59,6 +60,11 @@ function stepsOf(path: string): Set<string> {
 
 /** per path and step, the path taking it: a loop is interpreted until nothing changes, so the same continuations come up again */
 const continued = new Map<string, Map<string, string>>();
+/* both hold node ids of the analyzed code, so a reset releases them */
+GlobalCaches.register('branch-paths', CacheScope.Analysis, () => parsedPaths.size + continued.size, () => {
+	parsedPaths.clear();
+	continued.clear();
+}, 2 * MaxParsedPaths);
 
 /** The path with `step` taken as well, the same string as `encodePath(stepsOf(path).add(step))` without splitting and sorting again. */
 function withStep(path: string, step: string): string {

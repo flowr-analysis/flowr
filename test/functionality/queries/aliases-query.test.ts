@@ -13,6 +13,9 @@ describe('Aliases Query', withTreeSitter(parser => {
 
 	testQuery('Basic', 'f <- function(...) 42\ng <- f', [{ type: 'aliases', criteria: ['1@f'] }], { aliases: { result: [['1@f', [[2, 1, 2, 1] as SourceLocation]]] } });
 	testQuery('Basic 2', 'f <- function(...) 42\ng <- f\nh <- g', [{ type: 'aliases', criteria: ['1@f', '2@g'] }], { aliases: { result: [['1@f', [[2, 1, 2, 1] as SourceLocation, [3, 1, 3, 1] as SourceLocation]], ['2@g', [[3, 1, 3, 1] as SourceLocation]]] } });
+	testQuery('Basic - using nodeId', 'f <- function(...) 42\ng <- f\nh <- g', [{ type: 'aliases', criteria: ['1@f'], id: [7]  }], { aliases: { result: [['1@f', [[2, 1, 2, 1] as SourceLocation, [3, 1, 3, 1] as SourceLocation]], [7, [10]]] } });
 	testQuery('several levels of aliases', 'f <- function(...){g <- h}\nh <- f\nf()', [{ type: 'aliases', criteria: ['3@f'] }], { aliases: { result: [['3@f', [[2, 1, 2, 1] as SourceLocation, [1, 20, 1, 20] as SourceLocation]]] } });
 	testQuery('several levels of aliases - interrupted', 'f <- 5\ng <- f\nf <- f+1\nh <- g', [{ type: 'aliases', criteria: ['1@f', '3@f', '2@g'] }], { aliases: { result: [['1@f', [[2, 1, 2, 1] as SourceLocation, [4, 1, 4, 1] as SourceLocation]], ['3@f', []], ['2@g', [[4, 1, 4, 1] as SourceLocation]]] } });
+	//todo: branches, schleifen, lazy evaluation
+	//erst wenn a zum ersten mal benuzt wird es zu dem defaultwert, also a wird zu c und das ist die funktion 42
 }));

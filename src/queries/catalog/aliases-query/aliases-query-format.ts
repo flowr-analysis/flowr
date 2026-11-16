@@ -5,7 +5,6 @@ import { bold } from '../../../util/text/ansi';
 import { executeAliasesQuery } from './aliases-query-executor';
 import type { SlicingCriteria, SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { isUndefined } from '../../../util/assert';
 import type { SourceLocation } from '../../../util/range';
 
 export interface AliasesQuery extends BaseQueryFormat {
@@ -20,20 +19,23 @@ export interface AliasesQueryResult extends BaseQueryResult {
 export const AliasesQueryDefinition = {
 	title:           'Aliases Query',
 	executor:        executeAliasesQuery,
-	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
+	asciiSummarizer: async(formatter, _, queryResults, result) => {
 		const out = queryResults as QueryResults<'aliases'>['aliases'];
 		result.push(`Query: ${bold('aliases', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
-		result.push('   ╰ Found aliases:');
 		for(const criterion of out.result) {
-			const aliases = isUndefined(criterion[1]) ? 'has no aliases.' : `has aliases ${criterion[1]?.join(', ')}`;
+			const aliases = criterion[1].length === 0 ? '   ╰ has no aliases.' : `   ╰ has aliases ${criterion[1].map(elem => {
+				return `[${elem.toString()}]`;
+			})?.join(', ')}`;
 			result.push(criterion[0].toString(), aliases);
 		}
 		return true;
 	},
 	schema: Joi.object({
 		type:     Joi.string().valid('aliases').required().description('The type of the query.'),
-		criteria: Joi.array().items(Joi.string()).optional().description('The slicing criteria of the nodes we want to find the alias for.')
+		criteria: Joi.array().items(Joi.string()).optional().description('The slicing criteria of the nodes we want to find the alias for.'),
+		id:       Joi.array().items(Joi.number()).optional().description('The NodeId of the nodes we want to find the alias for.')
 	}).description('The alias query returns all aliases for the given function call marked as a slicing criterion.'),
+	//Todo: einfach alle aliases zurückgeben gesammelt unabhängig von 
 	/*flattenInvolvedNodes: (queryResults: BaseQueryResult): SourceLocation[] => {
 		const out = queryResults as QueryResults<'aliases'>['aliases'];
 		return Array.from(out.result.values()).filter(i => { return isNotUndefined(i); }).flatMap(id => id);

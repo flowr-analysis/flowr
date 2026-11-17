@@ -1,4 +1,5 @@
 import { satisfies as semverSatisfies, validRange } from 'semver';
+import { Ambient } from '../../../dataflow/environments/ambient-effect';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import type { BasicQueryData } from '../../base-query-format';
 import {
@@ -179,11 +180,14 @@ function flowrViewOf(info: BuiltInFnInfo, sigParams: readonly BrandedIdentifier[
 	const returns = info.sig?.find(([, p]) => (p & ArgProp.Alias) !== 0)?.[0];
 	/* flowR usually declares only the parameters it models, which is no disagreement as long as they line up */
 	const same = params.every((n, i) => n === sigParams[i]);
+	const ambient = uniqueArray(Ambient.list(info.ambient).map(effect => `${effect.family}:${effect.access}`));
 	return compactRecord({
 		props:      FunctionSemantics.call.props.names([info.props ?? 0, ...info.tags ?? []]).map(name => name.toLowerCase()),
 		args:       args.length > 0 ? args : undefined,
 		returns,
-		parameters: params.length > 0 && !same ? params : undefined
+		parameters: params.length > 0 && !same ? params : undefined,
+		ambient:    ambient.length > 0 ? ambient : undefined,
+		muffles:    info.muffles?.length ? info.muffles : undefined
 	});
 }
 
@@ -193,7 +197,7 @@ function flowrViewOf(info: BuiltInFnInfo, sigParams: readonly BrandedIdentifier[
  */
 function flowrView(env: REnvironmentInformation | undefined, pkg: BrandedNamespace, name: BrandedIdentifier, sigParams: readonly BrandedIdentifier[]): SignatureFlowrView | undefined {
 	const info = env === undefined ? undefined : queryFnProps(Identifier.make(name, pkg), { environment: env });
-	if(info === undefined || (info.props === undefined && info.sig === undefined)) {
+	if(info === undefined || (info.props === undefined && info.sig === undefined && info.ambient === undefined && info.muffles === undefined)) {
 		return undefined;
 	}
 	return flowrViewOf(info, sigParams);

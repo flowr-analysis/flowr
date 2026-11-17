@@ -3,7 +3,8 @@ import type { KnownParser } from '../../../r-bridge/parser';
 import { printDfGraphForCode } from '../../doc-util/doc-dfg';
 import { codeBlock } from '../../doc-util/doc-code';
 import { AmbientFamilyInfo, AmbientVerbInfo, AmbientWording, type AmbientFamilyName, type AmbientVerb } from '../../../dataflow/environments/ambient-effect';
-import { statedSignatureOf, statedSignatures } from '../../../dataflow/environments/default-builtin-config';
+import { DefaultBuiltinConfig, statedSignatureOf, statedSignatures } from '../../../dataflow/environments/default-builtin-config';
+import { contextFromInput } from '../../../project/context/flowr-analyzer-context';
 import type { BrandedIdentifier } from '../../../dataflow/environments/identifier';
 
 /** a function's ambient accesses as a list, generated from its declaration */
@@ -17,7 +18,8 @@ function summaryOf(stated: ReturnType<typeof statedSignatures>, name: BrandedIde
 
 /** The wiki section on how ambient state is declared in the built-in configuration and tracked in the dataflow graph. */
 export async function ambientStateSection(parser: KnownParser, ctx: GeneralDocContext): Promise<string> {
-	const stated = statedSignatures();
+	const known = contextFromInput('');
+	const stated = statedSignatures(DefaultBuiltinConfig, id => known.functionInfo(id));
 	const families = Object.entries(AmbientFamilyInfo) as [AmbientFamilyName, typeof AmbientFamilyInfo[AmbientFamilyName]][];
 	const verbs = Object.entries(AmbientVerbInfo) as [AmbientVerb, typeof AmbientVerbInfo[AmbientVerb]][];
 	const examples: readonly BrandedIdentifier[] = ['png', 'plot', 'points', 'curve', 'dev.off', 'par', 'palette', 'sink', 'print', 'paste', 'options', 'getOption', 'Sys.setenv', 'set.seed', 'runif', 'setwd'];

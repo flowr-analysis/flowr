@@ -2,6 +2,8 @@
  * The playground: a CodeMirror editor on the left, and on the right what flowR makes of it, all in
  * the browser. The wasm rides along inside this bundle, so the page fetches nothing.
  */
+import { type BakedRoutine, nameArgumentAt, placeOf, routineNamed, routineNames, sourceUrl, unbakeRoutine } from './native-links';
+import type { SigNativeRoutineInfo } from '../../src/project/sigdb/schema';
 import { type SourceLocation, SourceRange } from '../../src/util/range';
 import { queryWikiPage, SupportedQueries } from '../../src/queries/query';
 import { FlowrWikiBaseRef } from '../../src/documentation/doc-util/doc-files';
@@ -63,7 +65,7 @@ import { RNode } from '../../src/r-bridge/lang-4.x/ast/model/model';
 import { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { contractCard, placeIn, programContracts, statedContract, type ProgramContract } from './contracts';
 import { FunctionSemantics } from '../../src/dataflow/fn/function-semantics';
-import type { ReadOnlyFlowrAnalyzerContext } from '../../src/project/context/flowr-analyzer-context';
+import { contextFromInput, type ReadOnlyFlowrAnalyzerContext } from '../../src/project/context/flowr-analyzer-context';
 import type { InspectFnGuardsQueryResult } from '../../src/queries/catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
 import { allNodes, categoryInfo, dependencyTree, describeDependency, type DepNode, icon, noFindingsGroup, nodeIds, primaryCategory } from './dependency-view';
 import { datasetsOf } from '../../src/util/r-datasets';
@@ -482,8 +484,11 @@ for(const definition of DefaultBuiltinConfig) {
 	}
 }
 
-/** flowR's own definitions, for the primitives (`sum`, `max`, `c`) the database cannot describe */
-const stated = statedSignatures();
+/** flowR's own definitions, for the primitives (`sum`, `max`, `c`) the database cannot describe, as `functionInfo` answers for each */
+const stated = (() => {
+	const ctx = contextFromInput('');
+	return statedSignatures(DefaultBuiltinConfig, id => ctx.functionInfo(id));
+})();
 function builtinSignature(name: string, pkg?: string): Signature | undefined {
 	const own = statedSignatureOf(stated, name, pkg);
 	return own === undefined ? undefined
@@ -687,6 +692,39 @@ const bakedPackages: Readonly<Record<string, readonly string[]>> = (() => {
 	}
 })();
 
+/** the native routines of the packages this page carries, `package -> routines`, written in by the build */
+const bakedNatives: Readonly<Record<string, readonly BakedRoutine[]>> = (() => {
+	const baked = document.getElementById('natives')?.textContent?.trim();
+	try {
+		return baked ? JSON.parse(baked) as Record<string, BakedRoutine[]> : {};
+	} catch{
+		return {};
+	}
+})();
+
+/** the packages whose routines a foreign function call may reach: the one it names, the project's own, the attached ones */
+function routinePackages(named: string | undefined): string[] {
+	const description = files.find(f => f.name === 'DESCRIPTION' || f.name.endsWith('/DESCRIPTION'));
+	const own = description === undefined ? undefined : /^Package:\s*([\w.]+)/m.exec(textOf(files.indexOf(description)))?.[1];
+	return uniqueArray([named, own, ...attached].filter((p): p is string => p !== undefined && bakedNatives[p] !== undefined));
+}
+
+/** the routine a foreign function call at `pos` names, with its package, if the page carries it */
+function routineAt(text: string, pos: number): { readonly pkg: string, readonly routine: SigNativeRoutineInfo, readonly from: number, readonly to: number } | undefined {
+	const end = pos + (/^[\w.]*/.exec(text.slice(pos))?.[0].length ?? 0);
+	const asked = nameArgumentAt(text, end);
+	if(asked === undefined || asked.written === '') {
+		return undefined;
+	}
+	for(const pkg of routinePackages(asked.pkg)) {
+		const routine = routineNamed(bakedNatives[pkg].map(unbakeRoutine), asked.written, asked.quoted);
+		if(routine !== undefined) {
+			return { pkg, routine, from: asked.from, to: end };
+		}
+	}
+	return undefined;
+}
+
 function showStats(steps: Readonly<Record<string, number>>, graph: DataflowGraph): void {
 	const vertices = [...graph.vertices(true)];
 	const edges = arraySum(vertices.map(([id]) => graph.edgesFrom(id).size));
@@ -868,6 +906,15 @@ function complete(context: CompletionContext): CompletionResult | null | Promise
 	const access = context.matchBefore(ColumnAccess);
 	if(access !== null) {
 		return completeColumn(context, access);
+	}
+	/* the first argument of `.Call` and friends names a native routine of the packages around */
+	const native = nameArgumentAt(context.state.doc.toString(), context.pos);
+	if(native !== undefined) {
+		const options = routinePackages(native.pkg).flatMap(pkg => routineNames(bakedNatives[pkg].map(unbakeRoutine), native.quoted)
+			.map(({ label, routine }) => offer(label, native.written, { pkg, type: 'function', detail: `${routine.lang ?? 'native'} routine of ${pkg}, ${placeOf(routine)}` })));
+		if(options.length > 0) {
+			return { from: native.from, options: ranked(options) };
+		}
 	}
 	const loading = Loading.exec(context.matchBefore(Loading)?.text ?? '');
 	if(loading !== null) {
@@ -2639,6 +2686,15 @@ async function jumpTarget(pos: number): Promise<{ readonly from: number, readonl
 	const file = fileAt(pos);
 	if(file !== undefined) {
 		return { ...file, go: () => openFile(file.name) };
+	}
+	/* a native routine opens where it is defined: in the project if it carries the source, else on CRAN's mirror */
+	const native = routineAt(editor.state.doc.toString(), pos);
+	if(native !== undefined) {
+		const { routine, pkg } = native;
+		const local = routine.file === undefined ? undefined : files.find(f => f.name === routine.file || f.name.endsWith('/' + routine.file))?.name;
+		const url = sourceUrl(pkg, bakedPackages[pkg]?.[0], routine);
+		return local !== undefined ? { from: native.from, to: native.to, go: () => reveal(local, routine.line) }
+			: url === undefined ? undefined : { from: native.from, to: native.to, go: () => void window.open(url, '_blank', 'noopener') };
 	}
 	const line = editor.state.doc.lineAt(pos);
 	const found = targetAt(line.text, line.number, pos - line.from);

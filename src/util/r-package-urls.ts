@@ -85,3 +85,57 @@ export const RRepositories: Record<string, RRepository> = {
 	'omegahat':     { label: 'Omegahat',      home: pkg => `https://www.omegahat.net/${encodeURIComponent(pkg)}/` },
 	'rforge':       { label: 'R-Forge',       home: pkg => `https://r-forge.r-project.org/projects/${encodeURIComponent(pkg)}/` }
 };
+
+/** where to find a file of a package's sources, see {@link packageSourceUrl} */
+export interface SourcePlace {
+	readonly version?: string
+	/** the repository the version came from, as the database names it (`cran`, `bioc`, `runiverse:r-lib`, or a git url) */
+	readonly source?:  string
+	/** a package R ships, whose sources are R's own */
+	readonly base?:    boolean
+	readonly file?:    string
+	readonly line?:    number
+	readonly endLine?: number
+}
+
+/** the fragment linking to the lines, `#L3` or `#L3-L9`, empty without a line */
+function atLines(line: number | undefined, endLine: number | undefined): string {
+	return line === undefined || line < 0 ? '' : endLine !== undefined && endLine > line ? `#L${line}-L${endLine}` : `#L${line}`;
+}
+
+/** the web address of a git repository, `undefined` for anything that is none (`git@github.com:o/r.git` becomes `https://github.com/o/r`) */
+export function gitWebUrl(source: string): string | undefined {
+	const ssh = /^git@([^:]+):(.+?)(?:\.git)?\/?$/.exec(source);
+	if(ssh !== null) {
+		return `https://${ssh[1]}/${ssh[2]}`;
+	}
+	const https = /^(?:git\+)?https?:\/\/((?:github\.com|gitlab\.com|codeberg\.org|bitbucket\.org)\/[^/]+\/[^/#?]+?)(?:\.git)?\/?$/.exec(source);
+	return https === null ? undefined : `https://${https[1]}`;
+}
+
+/**
+ * Where a file of a package's sources is online, at its lines: R's sources for a base package, CRAN's mirror at the
+ * version tag, the package's git repository at `HEAD` (repositories tag releases in no common way), an R-universe's repository, or
+ * Bioconductor's git browser; the repository's page when the file cannot be pointed at.
+ */
+export function packageSourceUrl(pkg: BrandedNamespace, { version, source, base, file, line, endLine }: SourcePlace): string | undefined {
+	const lines = atLines(line, endLine);
+	if(base === true) {
+		return file === undefined ? rSourceUrl(pkg, version) : rSourceUrl(pkg, version, file) + lines;
+	}
+	const kind = (source ?? 'cran').toLowerCase();
+	if(kind === 'cran') {
+		return file === undefined ? cranMirrorSourceUrl(pkg, version) : cranMirrorSourceUrl(pkg, version, file) + lines;
+	}
+	const git = source === undefined ? undefined : gitWebUrl(source);
+	const universe = /^r-?universe:([\w.-]+)$/.exec(kind)?.[1];
+	const repo = git ?? (universe === undefined ? undefined : `https://github.com/${universe}/${encodeURIComponent(pkg)}`);
+	if(repo !== undefined) {
+		const blob = repo.includes('gitlab.com') ? '/-/blob' : '/blob';
+		return file === undefined ? repo : `${repo}${blob}/HEAD/${file}${lines}`;
+	}
+	if(kind === 'bioc' || kind === 'bioconductor') {
+		return file === undefined ? RRepositories['bioc'].home(pkg) : `https://code.bioconductor.org/browse/${encodeURIComponent(pkg)}/blob/devel/${file}${lines}`;
+	}
+	return RRepositories[kind]?.home(pkg);
+}

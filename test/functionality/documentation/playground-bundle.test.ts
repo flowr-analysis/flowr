@@ -39,7 +39,7 @@ describe('playground', { concurrent: false }, () => {
 		const virtualConsole = new VirtualConsole();
 		virtualConsole.on('jsdomError', e => errors.push(e.cause instanceof Error ? String(e.cause) : e.message));
 		virtualConsole.on('error', (...args: unknown[]) => errors.push(args.map(String).join(' ')));
-		const { window } = new JSDOM(playgroundPage('', builtinExports(), 0).replace('<script src="bundle.js"></script>', ''), {
+		const { window } = new JSDOM(playgroundPage('', builtinExports(), '', 0).replace('<script src="bundle.js"></script>', ''), {
 			url:               typeof link === 'string' ? link : Object.keys(link).length === 0 ? Playground.BaseRef : Playground.link(link),
 			runScripts:        'dangerously',
 			pretendToBeVisual: true,

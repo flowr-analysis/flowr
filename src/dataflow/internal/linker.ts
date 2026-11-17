@@ -923,11 +923,18 @@ export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: N
 
 /** Links the call `callId` to the functions the given definitions bind, which it did not know of when it was processed. */
 export function linkCallToDefinitions(graph: DataflowGraph, callId: NodeId, definitions: readonly NodeId[], idMap: AstIdMap): void {
+	if(definitions.length > 0 && DfgVertex.isFunctionCall(graph.getVertex(callId))) {
+		linkCallToFunctions(graph, callId, getAllLinkedFunctionDefinitions(new Set(definitions), graph)[0], idMap);
+	}
+}
+
+/** Links the call `callId` to the given functions, as {@link linkCallToDefinitions} does once it found them. */
+export function linkCallToFunctions(graph: DataflowGraph, callId: NodeId, functions: Iterable<Required<DataflowGraphVertexFunctionDefinition>>, idMap: AstIdMap): void {
 	const call = graph.getVertex(callId);
-	if(definitions.length === 0 || !DfgVertex.isFunctionCall(call)) {
+	if(!DfgVertex.isFunctionCall(call)) {
 		return;
 	}
-	for(const fn of getAllLinkedFunctionDefinitions(new Set(definitions), graph)[0]) {
+	for(const fn of functions) {
 		if(!Dataflow.hasEdge(graph, callId, fn.id, EdgeType.Calls)) {
 			linkFunctionCallWithSingleTarget(graph, fn, call, idMap);
 		}

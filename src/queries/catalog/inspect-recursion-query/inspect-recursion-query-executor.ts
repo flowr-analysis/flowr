@@ -3,9 +3,6 @@ import type { BasicQueryData } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { CallGraph } from '../../../dataflow/graph/call-graph';
 import { QueryFunctionFilter } from '../../query-function-filter';
-import { getAllLinkedFunctionDefinitions } from '../../../dataflow/internal/linker';
-import { isNotUndefined } from '../../../util/assert';
-import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 
 /**
  * Execute recursion function inspection queries on the given analyzer.
@@ -15,8 +12,8 @@ export async function executeRecursionQuery({ analyzer }: BasicQueryData, querie
 
 	const result: Record<NodeId, boolean> = {};
 	for(const [id] of fns) {
-		let recursive = CallGraph.isRecursive(id, cg);
-		if(!recursive) {
+		const recursive = CallGraph.isRecursive(id, cg);
+		/*if(!recursive) {
 			const result = (await analyzer.query([{ type: 'aliases', id: [id] }])).aliases.result.flatMap(t => {
 				if(t[0] === id) {
 					return t[1] as NodeId[];
@@ -40,7 +37,7 @@ export async function executeRecursionQuery({ analyzer }: BasicQueryData, querie
 				}
 				recursive = recursive || h.intersection(aliases).size !== 0;
 			}
-		}
+		}*/
 		result[id] = recursive;
 	}
 

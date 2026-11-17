@@ -1,7 +1,6 @@
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex';
-import { DfgVertex } from '../../../dataflow/graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { isNotUndefined, isUndefined } from '../../../util/assert';
@@ -11,33 +10,40 @@ import { metaSince } from '../../query-meta';
 import type { AliasesQuery, AliasesQueryResult } from './aliases-query-format';
 
 function getAlias(source: NodeId, dfg: DataflowGraph<DataflowGraphVertexInfo, DfEdge>) {
-	const result = [];
-	const toSearch = [source];
+	const resultIds = new Set<NodeId>();
+	const toSearch: { vertex: NodeId; isResult: boolean }[] = [{
+		vertex:   source,
+		isResult: false
+	}];
 	const alreadyVisited = new Set<NodeId>();
 	while(toSearch.length !== 0) {
-		const vertex = toSearch.pop();
-		if(isUndefined(vertex) || alreadyVisited.has(vertex)) {
+		const next = toSearch.pop();
+		if(isUndefined(next)) {
+			continue;
+		}
+		const  { vertex, isResult } = next;
+		if(alreadyVisited.has(vertex)) {
 			continue;
 		}
 		for(const [neighbor, edge] of dfg.edgesTo(vertex)) {
 			if(DfEdge.isOnlyType({ types: EdgeType.Reads }, edge.types) || DfEdge.isOnlyType({ types: EdgeType.DefinedBy }, edge.types) || DfEdge.isOnlyType({ types: EdgeType.DefinedByOnCall }, edge.types)) {
-				toSearch.push(neighbor);
-				if(DfgVertex.isVariableDefinition(dfg.getVertex(neighbor))) {
-					result.push(neighbor);
+				if((isResult || DfEdge.isOnlyType({ types: EdgeType.DefinedBy }, edge.types)) && !alreadyVisited.has(neighbor)) {
+					toSearch.push({ vertex: neighbor, isResult: true });
+					resultIds.add(neighbor);
+				} else {
+					toSearch.push({ vertex: neighbor, isResult: false });
 				}
 			}
 		}
 		for(const [neighbor, edge] of dfg.edgesFrom(vertex)) {
 			if(DfEdge.isOnlyType({ types: EdgeType.DefinesOnCall }, edge.types)) {
-				toSearch.push(neighbor);
-				if(DfgVertex.isVariableDefinition(dfg.getVertex(neighbor))) {
-					result.push(neighbor);
-				}
+				toSearch.push({ vertex: neighbor, isResult: true });
+				resultIds.add(neighbor);
 			}
 		}
 		alreadyVisited.add(vertex);
 	}
-	return result;
+	return resultIds;
 }
 
 /**
@@ -57,7 +63,7 @@ export async function executeAliasesQuery({ analyzer }: BasicQueryData, queries:
 		if(isNotUndefined(query.criteria)) {
 			for(const criterion of query.criteria) {
 				const nodeId = SlicingCriterion.parse(criterion, idMap);
-				const aliases = getAlias(nodeId, dfg);
+				const aliases: NodeId[] = Array.from(getAlias(nodeId, dfg));
 				const aliasesLocation = aliases.map(nodeId => {
 					return SourceLocation.fromNode(idMap.get(nodeId));
 				}).filter(element => isNotUndefined(element));
@@ -66,7 +72,7 @@ export async function executeAliasesQuery({ analyzer }: BasicQueryData, queries:
 		}
 		if(isNotUndefined(query.id)) {
 			for(const nodeId of query.id) {
-				const aliases = getAlias(nodeId, dfg);
+				const aliases = Array.from(getAlias(nodeId, dfg));
 				result.push([nodeId, aliases]);
 			}
 		}

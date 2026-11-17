@@ -19,7 +19,7 @@ export interface AliasesQueryResult extends BaseQueryResult {
 export const AliasesQueryDefinition = {
 	title:           'Aliases Query',
 	executor:        executeAliasesQuery,
-	asciiSummarizer: async(formatter, _, queryResults, result) => {
+	asciiSummarizer: (formatter, _, queryResults, result) => {
 		const out = queryResults as QueryResults<'aliases'>['aliases'];
 		result.push(`Query: ${bold('aliases', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 		for(const criterion of out.result) {
@@ -35,9 +35,8 @@ export const AliasesQueryDefinition = {
 		criteria: Joi.array().items(Joi.string()).optional().description('The slicing criteria of the nodes we want to find the alias for.'),
 		id:       Joi.array().items(Joi.number()).optional().description('The NodeId of the nodes we want to find the alias for.')
 	}).description('The alias query returns all aliases for the given function call marked as a slicing criterion.'),
-	//Todo: einfach alle aliases zurückgeben gesammelt unabhängig von 
 	/*flattenInvolvedNodes: (queryResults: BaseQueryResult): SourceLocation[] => {
 		const out = queryResults as QueryResults<'aliases'>['aliases'];
-		return Array.from(out.result.values()).filter(i => { return isNotUndefined(i); }).flatMap(id => id);
+		return Array.from(out.result.values());//.filter(i => { return isNotUndefined(i); }).flatMap(id => id);
 	}*/
 } as const satisfies SupportedQuery<'aliases'>;

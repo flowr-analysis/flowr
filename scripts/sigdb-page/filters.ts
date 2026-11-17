@@ -90,6 +90,16 @@ export function ambientFilters(families: readonly (readonly [key: string, label:
 }
 const idOf = (kind: FilterKind, key: string): string => kind + ':' + key;
 
+/** the word `{trait}` asks a chip by: its label, lowercased, dots dropped and spaces as dashes, `ambient` for any access to the global state */
+const traitWordOf = ({ kind, key, label }: Filter): string => kind === FilterKind.Ambient ? (key === 'any' ? 'ambient' : key) : label.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
+
+/** The chips a query can ask for as `{trait}`, by word: the traits and the ambient state, as properties and roles already have `[...]`. */
+export function traitsOf(extra: readonly Filter[]): Map<string, readonly [id: string, about: string]> {
+	return new Map([...Filters, ...extra]
+		.filter(f => f.kind !== FilterKind.Only && f.kind !== FilterKind.Prop && f.kind !== FilterKind.Arg)
+		.map(f => [traitWordOf(f), [idOf(f.kind, f.key), f.about]] as const));
+}
+
 /** the kind and key of a chip `id` */
 export function filterOf(id: string): readonly [kind: FilterKind, key: string] {
 	const [kind, key] = id.split(':');

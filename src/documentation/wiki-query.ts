@@ -1082,6 +1082,14 @@ scale_it <- function(values) {
   (values - mu) / sd(values)
 }`;
 	return `
+Two functions that compute the same thing under different names are clones of each other, and the query finds such pairs. Given this R code:
+
+${codeBlock('r', example)}
+
+The following query reports them:
+
+${await showQuery(shell, example, [{ type: 'code-clones', algorithms: [CloneAlgorithm.Gst, CloneAlgorithm.Winnowing] }], { ctx })}
+
 This query reports pairs of code fragments that are clones of each other, that is, code that was copied and possibly
 adapted. It runs over all files of the analysis, for example a whole folder or package, with three published algorithms:
 
@@ -1091,7 +1099,7 @@ adapted. It runs over all files of the analysis, for example a whole folder or p
 | \`gst\` | the token strings of functions or files with Greedy String Tiling | as in [JPlag](https://github.com/jplag/JPlag), see Prechelt et al., [Finding Plagiarisms among a Set of Programs with JPlag](https://doi.org/10.3217/jucs-008-11-1016), 2002 |
 | \`winnowing\` | k-gram fingerprints selected by robust winnowing, reported with the matched passages | Schleimer et al., [Winnowing: Local Algorithms for Document Fingerprinting](https://doi.org/10.1145/872757.872770), SIGMOD 2003, the algorithm behind MOSS |
 
-Before the detection, the query presents the code in one of three \`perspective\`s:
+Before the detection, the query presents the code in one of three perspectives, chosen with \`perspective\`:
 
 - \`syntax\` shows the code as written.
 - \`canonical\` (the default) rewrites syntactic sugar and newer R features into one core form. Pipes become calls, \`\\(x)\` becomes \`function(x)\`, right and equal assignments become \`<-\`, \`(e)\` and \`{e}\` become \`e\`, \`x[["a"]]\` becomes \`x$a\`, \`T\` and \`F\` become \`TRUE\` and \`FALSE\`, and a tail \`return(e)\` becomes \`e\`. Every rewritten node keeps the id of the node it stems from, so all findings point to the original source.
@@ -1100,8 +1108,6 @@ Before the detection, the query presents the code in one of three \`perspective\
 With \`exportIndex\`, the query also returns the clone index of the analyzed files (their normalized ASTs).
 A later query can pass such indices as \`against\` to search new code in a corpus of pre-analyzed projects without analyzing them again.
 Use \`config\` to tune the thresholds of each algorithm, and \`maxPairs\` to limit the number of reported pairs, as \`n\` copies of the same function already form \`n(n-1)/2\` pairs.
-
-${await showQuery(shell, example, [{ type: 'code-clones', algorithms: [CloneAlgorithm.Gst, CloneAlgorithm.Winnowing] }], { showCode: true, collapseResult: true, ctx })}
 
 In code, passing the query on its own to ${ctx.linkM(FlowrAnalyzer, 'query')} returns its result directly:
 

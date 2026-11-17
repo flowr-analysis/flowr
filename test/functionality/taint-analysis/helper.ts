@@ -16,7 +16,7 @@ import type { MultiValueDomain } from '../../../src/abstract-interpretation/doma
 import type { TaintProduct } from '../../../src/taint-analysis/taint-visitor';
 import type { TaintAnalysisBuilder } from '../../../src/taint-analysis/builder/taint-analysis';
 
-export type TaintAnalysisExpectation = Record<SlicingCriterion, symbol | undefined>;
+export type TaintAnalysisExpectation = Record<SlicingCriterion, symbol | undefined>; // | Set<symbol>
 
 /** Expectation for a composite taint analysis mapping each criterion to the expected taint per component analysis. */
 export type CompositeTaintExpectation = Record<SlicingCriterion, Record<string, symbol | undefined>>;

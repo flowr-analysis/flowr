@@ -78,7 +78,7 @@ export enum TaintRole {
 type TaintMappingBase = {
 	readonly role?:      TaintRole;
 	readonly category?:  string;
-	readonly identifier: Identifier | Identifier[];
+	readonly identifier: Identifier | Identifier[]; //making this readonly would prevent expansion in the identifiert parameter of the from function
 };
 
 /** A mapping that assigns a fixed taint to a matched call. */

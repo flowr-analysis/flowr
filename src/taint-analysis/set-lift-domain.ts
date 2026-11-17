@@ -26,7 +26,7 @@ export class SetLiftDomain<
 		super(lifted);
 	}
 
-	create(value: SetLiftValue<Elements[number]> | SetLiftTop<Elements[number]> | SetLiftBottom<Elements[number]>): this {
+	create(value: SetLiftValue<Elements[number]> | SetLiftTop<Elements[number]> | SetLiftBottom<Elements[number]> | Elements[number]): this {
 		return new SetLiftDomain<Top, Bottom, Elements>(this.base, value) as this;
 	}
 

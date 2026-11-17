@@ -97,7 +97,11 @@ export const enum FnProp {
 	 * The definition is a generic others dispatch on (S3 `UseMethod`, S4 `setGeneric`/`standardGeneric`, S7
 	 * `new_generic`). The call graph only shows this for an S3 generic with a bundled body, never for S4/S7.
 	 */
-	Generic          = 1 << 14
+	Generic          = 1 << 14,
+	/** runs code concurrently: it reaches a call flowR knows does (`future::future`), or a native routine that forks or starts threads */
+	Concurrent       = 1 << 15,
+	/** computes a result and nothing else (flowR's `CallProp.Pure`): every call it makes does so, a native routine one only if {@link NativeFlag.Pure} */
+	Pure             = 1 << 16
 }
 
 /** the {@link FnProp} bit to its name (for decoding); integer keys iterate in ascending bit order */
@@ -116,7 +120,9 @@ export const FnPropNames: Readonly<Record<FnProp, string>> = {
 	[FnProp.S4Owner]:          's4-owner',
 	[FnProp.S4Method]:         's4-method',
 	[FnProp.Value]:            'value',
-	[FnProp.Generic]:          'generic'
+	[FnProp.Generic]:          'generic',
+	[FnProp.Concurrent]:       'concurrent',
+	[FnProp.Pure]:             'pure'
 };
 
 /**
@@ -189,28 +195,21 @@ export const enum NativeFlag {
 	Undefined = 1 << 8
 }
 
-/** what the analyzer could tell about one argument of a native routine, packed into a {@link SigNativeParam} */
-export const enum NativeArgProp {
-	/** the routine reads the argument */
-	Read       = 1 << 0,
-	/** the routine writes into the argument: R's copy-on-modify does not hold for it (`REAL(x)[i] = 0`, `SET_VECTOR_ELT(x, ...)`, a `.C` output) */
-	Written    = 1 << 1,
-	/** the routine provably does not write into it: no write, and the value reaches no callee the analyzer cannot see into */
-	NotWritten = 1 << 2,
-	/** the argument reaches a callee the analyzer cannot see into, so whether it is written is not known */
-	Escapes    = 1 << 3
-}
-
-/** One argument of a native routine: `[nameIdx, props]` or `[nameIdx, props, typeIdx]` (the declared C type). */
-export type SigNativeParam = [nameIdx: number, props: number] | [nameIdx: number, props: number, typeIdx: number];
+/**
+ * One argument of a native routine: `[nameIdx, props]` or `[nameIdx, props, typeIdx]` (the declared C type). `props` are the
+ * {@link ArgProps} R functions use: `Value` (read), `Written` (may be written, also when it reaches code the analyzer cannot see
+ * into), `Atomic` (has to be an atomic vector) and `Guarded` (the routine fails on some values, see {@link SigNativeRoutineInfo.guards}).
+ */
+export type SigNativeParam = [nameIdx: number, props: ArgProps] | [nameIdx: number, props: ArgProps, typeIdx: number];
 
 /**
- * One native routine record `[nameIdx, flags, symbolIdx, fileIdx, line, arity, rNames, params, facts]`. `flags`
+ * One native routine record `[nameIdx, flags, symbolIdx, fileIdx, line, arity, rNames, params, facts, contractIdx?, endLine?, column?]`. `flags`
  * packs {@link NativeLang} (bits 0-2), {@link NativeIface} (bits 3-5) and {@link NativeFlag}; `symbolIdx`/`fileIdx`
  * are -1 when absent, `arity` is the registered argument count (-1 = any or not registered); `rNames`, `facts`
- * are dictionary indices (ascending), `params` in declaration order.
+ * are dictionary indices (ascending), `params` in declaration order; `contractIdx` indexes {@link PkgBlob.contracts} (-1 for none);
+ * `endLine` and `column` complete the location of the definition (-1 when not known).
  */
-export type SigNative = [nameIdx: number, flags: number, symbolIdx: number, fileIdx: number, line: number, arity: number, rNames: number[], params: SigNativeParam[], facts: number[]];
+export type SigNative = [nameIdx: number, flags: number, symbolIdx: number, fileIdx: number, line: number, arity: number, rNames: number[], params: SigNativeParam[], facts: number[], contractIdx?: number, endLine?: number, column?: number];
 
 /** the kind of a package dependency (mirrors the DESCRIPTION fields) */
 export const enum DepType { Depends = 0, Imports = 1, LinkingTo = 2, Suggests = 3, Enhances = 4 }
@@ -363,19 +362,13 @@ export interface SigVersionInfo {
 	readonly natives?:      readonly SigNativeRoutineInfo[];
 }
 
-/**
- * One argument of a native routine. Each answer is the analyzer's: `written: false` only when it could rule a write
- * out, absent when it could not tell.
- */
+/** One argument of a native routine, as the analyzer read it off the routine's source. */
 export interface SigNativeParamInfo {
-	readonly name:     string;
+	readonly name:   string;
 	/** the declared C type (`SEXP`, `double *`); absent for Fortran or when not known */
-	readonly type?:    string;
-	readonly read?:    boolean;
-	/** `true`: the routine writes into the argument; `false`: provably not; absent: not known */
-	readonly written?: boolean;
-	/** the argument reaches code the analyzer cannot see into */
-	readonly escapes?: boolean;
+	readonly type?:  string;
+	/** what the routine does with the argument, see {@link SigNativeParam} */
+	readonly props?: ArgProps;
 }
 
 /**
@@ -395,6 +388,10 @@ export interface SigNativeRoutineInfo {
 	readonly lang?:      typeof NativeLangNames[number];
 	readonly file?:      string;
 	readonly line?:      number;
+	/** where the routine's name starts on {@link line}, 1-based */
+	readonly column?:    number;
+	/** the last line of the definition */
+	readonly endLine?:   number;
 	/** the registered argument count; absent when not registered or registered as "any" (-1) */
 	readonly arity?:     number;
 	/** the R names binding the routine in the namespace (`useDynLib(pkg, .registration = TRUE, .fixes = "C_")` binds `C_foo`) */
@@ -406,6 +403,8 @@ export interface SigNativeRoutineInfo {
 	readonly closed?:    boolean;
 	/** see {@link NativeFlag.Pure} */
 	readonly pure?:      boolean;
+	/** what a call has to hand the routine for it not to fail, over the names of its {@link params} */
+	readonly guards?:    StatedGuards;
 	/** registered but not defined in the package's sources (see {@link NativeFlag.Undefined}) */
 	readonly undefined?: boolean;
 }

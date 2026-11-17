@@ -7,12 +7,15 @@ import type { SigNativeRoutineInfo } from './schema';
 import type { DynLibDirective, NamespaceFormat } from '../plugins/file-plugins/files/flowr-namespace-file';
 import type { FlowrAnalyzer } from '../flowr-analyzer';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type BrandedIdentifier, Identifier  } from '../../dataflow/environments/identifier';
-import { VertexType } from '../../dataflow/graph/vertex';
-import { FunctionArgument } from '../../dataflow/graph/graph';
-import { CallProp, CallProps } from '../../dataflow/environments/built-in-props';
+import { type BrandedIdentifier, Identifier } from '../../dataflow/environments/identifier';
+import { signatureDbOf } from './signature-db';
+import { type DataflowGraphVertexFunctionCall, VertexType } from '../../dataflow/graph/vertex';
+import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
+import { MatchArgs } from '../../dataflow/graph/match-args';
+import { CallProp, CallProps, type StatedProps } from '../../dataflow/environments/built-in-props';
 import { callFnProps } from '../../dataflow/environments/query-fn-props';
-import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
+import type { AstIdMap, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ReadOnlyFlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { FileRole } from '../context/flowr-file';
@@ -35,8 +38,17 @@ export interface NativeCallSite extends NativeRoutineRef {
 	readonly id: NodeId;
 }
 
-/** the formals of the foreign function interface, `PACKAGE` has to be named in full as it follows `...` */
-const Formals = { '.NAME': 'name', '...': '...', 'PACKAGE': 'package' } as const;
+/** the formals of the foreign function interface, which have to be named in full as they follow `...`; `.C` and `.Fortran` take the last three as well */
+const Formals = { '.NAME': 'name', '...': '...', 'PACKAGE': 'package', 'NAOK': 'option', 'DUP': 'option', 'ENCODING': 'option' } as const;
+
+/** The value of each argument of the call bound to `formal` of {@link Formals}, in order. */
+function valuesOf(this: void, vertex: DataflowGraphVertexFunctionCall, formal: typeof Formals[keyof typeof Formals], idMap: AstIdMap): (RNodeWithParent | undefined)[] {
+	const values = new Map(vertex.args.filter(FunctionArgument.isNamed).map(a => [a.nodeId, a.valueId]));
+	return (MatchArgs.toSpec(vertex.args, Formals).get(formal) ?? []).map(arg => {
+		const vid = values.has(arg) ? values.get(arg) : arg;
+		return vid === undefined ? undefined : idMap.get(vid);
+	});
+}
 
 /** the interface a call goes through, as {@link SigNativeRoutineInfo.iface} names it (`.External2` reaches `.External` routines) */
 function ifaceOf(call: BrandedIdentifier | undefined): string | undefined {
@@ -115,13 +127,62 @@ export const NativeRoutines = {
 		}
 		return false;
 	},
+	/** Whether the routine runs code concurrently: it forks, starts threads, or runs OpenMP, TBB, or rayon work. */
+	concurrent(this: void, routine: SigNativeRoutineInfo | undefined): boolean {
+		return routine?.facts?.some(f => matches(f, 'parallel') || f === 'process:fork') === true;
+	},
+	/**
+	 * How to find the routine a call of the analyzed program runs, among the `natives` of the analyzed package: only a call
+	 * `info` states to be a foreign function call ({@link CallProp.Ffi}) runs one.
+	 */
+	lookup(this: void, natives: readonly SigNativeRoutineInfo[], graph: DataflowGraph, info: (name: Identifier) => StatedProps | undefined, ctx?: ReadOnlyFlowrAnalyzerContext): (vertex: DataflowGraphVertexFunctionCall) => SigNativeRoutineInfo | undefined {
+		if(natives.length === 0) {
+			return () => undefined;
+		}
+		const dynLibs = ctx === undefined ? [] : NativeRoutines.dynLibsIn(ctx);
+		return vertex => {
+			const ref = CallProps.hasAny(info(vertex.name), CallProp.Ffi) ? NativeRoutines.refOf(vertex, graph.idMap as AstIdMap) : undefined;
+			return ref === undefined ? undefined : NativeRoutines.resolve(natives, ref, dynLibs);
+		};
+	},
 	/** the facts of the routine of the family `family` (`parallel` gives `parallel:openmp`, ...), empty if none is known */
 	factsOf(this: void, routine: SigNativeRoutineInfo | undefined, family: string): string[] {
 		return routine?.facts?.filter(f => matches(f, family)) ?? [];
 	},
-	/** the `useDynLib` directives of the analyzed package's NAMESPACE, empty when it has none */
-	dynLibsOf(this: void, analyzer: FlowrAnalyzer): readonly DynLibDirective[] {
-		const fmt = analyzer.inspectContext().files.getFilesByRole(FileRole.Namespace)[0]?.content() as NamespaceFormat | undefined;
+	/** How the foreign function call names its routine, `undefined` unless as a string or an R variable. */
+	refOf(this: void, vertex: DataflowGraphVertexFunctionCall, idMap: AstIdMap): NativeRoutineRef | undefined {
+		const [nameNode] = valuesOf(vertex, 'name', idMap);
+		const [pkgNode] = valuesOf(vertex, 'package', idMap);
+		const iface = Identifier.getName(vertex.name);
+		const pkg = pkgNode !== undefined && RString.is(pkgNode) ? { package: pkgNode.content.str } : {};
+		if(nameNode !== undefined && RString.is(nameNode)) {
+			return { iface, name: nameNode.content.str, symbolic: false, ...pkg };
+		} else if(nameNode !== undefined && RSymbol.is(nameNode)) {
+			return { iface, name: String(Identifier.getName(nameNode.content)), symbolic: true, ...pkg };
+		}
+		return undefined;
+	},
+	/** The values the foreign function call hands its routine, the routine's parameters in order, `undefined` where flowR lost track of one. */
+	argumentsOf(this: void, vertex: DataflowGraphVertexFunctionCall, idMap: AstIdMap): (RNodeWithParent | undefined)[] {
+		return valuesOf(vertex, '...', idMap);
+	},
+	/**
+	 * The routines the signature database records for the analyzed package itself, the one its DESCRIPTION names, at its version if the
+	 * database has it, else the newest. flowR cannot read compiled code itself, so this is how a package the database knows gets them.
+	 */
+	ofProject(this: void, ctx: ReadOnlyFlowrAnalyzerContext): readonly SigNativeRoutineInfo[] {
+		const description = ctx.files.getFilesByRole(FileRole.Description)[0];
+		const pkg = description?.packageName();
+		const db = signatureDbOf(ctx.deps);
+		if(pkg === undefined || !db.available()) {
+			return [];
+		}
+		const source = db.sources();
+		return source.nativeRoutines?.(pkg, description?.version()?.str) ?? source.nativeRoutines?.(pkg) ?? [];
+	},
+	/** the `useDynLib` directives of the NAMESPACE of the analyzed package, empty when it has none */
+	dynLibsIn(this: void, ctx: ReadOnlyFlowrAnalyzerContext): readonly DynLibDirective[] {
+		const fmt = ctx.files.getFilesByRole(FileRole.Namespace)[0]?.content() as NamespaceFormat | undefined;
 		return fmt?.current.dynLibs ?? [];
 	},
 	/**
@@ -135,24 +196,9 @@ export const NativeRoutines = {
 		const out: NativeCallSite[] = [];
 		for(const [id, vertex] of df.graph.verticesOfType(VertexType.FunctionCall)) {
 			const props = callFnProps(id, df);
-			if(!CallProps.hasAny(props, CallProp.Ffi) || !props?.sig?.some(([formal]) => formal === '.NAME')) {
-				continue;
-			}
-			const bound = FunctionSemantics.call.match.toSpec(vertex.args, Formals);
-			const values = new Map(vertex.args.filter(FunctionArgument.isNamed).map(a => [a.nodeId, a.valueId]));
-			const valueOf = (formal: 'name' | 'package') => {
-				const arg = bound.get(formal)?.[0];
-				const vid = arg === undefined ? undefined : values.has(arg) ? values.get(arg) : arg;
-				return vid === undefined ? undefined : idMap.get(vid);
-			};
-			const nameNode = valueOf('name');
-			const pkgNode = valueOf('package');
-			const iface = Identifier.getName(vertex.name);
-			const pkg = pkgNode !== undefined && RString.is(pkgNode) ? pkgNode.content.str : undefined;
-			if(nameNode !== undefined && RString.is(nameNode)) {
-				out.push({ id, iface, name: nameNode.content.str, symbolic: false, ...pkg === undefined ? {} : { package: pkg } });
-			} else if(nameNode !== undefined && RSymbol.is(nameNode)) {
-				out.push({ id, iface, name: String(Identifier.getName(nameNode.content)), symbolic: true, ...pkg === undefined ? {} : { package: pkg } });
+			const ref = CallProps.hasAny(props, CallProp.Ffi) && props?.sig?.some(([formal]) => formal === '.NAME') ? NativeRoutines.refOf(vertex, idMap) : undefined;
+			if(ref !== undefined) {
+				out.push({ id, ...ref });
 			}
 		}
 		return out;

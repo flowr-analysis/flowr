@@ -6,7 +6,7 @@ import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environ
  */
 import type { SigDict } from './dict';
 import {
-	NativeArgProp, NativeFlag, NativeIfaceNames, NativeLangNames, type SigNativeParamInfo, type SigNativeRoutineInfo,
+	NativeFlag, NativeIfaceNames, NativeLangNames, type SigNativeParamInfo, type SigNativeRoutineInfo,
 	ClassProp, DefaultCranBase, FnProp, FnPropNames, SigClassSystemNames,
 	type DepType, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigClassInfo, type SigDbPkgMeta,
 	type SigDefinitionLocation, type SigSlotInfo
@@ -165,27 +165,28 @@ export function decodeNatives(strings: SigDict, blob: Readonly<PkgBlob>, ver: st
 		if(rec === undefined) {
 			continue;
 		}
-		const [nameIdx, flags, symbolIdx, fileIdx, line, arity, rNames, params, facts] = rec;
+		const [nameIdx, flags, symbolIdx, fileIdx, line, arity, rNames, params, facts, contractIdx = -1, endLine = -1, column = -1] = rec;
 		out.push(compactRecord({
-			name:   strings.at(nameIdx),
-			iface:  NativeIfaceNames[(flags >> 3) & 0b111],
-			symbol: symbolIdx >= 0 ? strings.at(symbolIdx) : undefined,
-			lang:   NativeLangNames[flags & 0b111],
-			file:   fileIdx >= 0 ? strings.at(fileIdx) : undefined,
-			line:   line >= 0 ? line : undefined,
-			arity:  arity >= 0 ? arity : undefined,
-			rNames: rNames.length ? rNames.map(i => strings.at(i)) : undefined,
-			params: params.map(([n, props, t]): SigNativeParamInfo => compactRecord({
-				name:    strings.at(n),
-				type:    t === undefined ? undefined : strings.at(t),
-				read:    (props & NativeArgProp.Read) !== 0,
-				written: props & NativeArgProp.Written ? true : props & NativeArgProp.NotWritten ? false : undefined,
-				escapes: props & NativeArgProp.Escapes ? true : undefined
+			name:    strings.at(nameIdx),
+			iface:   NativeIfaceNames[(flags >> 3) & 0b111],
+			symbol:  symbolIdx >= 0 ? strings.at(symbolIdx) : undefined,
+			lang:    NativeLangNames[flags & 0b111],
+			file:    fileIdx >= 0 ? strings.at(fileIdx) : undefined,
+			line:    line >= 0 ? line : undefined,
+			column:  column >= 0 ? column : undefined,
+			endLine: endLine >= 0 ? endLine : undefined,
+			arity:   arity >= 0 ? arity : undefined,
+			rNames:  rNames.length ? rNames.map(i => strings.at(i)) : undefined,
+			params:  params.map(([n, props, t]): SigNativeParamInfo => compactRecord({
+				name:  strings.at(n),
+				type:  t === undefined ? undefined : strings.at(t),
+				props: props === 0 ? undefined : props
 			})),
 			facts:     facts.map(i => strings.at(i)),
 			closed:    (flags & NativeFlag.Closed) !== 0,
 			pure:      flags & NativeFlag.Pure ? true : undefined,
-			undefined: flags & NativeFlag.Undefined ? true : undefined
+			undefined: flags & NativeFlag.Undefined ? true : undefined,
+			guards:    contractIdx < 0 ? undefined : blob.contracts?.[contractIdx]
 		}));
 	}
 	return out;

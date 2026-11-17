@@ -2,6 +2,7 @@
  * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
+import type { SigNativeRoutineInfo } from '../../project/sigdb/schema';
 import { type DataflowGraph, FunctionArgument } from '../graph/graph';
 import { FunctionSemantics } from './function-semantics';
 import { Dataflow } from '../graph/df-helper';
@@ -37,6 +38,8 @@ export const DefaultDepth = 6;
 export interface ArgumentRolesOptions {
 	/** how to ask what a built-in states, so a configured or overwritten one answers */
 	readonly ctx?:      ReadOnlyFlowrAnalyzerContext
+	/** the native routines of the analyzed package, which flowR cannot read off its compiled code itself */
+	readonly natives?:  readonly SigNativeRoutineInfo[]
 	/** how far a value is followed back through names and calls (default {@link DefaultDepth}) */
 	readonly maxDepth?: number
 }

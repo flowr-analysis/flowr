@@ -361,12 +361,17 @@ function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertex
 	/* a frame of its own (`eval(expr, envir)` runs in the one it is given) says nothing about the bindings here, so every one of them stays possible */
 	const elsewhere = environment === undefined || (RFunctionCall.isNamed(node) && node.arguments.length > 1);
 	const sites = sources.length > 0 ? evaluationSites(graph, id, enclosing) : undefined;
-	const reach = sites === undefined ? {} : reachOf(sites);
+	const reach = reachOf(sites ?? []);
 	for(const { expr, at } of sources) {
 		if(elsewhere) {
-			const forces = cfg === undefined || sites === undefined ? undefined : { cfg, sites, binding: id, reach };
-			Deferred.link(graph, expr, { definitions: bindings, uses: names.uses }, idMap, forces);
-			Deferred.publish(graph, expr, names, idMap, id, sites ?? []);
+			/* every call evaluating the same capture at the same sites links it to the same bindings, so the first one does */
+			const linked = reach.linked ??= new Set();
+			if(!linked.has(expr)) {
+				linked.add(expr);
+				const forces = cfg === undefined || sites === undefined ? undefined : { cfg, sites, binding: id, reach };
+				Deferred.link(graph, expr, { definitions: bindings, uses: names.uses }, idMap, forces);
+				Deferred.publish(graph, expr, names, idMap, id, sites ?? []);
+			}
 		} else {
 			const open = linkExpressionIn(graph, expr, environment, idMap);
 			/* R falls through to the enclosing scope for names the evaluating frame does not bind */

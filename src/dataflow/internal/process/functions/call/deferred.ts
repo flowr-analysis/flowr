@@ -26,7 +26,9 @@ export interface ForceSites {
 	readonly reach?:  {
 		before?: ReadonlySet<NodeId>, after?: ReadonlySet<NodeId>, always?: Map<NodeId, boolean>, seen?: WeakMap<NodesByName, Map<BrandedIdentifier, readonly NodeId[]>>,
 		/** the functions the bindings of a name may hold, by the bindings {@link ForceSites.reach.seen} lists */
-		calls?: WeakMap<readonly NodeId[], readonly Required<DataflowGraphVertexFunctionDefinition>[]>
+		calls?:  WeakMap<readonly NodeId[], readonly Required<DataflowGraphVertexFunctionDefinition>[]>,
+		/** the captures evaluated elsewhere that were linked with these sites already, the same for every call handing one on */
+		linked?: Set<NodeId>
 	}
 }
 

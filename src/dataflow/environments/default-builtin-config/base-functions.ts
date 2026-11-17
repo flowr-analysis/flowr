@@ -285,7 +285,7 @@ export const BaseDefinitions = [
 	fn(base('environment'), BuiltInProcName.Default,
 		{ hasUnknownSideEffects: true, readsFrame: true, frame: ArgProp.Value, tags: [SemanticCallTag.Frames], sig: sig({ fun: Forced.Handle }) }, Primitive),
 	fn(base('.Call', '.External', '.C', '.Fortran', '.External2', '.Call.graphics', '.External.graphics'), BuiltInProcName.Default,
-		{ hasUnknownSideEffects: true, sig: sig({ '.NAME': Forced.Value }), markArgsAsMasked: NseArguments.First, treatAsFnCall: { '.Call': ['.NAME'], '.External': ['.NAME'], '.C': ['.NAME'], '.Fortran': ['.NAME'], /* the entry points R's graphics engine and internal code call foreign routines through */ '.External2': ['.NAME'], '.Call.graphics': ['.NAME'], '.External.graphics': ['.NAME'] }, props: CallProp.Ffi },
+		{ hasUnknownSideEffects: true, sig: sig({ '.NAME': Forced.Value | ArgProp.Callee }), markArgsAsMasked: NseArguments.First, treatAsFnCall: { '.Call': ['.NAME'], '.External': ['.NAME'], '.C': ['.NAME'], '.Fortran': ['.NAME'], /* the entry points R's graphics engine and internal code call foreign routines through */ '.External2': ['.NAME'], '.Call.graphics': ['.NAME'], '.External.graphics': ['.NAME'] }, props: CallProp.Ffi },
 		Primitive),
 	fn(base('eval'), BuiltInProcName.Eval,
 		{ includeFunctionCall: true, supportFunctionCall: false, keepEnvironment: true, tags: [SemanticCallTag.Eval], sig: sig({ expr: Forced.Value | ArgProp.Injectable, envir: Forced.Value, enclos: Forced.Value }) },

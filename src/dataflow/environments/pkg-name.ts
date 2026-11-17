@@ -41,6 +41,7 @@ export const enum PkgName {
 	DoMc         = 'doMC',
 	DoParallel   = 'doParallel',
 	DoSnow       = 'doSNOW',
+	Snow         = 'snow',
 	Downloader   = 'downloader',
 	Dotenv       = 'dotenv',
 	Dplyr        = 'dplyr',

@@ -130,7 +130,8 @@ function resolved<T>(this: void, items: readonly T[], termOf: (item: T) => Guard
 
 /** Any of the terms. */
 function any(this: void, ...terms: readonly GuardTerm[]): GuardTerm {
-	return connect('||', True, False, terms);
+	/* an alternative that cannot hold as written is none, so `a || (p && !p)` is `a` */
+	return connect('||', True, False, terms.some(t => isCall(t, '&&')) ? flatten('||', terms).filter(t => !unsatisfiable(t)) : terms);
 }
 
 /** What a comparison holds as when it does not hold (only ever asked of what R has already seen to be non-`NA`). */
@@ -539,6 +540,15 @@ function substituteCondition(this: void, term: GuardTerm, binding: GuardBinding,
 	}
 	const substituted = substitute(term, binding, outer) ?? True;
 	return facts === undefined ? substituted : decided(substituted, facts);
+}
+
+/** Whether the conjunction cannot hold as written: one of its parts is a disjunction of what its other parts rule out, `p && q && (!p || !q)`. */
+function unsatisfiable(this: void, term: GuardTerm): boolean {
+	const parts = flatten('&&', [term]);
+	return parts.some(part => {
+		const alternatives = flatten('||', [part]);
+		return alternatives.length > 1 && alternatives.every(a => parts.some(other => other !== part && complementary(a, other)));
+	});
 }
 
 /**

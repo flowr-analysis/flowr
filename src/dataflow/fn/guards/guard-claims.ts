@@ -479,14 +479,46 @@ export interface ConditionalClaim {
 	readonly unless: string
 }
 
+/** A condition split into what it says of `formal` alone and the rest, `undefined` if some alternative mixes both. */
+function splitAbout(this: void, condition: GuardTerm, formal: BrandedIdentifier): { readonly about: GuardTerm[], readonly others: GuardTerm[] } | undefined {
+	const alternatives = GuardTerm.disjuncts(condition);
+	const about = alternatives.filter(a => setEquals(GuardTerm.formalsOf(a), new Set([formal])));
+	const others = alternatives.filter(a => !GuardTerm.formalsOf(a).has(formal));
+	return about.length + others.length === alternatives.length ? { about, others } : undefined;
+}
+
+/**
+ * The conditions with what two of them say of a formal together: `a || p` and `a || q` where `p` and `q` cannot both fail say `a`
+ * outright (`p && !p` is never true), which neither says alone. The two stay, the claim they give together joins them.
+ */
+function withResolvents(this: void, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[]): GuardTerm[] {
+	const out = [...conditions];
+	for(const formal of formals) {
+		const split = conditions.map(c => splitAbout(c, formal)).filter(s => s !== undefined && s.about.length > 0 && s.others.length > 0) as { about: GuardTerm[], others: GuardTerm[] }[];
+		for(let i = 0; i < split.length; i++) {
+			for(let j = i + 1; j < split.length; j++) {
+				const [a, b] = [split[i], split[j]];
+				const same = GuardTerm.render(GuardTerm.any(...a.about)) === GuardTerm.render(GuardTerm.any(...b.about));
+				/* neither way through can hold when the other one does not */
+				if(same && GuardTerm.isFalse(GuardTerm.any(GuardTerm.all(GuardTerm.any(...a.others), GuardTerm.any(...b.others))))) {
+					out.push(GuardTerm.any(...a.about));
+				}
+			}
+		}
+	}
+	return out;
+}
+
 /** The claims the given conditions make on a formal unless something not about that formal holds, see {@link ConditionalClaim}. */
 export function conditionalClaimsOf(this: void, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[], facts: GuardFactsLookup): ConditionalClaim[] {
+	/* what holds outright needs no way through */
+	const outright = new Set(withResolvents(conditions, formals).slice(conditions.length).map(t => GuardTerm.render(t)));
 	return conditions.flatMap(condition => {
 		const alternatives = GuardTerm.disjuncts(condition);
 		return formals.flatMap(formal => {
 			const about = alternatives.filter(a => setEquals(GuardTerm.formalsOf(a), new Set([formal])));
 			const others = alternatives.filter(a => !GuardTerm.formalsOf(a).has(formal));
-			if(about.length === 0 || others.length === 0 || about.length + others.length !== alternatives.length) {
+			if(about.length === 0 || others.length === 0 || about.length + others.length !== alternatives.length || outright.has(GuardTerm.render(GuardTerm.any(...about)))) {
 				return [];
 			}
 			const claim = toClaim(about.map(a => abstractOf(a, formal, facts)).reduce(either));
@@ -564,8 +596,9 @@ function abstractOfAll(this: void, conditions: readonly GuardTerm[], formal: Bra
 /** What the given conditions, all of which hold on a normal return, claim about each of the given formals; a formal without any claim is left out. */
 export function claimsOf(this: void, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[], facts: GuardFactsLookup): Record<BrandedIdentifier, FormalClaim> {
 	const claims: Record<BrandedIdentifier, FormalClaim> = {};
+	const all = withResolvents(conditions, formals);
 	for(const formal of formals) {
-		const claim = toClaim(abstractOfAll(conditions, formal, facts));
+		const claim = toClaim(abstractOfAll(all, formal, facts));
 		if(Object.keys(claim).length > 0) {
 			claims[formal] = claim;
 		}
@@ -740,6 +773,16 @@ function typesInWords(this: void, types: readonly string[]): string {
 /** `{a, b}`, or the one value itself. */
 function setOf(this: void, words: readonly (string | number | boolean)[]): string {
 	return words.length === 1 ? String(words[0]) : `{${words.join(', ')}}`;
+}
+
+/** the types that are no data: what a comparison or arithmetic rejects (unless a class answers it), and what nearly every call asks of what it is handed */
+const NoData: readonly string[] = ['function', 'environment', 'symbol', 'language', 'expression'];
+
+/** The claim without a type that only rules out what is no data (`typeof(x) not in {function, environment, ...}`), which says nothing concrete of the formal. */
+export function concreteClaim(this: void, claim: FormalClaim): FormalClaim {
+	const onlyData = (types: readonly string[] | undefined) => types !== undefined && typeNames(AnyType).filter(t => !types.includes(t)).every(t => NoData.includes(t)) && types.length < typeNames(AnyType).length;
+	const { types, unclassedTypes, ...rest } = claim;
+	return { ...rest, ...types === undefined || onlyData(types) ? {} : { types }, ...unclassedTypes === undefined || onlyData(unclassedTypes) ? {} : { unclassedTypes } };
 }
 
 /**

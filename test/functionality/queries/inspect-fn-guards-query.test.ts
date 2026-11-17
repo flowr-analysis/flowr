@@ -920,6 +920,13 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		/* `Math.factor` fails for every member, while `trunc.Date` and `Math.difftime` let a value of theirs through */
 		assert.strictEqual(builtInGuards('trunc')?.requires, '(is.numeric(x) || is.logical(x) || is.object(x)) && !identical(oldClass(x), "factor") && !identical(oldClass(x), c("ordered", "factor"))');
 	});
+	test(label('two ways through that cannot both fail make the claim hold outright', ['name-normal'], ['other']), () => {
+		/* `combn` asks `stopifnot(is.numeric(m))`, and a branch on `x` and its opposite both reach a use of `m`: neither escape survives the other */
+		const combn = builtInGuards('combn', 'utils');
+		const m = Object.entries(combn?.formals ?? {}).find(([formal]) => formal === 'm')?.[1];
+		assert.deepStrictEqual(m?.unclassedTypes, ['integer', 'double']);
+		assert.isEmpty((combn?.conditional ?? []).filter(c => c.formal === 'm'));
+	});
 	test(label('a primitive states relations, returns, and what it needs handed', ['name-normal'], ['other']), () => {
 		assert.deepStrictEqual(builtInGuards('%*%')?.relations?.map(r => r.holds), ['ncol(x) == nrow(y)']);
 		assert.deepStrictEqual(builtInGuards('crossprod')?.relations?.map(r => r.holds), ['nrow(x) == nrow(y)']);

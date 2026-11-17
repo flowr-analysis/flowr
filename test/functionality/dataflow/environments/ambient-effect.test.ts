@@ -43,13 +43,11 @@ describe('Ambient effects of the built-ins', () => {
 			assert.isNotEmpty(AmbientVerbInfo[verb].description, verb);
 		}
 	});
-	test('a declaration states the ambient label on the page', () => {
-		for(const [name, signatures] of stated) {
-			const props = new Set(signatures[0].props);
-			if(signatures[0].ambient !== undefined) {
-				assert.isTrue(props.has(CallProps.labels({ props: CallProp.Ambient })[0]), String(name));
-			}
-		}
+	test('the page shows the props a definition states, its ambient effects apart from them', () => {
+		/* `print` adds to the output sink without stating `ambient state`, so the page lists the effect and no extra label */
+		const [print] = stated.get('print') ?? [];
+		assert.isNotEmpty(print?.ambient);
+		assert.notInclude(print?.props ?? [], CallProps.labels({ props: CallProp.Ambient })[0]);
 		assert.isFalse(declaresAmbient({}));
 		assert.isEmpty(ambientSummaryOf(undefined));
 	});

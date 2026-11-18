@@ -1,6 +1,10 @@
 import { assert, describe, test } from 'vitest';
-import type { SweaveBlockOptions } from '../../../../src/project/plugins/file-plugins/files/flowr-sweave-file';
-import { FlowrSweaveFile, parseSweave, parseSweaveCodeblockStart } from '../../../../src/project/plugins/file-plugins/files/flowr-sweave-file';
+import {
+	type SweaveBlockOptions,
+	FlowrSweaveFile,
+	parseSweave,
+	parseSweaveCodeblockStart
+} from '../../../../src/project/plugins/file-plugins/files/flowr-sweave-file';
 import { testFileLoadPlugin } from './plugin-test-helper';
 import { FlowrAnalyzerSweaveFilePlugin } from '../../../../src/project/plugins/file-plugins/notebooks/flowr-analyzer-sweave-file-plugin';
 import { label } from '../../_helper/label';

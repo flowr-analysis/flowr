@@ -1,14 +1,11 @@
 import { type FlowrSearchElement, type FlowrSearchGeneratorNodeBase, type FlowrSearchGetFilter, FlowrSearchElements } from '../flowr-search';
 import type { TailTypesOrUndefined } from '../../util/collections/arrays';
-import type {
-	ParentInformation,
-	RNodeWithParent
-} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SlicingCriterion, type SlicingCriteria } from '../../slicing/criterion/parse';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard, isNotUndefined } from '../../util/assert';
 import { SourceRange } from '../../util/range';
-import { type Query, type SupportedQuery, executeQueries, SupportedQueries } from '../../queries/query';
+import { type Query, type QueryResults, type SupportedQuery, executeQueries, SupportedQueries, executeQueriesOfSameType } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { LintingResultCertainty } from '../../linter/linter-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -18,10 +15,9 @@ import type { TreeSitterInfo } from '../../r-bridge/lang-4.x/tree-sitter/tree-si
 import { searchLogger } from '../search-logger';
 import type TreeSitter from 'web-tree-sitter';
 import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { ParserName } from '../../r-bridge/parser';
 
-/**
- * This is a union of all possible generator node types
- */
+/** This is a union of all possible generator node types */
 export type FlowrSearchGeneratorNode = {
 	[K in GeneratorNames]:
 	FlowrSearchGeneratorNodeBase<K,
@@ -31,9 +27,7 @@ export type FlowrSearchGeneratorNode = {
 
 export type GeneratorNames = keyof typeof generators;
 
-/**
- * All supported generators!
- */
+/** All supported generators! */
 export const generators = {
 	all:          generateAll,
 	get:          generateGet,
@@ -44,8 +38,7 @@ export const generators = {
 } as const;
 
 async function generateAll(data: ReadonlyFlowrAnalysisProvider): Promise<FlowrSearchElements<ParentInformation>> {
-	return new FlowrSearchElements((await getAllNodes(data))
-		.map(node => ({ node })));
+	return new FlowrSearchElements((await getAllNodes(data)).map(node => ({ node })));
 }
 
 async function getAllNodes(data: ReadonlyFlowrAnalysisProvider): Promise<RNodeWithParent[]> {
@@ -58,7 +51,6 @@ async function getAllNodes(data: ReadonlyFlowrAnalysisProvider): Promise<RNodeWi
 	}
 	return [...byId.values()];
 }
-
 
 async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex, filePathRegex, fuzzy, innermostOnly } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
 	const normalize = await input.normalize();
@@ -112,7 +104,11 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	from:       readonly Query[],
 	certainty?: LintingResultCertainty
 }): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
-	const result = await executeQueries({ analyzer: input }, args.from);
+	/* one (non-virtual) query, the common case, skips the grouping of a batch */
+	const [only] = args.from;
+	const result = (args.from.length === 1 && only.type in SupportedQueries
+		? { [only.type]: await executeQueriesOfSameType({ analyzer: input }, args.from), '.meta': { timing: 0 } }
+		: await executeQueries({ analyzer: input }, args.from)) as QueryResults;
 
 	// collect involved nodes
 	const { idMap } = await input.normalize();
@@ -135,8 +131,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	// enrich elements with query data
 
 	const nodearr = [...nodesByQuery];
-	const elements = await new FlowrSearchElements(nodearr
-		.flatMap(([_, nodes]) => Array.from(nodes)))
+	const elements = await new FlowrSearchElements(nodearr.flatMap(([_, nodes]) => Array.from(nodes)))
 		.enrich(input, Enrichment.QueryData, { queries: result });
 	return elements.mutate(s => Promise.all(s.map(async e => {
 		const [query, _] = nodearr.find(([_, nodes]) => nodes.has(e)) as [Query['type'], Set<FlowrSearchElement<ParentInformation>>];
@@ -156,7 +151,7 @@ async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { sour
 	const captures = new Set<string>(args.captures.map(c => c.startsWith('@') ? c.slice(1) : c));
 
 	const info = input.parserInformation();
-	guard(info.name === 'tree-sitter', 'treeSitterQuery can only be used with TreeSitterExecutor parsers!');
+	guard(info.name === ParserName.TreeSitter, 'treeSitterQuery can only be used with TreeSitterExecutor parsers!');
 	const result = await info.treeSitterQuery(args.source);
 	const relevant = result.filter(c => captures.has(c.name));
 
@@ -194,12 +189,10 @@ async function generateCriterion(input: ReadonlyFlowrAnalysisProvider, args: { c
 	);
 }
 
-/**
- * Gets the search generator function for the given name
- */
-export function getGenerator<Name extends GeneratorNames>(name: Name): typeof generators[Name] {
-	if(!generators[name]) {
-		throw new Error(`Unknown generator: ${name}`);
+/** Runs the search generator described by the given node */
+export function runGenerator(node: FlowrSearchGeneratorNode, input: ReadonlyFlowrAnalysisProvider): Promise<FlowrSearchElements<ParentInformation>> {
+	if(!generators[node.name]) {
+		throw new Error(`Unknown generator: ${node.name}`);
 	}
-	return generators[name];
+	return (generators[node.name] as (input: ReadonlyFlowrAnalysisProvider, args: typeof node.args) => Promise<FlowrSearchElements<ParentInformation>>)(input, node.args);
 }

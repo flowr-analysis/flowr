@@ -71,7 +71,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'name-created',
 							code:        ['get', 'get0', 'mget', 'exists', 'match.fun'],
 							supported:   'fully',
-							description: `_A call that reads a string argument as the name it spells, such as \`get\`, \`get0\`, \`mget\`, \`exists\`, \`match.fun\`, and \`assign\`._ The string counts as a use of that name, or for \`assign\` as a ${LinkTo('assignment-functions', 'definition')}. A name only known at runtime (\`get(Sys.getenv("V"))\`) is not linked.`,
+							description: `_A call that reads a string argument as the name it spells, such as \`get\`, \`get0\`, \`mget\`, \`exists\`, \`match.fun\`, and \`assign\`._ The string counts as a use of that name, or for \`assign\` as a ${LinkTo('assignment-functions', 'definition')}. The string may also reach the call through variables and the parameters of the functions it is in (\`f <- function(n) get(n)(); f("h")\`), and the value of such a lookup is what it finds for the call it runs in, so \`f("a"); f("b")\` tells both apart. Without an environment, the name is looked up in the frame of the function and those of the functions it is defined in, then in the global names at the call. A name only known at runtime (\`get(Sys.getenv("V"))\`) is not linked.`,
 							example:     codeBlock('r', 'x <- 1\nr <- get("x")\nprint(r)'),
 							url:         [RLang('Identifiers', 'Identifiers-1')]
 						},
@@ -120,7 +120,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							name:        'Closure Capture',
 							id:          'closure-capture',
 							supported:   'fully',
-							description: '_A function captures the environment it was defined in, not the values that were in it._ So it sees a write made to that environment after its definition, a sibling closure\'s `<<-` included.',
+							description: '_A function captures the environment it was defined in, not the values that were in it._ So it sees a write made to that environment after its definition, a sibling closure\'s `<<-` included. A closure a function returns without calling it reads its free variables where it is called, so the call making it does not read them.',
 							example:     codeBlock('r', 'make <- function() {\n  x <- 1\n  list(get = function() x, set = function(v) x <<- v)\n}\no <- make()\no$set(5)\nr <- o$get()\nprint(r)'),
 							url:         [AdvancedR('Function factories', 'function-factories.html'), RLang('Scope of variables')]
 						},
@@ -183,7 +183,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 									id:          'dynamic-variable-removal',
 									code:        ['rm', 'sys.frame'],
 									supported:   'partially',
-									description: '_Support for `rm(list=..., envir=sys.frame(N))` removing variables from a specific call frame. Currently handles negative and zero offsets from within depth-1 functions._'
+									description: '_Support for `rm(list=..., envir=sys.frame(N))` removing variables from a specific call frame._ Negative and zero offsets are handled from within depth-1 functions. A removal from the global environment inside a function, with `envir = .GlobalEnv`, `envir = globalenv()`, or `pos = 1`, is seen by the callers, like a `<<-` would be. A removal from the environment of a closure, `rm("v", envir = environment(g))`, is seen by the calls of that closure, which then read what the environments around it bind.'
 								}
 							],
 							url: [RLang('Environment objects')]
@@ -192,7 +192,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							name:        'Environment Sharing',
 							id:          'environment-sharing',
 							supported:   'partially',
-							description: `_Handling side-effects through environments, which act as reference types and are not copied when modified._ A write through a parameter is kept as an unknown side effect of the call (see ${LinkTo('environment-alias')} and ${LinkTo('side-effects-in-function-call')}).`,
+							description: `_Handling side-effects through environments, which act as reference types and are not copied when modified._ A write through a parameter (\`env$f <- v\`, \`assign("f", v, envir = env)\`) is replayed at each call that hands over a known environment, a list is copied by R so its write stays in the function, and any other value keeps the write as an unknown side effect of the call (see ${LinkTo('environment-alias')} and ${LinkTo('side-effects-in-function-call')}). A call that only writes into the environment it hands over reads nothing of it, so storing a function there does not call what an earlier call stored. The value of a field (\`e$x\`, \`e[["x"]]\`) is what the environment binds it to, as long as nothing but tracked lookups, writes, and functions of the program get the environment; a read in a loop, a write into part of a field, and anything unknown writing leave it unknown.`,
 							example:     codeBlock('r', 'e <- new.env()\nassign("x", 42, envir = e)\nprint(get("x", envir = e))'),
 							url:         [RLang('Environment objects'), AdvancedR('Environments', 'environments.html')]
 						},
@@ -397,6 +397,15 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							url:         [AdvancedR('First-class functions', 'functions.html#first-class-functions')]
 						},
 						{
+							name:        'Higher-Order Functions',
+							id:          'higher-order-functions',
+							code:        ['lapply', 'sapply', 'Map', 'Reduce', 'Filter', 'do.call', 'purrr::map'],
+							supported:   'partially',
+							description: `_A function handled as a value: handed to another function, like the callback of \`lapply\`, \`Reduce\`, or \`purrr::map\`, or picked at runtime with \`switch\`, \`match.fun\`, or \`do.call\`._ A function value is followed through the dataflow wherever it goes, also as a string that names it, so the call that runs it is linked to its ${LinkTo('function-definitions', 'definition')} and sees its reads and side effects. \`Reduce\` hands its running result to the callback and returns what the callback returns. A function whose name is only known at runtime, like \`get(paste0("f", i))\`, is not linked.`,
+							example:     codeBlock('r', 'k <- 2\nadd <- function(a, b) a + b * k\nReduce(add, 1:3)'),
+							url:         [AdvancedR('Functionals', 'functionals.html')]
+						},
+						{
 							name:        'Infix Calls',
 							id:          'infix-calls',
 							supported:   'fully',
@@ -416,7 +425,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							name:        'Functions with global side effects',
 							id:          'functions-with-global-side-effects',
 							supported:   'partially',
-							description: `_A call that changes state the rest of the program reads without naming it, as \`setwd\` changes where a path points._ The ${LinkTo('working-directory', 'working directory')}, ${LinkTo('built-in-options', 'the options')}, and ${LinkTo('graphics-state', 'the graphics state')} are tracked, so a read links to the calls that set what it reads. Other ambient state, like environment variables or the random seed, stays an unknown side effect.`,
+							description: `_A call that changes state the rest of the program reads without naming it, as \`setwd\` changes where a path points._ The ${LinkTo('working-directory', 'working directory')}, ${LinkTo('built-in-options', 'the options')}, and ${LinkTo('graphics-state', 'the graphics state')} are tracked, so a read links to the calls that set what it reads. Other ambient state, like environment variables or the random seed, stays an unknown side effect. A call inside a function that acts on the global environment, like \`source\`, \`library\`, or \`rm(envir = .GlobalEnv)\`, affects the callers of that function as well.`,
 							example:     codeBlock('r', 'setwd("/tmp")\nread.csv("data.csv")')
 						},
 						{
@@ -447,7 +456,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'double-bracket-access',
 							code:        ['[['],
 							supported:   'fully',
-							description: `_The \`[[\` call, as in \`x[[i]]\` or \`x[[i, b]]\`._ Read like ${LinkTo('single-bracket-access', 'single-bracket access')}, without modelling the difference in what R returns.`,
+							description: `_The \`[[\` call, as in \`x[[i]]\` or \`x[[i, b]]\`._ Read like ${LinkTo('single-bracket-access', 'single-bracket access')} by the dataflow. The value solver picks the element a constant name (matched exactly) or position names out of a list it knows, and \`NULL\` for a name the list does not have.`,
 							example:     codeBlock('r', 'l <- list(a = 1, b = 2)\nl[["a"]]\nl[[2]]'),
 							url:         [RLang('Indexing'), AdvancedR('Selecting a single element', 'subsetting.html#subset-single')]
 						},
@@ -456,7 +465,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'dollar-access',
 							code:        ['$'],
 							supported:   'fully',
-							description: '_The `$` call, as in `x$y`, `x$"y"`, or `x$y$z`, whose right side is a name rather than a value._ On a list `$` matches that name partially, so `l$al` reaches an element named `alpha`.',
+							description: '_The `$` call, as in `x$y`, `x$"y"`, or `x$y$z`, whose right side is a name rather than a value._ On a list `$` matches that name partially, so `l$al` reaches an element named `alpha`. The value solver knows the lists `list(...)` builds and the replacements change, with the same matching, while a field of an environment stays unknown to it.',
 							example:     codeBlock('r', 'l <- list(alpha = 1)\nl$alpha\nl$al'),
 							url:         [RLang('Operators')]
 						},
@@ -605,7 +614,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 											name:        'Replacement Functions',
 											id:          'replacement-functions',
 											supported:   'partially',
-											description: `_Read a write to a call, like \`x[i] <- 3\` or \`x$y <- 3\`, as the \`\` \`[<-\`(x, 3) \`\` R runs for it._ The name in front is both read and rebound. A ${LinkTo('named-arguments', 'named argument')} in such a call (\`g(v, k = 2) <- 3\`) leaves its argument edge dangling.`,
+											description: `_Read a write to a call, like \`x[i] <- 3\` or \`x$y <- 3\`, as the \`\` \`[<-\`(x, 3) \`\` R runs for it._ The name in front is both read and rebound, under the conditions the write stands under, so a later read reaches the old binding only through the replacement. The value solver applies \`$<-\` and \`[[<-\` with a constant name or position to a list it knows (\`l$a$b <- 1\` included, \`NULL\` removing an element), any other replacement leaves the value unknown. A ${LinkTo('named-arguments', 'named argument')} in such a call (\`g(v, k = 2) <- 3\`) leaves its argument edge dangling.`,
 											example:     codeBlock('r', '`second<-` <- function(x, value) {\n  x[2] <- value\n  x\n}\nv <- 1:3\nsecond(v) <- 9\nv'),
 											url:         [AdvancedR('Replacement functions', 'functions.html#replacement-functions'), RLang('Subset assignment')]
 										},
@@ -644,7 +653,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'for-loop',
 							code:        ['for'],
 							supported:   'fully',
-							description: '_The loop `for (i in 1:3) print(i)`, which binds its variable in the surrounding scope._ The body is analyzed once for any number of iterations, so a name it binds also reaches its own next read, and `i` stays bound after the loop.',
+							description: '_The loop `for (i in 1:3) print(i)`, which binds its variable in the surrounding scope._ The body is analyzed once for any number of iterations, so a name it binds also reaches its own next read and the reads of the functions the body calls, unless the body surely binds it anew before the call, and `i` stays bound after the loop. Value resolution tells the runs over a known sequence apart.',
 							example:     codeBlock('r', 'for(i in 1:3) print(i)\ni'),
 							url:         [RLang('Looping')]
 						},
@@ -653,7 +662,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'while-loop',
 							code:        ['while'],
 							supported:   'fully',
-							description: '_The loop `while (x) b`, whose condition is read before every iteration._ Whether the body ever runs is unknown, so a name it binds and the one bound before it both reach a use below.',
+							description: '_The loop `while (x) b`, whose condition is read before every iteration._ Whether the body ever runs is unknown to the dataflow graph, so a name it binds and the one bound before it both reach a use below. Value resolution counts the runs when it can tell the condition of each one (`i <- 0; while(i < 3) i <- i + 1`) and resolves the value of the last one.',
 							example:     codeBlock('r', 'i <- 0\nwhile(i < 3) i <- i + 1\ni'),
 							url:         [RLang('while')]
 						},
@@ -662,7 +671,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'repeat-loop',
 							code:        ['repeat'],
 							supported:   'fully',
-							description: `_The loop \`repeat {b; if (x) break}\`, which only a ${LinkTo('break', '`break`')} or a ${LinkTo('return', '`return`')} leaves._ Like every loop the body is analyzed once, for any number of iterations.`,
+							description: `_The loop \`repeat {b; if (x) break}\`, which only a ${LinkTo('break', '`break`')} or a ${LinkTo('return', '`return`')} leaves._ Like every loop the body is analyzed once, for any number of iterations. Value resolution counts the runs of a body that ends with its only \`if (x) break\` when it can tell \`x\` in each one.`,
 							example:     codeBlock('r', 'i <- 0\nrepeat {\n  i <- i + 1\n  if(i > 2) break\n}\ni'),
 							url:         [RLang('repeat')]
 						},
@@ -689,7 +698,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'switch',
 							code:        ['switch'],
 							supported:   'fully',
-							description: '_Pick a branch by name or position with `switch`._ A branch left empty falls through to the next one, and every branch stays possible, as the selector does not narrow which of them runs.',
+							description: '_Pick a branch by name or position with `switch`._ A branch left empty falls through to the next one, and every branch stays possible, as the selector does not narrow which of them runs. The call returns the branch it picks, so a function chosen by `switch` is linked to the call that runs it.',
 							example:     codeBlock('r', 'switch("b", a = , b = "ab", c = "c")\nswitch(2, "one", "two")'),
 							url:         [RLang('Control structures')]
 						},
@@ -705,9 +714,9 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 						{
 							name:        'Exceptions and Errors',
 							id:          'exceptions-and-errors',
-							code:        ['stop', 'try', 'tryCatch', 'warning'],
+							code:        ['stop', 'try', 'tryCatch', 'warning', 'withCallingHandlers'],
 							supported:   'partially',
-							description: `_A condition raised with \`stop\`/\`warning\` and caught with \`try\`/\`tryCatch\`._ The path on which a call throws before a write is not kept open, so \`tryCatch({ risky(); x <- 2 }, ...)\` loses \`x\`. A handler is read as an ordinary ${LinkTo('function-definitions', 'function definition')}.`,
+							description: `_A condition raised with \`stop\`/\`warning\` and caught with \`try\`/\`tryCatch\`/\`withCallingHandlers\`._ The path on which a call throws before a write stays open, so after \`tryCatch({ risky(); x <- 2 }, ...)\` the variable \`x\` may still hold its earlier value. A handler only runs when the block may signal a condition of its class. Anything that may signal counts (an operator, a call of a built-in or of a function we cannot resolve, a variable that may force a promise), only \`stop\`, \`warning\`, and \`message\` handed constants are matched by the class they signal, so \`tryCatch(message("m"), warning = h)\` never runs \`h\`. A calling handler is linked to every \`warning\`, \`message\`, or \`signalCondition\` that may reach it, also in the functions the block calls. This holds for a handler written inline as well as for one given as a value (a variable, a list element, the result of a factory, or a parameter), which is resolved like any ${LinkTo('higher-order-functions', 'function value')}.`,
 							example:     codeBlock('r', 'tryCatch(\n  stop("boom"),\n  error = function(e) conditionMessage(e),\n  finally = print("done")\n)'),
 							url:         [RLang('Exception handling'), AdvancedR('Conditions', 'conditions.html')]
 						}
@@ -750,7 +759,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 									name:        'Dot-Dot-Dot',
 									id:          'formals-dot-dot-dot',
 									supported:   'fully',
-									description: `_The variadic parameter \`...\`, which collects every argument no other formal took._ Passing it on keeps those arguments together, while a formal behind it is only matched by ${LinkTo('named-arguments', 'its exact name')}.`,
+									description: `_The variadic parameter \`...\`, which collects every argument no other formal took._ Passing it on keeps those arguments together, and a call handing it on binds them, with their names, as each known call of the function around hands them over. \`..2\` and \`...elt(2)\` read only the second of them, and an argument no read sees once handed on is never forced, while a formal behind it is only matched by ${LinkTo('named-arguments', 'its exact name')}.`,
 									example:     codeBlock('r', 'f <- function(...) sum(...)\ng <- function(...) f(..., 1)\ng(2, 3)'),
 									url:         [RLang('Dot-dot-dot', 'Dot_002ddot_002ddot')]
 								},
@@ -838,7 +847,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'built-in-options',
 							code:        ['options', 'getOption'],
 							supported:   'partially',
-							description: '_The global options `options` sets and `getOption`, `.Options`, printing, and formatting read._ Each option is tracked by name, so `getOption("digits")` reaches the last `options(digits = 3)`, `print` and `cat` reach the printing options, and an unrelated option usually stays out of a slice. `withr::with_options` and `local_options` scope a change, and `eval` of code that sets options counts as setting them. The values themselves are not interpreted, an `options(op)` restoring an unknown list may set any option, and options that change every conversion (`scipen`, `OutDec`) stay an unknown side effect. A function flowR cannot see into may read any option.',
+							description: '_The global options `options` sets and `getOption`, `.Options`, printing, and formatting read._ Each option is tracked by name, so `getOption("digits")` reaches the last `options(digits = 3)`, `print` and `cat` reach the printing options, and an unrelated option usually stays out of a slice. `withr::with_options` and `local_options` scope a change, and `eval` of code that sets options counts as setting them. Where the last `options(...)` surely setting an option names it as an argument, `getOption` hands back that value, so `options(cb = function() 4); getOption("cb")()` calls the function. Other values are not interpreted, an `options(op)` restoring an unknown list may set any option, and options that change every conversion (`scipen`, `OutDec`) stay an unknown side effect. A function flowR cannot see into may read any option.',
 							example:     codeBlock('r', 'old <- options(digits = 3)\nprint(pi)\noptions(old)\ngetOption("digits")')
 						},
 						{
@@ -876,7 +885,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 									id:          'modify-function-structure',
 									code:        ['body<-', 'formals<-', 'environment<-'],
 									supported:   'partially',
-									description: `_Rewrite a part of a function with \`body<-\`, \`formals<-\`, or \`environment<-\`._ Like every ${LinkTo('replacement-functions', 'replacement function')} it rebinds the name, so a later ${LinkTo('call-normal', 'call')} reaches the new part as well as the original one.`,
+									description: `_Rewrite a part of a function with \`body<-\`, \`formals<-\`, or \`environment<-\`._ Like every ${LinkTo('replacement-functions', 'replacement function')} it rebinds the name, and a later ${LinkTo('call-normal', 'call')} reaches the original function through that rebinding.`,
 									example:     codeBlock('r', 'f <- function(x) x + 1\nbody(f) <- quote(x * 2)\nf(3)'),
 									url:         [RLang('Manipulation of functions')]
 								},
@@ -894,7 +903,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 									id:          'built-in-evaluation',
 									code:        ['eval', 'evalq', 'eval.parent'],
 									supported:   'partially',
-									description: `_Run an expression that is a value with \`eval\`, \`evalq\`, \`eval.parent\`, ..._ The captured code is linked where it is evaluated, also through a name bound once to \`quote\`, \`as.name\`, \`str2lang\`, or \`parse\`, but \`eval(expr, envir)\` with an ${LinkTo('dynamic-environment-resolution', 'environment')} we do not know stays an unknown side effect.`,
+									description: `_Run an expression that is a value with \`eval\`, \`evalq\`, \`eval.parent\`, ..._ The captured code is linked where it is evaluated, also through a name bound once to \`quote\`, \`as.name\`, \`str2lang\`, or \`parse\`, but \`eval(expr, envir)\` with an ${LinkTo('dynamic-environment-resolution', 'environment')} we do not know stays an unknown side effect. A constructed call, like \`eval(call("f", x))\` or \`eval(as.call(list(as.name("f"), x)))\`, runs like a \`do.call\` of that function, also when the call is bound to a name first.`,
 									example:     codeBlock('r', 'e <- quote(x + 1)\nx <- 2\neval(e)\nn <- as.name("x")\neval(n)'),
 									url:         [RLang('Evaluation of expressions'), AdvancedR('Evaluation', 'evaluation.html')]
 								},
@@ -1026,7 +1035,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 					id:          'hooks',
 					code:        ['on.exit', 'setHook'],
 					supported:   'partially',
-					description: `_Code registered to run at a point the program does not write out, with \`on.exit\` or \`userhooks\`._ An \`on.exit\` body runs when the ${LinkTo('function-definitions', 'function')} it sits in ends, while \`setHook\` is not modelled.`,
+					description: `_Code registered to run at a point the program does not write out, with \`on.exit\` or \`userhooks\`._ An \`on.exit\` body runs when the ${LinkTo('function-definitions', 'function')} it sits in ends, in the order \`add\` and \`after\` give, and a hook registered in a branch or loop only maybe. \`setHook\` is not modelled.`,
 					example:     codeBlock('r', 'f <- function() {\n  on.exit(print("bye"))\n  1\n}\nf()'),
 					url:         [AdvancedR('on.exit', 'functions.html#on-exit'), { name: 'R Definition/userhooks', href: 'https://stat.ethz.ch/R-manual/R-devel/library/base/html/userhooks.html' }]
 				},
@@ -1090,7 +1099,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s3-dispatch',
 							code:        ['UseMethod'],
 							supported:   'partially',
-							description: `_Route a generic call to the method that runs._ \`UseMethod\` and a built-in generic like \`length\` or \`toString\` link to every ${LinkTo('function-definitions', 'definition')} named \`generic.class\` in scope, so the ${LinkTo('oop-s3-construction', 'class')} an object carries narrows the target only where it is known (heavily over-approximating).`,
+							description: `_Route a generic call to the method that runs._ \`UseMethod\` and a built-in generic like \`length\` or \`toString\` link to the ${LinkTo('function-definitions', 'definitions')} named \`generic.class\` in scope for the ${LinkTo('oop-s3-construction', 'class')} the dispatched object may have, then \`generic.default\`. The class is followed through the value flow to where it is set: a \`structure(..., class =)\`, a \`class<-\` or \`oldClass<-\`, a constructor function returning such an object, the implicit class of a constant, and the arguments bound to the generic at every call. A dispatch on what the calls of its function hand it is decided per call as well, through up to three calls (a generic called by a function called by another), so a slice for one call keeps only the methods that call may run, as long as each function is only ever called by name. \`UseMethod("f", y)\` dispatches on \`y\`, a replacement \`lab(a) <- v\` on the class \`a\` had before, both through a \`lab<-\` of the program and through a built-in like \`names<-\` or \`[<-\`, and printing a visible top-level value calls only the \`print\` methods of the classes it may have, so a slice for that value keeps what they print. A replacement within a function is decided per call of that function as well. Where any class is not known, every \`generic.class\` method stays a target. A group generic like \`Ops.foo\`, \`Math.foo\`, or \`Summary.foo\` is reached from the operators and functions of its group, so \`a == b\` dispatches to \`Ops.foo\` for an object of class \`foo\`, narrowed by the classes of both operands.`,
 							url:         [RLang('UseMethod'), RLang('Method dispatching')]
 						},
 						{
@@ -1098,7 +1107,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s3-inheritance',
 							code:        ['NextMethod'],
 							supported:   'partially',
-							description: `_Walk the class vector with \`NextMethod\`._ It reaches the generic's ${LinkTo('oop-s3-dispatch', 'methods')}, the one it stands in included, rather than only the next class in the vector, and hands on the current values of the formals.`,
+							description: `_Walk the class vector with \`NextMethod\`._ Where the class of the dispatched object is known, it reaches the ${LinkTo('oop-s3-dispatch', 'methods')} of the classes after that of its own method in the class vector, then the default, and otherwise every method of the generic. A method run for several class vectors decides its \`NextMethod\` per call of the generic like the dispatch itself. It hands on the current values of the formals. The generic and object \`NextMethod("f", x)\` names change nothing within a dispatch, while in a method called directly it dispatches the generic it names on the class of the first argument.`,
 							url:         [RLang('NextMethod'), RLang('Inheritance')]
 						}
 					]
@@ -1115,7 +1124,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s4-construction',
 							code:        ['setClass'],
 							supported:   'fully',
-							description: `_Declare a class with \`setClass\` and build one with \`new\`._ The \`new\` call is linked to the \`setClass\` that declared the class, and a slot is read through ${LinkTo('slot-access', '`@`')} like any other access.`,
+							description: `_Declare a class with \`setClass\` and build one with \`new\`._ The \`new\` call is linked to the \`setClass\` that declared the class and calls the validity functions of the class and its superclasses and the \`initialize\` methods R selects for a new object of the class (with those they reach through \`callNextMethod\`), and a slot is read through ${LinkTo('slot-access', '`@`')} like any other access.`,
 							url:         [RLang('Classes')]
 						},
 						{
@@ -1123,15 +1132,15 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 							id:          'oop-s4-dispatch',
 							code:        ['standardGeneric', 'setGeneric', 'setMethod', 'setReplaceMethod'],
 							supported:   'partially',
-							description: `_Route a generic call to the method \`setMethod\` (or \`setReplaceMethod\`, for the \`<-\` generic) registered._ The generic reaches its methods through the chain they register in, but the signature does not narrow which of them runs, as ${LinkTo('types-inference', 'no type is inferred')} for the argument.`,
+							description: `_Route a generic call to the method \`setMethod\` (or \`setReplaceMethod\`, for the \`<-\` generic) registered._ \`standardGeneric\` evaluates the arguments it dispatches on, and the call reaches the methods R may select for their classes: the class \`new\` creates or the implicit class of a constant, followed through the value flow like in ${LinkTo('oop-s3-dispatch', 'S3 dispatch')}. Selection follows R's distance through \`contains\`, class unions and \`setIs\`, with \`ANY\` farthest and \`missing\` for an argument not given, over every argument of the signature, and keeps the methods tied for the closest. A method registered after a top-level call is not reached by it, and a \`setMethod\` depends only on the \`setGeneric\` and on an earlier method of the same signature it may replace, not on the methods of other signatures. A method set again for the same signature, unconditionally and before every run of the call, is replaced and not reached. A call within a function is decided per call of that function as well, through up to three calls. An S3 object dispatches on its first class if \`setOldClass\` registered that class (each class of the vector extending the next) once before the methods were set, as R keeps the method it picked for a class until a method is set. Where a class is not known (another S3 object, a computed signature), every method stays a target, as ${LinkTo('types-inference', 'no type is inferred')} beyond that.`,
 							url:         [RLang('Method dispatching')]
 						},
 						{
 							name:        'Inheritance',
 							id:          'oop-s4-inheritance',
 							code:        ['callNextMethod'],
-							supported:   'not',
-							description: `_Reach a parent method with \`callNextMethod\`, and inherit through \`contains\`._ \`callNextMethod\` is left unresolved, so nothing links it to the ${LinkTo('oop-s4-dispatch', 'method')} it would call, unlike ${LinkTo('oop-s3-inheritance', 'S3 inheritance')}.`,
+							supported:   'partially',
+							description: `_Reach a parent method with \`callNextMethod\`, and inherit through \`contains\`._ \`callNextMethod\` reaches the ${LinkTo('oop-s4-dispatch', 'method')} R would select for the signature the calling method is defined for if that method did not exist, which follows the superclasses in \`contains\` nearest first. A chain of \`callNextMethod\` calls is followed method by method, whatever the class of the object, and only a computed signature falls back to every method of the generic.`,
 							url:         [RLang('Inheritance')]
 						}
 					]
@@ -1142,7 +1151,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 					code:        ['setRefClass'],
 					url:         [AdvancedR('R5 / Reference classes', 'r6.html#why-r6')],
 					supported:   'partially',
-					description: `_Reference classes made with \`setRefClass\`, whose objects are mutable and thus behave like the ${LinkTo('environment-sharing', 'shared environments')} they are built on._ \`$new()\` and \`$method()\` on an instance are unknown side effects, and no call links to the body it runs.`,
+					description: `_Reference classes made with \`setRefClass\`, whose objects are mutable and thus behave like the ${LinkTo('environment-sharing', 'shared environments')} they are built on._ A method call on an instance is linked to the method it runs, and \`.self\` is bound to that instance, so a method changing a field changes the object it was called on. The instance is found like for ${LinkTo('oop-r6', 'R6')}, and \`.self\` never resolves to a variable of that name outside the object. Typing is not supported.`,
 					example:     codeBlock('r', 'Acc <- setRefClass("Acc",\n  fields = list(bal = "numeric"),\n  methods = list(dep = function(v) bal <<- bal + v))\na <- Acc$new(bal = 0)\na$dep(5)')
 				},
 				{
@@ -1151,7 +1160,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 					code:        ['R6Class'],
 					url:         [AdvancedR('R6', 'r6.html')],
 					supported:   'partially',
-					description: `_Classes made with \`R6::R6Class\`, read as one unit rather than as the environment behind them._ Like ${LinkTo('oop-rc', 'RC')} an R6 object is mutable, and typing, inheritance, private/active bindings, and handling objects fully "as units" are not supported.`,
+					description: `_Classes made with \`R6::R6Class\`, read as one unit rather than as the environment behind them._ Like ${LinkTo('oop-rc', 'RC')} an R6 object is mutable. A method call is linked to the method it runs, also on a fresh \`$new()\` and through method chains, and \`self\` and \`private\` are bound to the instance the method runs on, so a method changing \`self$v\` changes that object. The instance is found through the value flow of the receiver: a variable and every alias of it, a parameter bound to the instance at each call, what a called function returns, and a list element or field of another object holding it. As R encloses the methods by the object, \`self\` and \`private\` never resolve to variables of those names outside it. Typing, inheritance, active bindings, and handling objects fully "as units" are not supported.`,
 					example:     codeBlock('r', 'Counter <- R6::R6Class("Counter", public = list(\n  i = 0,\n  add = function() {\n    self$i <- self$i + 1\n    invisible(self)\n  }\n))\nCounter$new()$add()$i')
 				},
 				{
@@ -1440,7 +1449,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true, timeless: true })}
 					id:          'sourcing-external-files',
 					code:        ['source', 'sys.source'],
 					supported:   'partially',
-					description: `_Pull another file's code into the analysis with \`source\`, \`sys.source\`, ..._ A sourced file's ${LinkTo('global-scope', 'top-level bindings')} become visible to the code below the call. Only \`source\` is handled so far, and only where its path resolves.`,
+					description: `_Pull another file's code into the analysis with \`source\`, \`sys.source\`, ..._ A sourced file's ${LinkTo('global-scope', 'top-level bindings')} become visible to the code below the call. Inside a function, \`source\` evaluates the file in the global environment unless it is called with \`local = TRUE\`, as R does, and \`sys.source\` (which defaults to the base environment) is approximated the same way. Only a path that resolves is followed.`,
 					example:     codeBlock('r', 'source("helpers.R")\nsys.source("setup.R", envir = environment())')
 				},
 				{

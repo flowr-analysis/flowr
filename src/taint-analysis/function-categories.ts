@@ -1,9 +1,6 @@
-import type { ArgProps, CallProps } from '../dataflow/environments/built-in-props';
-import { ArgProp, CallProp } from '../dataflow/environments/built-in-props';
-import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import type { TaintConditionFunction, TaintMapping } from './taint-mapping';
-import { TaintRole } from './taint-mapping';
+import { type ArgProps, type CallProps, ArgProp, CallProp } from '../dataflow/environments/built-in-props';
+import { type AnyAbstractDomain, AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
+import { type TaintConditionFunction, type TaintMapping, TaintRole } from './taint-mapping';
 import { Top } from '../abstract-interpretation/domains/lattice';
 import { taintMappingFromBuiltInIndex } from './builtin-index-bridge';
 
@@ -36,13 +33,10 @@ export type TaintFnCategory = {
 export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape', TaintFnCategory> = {
 	/** Pure functions which return a single one of their arguments unchanged */
 	pureAlias: {
-		name:      'pureAlias',
-		role:      TaintRole.Transformer,
-		callProps: CallProp.Pure,
-		args:      {
-			argProps:     ArgProp.Alias,
-			argSelection: 'ExactlyOne',
-		},
+		name:             'pureAlias',
+		role:             TaintRole.Transformer,
+		callProps:        CallProp.Pure,
+		args:             { argProps: ArgProp.Alias, argSelection: 'ExactlyOne' },
 		/** Pass through of incoming taint */
 		handler:          ([_arg], [taint]) => taint?.value,
 		/** No provenance recording for pure aliases */
@@ -53,12 +47,9 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape',
 		name:      'pureComputer',
 		role:      TaintRole.Transformer,
 		callProps: CallProp.Pure,
-		args:      {
-			argProps:     ArgProp.Value,
-			argSelection: 'AtLeastOne',
-		},
+		args:      { argProps: ArgProp.Value, argSelection: 'AtLeastOne' },
 		/** Least-upper bound of incoming taints */
-		handler: ([_arg], taints) =>
+		handler:   ([_arg], taints) =>
 			taints.length > 0 ? AbstractDomain.joinAll(taints).value : Top
 	},
 	/** Pure functions which calculate their result based on the shape of input data */
@@ -66,19 +57,14 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape',
 		name:      'pureShape',
 		role:      TaintRole.Transformer,
 		callProps: CallProp.Pure,
-		args:      {
-			argProps:     ArgProp.Shape,
-			argSelection: 'AtLeastOne',
-		},
+		args:      { argProps: ArgProp.Shape, argSelection: 'AtLeastOne' },
 		/** Least-upper bound of incoming taints */
-		handler: ([_arg], taints) =>
+		handler:   ([_arg], taints) =>
 			taints.length > 0 ? AbstractDomain.joinAll(taints).value : Top
 	}
 };
 
-/**
- * Get the set of taint mappings for a given {@link TaintFnCategory}.
- */
+/** Get the set of taint mappings for a given {@link TaintFnCategory}. */
 export function resolveCategoryToTaintMappings<Domain extends AnyAbstractDomain>(category: TaintFnCategory): TaintMapping<Domain>[] {
 	const mappings = taintMappingFromBuiltInIndex(category.callProps, category.args.argProps, category.handler)
 		.map(m => {

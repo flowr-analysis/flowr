@@ -116,10 +116,10 @@ export function parseSpec(input: string): Spec {
 		const pattern = compileRegex(source, 'i');
 		return pattern === undefined ? whole : before + Mark + (patterns.push(pattern) - 1) + Mark;
 	});
-	const patternOf = (word: string): RegExp | undefined => {
+	function patternOf(word: string): RegExp | undefined {
 		const held = new RegExp(`^${Mark}(\\d+)${Mark}$`).exec(word.trim());
 		return held === null ? undefined : patterns[Number(held[1])];
-	};
+	}
 	const { body: left, props } = takeProps(shielded);
 	const withArgs = /^([^(]*)\(([^]*)\)$/.exec(left);
 	const args = withArgs === null || withArgs[2].trim() === '' ? undefined : withArgs[2].split(/,(?![^[]*\])/).flatMap((item): ArgPattern[] => {
@@ -155,8 +155,7 @@ export function matchArgs(patterns: readonly ArgPattern[], actual: readonly (rea
 		return actual.length === 0;
 	}
 	const [first, ...others] = patterns;
-	const one = ([name, roles]: readonly [string, readonly string[]]) =>
-		(first.regex?.test(name) ?? (first.name === '' || first.name === name)) && first.roles.every(role => roles.map(norm).includes(role));
+	const one = ([name, roles]: readonly [string, readonly string[]]) => (first.regex?.test(name) ?? (first.name === '' || first.name === name)) && first.roles.every(role => roles.map(norm).includes(role));
 	if(first.repeat === undefined) {
 		return actual.length > 0 && one(actual[0]) && matchArgs(others, actual.slice(1));
 	}
@@ -167,7 +166,6 @@ export function matchArgs(patterns: readonly ArgPattern[], actual: readonly (rea
 	}
 	return false;
 }
-
 
 /**
  * The pattern for a name with `*` in it, like `read*` or `*csv`, which has to match the whole name.
@@ -316,7 +314,7 @@ function closestWord(word: string, words: readonly string[]): string | undefined
 	if(starts !== undefined) {
 		return starts;
 	}
-	const distance = (a: string, b: string): number => {
+	function distance(a: string, b: string): number {
 		let row = Array.from({ length: b.length + 1 }, (_, i) => i);
 		for(let i = 1; i <= a.length; i++) {
 			const next = [i];
@@ -326,7 +324,7 @@ function closestWord(word: string, words: readonly string[]): string | undefined
 			row = next;
 		}
 		return row[b.length];
-	};
+	}
 	return words.map((w): [string, number] => [w, distance(lower, w)]).filter(([, d]) => d <= 2).sort((a, b) => a[1] - b[1])[0]?.[0];
 }
 

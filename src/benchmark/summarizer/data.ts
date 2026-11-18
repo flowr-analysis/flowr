@@ -11,7 +11,6 @@ import type {
 	SlicerStatsInput
 } from '../stats/stats';
 
-
 export interface SliceSizeCollection {
 	lines:                             number[]
 	nonEmptyLines:                     number[]

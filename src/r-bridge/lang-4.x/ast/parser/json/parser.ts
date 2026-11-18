@@ -38,9 +38,7 @@ export function normalizeButNotDecorated(
 	return guardNesting('Normalization', filePath, () => normalizeRootObjToAst(data, object, filePath));
 }
 
-/**
- * Tree-Sitter pendant to {@link normalize}.
- */
+/** Tree-Sitter pendant to {@link normalize}. */
 export function normalizeTreeSitter(
 	parsed: ParseStepOutput<Tree>,
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),

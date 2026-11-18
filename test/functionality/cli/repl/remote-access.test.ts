@@ -43,12 +43,12 @@ describe('Remote REPL access', () => {
 
 	test(label('config queries cannot set security-sensitive options', ['name-normal'], ['other']), async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setEngine('tree-sitter').build();
-		const result = await analyzer.query([{ type:   'config', update: {
+		const result = await analyzer.query({ type:   'config', update: {
 			ignoreSourceCalls: true,
 			engines:           [{ type: 'r-shell', rPath: '/tmp/evil.sh' }],
 			solver:            { sigdb: { additionalPaths: ['/tmp/evil'] } }
-		} }]);
-		const config = result.config.config;
+		} });
+		const config = result.config;
 		assert.isTrue(config.ignoreSourceCalls, 'the harmless part applies');
 		assert.notDeepInclude(config.engines, { type: 'r-shell', rPath: '/tmp/evil.sh' });
 		assert.notInclude(config.solver.sigdb.additionalPaths ?? [], '/tmp/evil');

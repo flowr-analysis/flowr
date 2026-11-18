@@ -3,12 +3,10 @@ import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processin
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
 	type Enrichment,
-	type EnrichmentData,
-	type EnrichmentElementArguments,
 	type EnrichmentElementContent,
 	type EnrichmentSearchArguments,
 	type EnrichmentSearchContent,
-	Enrichments } from './search-executor/search-enrichers';
+	getEnrichment } from './search-executor/search-enrichers';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 /**
@@ -32,26 +30,18 @@ export type FlowrSearchTransformerNodeBase<Name extends string, Args extends Rec
 	FlowrSearchNodeBase<'transformer', Name, Args>;
 
 export interface FlowrSearchGetFilter extends Record<string, unknown> {
-	/**
-	 * The node must be in the given line.
-	 */
+	/** The node must be in the given line. */
 	readonly line?:          number;
-	/**
-	 * The node must be in the given column.
-	 */
+	/** The node must be in the given column. */
 	readonly column?:        number;
 	/**
 	 * The node must have the given name.
 	 * To treat this name as a regular expression, set {@link FlowrSearchGetFilter#nameIsRegex} to true.
 	 */
 	readonly name?:          string;
-	/**
-	 * Only useful in combination with `name`. If true, the name is treated as a regular expression.
-	 */
+	/** Only useful in combination with `name`. If true, the name is treated as a regular expression. */
 	readonly nameIsRegex?:   boolean;
-	/**
-	 * The node must have the given id.
-	 */
+	/** The node must have the given id. */
 	readonly id?:            NodeId;
 	/**
 	 * The node must stem from a file with the given path matching the regex.
@@ -70,14 +60,9 @@ export interface FlowrSearchGetFilter extends Record<string, unknown> {
 	 * ```
 	 */
 	readonly filePathRegex?: string;
-	/**
-	 * If true, match any node whose source range contains the given line/column (fuzzy position match).
-	 * Requires `line` to be provided.
-	 */
+	/** If true, match any node whose source range contains the given line/column (fuzzy position match). Requires `line` to be provided. */
 	readonly fuzzy?:         boolean;
-	/**
-	 * If true (and `fuzzy` is true), return only the innermost (deepest in the AST) matching node(s).
-	 */
+	/** If true (and `fuzzy` is true), return only the innermost (deepest in the AST) matching node(s). */
 	readonly innermostOnly?: boolean;
 }
 
@@ -119,7 +104,6 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 		}
 	}
 
-
 	/**
 	 * Enriches this flowr search element collection with the given enrichment.
 	 * To retrieve enrichment content for a given enrichment type, use {@link enrichmentContent}.
@@ -127,7 +111,7 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 	 * Please note that this function does not also enrich individual elements, which is done through {@link enrichElement}. Both functions are called in a concise manner in {@link FlowrSearchBuilder.with}, which is the preferred way to add enrichments to a search.
 	 */
 	public async enrich<E extends Enrichment>(data: ReadonlyFlowrAnalysisProvider, enrichment: E, args?: EnrichmentSearchArguments<E>): Promise<this> {
-		const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>, EnrichmentSearchContent<E>, EnrichmentSearchArguments<E>>;
+		const enrichmentData = getEnrichment(enrichment);
 		if(enrichmentData.enrichSearch !== undefined) {
 			this.enrichments = {
 				...this.enrichments ?? {},

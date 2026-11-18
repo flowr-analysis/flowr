@@ -3,7 +3,6 @@ import type { AsyncOrSync } from 'ts-essentials';
 import { expensiveTrace, log } from '../../util/log';
 import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 
-
 /**
  * Based on *when* and *what-for* the plugin is applied during the analysis,
  * plugins are categorized into different types.
@@ -80,7 +79,6 @@ export interface FlowrAnalyzerPluginInterface<In = unknown, Out = In> {
 	processor(analyzer: FlowrAnalyzerContext, args: In): Out;
 }
 
-
 const generalPluginLog = log.getSubLogger({ name: 'plugins' });
 
 /**
@@ -97,16 +95,12 @@ export abstract class FlowrAnalyzerPlugin<In = unknown, Out extends AsyncOrSync<
 	public abstract readonly version:     SemVer;
 	public abstract readonly type:        PluginType;
 
-	/**
-	 * Returns a default/dummy implementation to be used when no plugin of this type is registered or triggered.
-	 */
+	/** Returns a default/dummy implementation to be used when no plugin of this type is registered or triggered. */
 	public static defaultPlugin(): FlowrAnalyzerPlugin<unknown, unknown> {
 		throw new Error('This is to be implemented by every Plugin Layer');
 	}
 
-	/**
-	 * Run the plugin with the given context and arguments.
-	 */
+	/** Run the plugin with the given context and arguments. */
 	public processor(context: FlowrAnalyzerContext, args: In): Out {
 		const now = Date.now();
 		try {

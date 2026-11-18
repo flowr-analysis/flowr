@@ -2,11 +2,11 @@ import { assertQuery } from '../_helper/query';
 import { label } from '../_helper/label';
 import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { assert, describe, test } from 'vitest';
-import type {
-	InputSourcesQuery,
-	InputSourcesQueryResult
+import {
+	type InputSourcesQuery,
+	type InputSourcesQueryResult,
+	defaultInputClassifierConfig
 } from '../../../src/queries/catalog/input-sources-query/input-sources-query-format';
-import { defaultInputClassifierConfig } from '../../../src/queries/catalog/input-sources-query/input-sources-query-format';
 import { contentFreeFunctions } from '../../../src/queries/catalog/input-sources-query/input-source-functions';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
@@ -67,8 +67,8 @@ describe('A configured built-in reaches the classifier', { concurrent: false }, 
 			'the configured built-in has to be part of the system inputs');
 		assert.notInclude((defaultInputClassifierConfig(new FlowrAnalyzerContext(FlowrConfig.default()))[InputType.System] as readonly Identifier[]).map(Identifier.toString), 'base::launchIt',
 			'and it must not leak into the default configuration');
-		const out = await analyzer.query([{ type: 'input-sources', criterion: '2@eval' }]);
-		assert.deepStrictEqual(out['input-sources'].results['2@eval'].flatMap(s => s.types), [InputType.System]);
+		const out = await analyzer.query({ type: 'input-sources', criterion: '2@eval' });
+		assert.deepStrictEqual(out.results['2@eval'].flatMap(s => s.types), [InputType.System]);
 	});
 }));
 
@@ -422,7 +422,7 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 			'2@foo': [{ id: '2@x', types: [InputType.Unknown, InputType.DerivedConstant], trace: InputTraceType.Alias }]
 		});
 		testQuery('tryCatch may yield its block', "x <- tryCatch(readLines('f'), error = function(e) 'a')\nfoo(x)", q('2@foo'), {
-			'2@foo': [{ id: '2@x', types: [InputType.Constant, InputType.File], trace: InputTraceType.Alias }]
+			'2@foo': [{ id: '2@x', types: [InputType.Constant, InputType.File], trace: InputTraceType.Alias, cds: [InputType.Unknown] }]
 		});
 		testQuery('a parameter of a function handed on as a value is not bound by its direct callers', "h <- function(a) { x <- a; foo(x) }\nh('c')\ntryCatch(stop(readline()), error = h)", q('1@foo'), {
 			'1@foo': [{ id: '$9', types: [InputType.Constant, InputType.Scope, InputType.Parameter], trace: InputTraceType.Alias }]
@@ -478,7 +478,7 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 			'2@foo': [{ id: '2@f', types: [InputType.Unknown], trace: InputTraceType.Unknown }]
 		});
 		testQuery('whether a handler answers depends on the whole block', 'x <- tryCatch({ readLines("a"); 1 }, error = function(e) 2)\nfoo(x)', q('2@foo'), {
-			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.File, InputType.Constant] }]
+			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.File, InputType.Unknown, InputType.Constant] }]
 		});
 		testQuery('a namespaced call of a package outside base R is no base function', "x <- mypkg::fetch_value('n')\nfoo(x)", q('2@foo'), {
 			'2@foo': [{ id: '2@x', types: [InputType.Unknown], trace: InputTraceType.Alias }]

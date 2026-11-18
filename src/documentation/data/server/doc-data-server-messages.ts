@@ -21,6 +21,18 @@ import { exampleQueryCode } from '../query/example-query-code';
 import { CallTargets } from '../../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParser } from '../../../r-bridge/parser';
 
+function requestResponseDiagram(request: string, response: string): string {
+	return `
+    Client->>+Server: ${request}
+
+    alt
+        Server-->>Client: ${response}
+    else
+        Server-->>Client: error
+    end
+    deactivate  Server
+	`;
+}
 
 /**
  * Documents every message the flowR server understands, in the order the wiki presents them.
@@ -66,17 +78,9 @@ Requests for the [REPL](#message-request-repl-execution) are independent of that
 		definitionPath:         '../cli/repl/server/messages/message-analysis.ts',
 		defRequest:             requestAnalysisMessage,
 		defResponse:            analysisResponseMessage,
-		mermaidSequenceDiagram: `
-    Client->>+Server: request-file-analysis
-    alt
-        Server-->>Client: response-file-analysis
-    else
-        Server-->>Client: error
-    end
-    deactivate  Server
-	`,
-		shortDescription: 'The server builds the dataflow graph for a given input file (or a set of files).',
-		text:             async(shell: KnownParser) => {
+		mermaidSequenceDiagram: requestResponseDiagram('request-file-analysis', 'response-file-analysis'),
+		shortDescription:       'The server builds the dataflow graph for a given input file (or a set of files).',
+		text:                   async(shell: KnownParser) => {
 			return `
 	
 The request allows the server to analyze a file and prepare it for slicing.
@@ -105,13 +109,8 @@ ${
 			{
 				type:        'request',
 				description: `Let's suppose you simply want to analyze the following script:\n ${codeBlock('r', 'x <- 1\nx + 1')}\n For this, you can send the following request:`,
-				message:     {
-					type:      'request-file-analysis',
-					id:        '1',
-					filetoken: 'x',
-					content:   'x <- 1\nx + 1'
-				},
-				mark: true
+				message:     { type: 'request-file-analysis', id: '1', filetoken: 'x', content: 'x <- 1\nx + 1' },
+				mark:        true
 			},
 			{
 				type:         'response',
@@ -136,19 +135,7 @@ ${
 	await documentServerMessageResponse({
 		shell,
 		title:    'Example Error Message',
-		messages: [{
-			type:    'request',
-			message: {
-				type:     'request-file-analysis',
-				id:       '1',
-				filename: 'sample.R',
-				content:  'x <-'
-			}
-		}, {
-			type:         'response',
-			expectedType: 'error',
-			mark:         true
-		}]
+		messages: [{ type: 'request', message: { type: 'request-file-analysis', id: '1', filename: 'sample.R', content: 'x <-' } }, { type: 'response', expectedType: 'error', mark: true }]
 	})
 }
 
@@ -168,14 +155,8 @@ ${
 		title:    'Requesting a Control Flow Graph',
 		messages: [{
 			type:    'request',
-			message: {
-				type:      'request-file-analysis',
-				id:        '1',
-				filetoken: 'x',
-				content:   cfgSample,
-				cfg:       true
-			},
-			mark: true
+			message: { type: 'request-file-analysis', id: '1', filetoken: 'x', content: cfgSample, cfg: true },
+			mark:    true
 		}, {
 			type:         'response',
 			expectedType: 'response-file-analysis',
@@ -209,15 +190,8 @@ ${
 		title:    'Requesting RDF N-Quads',
 		messages: [{
 			type:    'request',
-			message: {
-				type:      'request-file-analysis',
-				id:        '1',
-				filetoken: 'x',
-				content:   'x <- 1\nx + 1',
-				format:    'n-quads',
-				cfg:       true
-			},
-			mark: true
+			message: { type: 'request-file-analysis', id: '1', filetoken: 'x', content: 'x <- 1\nx + 1', format: 'n-quads', cfg: true },
+			mark:    true
 		}, {
 			type:         'response',
 			expectedType: 'response-file-analysis',
@@ -244,15 +218,8 @@ ${
 		title:    'Requesting Compacted Results',
 		messages: [{
 			type:    'request',
-			message: {
-				type:      'request-file-analysis',
-				id:        '1',
-				filetoken: 'x',
-				content:   'x <- 1\nx + 1',
-				format:    'compact',
-				cfg:       true
-			},
-			mark: true
+			message: { type: 'request-file-analysis', id: '1', filetoken: 'x', content: 'x <- 1\nx + 1', format: 'compact', cfg: true },
+			mark:    true
 		}, {
 			type:         'response',
 			expectedType: 'response-file-analysis',
@@ -274,18 +241,9 @@ The base message format is still JSON, only the individual results are printed a
 		definitionPath:         '../cli/repl/server/messages/message-slice.ts',
 		defRequest:             requestSliceMessage,
 		defResponse:            responseSliceMessage,
-		mermaidSequenceDiagram: `
-    Client->>+Server: request-slice
-
-    alt
-        Server-->>Client: response-slice
-    else
-        Server-->>Client: error
-    end
-    deactivate  Server
-	`,
-		shortDescription: `${deprecatedByQuery} The server slices a file based on the given criteria.`,
-		text:             async(shell: KnownParser) => {
+		mermaidSequenceDiagram: requestResponseDiagram('request-slice', 'response-slice'),
+		shortDescription:       `${deprecatedByQuery} The server slices a file based on the given criteria.`,
+		text:                   async(shell: KnownParser) => {
 			return `
 **We deprecated the slice request in favor of the \`static-slice\` ${ctx.linkPage('wiki/Query API', 'Query')}.**
 
@@ -303,12 +261,7 @@ ${
 		messages:    [{
 			type:        'request',
 			description: `Let's assume you want to slice the following script:\n${codeBlock('r', 'x <- 1\nx + 1')}\n\nFor this we first request the analysis, using a \`filetoken\` of \`x\` to slice the file in the next request.`,
-			message:     {
-				type:      'request-file-analysis',
-				id:        '1',
-				filetoken: 'x',
-				content:   'x <- 1\nx + 1'
-			}
+			message:     { type: 'request-file-analysis', id: '1', filetoken: 'x', content: 'x <- 1\nx + 1' }
 		}, {
 			type:         'response',
 			expectedType: 'response-file-analysis',
@@ -318,13 +271,8 @@ See [above](#message-request-file-analysis) for the general structure of the res
 		}, {
 			type:        'request',
 			description: 'The second slice criterion `2:1` is redundant for the input, as they refer to the same variable. It is only for demonstration purposes.',
-			message:     {
-				type:      'request-slice',
-				id:        '2',
-				filetoken: 'x',
-				criterion: ['2@x', '2:1']
-			},
-			mark: true
+			message:     { type: 'request-slice', id: '2', filetoken: 'x', criterion: ['2@x', '2:1'] },
+			mark:        true
 		}, {
 			type:         'response',
 			expectedType: 'response-slice',
@@ -408,15 +356,7 @@ ${
 	await documentServerMessageResponse({
 		shell,
 		messageType: 'request-slice',
-		messages:    [{
-			type:    'request',
-			message: {
-				type:       'request-repl-execution',
-				id:         '1',
-				expression: ':help',
-			},
-			mark: true
-		}, {
+		messages:    [{ type: 'request', message: { type: 'request-repl-execution', id: '1', expression: ':help' }, mark: true }, {
 			type:         'response',
 			expectedType: 'response-repl-execution',
 			description:  msg => {
@@ -432,10 +372,7 @@ ${codeBlock('text', (msg as ExecuteIntermediateResponseMessage).result)}
 </details>
 				`;
 			}
-		}, {
-			type:         'response',
-			expectedType: 'end-repl-execution',
-		}]
+		}, { type: 'response', expectedType: 'end-repl-execution' }]
 	})
 }
 	`;
@@ -448,18 +385,9 @@ ${codeBlock('text', (msg as ExecuteIntermediateResponseMessage).result)}
 		definitionPath:         '../cli/repl/server/messages/message-query.ts',
 		defRequest:             requestQueryMessage,
 		defResponse:            responseQueryMessage,
-		mermaidSequenceDiagram: `
-    Client->>+Server: request-query
-
-    alt
-        Server-->>Client: response-query
-    else
-        Server-->>Client: error
-    end
-    deactivate  Server
-	`,
-		shortDescription: 'Query an analysis result for specific information.',
-		text:             async(shell: KnownParser) => {
+		mermaidSequenceDiagram: requestResponseDiagram('request-query', 'response-query'),
+		shortDescription:       'Query an analysis result for specific information.',
+		text:                   async(shell: KnownParser) => {
 			return `
 To send queries, you have to send an [analysis request](#message-request-file-analysis) first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly query the same file.
 This message provides direct access to _flowR_'s Query API. Please consult the ${ctx.linkPage('wiki/Query API', 'Query API documentation')} for more information.
@@ -471,12 +399,7 @@ ${
 		messages:    [{
 			type:        'request',
 			description: `Let's assume you want to query the following script:\n${codeBlock('r', exampleQueryCode)}.\n\nFor this we first request the analysis, using a dummy \`filetoken\` of \`x\` to slice the file in the next request.`,
-			message:     {
-				type:      'request-file-analysis',
-				id:        '1',
-				filetoken: 'x',
-				content:   exampleQueryCode
-			}
+			message:     { type: 'request-file-analysis', id: '1', filetoken: 'x', content: exampleQueryCode }
 		}, {
 			type:         'response',
 			expectedType: 'response-file-analysis',
@@ -494,28 +417,13 @@ See [above](#message-request-file-analysis) for the general structure of the res
 						type:  'compound',
 						query: 'call-context',
 
-						commonArguments: {
-							kind:        'visualize',
-							subkind:     'text',
-							callTargets: CallTargets.OnlyGlobal,
-						},
-						arguments: [
-							{
-								callName: '^mean$'
-							},
-							{
-								callName:    '^print$',
-								callTargets: CallTargets.OnlyLocal
-							}
-						]
+						commonArguments: { kind: 'visualize', subkind: 'text', callTargets: CallTargets.OnlyGlobal },
+						arguments:       [{ callName: '^mean$' }, { callName: '^print$', callTargets: CallTargets.OnlyLocal }]
 					} as const
 				]
 			},
 			mark: true
-		}, {
-			type:         'response',
-			expectedType: 'response-query'
-		}]
+		}, { type: 'response', expectedType: 'response-query' }]
 	})
 }
 

@@ -101,8 +101,7 @@ describe('Abstract Domains', () => {
 	}
 
 	describe('Set Range Domain', () => {
-		const create = (value: [must: string[], may: string[] | typeof Top] | typeof Bottom) =>
-			new SetRangeDomain(value === Bottom ? value : { must: value[0], may: value[1] === Top ? Top : value[1] });
+		const create = (value: [must: string[], may: string[] | typeof Top] | typeof Bottom) => new SetRangeDomain(value === Bottom ? value : { must: value[0], may: value[1] === Top ? Top : value[1] });
 
 		assertAbstractDomain(create, Bottom, Bottom, {
 			equal: true, leq: true, join: Bottom, meet: Bottom, widen: Bottom, narrow: Bottom

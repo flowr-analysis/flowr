@@ -40,9 +40,7 @@ interface WdChangeSpec {
 }
 
 /** functions recognized as changing the working directory; a registry so more (e.g. `withr::with_dir`) can be added */
-const ChangeFunctions: readonly WdChangeSpec[] = [
-	{ name: 'setwd', namespace: 'base', argIdx: 0, argName: 'dir' }
-];
+const ChangeFunctions: readonly WdChangeSpec[] = [{ name: 'setwd', namespace: 'base', argIdx: 0, argName: 'dir' }];
 
 const CandidateCap = 64;
 

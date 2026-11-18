@@ -5,7 +5,6 @@ import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { GraphHelper } from '../../dataflow/graph/graph-helper';
 import { Dataflow } from '../../dataflow/graph/df-helper';
-import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { SourceLocation } from '../../util/range';
 import { Mermaid } from '../../util/mermaid/mermaid';
 import { toBase64 } from '../../util/text/url-encoding';
@@ -62,7 +61,7 @@ function contract(graph: TaintProvenanceGraph, isKept: (vertex: TaintProvenanceV
 	for(const [id, vertex] of graph.vertices(true)) {
 		if(isKept(vertex)) {
 			kept.add(id);
-			result.addVertex(vertex, undefined as unknown as REnvironmentInformation, true);
+			result.addVertex(vertex, undefined, true);
 		}
 	}
 	for(const from of kept) {

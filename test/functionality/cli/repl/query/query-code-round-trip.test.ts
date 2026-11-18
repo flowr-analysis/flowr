@@ -1,7 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { FlowrConfig } from '../../../../../src/config';
-import { SupportedQueries } from '../../../../../src/queries/query';
-import type { SupportedQueryTypes } from '../../../../../src/queries/query';
+import { SupportedQueries, type SupportedQueryTypes } from '../../../../../src/queries/query';
 import { discardingReplOutput } from '../../../_helper/repl';
 import { label } from '../../../_helper/label';
 
@@ -23,11 +22,13 @@ const Prefixes: Partial<Record<SupportedQueryTypes, readonly string[]>> = {
 	'inspect-exception':    ['(1@x)'],
 	'inspect-higher-order': ['(1@x)'],
 	'inspect-recursion':    ['(1@x)'],
-	'inspect-fn-props':     ['(1@x)']
+	'inspect-fn-props':     ['(1@x)'],
+	'inspect-fn-guards':    ['(1@x)'],
+	'ambient-access':       ['(1@x)']
 };
 
 /** The parsers reading no criteria at all, which take the code from the very first token. */
-const WithoutPrefix: readonly SupportedQueryTypes[] = ['location-map', 'inspect-exception', 'inspect-higher-order', 'inspect-recursion', 'inspect-fn-props'];
+const WithoutPrefix: readonly SupportedQueryTypes[] = ['location-map', 'inspect-exception', 'inspect-higher-order', 'inspect-recursion', 'inspect-fn-props', 'inspect-fn-guards', 'ambient-access'];
 
 describe('The repl hands every query its complete code', () => {
 	for(const [type, query] of Object.entries(SupportedQueries)) {
@@ -37,8 +38,7 @@ describe('The repl hands every query its complete code', () => {
 			continue;
 		}
 		test(label(`${type} keeps the code`, ['name-normal'], ['other']), () => {
-			const parse = (line: readonly string[]) =>
-				(fromLine as (o: unknown, l: readonly string[], c: FlowrConfig) => { rCode?: string })(discardingReplOutput, line, FlowrConfig.default());
+			const parse = (line: readonly string[]) => (fromLine as (o: unknown, l: readonly string[], c: FlowrConfig) => { rCode?: string })(discardingReplOutput, line, FlowrConfig.default());
 			assert.strictEqual(parse([...prefix, ...Code]).rCode, Joined, 'with the leading arguments');
 			if(WithoutPrefix.includes(type as SupportedQueryTypes)) {
 				assert.strictEqual(parse(Code).rCode, Joined, 'without them');

@@ -2,12 +2,11 @@ import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/n
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { Ternary } from '../../../../src/util/logic';
 import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
 import { decorateLabelContext, label } from '../../_helper/label';
+import { analyze } from '../../_helper/analyzer';
 
 
 describe('is-strict-function', withTreeSitter(ts => {
@@ -17,8 +16,7 @@ describe('is-strict-function', withTreeSitter(ts => {
 	 */
 	function testStrict(name: string, code: string, criterion: SlicingCriterion, expected: Ternary, params: Record<string, Ternary> = {}) {
 		test(`${name} (${criterion} is ${expected} strict)`, async() => {
-			const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
-			analyzer.addRequest(requestFromInput(code));
+			const analyzer = await analyze(ts, code);
 			const idMap = (await analyzer.normalize()).idMap;
 			const id = SlicingCriterion.tryParse(criterion, idMap);
 			assert.isDefined(id, `could not resolve criterion ${criterion}`);
@@ -123,17 +121,28 @@ describe('is-strict-function', withTreeSitter(ts => {
 	}).join('\n');
 	testStrict('mutually recursive functions answer quickly', ring, '1@function', Ternary.Always, { x: Ternary.Always, y: Ternary.Always });
 
+	test('a cycle answers the same whichever definition is asked first', async() => {
+		const code = 'f <- function(a, b) if(a > 0) g(a - 1, b) else b\ng <- function(a, b) if(a > 1) h(a, b) else f(a, b)\nh <- function(a, b) { f(a - 1, b); g(a - 2, 1) }';
+		const analyzer = await analyze(ts, code);
+		const idMap = (await analyzer.normalize()).idMap;
+		const graph = (await analyzer.dataflow()).graph;
+		const ids = ['1@function', '2@function', '3@function'].map(c => SlicingCriterion.parse(c as SlicingCriterion, idMap));
+		const forward = FunctionSemantics.strictness(ids, graph);
+		for(const first of ids) {
+			assert.deepStrictEqual(FunctionSemantics.strictness([first, ...ids.filter(i => i !== first)], graph), forward, `asking ${first} first`);
+		}
+	});
+
 	describe('domains:promise', () => {
 		const sec = (s: string) => decorateLabelContext(label(s, ['name-normal', 'function-calls']), ['dataflow']);
-		const strictOf = async(code: string, fn: SlicingCriterion) => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-			analyzer.addRequest(code);
+		async function strictOf(code: string, fn: SlicingCriterion) {
+			const analyzer = await analyze(ts, code);
 			const { idMap } = await analyzer.normalize();
 			const id = SlicingCriterion.parse(fn, idMap);
 			const strictness = FunctionSemantics.strictness([id], (await analyzer.dataflow()).graph, { ctx: analyzer.inspectContext() })[id];
 			const byName = (p: string) => Object.entries(strictness.parameters).find(([k]) => NodeId.recoverName(Number(k), idMap) === p)?.[1];
 			return { a: byName('a'), b: byName('b') };
-		};
+		}
 		test(sec('domains:promise a branch on a constant forces only one argument'), async() => {
 			assert.deepEqual(await strictOf('f <- function(a, b) if(TRUE) a else b', '1@function'), { a: Ternary.Always, b: Ternary.Never });
 		});

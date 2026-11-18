@@ -24,23 +24,23 @@ import { LintQuickFixes } from '../../src/linter/linter-fix';
 import { DefaultBuiltinConfig, statedSignatureOf, statedSignatures } from '../../src/dataflow/environments/default-builtin-config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { memorySourceOfPackages } from '../../src/project/sigdb/memory-source';
-import { Identifier } from '../../src/dataflow/environments/identifier';
+import { Identifier, type BrandedNamespace } from '../../src/dataflow/environments/identifier';
 import { SliceDirection } from '../../src/util/slice-direction';
 import { SlicingCriterion } from '../../src/slicing/criterion/parse';
 import { rankName } from '../../src/util/text/name-rank';
 import { stripAnsi, voidFormatter } from '../../src/util/text/ansi';
-import { escapeRegex, compareByCodeUnit  } from '../../src/util/text/strings';
+import { escapeRegex, compareByCodeUnit } from '../../src/util/text/strings';
 import { computeCompletions, replProcessAnswer } from '../../src/cli/repl/core';
 import { getCommand } from '../../src/cli/repl/commands/repl-commands';
 import { splitAtEscapeSensitive } from '../../src/util/text/args';
 import type { ReplOutput } from '../../src/cli/repl/commands/repl-main';
 import { packForUrl, toBase64, unpackFromUrl } from '../../src/util/text/url-encoding';
-import type { PlaygroundMark as Mark } from '../../src/util/text/playground-link';
-import { Playground, PlaygroundBox } from '../../src/util/text/playground-link';
+import { type PlaygroundMark as Mark, Playground, PlaygroundBox } from '../../src/util/text/playground-link';
 import type { ProjectQueryResult } from '../../src/queries/catalog/project-query/project-query-format';
 import { rAuthorInfoToReadable } from '../../src/util/r-author';
 import { stringifyRLicense } from '../../src/util/r-license';
 import { baseRPackages, isBaseRPackage } from '../../src/util/r-base-packages';
+import { RBasePackageStore } from '../../src/data/r-base-packages.generated';
 import { DataflowMermaid } from '../../src/util/mermaid/dfg';
 import { cfgToMermaid } from '../../src/util/mermaid/cfg';
 import { normalizedAstToMermaid } from '../../src/util/mermaid/ast';
@@ -54,14 +54,19 @@ import { isRSession, sessionAsScript } from './r-session';
 import { cellTitles, languageOf, loadNotebook, NotebookRun, notebookCells, rewriteCells, writesR } from './notebook';
 import { fileBanner, reconstructToCode } from '../../src/reconstruct/reconstruct';
 import { keptAfterRemoval } from '../../src/slicing/static/removal-slice';
-import { arraySum, uniqueArray  } from '../../src/util/collections/arrays';
+import { arraySum, uniqueArray } from '../../src/util/collections/arrays';
 import { cranPageUrl } from '../../src/util/r-package-urls';
 import type { DataflowGraph } from '../../src/dataflow/graph/graph';
 import { RString } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { VertexType } from '../../src/dataflow/graph/vertex';
 import { RNode } from '../../src/r-bridge/lang-4.x/ast/model/model';
 import { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { contractCard, placeIn, programContracts, statedContract, type ProgramContract } from './contracts';
+import { FunctionSemantics } from '../../src/dataflow/fn/function-semantics';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../src/project/context/flowr-analyzer-context';
+import type { InspectFnGuardsQueryResult } from '../../src/queries/catalog/inspect-fn-guards-query/inspect-fn-guards-query-format';
 import { allNodes, categoryInfo, dependencyTree, describeDependency, type DepNode, icon, noFindingsGroup, nodeIds, primaryCategory } from './dependency-view';
+import { datasetsOf } from '../../src/util/r-datasets';
 
 /* the script the page opens with, written into the page by the build so the documentation can link
    to the same one rather than to a copy of it */
@@ -278,14 +283,14 @@ const rLanguage = StreamLanguage.define(r);
 /** the same colours the editor uses, for code the panel shows rather than edits */
 function paint(code: string, into: HTMLElement): void {
 	let at = 0;
-	const put = (text: string, classes: string): void => {
+	function put(text: string, classes: string): void {
 		const span = document.createElement('span');
 		if(classes.length > 0) {
 			span.className = classes;
 		}
 		span.textContent = text;
 		into.append(span);
-	};
+	}
 	const tree = rLanguage.parser.parse(code);
 	highlightCode(code, tree, highlight, (text, classes) => {
 		/* the mode hands out whole unstyled runs, and a call name inside one is marked like in the editor */
@@ -433,10 +438,10 @@ const valueTips = hoverTooltip(async(view, pos) => {
 	const line = view.state.doc.lineAt(pos);
 	const found = targetAt(line.text, line.number, pos - line.from);
 	/* a finding shows wherever its squiggle is, in a string as much as on a name */
-	const lintOnly = () => {
+	function lintOnly() {
 		const over = shownLints.filter(l => l.from <= pos && pos <= l.to);
 		return over.length === 0 ? null : { pos: Math.min(...over.map(l => l.from)), end: Math.max(...over.map(l => l.to)), above: false, create: () => ({ dom: tip(undefined, undefined, over) }) };
-	};
+	}
 	if(found === undefined) {
 		return lintOnly();
 	}
@@ -457,7 +462,8 @@ const valueTips = hoverTooltip(async(view, pos) => {
 	const said = about.said;
 	const known = about.local ? undefined : signatureOf(found.name, ownerOf(found.name, about.pkg));
 	const complaints = lintsOver(from, to);
-	return said === undefined && known === undefined && complaints.length === 0 && depsOver(from, to).length === 0 ? null : card(tip(known, said, complaints));
+	const contracted = contractOf(found.name, about, known);
+	return said === undefined && known === undefined && contracted === undefined && complaints.length === 0 && depsOver(from, to).length === 0 ? null : card(tip(known, said, complaints, contracted));
 });
 
 /**
@@ -601,10 +607,40 @@ function packageTip(info: PackageInfo, complaints: readonly { rule: string, mess
 	return tip({ call: head, props: '', where: packageFacts(info).join(' · '), name: info.name }, undefined, complaints);
 }
 
+/** what the functions of the script ask of their calls, and the context of the last analysis to ask about the others */
+let shownContracts: readonly ProgramContract[] = [];
+let contractContext: ReadOnlyFlowrAnalyzerContext | undefined;
+
+/** the contract of what the name stands for: inferred for a function of the script, stated for one of R or a package */
+function contractOf(name: string, about: Known, known: Signature | undefined): HTMLElement | undefined {
+	const own = shownContracts.find(c => c.ids.some(id => about.defs?.includes(String(id))));
+	if(own !== undefined) {
+		return contractCard(own.name, own.formals, own.guards, { program: own }, place => reveal(place.file, place.line));
+	}
+	const [, pkg, bare, params = ''] = /^([\w.]+)::([^(]+)(?:\((.*)\))?$/.exec(known?.call ?? '') ?? [];
+	if(about.local || pkg === undefined || bare !== name) {
+		return undefined;
+	}
+	const guardsOf = (id: Identifier) => FunctionSemantics.contracts.statedOf(id, contractContext);
+	let id = Identifier.make(name, pkg);
+	let shown = statedContract(guardsOf(id), params);
+	let note: string | undefined;
+	/* a generic asks nothing itself, what a value of no class with a method of its own meets is the default method */
+	if(shown === undefined && (RBasePackageStore.generics as readonly string[]).includes(name)) {
+		id = Identifier.make(`${name}.default`, pkg);
+		shown = statedContract(guardsOf(id), params);
+		note = `${name} is an S3 generic, a value whose class has no method of its own reaches ${name}.default, which asks this`;
+	}
+	/* a function of a package R does not attach on startup is written with it */
+	return shown === undefined ? undefined : contractCard(Identifier.toPreludeString(id), shown.formals, shown.guards, { qualified: Identifier.toString(id), note }, () => undefined);
+}
+
 /** the hover card: what the database knows about the name, then what flowR made of this script */
-function tip(known: Signature | undefined, said: string | undefined, complaints: readonly { rule: string, message: string }[] = []): HTMLElement {
+function tip(known: Signature | undefined, said: string | undefined, complaints: readonly { rule: string, message: string }[] = [], contracted?: HTMLElement): HTMLElement {
 	const dom = el('div', 'cm-valuetip');
-	const line = (text: string, cls: string): void => dom.append(el('div', cls, text));
+	function line(text: string, cls: string): void {
+		dom.append(el('div', cls, text));
+	}
 	if(known !== undefined) {
 		line(known.call, 'tcall');
 		const about = [known.props.split(' ').filter(p => p.length > 0).map(p => p.replace(/-/g, ' ')).join(' · '), known.where]
@@ -615,6 +651,9 @@ function tip(known: Signature | undefined, said: string | undefined, complaints:
 	}
 	if(said !== undefined) {
 		line(said, 'tsaid');
+	}
+	if(contracted !== undefined) {
+		dom.append(contracted);
 	}
 	for(const found of complaints) {
 		dom.append(complaint(found, 'tlint'));
@@ -764,6 +803,25 @@ async function completeColumn(context: CompletionContext, access: { from: number
 	};
 }
 
+/** what stands in for a name not typed yet, so the analysis has a node at the cursor */
+const Placeholder = '.flowr_completion_';
+
+/** the columns flowR's data columns query offers at `line`:`col` of the open file, the file analyzed as `code` */
+let maskedAsked: { code: string, at: string, columns: Promise<readonly { name: string, frame: string }[]> } | undefined;
+function maskedColumnsAt(code: string, line: number, col: number): Promise<readonly { name: string, frame: string }[]> {
+	const at = `${line}:${col}`;
+	if(maskedAsked?.code !== code || maskedAsked.at !== at) {
+		const columns = (async() => {
+			const answers = await (await analyzer(undefined, code)).query([{ type: 'data-columns', positions: [at] }]);
+			const found = answers['data-columns'].results[at];
+			const frames = found?.frames.map(f => f.lexeme ?? 'the data').join(', ') ?? '';
+			return found?.columns.map(name => ({ name, frame: frames })) ?? [];
+		})().catch(() => []);
+		maskedAsked = { code, at, columns };
+	}
+	return maskedAsked.columns;
+}
+
 /** the call whose parentheses hold `pos`, by its name, if any */
 function callAround(text: string, pos: number): string | undefined {
 	let depth = 0;
@@ -831,15 +889,25 @@ function complete(context: CompletionContext): CompletionResult | null | Promise
 	/* right after `(` or `,` of a call, the parameters of what it calls come first */
 	const called = /[(,]\s*$/.test(text.slice(Math.max(0, word.from - 200), word.from)) ? callAround(text, word.from) : undefined;
 	const named = called === undefined ? [] : parametersOf(called).filter(p => p.startsWith(needle)).map(p => ({ label: p, apply: `${p} = `, type: 'property', detail: `argument of ${called}`, boost: 99 }));
-	return {
+	const others = ranked([
+		...uniqueArray([...defined, ...flowrDefined]).map(label => offer(label, needle, { type: 'variable', detail: 'in this script', local: true })),
+		/* what the script attached is nearer than what flowR knows without it */
+		...[...attached].flatMap(pkg => exportsFrom(bakedPackages[pkg]).map(label => offer(label, needle, { pkg, type: 'function', detail: pkg }))),
+		...builtInNames.map(label => offer(label, needle, { type: 'function', detail: 'flowR built-in' })),
+		/* the data sets R finds as lazy data: those of datasets always, a package's once the script attaches it */
+		...['datasets', ...attached].flatMap(pkg => datasetsOf(pkg as BrandedNamespace).map(label => offer(label, needle, { pkg, type: 'variable', detail: `lazy data of ${pkg}, loaded on first use` })))
+	]);
+	/* within what a call evaluates in its data, as `filter(penguins, bi)` or `aes(x = bi)`, the columns of that data come first */
+	const line = context.state.doc.lineAt(word.to);
+	const typed = word.from === word.to ? Placeholder : '';
+	const code = text.slice(0, word.to) + typed + text.slice(word.to);
+	return maskedColumnsAt(code, line.number, word.to - line.from + typed.length + 1).then(columns => ({
 		from:    word.from,
-		options: [...named, ...ranked([
-			...uniqueArray([...defined, ...flowrDefined]).map(label => offer(label, needle, { type: 'variable', detail: 'in this script', local: true })),
-			/* what the script attached is nearer than what flowR knows without it */
-			...[...attached].flatMap(pkg => exportsFrom(bakedPackages[pkg]).map(label => offer(label, needle, { pkg, type: 'function', detail: pkg }))),
-			...builtInNames.map(label => offer(label, needle, { type: 'function', detail: 'flowR built-in' }))
-		])]
-	};
+		options: [
+			...columns.map(({ name, frame }) => ({ label: name, apply: /^[A-Za-z.][\w.]*$/.test(name) ? name : `\`${name}\``, type: 'property', detail: `column of ${frame}`, boost: 99 })),
+			...named, ...others
+		]
+	}));
 }
 
 /**
@@ -920,7 +988,7 @@ const shared = (() => {
 	/* a chat client stops a link at what looks like the end of a sentence, and what arrives then no longer
 	   reads back as what was sent: the page opens on its own sample and says why */
 	let cut = false;
-	const read = (key: string) => {
+	function read(key: string) {
 		const found = params.get(key);
 		if(found === null) {
 			return undefined;
@@ -928,7 +996,7 @@ const shared = (() => {
 		const back = unpackFromUrl(found);
 		cut ||= back === undefined;
 		return back;
-	};
+	}
 	const changed = Playground.unpackConfig(params.get('k'));
 	/* everything about the view is one field, `<code width>,<repl height>,<flags>`, because four of them
 	   would be four `&`-separated names for what is really one thing: how the page was left looking */
@@ -1114,10 +1182,10 @@ function jsonStop(text: string, message: string): number {
 }
 
 function configProblems(text: string): ConfigProblem[] {
-	const near = (at: number, message: string): ConfigProblem => {
+	function near(at: number, message: string): ConfigProblem {
 		const from = Math.max(0, Math.min(at, text.length - 1));
 		return { from, to: Math.min(from + 1, text.length), message };
-	};
+	}
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(text);
@@ -1283,12 +1351,38 @@ const SliceActions: readonly { readonly label: string, readonly key: string, rea
 	} }
 ];
 const sliceKeys = Prec.high(keymap.of(SliceActions.map(action => ({ key: action.key, run: () => (action.run(), true) }))));
+/** the name under the cursor as R code, which a backtick quotes unless it is syntactic, as `x`, `d$col`, or `obj@slot` */
+function viewableAtCursor(): string | undefined {
+	const head = editor.state.selection.main.head;
+	const line = editor.state.doc.lineAt(head);
+	const name = targetAt(line.text, line.number, head - line.from)?.name;
+	if(name === undefined) {
+		return undefined;
+	}
+	return /^(?:[A-Za-z]|\.(?![0-9]))[\w.]*(?:[$@](?:[A-Za-z]|\.(?![0-9]))[\w.]*)*$/.test(name) ? name : `\`${name.replaceAll('`', '\\`')}\``;
+}
+
+/** shows what `code` holds in R's `View()`, in the repl's R session, the one a run of the script leaves its variables in */
+function viewInR(code: string): void {
+	const drawer = document.getElementById('repl') as HTMLDetailsElement | null;
+	if(drawer !== null) {
+		drawer.open = true;
+	}
+	runRepl(`View(${code})`);
+}
+
 function sliceMenu(): MenuEntry[] {
 	const toggle = (flip: () => void) => () => (flip(), remember(), void run());
+	const viewable = viewableAtCursor();
 	return [
 		'flowR', ...SliceActions.map(a => ({ label: `${a.label}  (${a.key.replace('Alt-', 'alt+')})`, run: a.run })), '',
 		{ label: 'Intersect the pinned positions', checked: intersect, run: toggle(() => intersect = !intersect) },
-		{ label: 'Negative slice: step back the slice', checked: negative, run: toggle(() => negative = !negative) }
+		{ label: 'Negative slice: step back the slice', checked: negative, run: toggle(() => negative = !negative) },
+		...viewable === undefined ? [] : ['R', {
+			label: `View ${viewable} in R`,
+			title: `runs View(${viewable}) in the R session, which holds the variables of the last run`,
+			run:   () => viewInR(viewable)
+		}]
 	];
 }
 
@@ -1842,17 +1936,13 @@ function markRanges(mark: Mark): readonly ShownRange[] {
 		return [];
 	}
 	mark = (file === null ? mark : mark.slice(0, file.index)) as Mark;
-	/* a name may carry an `@` itself, as `object@slot` does, so only the first one separates */
-	const cut = mark.indexOf('@');
-	const [lineText, columnText] = (cut < 0 ? mark : mark.slice(0, cut)).split(':');
-	const name = cut < 0 ? undefined : mark.slice(cut + 1);
-	const number = Number(lineText);
-	if(!Number.isInteger(number) || number < 1 || number > doc.lines) {
+	const parsed = Playground.parseMark(mark);
+	if(parsed === undefined || parsed.line > doc.lines) {
 		return [];
 	}
+	const { line: number, column, name } = parsed;
 	const line = doc.line(number);
-	if(columnText !== undefined) {
-		const column = Number(columnText);
+	if(column !== undefined) {
 		const found = Number.isInteger(column) && column > 0 ? targetAt(line.text, number, column - 1) : undefined;
 		return found === undefined ? [] : [{ from: line.from + found.from, to: line.from + found.to, line: false }];
 	}
@@ -2106,9 +2196,7 @@ function revealRow(row: HTMLElement): void {
 	}
 }
 
-function linesOf(node: DepNode): number[] {
-	return allNodes([node]).flatMap(n => n.target && n.target.file === undefined && n.id !== undefined ? [n.target.span[0]] : []);
-}
+const linesOf = (node: DepNode): number[] => allNodes([node]).flatMap(n => n.target && n.target.file === undefined && n.id !== undefined ? [n.target.span[0]] : []);
 
 function revealDependency(node: DepNode): void {
 	const target = node.target;
@@ -2202,11 +2290,11 @@ async function focusRelated(node: DepNode | undefined): Promise<void> {
 	}
 	try {
 		const built = await analyzer();
-		const answer = await built.query([{ type: 'dependencies', focus: ids.map(id => SlicingCriterion.fromId(id)) }]);
+		const answer = await built.query({ type: 'dependencies', focus: ids.map(id => SlicingCriterion.fromId(id)) });
 		if(request !== focusRequest) {
 			return;
 		}
-		related = { code, key: node.key, ids: new Set([...ids, ...answer.dependencies['.meta'].focus ?? []].map(String)) };
+		related = { code, key: node.key, ids: new Set([...ids, ...answer['.meta'].focus ?? []].map(String)) };
 	} catch{ /* what cannot be sliced grays nothing out */ }
 	paintRelated();
 }
@@ -2266,14 +2354,14 @@ function depEntry(node: DepNode, depth: number): HTMLElement {
 		event.stopPropagation();
 		toggle();
 	});
-	const activate = () => {
+	function activate() {
 		if(node.target !== undefined) {
 			revealDependency(node);
 		} else if(node.children.length > 0) {
 			toggle();
 		}
 		void focusRelated(focusedKey === node.key && node.target === undefined ? undefined : node);
-	};
+	}
 	line.addEventListener('click', activate);
 	line.addEventListener('keydown', event => {
 		if(event.key === 'Enter' || event.key === ' ') {
@@ -2414,7 +2502,7 @@ function ruleDetails(rule: string, fixes: readonly LintQuickFix[], note?: string
 	const diff = el('pre', 'diff');
 	/* the numbers are those of the script before the fix on the removed lines and after it on the added ones, as in a patch */
 	const width = String(Math.max(before.length, after.length)).length;
-	const show = (lines: readonly string[], sign: string) => {
+	function show(lines: readonly string[], sign: string) {
 		for(const [at, text] of lines.slice(0, 6).entries()) {
 			const row = el('span', sign === '-' ? 'del' : 'ins', `${String(head + at + 1).padStart(width)} ${sign} ${text}`);
 			diff.append(row, '\n');
@@ -2422,7 +2510,7 @@ function ruleDetails(rule: string, fixes: readonly LintQuickFix[], note?: string
 		if(lines.length > 6) {
 			diff.append(el('span', 'more', `${' '.repeat(width)}   … ${lines.length - 6} more`), '\n');
 		}
-	};
+	}
 	show(before.slice(head, before.length - tail), '-');
 	show(after.slice(head, after.length - tail), '+');
 	more.append(diff, fixButton(fixes, uniqueArray(fixes.map(fix => fix.description)).join('; ') || 'apply the fix', `line ${head + 1}: carry the fix out (ctrl+z takes it back)`));
@@ -2440,7 +2528,7 @@ function shapeOf(domain: unknown): string | undefined {
 	if(d?.cols === undefined || d.rows === undefined) {
 		return undefined;
 	}
-	const count = (b: Bounds, what: string): string | undefined => {
+	function count(b: Bounds, what: string): string | undefined {
 		const { lower, upper } = b;
 		if(typeof lower !== 'number' || typeof upper !== 'number') {
 			return undefined;
@@ -2449,7 +2537,7 @@ function shapeOf(domain: unknown): string | undefined {
 			return `${lower} ${lower === 1 ? what : what + 's'}`;
 		}
 		return Number.isFinite(upper) ? `${lower} to ${upper} ${what}s` : lower > 0 ? `${lower}+ ${what}s` : undefined;
-	};
+	}
 	const named = [...d.colnames?.must ?? []];
 	const more = (d.colnames?.may?.size ?? 0) > 0 || d.colnames?.isFinite?.() === false;
 	const columns = named.length > 0 ? `${named.join(', ')}${more ? ', …' : ''}` : undefined;
@@ -2460,7 +2548,7 @@ function shapeOf(domain: unknown): string | undefined {
 interface Bounds { lower?: number, upper?: number }
 
 /** the value, the data frame shape, or where it comes from; asked once per name and remembered */
-interface Known { said?: string, pkg?: string, local: boolean }
+interface Known { said?: string, pkg?: string, local: boolean, defs?: readonly string[] }
 const described = new Map<string, Known>();
 async function describe(criterion: string): Promise<Known> {
 	const remembered = described.get(criterion);
@@ -2495,7 +2583,8 @@ async function describe(criterion: string): Promise<Known> {
 			said: [shape, resolved.length > 0 ? `value ${resolved.join(' or ')}` : undefined, from.length > 0 ? `defined in line ${from.join(', ')}` : undefined]
 				.filter(Boolean).join(' · ') || undefined,
 			pkg:   attached,
-			local: origins.length > 0 && origins.every(o => o.proc === undefined)
+			local: origins.length > 0 && origins.every(o => o.proc === undefined),
+			defs:  origins.map(o => String(o.id))
 		};
 	} catch{ /* a name flowR cannot place */ }
 	described.set(criterion, answer);
@@ -2733,12 +2822,12 @@ function sliceLines(kept: readonly number[], inContext: boolean): HTMLElement {
 	const cellOf = cellTitles(editor.state, files[active].name);
 	let cellShown: string | undefined;
 	let skipped = 0;
-	const gap = () => {
+	function gap() {
 		if(skipped > 0 && list.childElementCount > 0) {
 			list.append(el('div', 'sgap', `${skipped} line${skipped === 1 ? '' : 's'} not in the slice`));
 		}
 		skipped = 0;
-	};
+	}
 	for(let n = 1; n <= doc.lines; n++) {
 		const text = doc.line(n).text;
 		if(CellStart.test(text)) {
@@ -2847,10 +2936,10 @@ async function analyze(): Promise<number> {
 	const criterion = cursorCriterion();
 	const asked = cursorName();
 	const built = await analyzer();
-	const step = async<T>(run: () => Promise<T>): Promise<[T, number]> => {
+	async function step<T>(run: () => Promise<T>): Promise<[T, number]> {
 		const at = performance.now();
 		return [await run(), performance.now() - at];
-	};
+	}
 	const [, parsed] = await step(() => built.parse());
 	const [normalized, normalizing] = await step(() => built.normalize());
 	const [info, dataflow] = await step(() => built.dataflow());
@@ -2859,13 +2948,15 @@ async function analyze(): Promise<number> {
 		{ type: 'dependencies' },
 		/* off by default as a rule, but a script that does not parse is the first thing to say */
 		{ type: 'linter' }, { type: 'linter', rules: ['syntactically-valid'] },
+		{ type: 'inspect-fn-guards' },
 		...files.some(f => /(^|\/)DESCRIPTION$/.test(f.name)) ? [{ type: 'project' }] : [],
 		...slicesFor(lastCriteria = pinnedCriteria().length > 0 ? pinnedCriteria() : criterion === undefined ? [] : [criterion])
 	] as never) as unknown as {
-		dependencies?:   Record<string, readonly Dependency[]>,
-		project?:        ProjectQueryResult,
-		linter?:         { results?: Record<string, { results?: Finding[], '.meta'?: object }>, '.meta'?: { timing?: number } },
-		'static-slice'?: { results?: Record<string, { reconstruct?: { code?: string | readonly string[], files?: readonly { path?: string, code: string }[] }, slice?: { result?: Iterable<string | number> } }> }
+		dependencies?:        Record<string, readonly Dependency[]>,
+		project?:             ProjectQueryResult,
+		linter?:              { results?: Record<string, { results?: Finding[], '.meta'?: object }>, '.meta'?: { timing?: number } },
+		'inspect-fn-guards'?: InspectFnGuardsQueryResult,
+		'static-slice'?:      { results?: Record<string, { reconstruct?: { code?: string | readonly string[], files?: readonly { path?: string, code: string }[] }, slice?: { result?: Iterable<string | number> } }> }
 	};
 	const took = performance.now() - started;
 	showStats({ parse: parsed, normalize: normalizing, dataflow, lint: answers.linter?.['.meta']?.timing ?? 0 }, info.graph);
@@ -2884,7 +2975,7 @@ async function analyze(): Promise<number> {
 	const parts = sliced[0]?.reconstruct?.files?.filter(f => f.code.trim() !== '').map(f => ({ path: f.path ?? 'unknown', code: f.code }));
 	const reconstructed = sliced[0]?.reconstruct?.code;
 	const code: Rebuilt | undefined = parts ?? (typeof reconstructed === 'object' ? reconstructed.join('\n') : reconstructed);
-	const linesOf = (result: Iterable<string | number> = []) => uniqueArray([...result]
+	const linesOf = (result: Iterable<NodeId | number> = []) => uniqueArray([...result]
 		.map(id => idMap?.get(id as never)).filter(node => elsewhere(node) === undefined).map(node => SourceRange.getStartLine(node?.location))
 		.filter((l): l is number => typeof l === 'number'));
 	const sliceLinesOf = sliced.map(r => linesOf(r.slice?.result)).reduce<number[] | undefined>((a, b) => a?.filter(l => b.includes(l)) ?? b, undefined) ?? [];
@@ -3089,13 +3180,13 @@ async function analyze(): Promise<number> {
 		const lines = of.map(f => f.line);
 		const toggle = el('span', 'toggle');
 		head.append(chip, el('span', 'says', summary), toggle);
-		const fold = (open: boolean): void => {
+		function fold(open: boolean): void {
 			for(const row of rows) {
 				row.hidden = !open;
 			}
 			head.classList.toggle('open', open);
 			toggle.textContent = open ? 'hide' : 'show';
-		};
+		}
 		head.addEventListener('click', () => {
 			const open = !openedLintGroups.delete(rule);
 			if(open) {
@@ -3110,10 +3201,30 @@ async function analyze(): Promise<number> {
 		lints.append(linkRow(head, lines), ...rows);
 	}
 	lintBody.append(found.length === 0 ? el('p', 'empty', 'no findings') : lints);
+	contractContext = built.inspectContext();
+	shownContracts = programContracts(answers['inspect-fn-guards']?.guards ?? {}, info.graph, idMap, placeIn(idMap, elsewhere));
+	showContracts(shownContracts);
 	panel.append(...sliceBlock);
 	showFolds();
 	showMarks();
 	return took;
+}
+
+/** what each function of the script asks of its calls, one card per definition */
+function showContracts(contracts: readonly ProgramContract[]): void {
+	const body = section(`Contracts: ${contracts.length}`, PlaygroundBox.Contracts, contracts.length === 0 ? undefined : 'inferred, what a call has to fulfill');
+	if(contracts.length === 0) {
+		body.append(el('p', 'empty', 'no function of the script checks its arguments'));
+		return;
+	}
+	const list = el('div', 'contracts');
+	list.dataset.mark = PlaygroundBox.Contracts;
+	for(const c of contracts) {
+		const row = el('div', 'card fncontract');
+		row.append(el('div', 'tcall', `${c.name}(${c.formals.join(', ')})`), contractCard(c.name, c.formals, c.guards, { program: c }, place => reveal(place.file, place.line)));
+		list.append(linkRow(row, [c.file === undefined ? c.line : undefined]));
+	}
+	body.append(list);
 }
 
 let wholeSlice = shared.wholeSlice;
@@ -3536,7 +3647,7 @@ const replBody = () => document.getElementById('repl')?.querySelector('.body')?.
 
 /* a pane is at least as wide as the grid lets the panel get; dragged past half of that, it folds away */
 const splitBox = document.querySelector<HTMLElement>('.split');
-const fold = (split: string): void => {
+function fold(split: string): void {
 	const at = parseFloat(split);
 	if(splitBox === null) {
 		return;
@@ -3545,7 +3656,7 @@ const fold = (split: string): void => {
 	} else {
 		delete splitBox.dataset.fold;
 	}
-};
+}
 /* where the bar was before it folded, which a click on the folded bar goes back to */
 let unfolded = '';
 draggable(document.getElementById('divider'), '--split', () => 0, at => {

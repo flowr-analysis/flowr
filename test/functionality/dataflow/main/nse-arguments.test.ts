@@ -1,17 +1,15 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
 import { ArgProp, FnSig } from '../../../../src/dataflow/environments/built-in-props';
+import { analyze } from '../../_helper/analyzer';
 
 describe('Arguments a call evaluates other than in the caller', withTreeSitter(ts => {
 	/** checks which of the symbols carry a non-standard-evaluation mark */
 	function testMarks(label: string, code: string, marked: readonly SlicingCriterion[], unmarked: readonly SlicingCriterion[]): void {
 		test(label, async() => {
-			const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
-			analyzer.addRequest(requestFromInput(code));
+			const analyzer = await analyze(ts, code);
 			const idMap = (await analyzer.normalize()).idMap;
 			const graph = (await analyzer.dataflow()).graph;
 			for(const [criteria, expected] of [[marked, true], [unmarked, false]] as const) {

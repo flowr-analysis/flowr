@@ -16,8 +16,7 @@ import { SigDatabase, type PackageSignatureSource } from '../../../../../src/pro
 import { SigDbBuilder, writeSignatureDb } from '../../../../../src/project/sigdb/build';
 import { SigDbExt, FnProp, DepType } from '../../../../../src/project/sigdb/schema';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { Environment } from '../../../../../src/dataflow/environments/environment';
-import { EnvType, REnvironment } from '../../../../../src/dataflow/environments/environment';
+import { type Environment, EnvType, REnvironment } from '../../../../../src/dataflow/environments/environment';
 import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 import { DfEdge, EdgeType } from '../../../../../src/dataflow/graph/edge';
@@ -188,11 +187,11 @@ describe('Link libraries from a signature database (sigdb)', withTreeSitter(ts =
 	});
 
 	test(label('a call only has the side effects of the packages its body attaches', ['library-loading', 'search-path', 'side-effects-in-function-call'], ['dataflow']), async() => {
-		const effectsOn = async(code: string, callName = 'f') => {
+		async function effectsOn(code: string, callName = 'f') {
 			const { df } = await analyze(ts, code, buildDb());
 			const call = df.graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === callName);
 			return [...df.graph.edgesTo(call?.[0] as NodeId)].filter(([, e]) => DfEdge.includesType(e, EdgeType.SideEffectOnCall)).map(([from]) => String(from));
-		};
+		}
 		const cranfn = String(NodeId.fromPkgFn('cranpkg', 'cranfn'));
 		/* the caller sees the package as well, so calling `f` does not redefine its exports */
 		expect(await effectsOn('library(cranpkg)\nf <- function() 1\nf()\ncranfn()')).not.toContain(cranfn);

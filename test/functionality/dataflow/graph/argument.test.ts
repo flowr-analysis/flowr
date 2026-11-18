@@ -1,23 +1,18 @@
 import { assert, describe, test } from 'vitest';
-import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { withShell } from '../../_helper/shell';
 import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../../src/dataflow/graph/vertex';
 import { getValueOfArgument } from '../../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { RNumber } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RLogical } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-logical';
-import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import { analyze } from '../../_helper/analyzer';
 
 describe('Retrieve fitting Argument', { concurrent: false }, withShell(shell => {
 	async function retrieveArgOfCode(code: string, index: number, name?: string) {
-		const dfg = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			parser:  shell,
-			context: contextFromInput(code)
-		}).allRemainingSteps();
+		const dataflow = await (await analyze(shell, code)).dataflow();
 		// we assume that the entry point of the graph is the function call
-		const graph = dfg.dataflow.graph;
-		const call = graph.getVertex(dfg.dataflow.entryPoint);
+		const graph = dataflow.graph;
+		const call = graph.getVertex(dataflow.entryPoint);
 		assert.strictEqual(call?.tag, VertexType.FunctionCall);
 		return getValueOfArgument(graph, call as DataflowGraphVertexFunctionCall, { name, index });
 	}

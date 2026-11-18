@@ -1,8 +1,6 @@
-import type { PathLike } from 'fs';
-import fs from 'fs';
+import fs, { type PathLike } from 'fs';
 import type { RParseRequest } from '../../r-bridge/retriever';
-import type { InvalidationEventHandler } from '../cache/flowr-cache';
-import { InvalidationEventType } from '../cache/flowr-cache';
+import { type InvalidationEventHandler, InvalidationEventType } from '../cache/flowr-cache';
 
 /**
  * Just a readable alias for file paths, mostly for documentation purposes.
@@ -108,19 +106,13 @@ export interface FlowrFileProvider<Content extends { toString(): string } = { to
 	 */
 	assignRole(role: FileRole): void;
 
-	/**
-	 * Set the appropriate callback to trigger updates in case of an 'invalidate'
-	 */
+	/** Set the appropriate callback to trigger updates in case of an 'invalidate' */
 	addOnInvalidate(callback: InvalidationEventHandler<Content>): void;
 
-	/**
-	 * Remove a previously added callback
-	 */
+	/** Remove a previously added callback */
 	removeOnInvalidate(callback: InvalidationEventHandler<Content>): void;
 
-	/**
-	 * Reload the file content because something has changed.
-	 */
+	/** Reload the file content because something has changed. */
 	invalidate(): void;
 }
 
@@ -207,9 +199,7 @@ export abstract class FlowrFile<Content extends StringableContent = StringableCo
 	}
 }
 
-/**
- * A basic implementation of the {@link FlowrFileProvider} interface for text files that caches the content after the first load (i.e., updates on disk are ignored).
- */
+/** A basic implementation of the {@link FlowrFileProvider} interface for text files that caches the content after the first load (i.e., updates on disk are ignored). */
 export class FlowrTextFile extends FlowrFile<string> {
 	protected loadContent(): string {
 		return fs.readFileSync(this.filePath, 'utf8');

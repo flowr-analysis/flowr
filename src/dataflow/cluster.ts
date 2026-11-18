@@ -23,9 +23,7 @@ export interface DataflowGraphCluster {
 	readonly hasUnknownSideEffects: boolean;
 }
 
-/**
- * Find all clusters in the given dataflow graph.
- */
+/** Find all clusters in the given dataflow graph. */
 export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 	const clusters: DataflowGraphClusters = [];
 	// we reverse the vertices since dependencies usually point "backwards" from later nodes
@@ -68,8 +66,7 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 	const nodes = new Set<NodeId>([from]);
 	const pending: NodeId[] = [from];
 
-	while(pending.length > 0) {
-		const current = pending.pop() as NodeId;
+	for(let current = pending.pop(); current !== undefined; current = pending.pop()) {
 		const info = graph.getVertex(current);
 		guard(info !== undefined, () => `Vertex ${current} not found in graph`);
 

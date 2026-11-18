@@ -8,6 +8,8 @@ import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/deco
 import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
+import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 
 /**
  * Path heuristic for an R package `inst/` resource (installed verbatim, not namespace source). Fallback for
@@ -23,7 +25,7 @@ const ResolveEdges: number = EdgeType.Reads | EdgeType.DefinedByOnCall;
  * Whether the variable use `id` resolves to a local definition, a parameter, or a built-in (function or
  * constant such as `T`, `pi`). Broader than `Dataflow.origin`, which misses built-in constants.
  */
-export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeId): boolean {
+export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeId, seen: Set<NodeId> = new Set([id])): boolean {
 	for(const [target, edge] of graph.edgesFrom(id)) {
 		if(DfEdge.doesNotIncludeType(edge, ResolveEdges) || DfEdge.includesType(edge, EdgeType.NonStandardEvaluation)) {
 			continue;
@@ -32,7 +34,12 @@ export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeI
 			return true;
 		}
 		const targetVtx = graph.getVertex(target);
-		if(DfgVertex.isVariableDefinition(targetVtx) || DfgVertex.isFunctionDefinition(targetVtx)) {
+		/* a value is what `attach(list(a = 1))` binds the name to */
+		if(DfgVertex.isVariableDefinition(targetVtx) || DfgVertex.isFunctionDefinition(targetVtx) || DfgVertex.isValue(targetVtx)) {
+			return true;
+		}
+		/* a name written without a definition vertex of its own is defined by its value (`list2env(list(a = 1), globalenv())`), or by the `attach` it names a data set for (`attach(mtcars)`) */
+		if(DfgVertex.isUse(targetVtx) && !seen.has(target) && (Dataflow.targetsOf(graph, target, EdgeType.DefinedBy).length > 0 || Dataflow.targetsOf(graph, target, EdgeType.Reads).some(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Attach)) || useResolvesToDefinitionOrBuiltin(graph, target, seen.add(target)))) {
 			return true;
 		}
 	}
@@ -73,7 +80,7 @@ export function isInSubscript(graph: DataflowGraph, id: NodeId): boolean {
 /** The lexical scope a definition/use belongs to: the id of the enclosing function definition, or the top level. */
 export type Scope = NodeId | 'top';
 /** Names bound unconditionally within each lexical scope, see {@link collectScopeDefinedNames}. */
-export type ScopeDefinedNames = ReadonlyMap<Scope, ReadonlySet<string>>;
+export type ScopeDefinedNames = ReadonlyMap<Scope, ReadonlySet<BrandedIdentifier>>;
 
 /** AST nodes that make their children conditionally executed within their scope. */
 const ConditionalNodeTypes = new Set<RType>([RType.IfThenElse, RType.ForLoop, RType.WhileLoop, RType.RepeatLoop]);
@@ -105,7 +112,7 @@ function enclosingScope(idMap: AstIdMap, id: NodeId): { scope: Scope, unconditio
  */
 export function collectScopeDefinedNames(graph: DataflowGraph): ScopeDefinedNames {
 	const idMap = graph.idMap;
-	const byScope = new Map<Scope, Set<string>>();
+	const byScope = new Map<Scope, Set<BrandedIdentifier>>();
 	if(idMap === undefined) {
 		return byScope;
 	}
@@ -119,7 +126,7 @@ export function collectScopeDefinedNames(graph: DataflowGraph): ScopeDefinedName
 		if(!unconditional) {
 			continue;
 		}
-		const names = byScope.get(scope) ?? new Set<string>();
+		const names = byScope.get(scope) ?? new Set<BrandedIdentifier>();
 		names.add(name);
 		byScope.set(scope, names);
 	}
@@ -132,7 +139,7 @@ export function collectScopeDefinedNames(graph: DataflowGraph): ScopeDefinedName
  * The use's own scope does not count: a binding there reaches the use only if the dataflow linked it, as a
  * read before the write in the same frame (`f <- function() { print(v); v <- 1 }`) finds nothing.
  */
-export function isDefinedInEnclosingScope(graph: DataflowGraph, defined: ScopeDefinedNames, useId: NodeId, name: string): boolean {
+export function isDefinedInEnclosingScope(graph: DataflowGraph, defined: ScopeDefinedNames, useId: NodeId, name: BrandedIdentifier): boolean {
 	const idMap = graph.idMap;
 	if(idMap === undefined) {
 		return false;

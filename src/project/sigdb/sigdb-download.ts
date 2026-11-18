@@ -1,9 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import http from 'http';
+import http, { type IncomingMessage } from 'http';
 import https from 'https';
 import crypto from 'crypto';
-import type { IncomingMessage } from 'http';
 import { sigDbCacheDir, uniqueTempPath } from './decompress';
 import { CompressedExtPattern, compressedExtOf, readableExtsPreferred, stripCompressedExt } from './codec';
 import CommittedRemote from '../../data/sigdb/sigdb.remote.json';
@@ -168,8 +167,7 @@ function tryRemotePointer(): SigDbRemote | undefined {
 }
 
 /** the direct release-asset URL, which avoids the REST API rate limit; `$FLOWR_SIGDB_MIRROR` replaces the host */
-const assetUrl = (repo: string, tag: string, name: string): string =>
-	`${process.env.FLOWR_SIGDB_MIRROR ?? 'https://github.com'}/${repo}/releases/download/${tag}/${encodeURIComponent(name)}`;
+const assetUrl = (repo: string, tag: string, name: string): string => `${process.env.FLOWR_SIGDB_MIRROR ?? 'https://github.com'}/${repo}/releases/download/${tag}/${encodeURIComponent(name)}`;
 
 /** runtime-decodable variant extensions, most-preferred first, ending in plain (`''`) as a last resort */
 function downloadVariantOrder(): readonly string[] {
@@ -183,20 +181,10 @@ function downloadVariantOrder(): readonly string[] {
  * downloader fetches exactly one variant per shard/dictionary -- never both -- matching what the reader resolves.
  */
 export function selectDownloadVariants(names: Iterable<string>): string[] {
-	const groups = new Map<string, Map<string, string>>();   // logical name -> (ext -> physical name)
-	for(const name of names) {
-		const logical = stripCompressedExt(name);
-		const ext = compressedExtOf(name) ?? '';
-		let byExt = groups.get(logical);
-		if(!byExt) {
-			byExt = new Map();
-			groups.set(logical, byExt);
-		}
-		byExt.set(ext, name);
-	}
 	const order = downloadVariantOrder();
 	const picked: string[] = [];
-	for(const byExt of groups.values()) {
+	for(const variants of Map.groupBy(names, stripCompressedExt).values()) {
+		const byExt = new Map(variants.map(name => [compressedExtOf(name) ?? '', name]));
 		const ext = order.find(e => byExt.has(e));
 		if(ext !== undefined) {
 			picked.push(byExt.get(ext) as string);
@@ -206,8 +194,7 @@ export function selectDownloadVariants(names: Iterable<string>): string[] {
 }
 
 /** pick the richest manifest among downloaded files (a `full`/scope manifest first, else any) */
-const pickManifest = (files: readonly string[]): string | undefined =>
-	files.find(f => new RegExp(`full\\.manifest\\.json${CompressedExtPattern}$`).test(f))
+const pickManifest = (files: readonly string[]): string | undefined => files.find(f => new RegExp(`full\\.manifest\\.json${CompressedExtPattern}$`).test(f))
 	?? files.find(f => new RegExp(`\\.manifest\\.json${CompressedExtPattern}$`).test(f));
 
 export interface SigDbDownloadOptions {

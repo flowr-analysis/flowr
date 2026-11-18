@@ -26,10 +26,7 @@ export interface BasicQueryData {
 export function filterLineParser<T extends string>(type: T, key = 'filter') {
 	return function(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<T> {
 		const criteria = sliceCriteriaParser(line[0]);
-		return {
-			query: { type, [key]: criteria } as ParsedQueryLine<T>['query'],
-			rCode: queryLineCode(line, criteria ? 1 : 0)
-		};
+		return { query: { type, [key]: criteria } as ParsedQueryLine<T>['query'], rCode: queryLineCode(line, criteria ? 1 : 0) };
 	};
 }
 
@@ -49,9 +46,6 @@ export function singleCriterionLineParser<T extends string>(type: T, label: stri
 		if(!criterion || criterion.length !== 1) {
 			return invalidQueryLine(output, `Invalid ${label} query format, a single slicing criterion must be given in the form "(criterion1)"`);
 		}
-		return {
-			query: [{ type, criterion: criterion[0], ...extra?.(line) }] as ParsedQueryLine<T>['query'],
-			rCode: queryLineCode(line)
-		};
+		return { query: [{ type, criterion: criterion[0], ...extra?.(line) }] as ParsedQueryLine<T>['query'], rCode: queryLineCode(line) };
 	};
 }

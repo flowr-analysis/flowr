@@ -1,5 +1,6 @@
 config
 conflicted
+data.table
 DBI
 dplyr
 ggplot2

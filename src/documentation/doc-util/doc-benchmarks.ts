@@ -41,10 +41,7 @@ export async function loadBenchmarkData(): Promise<BenchmarkData> {
 	return benchmarkData;
 }
 
-
-/**
- * Returns the latest benchmark for the given suite.
- */
+/** Returns the latest benchmark for the given suite. */
 export async function getLatestBenchmark(suite: string): Promise<BenchmarkElement> {
 	// provide a window object to attach to in the import
 	const suiteData = (await loadBenchmarkData()).entries[suite];
@@ -66,9 +63,7 @@ function getBenchmarkElement(bench: BenchmarkElement, name: string): BenchmarkEl
 	return element;
 }
 
-/**
- * Get the total time taken for dataflow analysis in the given suite.
- */
+/** Get the total time taken for dataflow analysis in the given suite. */
 export async function getLatestDfAnalysisTime(suite: string): Promise<number> {
 	const elem = await getLatestBenchmark(suite);
 	const [parse, normalize, analyze] = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information'].map(name => getBenchmarkElement(elem, name));

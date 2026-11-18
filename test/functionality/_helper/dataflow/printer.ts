@@ -3,8 +3,7 @@ import {
 } from '../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
 import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IdentifierReference } from '../../../../src/dataflow/environments/identifier';
-import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { type IdentifierReference, Identifier } from '../../../../src/dataflow/environments/identifier';
 import type { ControlDependency, ExitPoint } from '../../../../src/dataflow/info';
 
 

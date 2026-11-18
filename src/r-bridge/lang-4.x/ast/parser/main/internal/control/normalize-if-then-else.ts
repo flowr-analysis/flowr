@@ -8,9 +8,7 @@ import { RawRType } from '../../../../model/type';
 import type { NamedJsonEntry } from '../../../json/format';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
-/**
- * Try to parse the construct as a {@link RIfThenElse}.
- */
+/** Try to parse the construct as a {@link RIfThenElse}. */
 export function tryNormalizeIfThenElse(
 	data: NormalizerData,
 	[ifT, lpT, cT, rpT, tT, eT, ebT]: [
@@ -33,8 +31,5 @@ export function tryNormalizeIfThenElse(
 	const parsedElse = normalizeSingleNode(data, ebT);
 	guard(!RDelimiter.is(parsedElse), () => `unexpected missing else-part of if-then-else, received ${JSON.stringify([parsedIfThen, parsedElse])} for ${JSON.stringify([ifT, lpT, cT, rpT, tT, eT, ebT])}`);
 
-	return {
-		...parsedIfThen,
-		otherwise: ensureExpressionList(parsedElse)
-	};
+	return { ...parsedIfThen, otherwise: ensureExpressionList(parsedElse) };
 }

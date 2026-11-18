@@ -6,15 +6,14 @@ import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../..
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { Environment, type REnvironmentInformation } from '../../../../../environments/environment';
+import { Environment, type REnvironmentInformation, REnvironment } from '../../../../../environments/environment';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { RNull } from '../../../../../../r-bridge/lang-4.x/convert-values';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { REnvironment } from '../../../../../environments/environment';
-import { Identifier } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../../../../environments/identifier';
 
-const EmptyParentEnvFunctions = new Set(['emptyenv', 'baseenv']);
+const EmptyParentEnvFunctions = new Set<BrandedIdentifier>(['emptyenv', 'baseenv']);
 
 /**
  * Processes `new.env()` and `rlang::new_environment()`.
@@ -105,10 +104,7 @@ export function createFreshEnvState(
 	if(sourceInfo !== undefined) {
 		const vertex = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
 		if(DfgVertex.isFunctionCall(vertex) && vertex.newEnvParent !== undefined) {
-			return {
-				current: new Environment(vertex.newEnvParent.current),
-				level:   vertex.newEnvParent.level + 1
-			};
+			return { current: new Environment(vertex.newEnvParent.current), level: vertex.newEnvParent.level + 1 };
 		}
 	}
 	return REnvironment.pushLocal(data.environment);

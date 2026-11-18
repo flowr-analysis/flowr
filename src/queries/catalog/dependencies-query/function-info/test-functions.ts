@@ -34,16 +34,9 @@ export const ExpectFunctionNames = new RegExp(/* testthat */
 		'assertSubset|assert_tibble|assertTibble|assert_true|assertTrue|assert_vector|assertVector' +
 		')$');
 
-export const ExpectFunctions: LinkToNestedCall = {
-	type:     'link-to-nested-call',
-	callName: ExpectFunctionNames
-};
+export const ExpectFunctions: LinkToNestedCall = { type: 'link-to-nested-call', callName: ExpectFunctionNames };
 
-const ContextFunctions: LinkToLastCall = {
-	type:     'link-to-last-call',
-	callName: new RegExp('^(context)$')
-};
-
+const ContextFunctions: LinkToLastCall = { type: 'link-to-last-call', callName: new RegExp('^(context)$') };
 
 export const TestFunctions: FunctionInfo[] = [
 	{ package: 'testthat', name: 'test_that', argName: 'desc',        argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions, ContextFunctions], invisible: true },

@@ -1,12 +1,11 @@
 import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
 import { ProjectKind } from '../../../src/project/context/project-kind';
-import { FlowrConfig, VariableResolve } from '../../../src/config';
-import type { DeepWritable } from 'ts-essentials';
+import { type WritableFlowrConfig, FlowrConfig, VariableResolve } from '../../../src/config';
 import { withoutLogs } from '../_helper/log';
 
 /** a config specializing `overwrite` for the given `kind` */
-function specializing(kind: ProjectKind, overwrite: (c: DeepWritable<FlowrConfig>) => void): FlowrConfig {
+function specializing(kind: ProjectKind, overwrite: (c: WritableFlowrConfig) => void): FlowrConfig {
 	const spec = FlowrConfig.amend(FlowrConfig.default(), overwrite);
 	return FlowrConfig.amend(FlowrConfig.default(), c => {
 		c.specializeConfig = { [kind]: spec };

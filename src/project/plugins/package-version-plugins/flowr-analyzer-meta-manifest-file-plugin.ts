@@ -11,11 +11,7 @@ import { type ProjectManifest, FlowrRigProjectFile, FlowrRProjectFile, FlowrUvrM
  */
 function contributeManifest(ctx: FlowrAnalyzerContext, manifest: ProjectManifest): void {
 	const declares = manifest.declares();
-	ctx.meta.contribute({
-		name:     manifest.projectName(),
-		rVersion: manifest.rVersion(),
-		declares
-	}, MetaPriority.Manifest);
+	ctx.meta.contribute({ name: manifest.projectName(), rVersion: manifest.rVersion(), declares }, MetaPriority.Manifest);
 	// like a `DESCRIPTION` `Suggests`, anything but the imports (and depends) is reported but not needed to run the project
 	for(const pkg of [...declares.depends ?? [], ...declares.imports ?? []]) {
 		ctx.deps.addDeclaredDependency(pkg);

@@ -4,16 +4,17 @@ import { assertLinter } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { CasingConvention, detectCasing, detectPotentialCasings, fixCasing } from '../../../src/linter/rules/naming-convention';
 import { assertUnreachable } from '../../../src/util/assert';
+import { analyze } from '../_helper/analyzer';
 
 function genName(convention: CasingConvention): string {
-	const randToken = () => {
+	function randToken() {
 		const chars = 'abcdefghijklmnopqrstuvwxyz';
 		let out = '';
 		for(let i = 0; i < 5; i++) {
 			out += chars.charAt(Math.floor(Math.random() * chars.length));
 		}
 		return out;
-	};
+	}
 
 	const firstUp = (s: string) => `${s[0].toUpperCase()}${s.slice(1)}`;
 
@@ -237,5 +238,13 @@ describe('flowR linter', withTreeSitter(parser => {
 			loc:            [1, 1, 1, 8],
 			certainty:      LintingResultCertainty.Certain,
 		}], undefined, { caseing: CasingConvention.PascalCase, ignorePrefix: '_' });
+	});
+
+	test('a quick fix leaves the code it fixes as it is', async() => {
+		const analyzer = await analyze(parser, 'my_fun <- function() 1\nmy_fun( 1 ,  2  )');
+		const call = (await analyzer.normalize()).ast.files[0].root.children[1];
+		const before = structuredClone(call.info.fullRange);
+		await analyzer.query({ type: 'linter', rules: [{ name: 'naming-convention' as const, config: { caseing: CasingConvention.CamelCase } }] });
+		assert.deepStrictEqual(call.info.fullRange, before);
 	});
 }));

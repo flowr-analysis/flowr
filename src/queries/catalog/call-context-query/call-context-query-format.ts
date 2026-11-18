@@ -13,16 +13,11 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analy
 import type { Identifier } from '../../../dataflow/environments/identifier';
 
 export interface FileFilter<FilterType> {
-	/**
-	 * Regex that a node's file attribute must match to be considered
-	 */
+	/** Regex that a node's file attribute must match to be considered */
 	readonly filter:                 FilterType;
-	/**
-	 * If `fileFilter` is set, but a nodes `file` attribute is `undefined`, should we include it in the results? Defaults to `true`.
-	 */
+	/** If `fileFilter` is set, but a nodes `file` attribute is `undefined`, should we include it in the results? Defaults to `true`. */
 	readonly includeUndefinedFiles?: boolean;
 }
-
 
 export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> extends BaseQueryFormat {
 	readonly type:                   'call-context';
@@ -61,15 +56,9 @@ export interface LinkToLastCall<CallName extends CallNameTypes = CallNameTypes> 
 	readonly type:       'link-to-last-call';
 	/** Regex regarding the function name of the last call. Similar to {@link DefaultCallContextQueryFormat#callName}, strings are interpreted as a `RegExp`. */
 	readonly callName:   CallName;
-	/**
-	 * Should we ignore this (source) call?
-	 * Currently, there is no well working serialization for this.
-	 */
+	/** Should we ignore this (source) call? Currently, there is no well working serialization for this. */
 	readonly ignoreIf?:  (id: NodeId, graph: DataflowGraph) => boolean;
-	/**
-	 * Should we continue searching after the link was created?
-	 * Currently, there is no well working serialization for this.
-	 */
+	/** Should we continue searching after the link was created? Currently, there is no well working serialization for this. */
 	readonly cascadeIf?: (target: DataflowGraphVertexInfo, from: NodeId, graph: DataflowGraph) => CascadeAction;
 }
 
@@ -86,10 +75,7 @@ export interface LinkToNestedCall<CallName extends CallNameTypes = CallNameTypes
 	readonly type:      'link-to-nested-call';
 	/** Regex regarding the function name of the last call. Similar to {@link DefaultCallContextQueryFormat#callName}, strings are interpreted as a `RegExp`. */
 	readonly callName:  CallName;
-	/**
-	 * Should we ignore this (source) call?
-	 * Currently, there is no well working serialization for this.
-	 */
+	/** Should we ignore this (source) call? Currently, there is no well working serialization for this. */
 	readonly ignoreIf?: (id: NodeId, graph: DataflowGraph) => boolean;
 }
 
@@ -112,9 +98,7 @@ export interface CallContextQuerySubKindResult {
 	readonly calls?:      readonly NodeId[];
 	/** ids attached by the linkTo query, if you attached information with the `attachLinkInfo` field you can find it here */
 	readonly linkedIds?:  readonly (NodeId | { id: NodeId, info: object })[];
-	/**
-	 * (Direct) alias locations this call stems from
-	 */
+	/** (Direct) alias locations this call stems from */
 	readonly aliasRoots?: readonly NodeId[];
 }
 

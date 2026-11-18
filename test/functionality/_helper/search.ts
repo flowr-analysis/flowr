@@ -10,13 +10,13 @@ import { flowrSearchToAscii } from '../../../src/search/flowr-search-printer';
 import type { FlowrSearchElement } from '../../../src/search/flowr-search';
 import { type Enrichment, type EnrichmentElementContent, enrichmentContent } from '../../../src/search/search-executor/search-enrichers';
 import type { KnownParser } from '../../../src/r-bridge/parser';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { format } from 'util';
 import type { RParseRequest } from '../../../src/r-bridge/retriever';
-import { applyAssumedPackages, assumedPackagesOf } from './shell';
+import { assumedPackagesOf } from './shell';
+import { analyze } from './analyzer';
 
 /**
  * Implementation of assertSearch that works with both string code and parse requests
@@ -35,13 +35,7 @@ export function assertSearch(
 		let ast: NormalizedAst | undefined;
 
 		beforeAll(async() => {
-			analyzer = await applyAssumedPackages(new FlowrAnalyzerBuilder()
-				.setInput({
-					getId: deterministicCountingIdGenerator(0)
-				})
-				.setParser(parser), assumed)
-				.build();
-			analyzer.addRequest(codeOrRequests);
+			analyzer = await analyze(parser, codeOrRequests, { getId: deterministicCountingIdGenerator(0), assumeLoaded: assumed });
 			dataflow = await analyzer.dataflow();
 			ast = await analyzer.normalize();
 		});
@@ -93,11 +87,7 @@ export function benchmarkSearch(
 ) {
 	describe(decorateLabelContext(name, ['search']), async() => {
 		// beforeAll is not supported when using bench atm :(
-		const analyzer = await new FlowrAnalyzerBuilder()
-			.setInput({ getId: deterministicCountingIdGenerator(0) })
-			.setParser(parser)
-			.build();
-		analyzer.addRequest(code);
+		const analyzer = await analyze(parser, code, { getId: deterministicCountingIdGenerator(0) });
 
 		describe.each([true, false])('optimize %s', optimize => {
 			for(const search of searches) {

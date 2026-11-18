@@ -47,7 +47,6 @@ export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithN
 	const body = normalizeExpressions(data, bodyStructure);
 	guard(body.length === 1 && !RDelimiter.is(body[0]), () => `expected function body to yield one normalized expression, but ${body.length}`);
 
-
 	return {
 		type:       RType.FunctionDefinition,
 		location,

@@ -2,8 +2,8 @@ import { afterAll, assert, beforeAll, describe, test } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { withTreeSitter } from '../../_helper/shell';
+import { analyze } from '../../_helper/analyzer';
 
 describe('Included files', { concurrent: false }, withTreeSitter(parser => {
 	let tmp: string;
@@ -19,8 +19,7 @@ describe('Included files', { concurrent: false }, withTreeSitter(parser => {
 		for(const [name, content] of Object.entries(files)) {
 			fs.writeFileSync(path.join(dir, name), content);
 		}
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest('file://' + dir);
+		const analyzer = await analyze(parser, 'file://' + dir);
 		return analyzer.inspectContext().files.loadingOrder.getLoadingOrder()
 			.map(r => r.request === 'file' ? path.basename(r.content) : '<text>');
 	}
@@ -50,8 +49,7 @@ describe('Included files', { concurrent: false }, withTreeSitter(parser => {
 	test('an unresolvable knitr child leaves the chunk inline', async() => {
 		const dir = fs.mkdtempSync(path.join(tmp, 'p-'));
 		fs.writeFileSync(path.join(dir, 'p.Rmd'), '```{r child="missing.Rmd"}\n```\n```{r}\nx <- 1\n```\n');
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest('file://' + dir);
+		const analyzer = await analyze(parser, 'file://' + dir);
 		assert.isDefined(await analyzer.dataflow());
 	});
 }));

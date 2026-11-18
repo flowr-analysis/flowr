@@ -1,5 +1,4 @@
-import type { ExecException } from 'child_process';
-import { exec } from 'child_process';
+import { type ExecException, exec } from 'child_process';
 
 /** How long a command may take, generous because the checkup jobs run alongside. */
 const DefaultTimeout = 5 * 60 * 1000;

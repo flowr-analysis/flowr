@@ -133,7 +133,7 @@ async function packageExports(): Promise<string> {
  */
 function configDocs(): string {
 	const out: Record<string, { t?: string, d?: string, v?: string[] }> = {};
-	const walk = (node: { type?: string, flags?: { description?: string }, keys?: Record<string, unknown>, allow?: unknown[] }, path: string[]): void => {
+	function walk(node: { type?: string, flags?: { description?: string }, keys?: Record<string, unknown>, allow?: unknown[] }, path: string[]): void {
 		if(path.length > 0) {
 			const valids = (node.allow ?? []).filter(v => typeof v === 'string' || typeof v === 'number').map(String);
 			out[path.join('.')] = {
@@ -146,7 +146,7 @@ function configDocs(): string {
 		for(const [key, child] of Object.entries(node.keys ?? {})) {
 			walk(child as never, [...path, key]);
 		}
-	};
+	}
 	walk(FlowrConfig.Schema.describe() as never, []);
 	return JSON.stringify(out);
 }

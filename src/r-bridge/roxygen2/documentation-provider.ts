@@ -1,7 +1,6 @@
 import type { AstIdMap, ParentInformation } from '../lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../lang-4.x/ast/model/processing/node-id';
-import type { RoxygenTag, RoxygenTagParam } from './roxygen-ast';
-import { KnownRoxygenTags } from './roxygen-ast';
+import { type RoxygenTag, type RoxygenTagParam, KnownRoxygenTags } from './roxygen-ast';
 import { RType } from '../lang-4.x/ast/model/type';
 import { RNode } from '../lang-4.x/ast/model/model';
 import { parseRoxygenComment, parseRoxygenCommentsOfNode } from './roxygen-parse';
@@ -32,7 +31,6 @@ const CommentRetriever: CommentRetrievers = {
 		return undefined;
 	}
 };
-
 
 const defaultRetriever = (c: RNode<ParentInformation>, a: AstIdMap) => parseRoxygenCommentsOfNode(c, a)?.tags;
 

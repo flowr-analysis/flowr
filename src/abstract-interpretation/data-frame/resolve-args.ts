@@ -106,12 +106,10 @@ function resolveIdToArgument(id: NodeId | RArgument<ParentInformation> | undefin
 }
 
 /* eslint-disable tsdoc/syntax */
-/**
- * Removes a leading and trailing quote like `` ` ``, `"`, `'` from a string argument
- */
+/** Removes a leading and trailing quote like `` ` ``, `"`, `'` from a string argument */
 export function unquoteArgument(argument: undefined): undefined;
-export function unquoteArgument(argument: string): string;
-export function unquoteArgument(argument: string | undefined): string | undefined;
+export function unquoteArgument<S extends string>(argument: S): string;
+export function unquoteArgument<S extends string>(argument: S | undefined): string | undefined;
 export function unquoteArgument(argument: string | undefined): string | undefined {
 	if(argument === undefined) {
 		return undefined;
@@ -121,9 +119,7 @@ export function unquoteArgument(argument: string | undefined): string | undefine
 	return argument;
 }
 
-/**
- * The characters the content of an R string literal stands for, see {@link unescapeRString}; as written where R would reject it
- */
+/** The characters the content of an R string literal stands for, see {@link unescapeRString}; as written where R would reject it */
 export function unescapeSpecialChars(argument: undefined): undefined;
 export function unescapeSpecialChars(argument: string): string;
 export function unescapeSpecialChars(argument: string | undefined): string | undefined;

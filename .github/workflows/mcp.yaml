@@ -47,12 +47,13 @@ jobs:
         run: |
           # the plugin, its pinned server, and the registry entry have to follow the package's version, users only get an update when it changes
           VERSION="$(jq -r .version package.json)"
-          test "$VERSION" = "$(jq -r .version .claude-plugin/plugin.json)"
+          test "$VERSION" = "$(jq -r .version plugin/.claude-plugin/plugin.json)"
           test "$VERSION" = "$(jq -r .version server.json)"
           test "$VERSION" = "$(jq -r '.packages[0].version' server.json)"
           test "$VERSION" = "$(jq -r .version npm-shrinkwrap.json)"
-          # the directory requires launchers to run an exact version, which has to be the released one
-          test "@eagleoutice/flowr-mcp@$VERSION" = "$(jq -r '.mcpServers.flowr.args[-1]' .mcp.json)"
+          # the plugin directory refuses anything but Markdown, JSON, and images from an unverified organization, so the plugin ships no server, package, or lockfile
+          test -z "$(find plugin -type f ! -name '*.md' ! -name '*.json' ! -name '*.png')"
+          test -z "$(find plugin -name 'package*.json' -o -name 'npm-shrinkwrap.json' -o -name '.mcp.json')"
           # as the launcher installs it, pinned by the shrinkwrap
           # npm 12 only reads package-lock.json, older ones prefer the published npm-shrinkwrap.json
           cp npm-shrinkwrap.json package-lock.json
@@ -78,7 +79,7 @@ jobs:
           done
           if diff -r old/package new/package; then CHANGED=false; else CHANGED=true; fi
           if [ "$VERSION" = "$LATEST" ] && $CHANGED; then
-            echo "::error::The package differs from the published $LATEST, bump the version in package.json, npm-shrinkwrap.json, server.json, .claude-plugin/plugin.json, and .mcp.json"
+            echo "::error::The package differs from the published $LATEST, bump the version in package.json, npm-shrinkwrap.json, server.json, and plugin/.claude-plugin/plugin.json"
             exit 1
           elif [ "$VERSION" != "$LATEST" ] && ! $CHANGED; then
             echo "::error::Version $VERSION changes nothing over the published $LATEST"

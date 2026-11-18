@@ -14,9 +14,10 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import { EdgeType } from '../../dataflow/graph/edge';
 import type { DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../dataflow/environments/identifier';
 import { ArgProp, type FnSig } from '../../dataflow/environments/built-in-props';
-import { type AmbientStateAccess, AmbientStateAccessType } from '../../dataflow/internal/process/functions/call/built-in/built-in-ambient-state';
+import { Ambient, type AmbientEffects, AmbientPart, AmbientVerb } from '../../dataflow/environments/ambient-effect';
+import { OperatorUsedAs } from '../../dataflow/environments/default-builtin-config/base-operators';
 
 /** What removing code for a set of criteria takes out of the program. */
 export interface RemovalSliceResult {
@@ -26,13 +27,13 @@ export interface RemovalSliceResult {
 	readonly result:  ReadonlySet<NodeId>
 }
 
-type StatedConfig = { readonly ambient?: AmbientStateAccess | readonly AmbientStateAccess[], readonly sig?: FnSig };
-function builtInNames(stated: (config: StatedConfig) => boolean): ReadonlySet<string> {
+type StatedConfig = { readonly ambient?: AmbientEffects, readonly sig?: FnSig };
+function builtInNames(stated: (config: StatedConfig) => boolean): ReadonlySet<BrandedIdentifier> {
 	return new Set(DefaultBuiltinConfig.flatMap(d => d.type === 'function' && stated((d.config ?? {}) as StatedConfig) ? d.names.map(name => String(Identifier.getName(name))) : []));
 }
-const accesses = (type: AmbientStateAccessType) => (config: StatedConfig) => [config.ambient ?? []].flat().some(access => access.type === type);
-const DeviceOpeners = builtInNames(accesses(AmbientStateAccessType.OpenDevice));
-const DeviceClosers = builtInNames(accesses(AmbientStateAccessType.CloseDevice));
+const accesses = (verb: AmbientVerb) => (config: StatedConfig) => Ambient.list(config.ambient).some(effect => effect.family === AmbientPart.Device && effect.access === verb);
+const DeviceOpeners = builtInNames(accesses(AmbientVerb.Opens));
+const DeviceClosers = builtInNames(accesses(AmbientVerb.Closes));
 /* a call handing back its argument is that argument: `invisible(dev.off())` closes the device */
 const PassingOn = builtInNames(config => ((config.sig?.[0]?.[1] ?? 0) & ArgProp.Alias) !== 0);
 
@@ -71,7 +72,7 @@ function callOf(node: RNodeWithParent | undefined): RNodeWithParent | undefined 
 	return node;
 }
 
-const isNamed = (node: RNodeWithParent | undefined, names: ReadonlySet<string>) => RFunctionCall.isNamed(callOf(node), names);
+const isNamed = (node: RNodeWithParent | undefined, names: ReadonlySet<BrandedIdentifier>) => RFunctionCall.isNamed(callOf(node), names);
 
 /** the calls from a device to its `dev.off()` around each criterion, assignments in between stay as the rest may use them */
 function deviceWindows(ast: NormalizedAst, statements: ReadonlyMap<NodeId, RNodeWithParent>, ids: readonly NodeId[]): NodeId[] {
@@ -96,7 +97,7 @@ function deviceWindows(ast: NormalizedAst, statements: ReadonlyMap<NodeId, RNode
 			continue;
 		}
 		for(const sibling of siblings.slice(open, close + 1)) {
-			if(!RBinaryOp.is(sibling) || RBinaryOp.getOperatorInfo(sibling)?.usedAs !== 'assignment') {
+			if(!RBinaryOp.is(sibling) || RBinaryOp.getOperatorInfo(sibling)?.usedAs !== OperatorUsedAs.Assignment) {
 				found.add(sibling.info.id);
 			}
 		}
@@ -139,7 +140,7 @@ export function staticRemovalSlice(
 ): RemovalSliceResult {
 	const statements = statementsOf(ast);
 	const statementId = (id: NodeId) => statementOf(ast, statements, id)?.info.id;
-	const removable = (seeds: readonly NodeId[]): NodeId[] => {
+	function removable(seeds: readonly NodeId[]): NodeId[] {
 		const slice = staticSlice({ ctx, info, ast, ids: seeds, direction: SliceDirection.Backward, threshold }).result;
 		/* a statement is in the slice once any part of it is, as the slice of `body(f) <- x` may hold its parts alone */
 		const inSlice = new Set([...slice, ...seeds].map(statementId).filter(id => id !== undefined));
@@ -155,7 +156,7 @@ export function staticRemovalSlice(
 		const candidates = [...statements.keys()].filter(id => inSlice.has(id) && !needed.has(id));
 		const chosen = new Set(candidates);
 		return candidates.filter(id => !ancestors(ast, ast.idMap.get(id)?.info.parent).some(at => chosen.has(at)));
-	};
+	}
 
 	/* removing a save (`ggsave()`) or a device removes what it saves, which would otherwise keep it alive */
 	const seeds = new Set(ids);

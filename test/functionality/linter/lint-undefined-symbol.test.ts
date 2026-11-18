@@ -23,6 +23,8 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('locally defined function is not flagged', parser, 'foo <- function() 1\nfoo()',
 				'undefined-symbol', []);
 
+			assertLinter('a name an assign may bind under a name we cannot tell is not flagged', parser, 'invisible(lapply(1:3, function(i) assign(paste0("g", i), i, envir = .GlobalEnv)))\nprint(g3)',
+				'undefined-symbol', []);
 			assertLinter('builtin is not flagged', parser, 'print("hi")\nc(1, 2)',
 				'undefined-symbol', []);
 
@@ -46,6 +48,18 @@ describe('flowR linter', withTreeSitter(parser => {
 				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: true });
 			assertLinter('a name outside what assign binds is flagged', parser, 'for(i in 2000:2002) assign(paste0("year", i), 1)\nprint(year2005)',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'year2005', kind: 'variable', loc: [2, 7, 2, 14] }], undefined, { sigDb: baseSigDb, checkVariables: true });
+			assertLinter('a name attached from a list is defined', parser, 'attach(list(att = 5), name = "mine")\nprint(att)\ndetach("mine")',
+				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: true });
+			assertLinter('a name attached from an environment is defined', parser, 'e <- new.env()\ne$att3 <- 4\nattach(e)\nprint(att3)',
+				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: true });
+			assertLinter('a name attached from a data set is defined', parser, 'attach(mtcars)\nprint(mean(mpg))\ndetach(mtcars)',
+				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: true });
+			assertLinter('a name bound by list2env is defined', parser, 'list2env(list(la = 1, lb = 2), envir = globalenv())\nprint(la + lb)',
+				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: true });
+			assertLinter('a data set of a loaded package is defined', parser, 'library(dplyr)\nprint(starwars)',
+				'undefined-symbol', [], undefined, { sigDb: controlledSigDb({  base: ['print'], dplyr: ['mutate'] }), checkVariables: true });
+			assertLinter('a data set of a package not loaded is flagged', parser, 'print(starwars)',
+				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'starwars', kind: 'variable', loc: [1, 7, 1, 14] }], undefined, { sigDb: baseSigDb, checkVariables: true });
 			assertLinter('a data set of datasets is defined', parser, 'summary(iris)\nhead(mtcars)', 'undefined-symbol', []);
 			assertLinter('a namespaced name is still checked', parser, 'library(somePkg)\nfoo()\nbase::fooo()', 'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'fooo', kind: 'function', loc: [3, 1, 3, 12] }]);
 		});
@@ -209,7 +223,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('another package\'s globalVariables does not count', parser, 'other::globalVariables("mpg")\nf <- function() mpg',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'globalVariables', kind: 'function', loc: [1, 1, 1, 29] }, undefinedVar('mpg', [2, 17, 2, 19])], undefined, { sigDb: utilsDb });
 			assertLinter('the declaration itself is known without a signature database', parser, 'utils::globalVariables("mpg")\nf <- function() mpg',
-				'undefined-symbol', [], undefined, { noSigDb: true });
+				'undefined-symbol', [], undefined, { sigDb: false });
 			assertLinter('variables of the dispatch are bound in a method', parser, 'print.foo <- function(x, ...) { cat(.Generic); NextMethod() }',
 				'undefined-symbol', [], undefined, { sigDb: utilsDb });
 		});

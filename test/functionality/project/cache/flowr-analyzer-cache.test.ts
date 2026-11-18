@@ -5,8 +5,8 @@ import { type ControlFlowInformation, extractCfg } from '../../../../src/control
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { FlowrConfig } from '../../../../src/config';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { analyze } from '../../_helper/analyzer';
 
 describe('Analyzer Cache', withTreeSitter((shell) => {
 
@@ -65,6 +65,24 @@ describe('Analyzer Cache', withTreeSitter((shell) => {
 		});
 	});
 
+	describe('Derived values', () => {
+		const key = {};
+		test('computed once per analysis, again after a reset', async() => {
+			const cache = FlowrAnalyzerCache.create(createCache('x <- 1'));
+			let computed = 0;
+			const compute = () => Promise.resolve(++computed);
+			expect([await cache.derive(key, compute), await cache.derive(key, compute)]).toEqual([1, 1]);
+			cache.reset();
+			expect(await cache.derive(key, compute)).toBe(2);
+		});
+
+		test('a failed computation is not kept', async() => {
+			const cache = FlowrAnalyzerCache.create(createCache('x <- 1'));
+			await expect(cache.derive(key, () => Promise.reject(new Error('fail')))).rejects.toThrow('fail');
+			expect(await cache.derive(key, () => Promise.resolve(3))).toBe(3);
+		});
+	});
+
 	describe('Tree disposal', () => {
 		function spyOnDelete(parse: unknown): () => number {
 			const tree = (parse as { files: { parsed: { delete(): void } }[] }).files[0].parsed;
@@ -86,8 +104,7 @@ describe('Analyzer Cache', withTreeSitter((shell) => {
 
 		test('close() frees the WASM-backed parse tree', async() => {
 			// dedicated parser so close() does not affect the shared test parser
-			const analyzer = new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).buildSync();
-			analyzer.addRequest('y <- 2');
+			const analyzer = await analyze(new TreeSitterExecutor(), 'y <- 2');
 			const freed = spyOnDelete(await analyzer.parse());
 			analyzer.close();
 			expect(freed()).toBe(1);

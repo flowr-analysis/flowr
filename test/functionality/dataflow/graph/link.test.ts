@@ -2,18 +2,14 @@ import { assert, describe, test } from 'vitest';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { withShell } from '../../_helper/shell';
-import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import { analyze } from '../../_helper/analyzer';
 
 describe('dataflow graph links', { concurrent: false }, withShell(shell => {
 	function assertLink(name: string, code: string, criterion: SlicingCriterion, expect: NodeId[] | undefined) {
 		test(name, async() => {
-			const info = await createDataflowPipeline(shell, {
-				context: contextFromInput(code),
-			}).allRemainingSteps();
-
-			const graph = info.dataflow.graph;
-			const id = SlicingCriterion.parse(criterion, graph.idMap ?? info.normalize.idMap);
+			const analyzer = await analyze(shell, code);
+			const graph = (await analyzer.dataflow()).graph;
+			const id = SlicingCriterion.parse(criterion, graph.idMap ?? (await analyzer.normalize()).idMap);
 			const link = graph.getLinked(id);
 			if(expect === undefined) {
 				assert.isUndefined(link);

@@ -1,25 +1,17 @@
-import {
-	prettyPrint,
-	type LintingResult,
-	LintingResultCertainty,
-	type LintingRule,
-	LintingRuleCertainty
-} from '../linter-format';
+import { prettyPrintAt, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
 import { RValue } from '../../dataflow/eval/values/r-value';
 import { functionFinderUtil } from './function-finder-util';
 import { SourceLocation, SourceRange } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
-import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../dataflow/environments/identifier';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
 import type { BuiltInDefinitions, BuiltInFunctionDefinition } from '../../dataflow/environments/built-in-config';
 import { NodeValue } from '../../dataflow/eval/resolve/node-value';
 import { VariableResolve } from '../../config';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { DfgVertex } from '../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, DfgVertex } from '../../dataflow/graph/vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { ControlDependency, happensInEveryBranch } from '../../dataflow/info';
@@ -44,10 +36,8 @@ export interface SeededRandomnessConfig extends MergeableRecord {
 	 * Each entry has a `type`, which is either `function` or `assignment`, and a `name`, which is the name of the function or variable.
 	 * The default value for this is the function `set.seed` and the variable `.Random.seed`.
 	 */
-	randomnessProducers: { type: 'function' | 'assignment', name: string }[]
-	/**
-	 * A set of randomness consumer function names that require a seed to be set prior to invocation.
-	 */
+	randomnessProducers: { type: 'function' | 'assignment', name: BrandedIdentifier }[]
+	/** A set of randomness consumer function names that require a seed to be set prior to invocation. */
 	randomnessConsumers: readonly string[]
 }
 
@@ -66,7 +56,7 @@ export const SEEDED_RANDOMNESS = {
 		const ctx = data.inspectContext();
 		const functionProducers = new Set(config.randomnessProducers.filter(p => p.type === 'function').map(p => p.name));
 		const assignmentProducers = new Set(config.randomnessProducers.filter(p => p.type === 'assignment').map(p => p.name));
-		const consumers = new Set(config.randomnessConsumers);
+		const consumers = new Set<BrandedIdentifier>(config.randomnessConsumers);
 		const assignmentArgIndexes = ctx.env.deriveFromDefinitions(assignmentTargetIndexes);
 		const metadata: SeededRandomnessMeta = {
 			consumerCalls:                 0,
@@ -76,7 +66,7 @@ export const SEEDED_RANDOMNESS = {
 			callsWithOtherBranchProducers: 0
 		};
 
-		const writerKind = (vertex: DataflowGraphVertexFunctionCall): { kind: 'function' | 'assignment', constant: boolean } | 'draw' | undefined => {
+		function writerKind(vertex: DataflowGraphVertexFunctionCall): { kind: 'function' | 'assignment', constant: boolean } | 'draw' | undefined {
 			const name = Identifier.getName(vertex.name);
 			if(functionProducers.has(name)) {
 				return { kind: 'function', constant: isConstantArgument(graph, vertex, 0, ctx) };
@@ -91,20 +81,20 @@ export const SEEDED_RANDOMNESS = {
 			}
 			/* we either have arg index 0 or 1 for the destination, so the value is at 1-argIdx */
 			return { kind: 'assignment', constant: isConstantArgument(graph, vertex, 1 - argIdx, ctx) };
-		};
+		}
 
 		const idMap = graph.idMap;
 		const forcing = FunctionSemantics.promiseForcing(graph, { ctx });
 		const at = (n: NodeId) => idMap?.get(n)?.location ?? [0, 0, 0, 0];
 		/** whether `writer` follows `reader` within a loop both run under, so it reaches the reader from the second iteration on */
-		const loopCarried = (reader: NodeId, writer: NodeId): boolean => {
+		function loopCarried(reader: NodeId, writer: NodeId): boolean {
 			if(SourceRange.compare(at(writer), at(reader)) <= 0) {
 				return false;
 			}
 			const writerCds = graph.getVertex(writer)?.cds;
 			const loops = graph.getVertex(reader)?.cds?.filter(cd => ControlDependency.isIterated(cd, idMap)) ?? [];
 			return loops.some(loop => writerCds?.some(cd => ControlDependency.same(cd, loop)));
-		};
+		}
 
 		interface Seeding {
 			/** the constant seeds that reach the call, by how they were set */
@@ -116,17 +106,16 @@ export const SEEDED_RANDOMNESS = {
 			unseeded:       boolean
 		}
 		/** a call of a draw by another name, like a parameter `f` bound to `runif` */
-		const drawsThrough = (call: NodeId): 'draw' | undefined =>
-			Dataflow.targetsOf(graph, call, EdgeType.Calls).some(t => NodeId.isBuiltIn(t) && consumers.has(NodeId.fromBuiltIn(t))) ? 'draw' : undefined;
+		const drawsThrough = (call: NodeId): 'draw' | undefined => Dataflow.targetsOf(graph, call, EdgeType.Calls).some(t => NodeId.isBuiltIn(t) && consumers.has(NodeId.fromBuiltIn(t))) ? 'draw' : undefined;
 		/** the writes a draw reads the generator state from: its own, and those of the calls running the function it sits in, which link what was written before them */
-		const statesReadBy = (id: NodeId): NodeId[] => {
+		function statesReadBy(id: NodeId): NodeId[] {
 			const within = idMap === undefined ? undefined : RNode.findEnclosing(id, idMap, RFunctionDefinition.is);
 			const callers = within === undefined ? [] : Dataflow.sourcesOf(graph, within, EdgeType.Calls);
 			const ownReads = Dataflow.targetsOf(graph, id, EdgeType.Reads | EdgeType.DefinedByOnCall);
 			return [...ownReads, ...callers.flatMap(c => Dataflow.targetsOf(graph, c, EdgeType.DefinedByOnCall))];
-		};
+		}
 		/** follows the draws behind the generator state `id` reads back to where it was seeded */
-		const collectSeeding = (id: NodeId, visiting: ReadonlySet<NodeId>, seeding: Seeding): Seeding => {
+		function collectSeeding(id: NodeId, visiting: ReadonlySet<NodeId>, seeding: Seeding): Seeding {
 			const own = new Set(graph.getVertex(id)?.cds);
 			const cds: ControlDependency[] = [];
 			let written = false;
@@ -162,7 +151,7 @@ export const SEEDED_RANDOMNESS = {
 				seeding.otherBranch = seeding.unseeded = true;
 			}
 			return seeding;
-		};
+		}
 
 		return {
 			results: elements.getElements().flatMap(element => enrichmentContent(element, Enrichment.CallTargets).targets.flatMap(target => {
@@ -216,10 +205,7 @@ export const SEEDED_RANDOMNESS = {
 		name:        'Seeded Randomness',
 		description: 'Finds randomness-based function calls not preceded by a random seed generation function. For consistent reproducibility, functions that use randomness should only be called after a constant random seed is set using a function like `set.seed`.'
 	},
-	prettyPrint: prettyPrint(
-		result => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)}`,
-		result => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)} is called without a preceding random seed function like \`set.seed\``
-	)
+	prettyPrint: prettyPrintAt(result => `Function \`${result.function}\``, () => 'is called without a preceding random seed function like `set.seed`')
 } as const satisfies LintingRule<SeededRandomnessResult, SeededRandomnessMeta, SeededRandomnessConfig>;
 
 function getDefaultAssignments(definitions: BuiltInDefinitions): BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[] {
@@ -227,18 +213,18 @@ function getDefaultAssignments(definitions: BuiltInDefinitions): BuiltInFunction
 		b.type === 'function' && (b.processor === BuiltInProcName.Assignment || b.processor === BuiltInProcName.AssignmentLike));
 }
 
-function assignmentTargetIndexes(definitions: BuiltInDefinitions): Map<string, number> {
+function assignmentTargetIndexes(definitions: BuiltInDefinitions): Map<BrandedIdentifier, number> {
 	return new Map(getDefaultAssignments(definitions).flatMap(a => {
 		const targetIndex = a.config?.swapSourceAndTarget ? 1 : 0;
 		return a.names.map(n => [Identifier.getName(n), targetIndex] as const);
 	}));
 }
 
-function randomnessSetters(index: BuiltInIndex): string[] {
+function randomnessSetters(index: BuiltInIndex): BrandedIdentifier[] {
 	return index.withAll([SemanticCallTag.Random, CallProp.Configures]).map(Identifier.getName);
 }
 
-function randomnessConsumers(index: BuiltInIndex): string[] {
+function randomnessConsumers(index: BuiltInIndex): BrandedIdentifier[] {
 	const setters = new Set(randomnessSetters(index));
 	return index.with(SemanticCallTag.Random).map(Identifier.getName).filter(n => !setters.has(n));
 }

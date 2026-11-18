@@ -12,9 +12,9 @@ import { EnvType, REnvironment } from '../../../../../src/dataflow/environments/
 assumeLoadedPackages('import');
 
 describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
-	const twoExports = (a: FlowrAnalyzer): void => {
+	function twoExports(a: FlowrAnalyzer): void {
 		a.context().deps.addDependency(Package.fromConstants('pkgA', 'export(fa)\nexport(fb)', ['fa', 'fb']));
-	};
+	}
 	const withPkg = { modifyAnalyzer: twoExports, expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;
 	const faBuiltIn = NodeId.fromPkgFn('pkgA', 'fa');
 	const fbBuiltIn = NodeId.fromPkgFn('pkgA', 'fb');
@@ -80,10 +80,10 @@ describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 		emptyGraph().addEdge('2@pkgA::fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
 		{ ...withPkg, mustNotHaveEdges: [['3@fa', faBuiltIn]] });
 
-	const withBoxAndPkg = (a: FlowrAnalyzer): void => {
+	function withBoxAndPkg(a: FlowrAnalyzer): void {
 		twoExports(a);
 		a.context().deps.addDependency(Package.fromConstants('box', 'export(use)', ['use']));
-	};
+	}
 	assertDataflow(label('use(pkg) is namespace-only when box is a loaded dependency', ['library-loading', 'search-path']), ts,
 		'use(pkgA)\npkgA::fa()\nfa()',
 		emptyGraph().addEdge('2@pkgA::fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),

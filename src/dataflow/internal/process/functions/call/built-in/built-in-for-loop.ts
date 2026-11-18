@@ -1,12 +1,9 @@
+import type { Writable } from 'ts-essentials';
+import { hooksUnder } from '../../../../../hooks';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
-import {
-	findNonLocalReads,
-	linkCircularRedefinitionsWithinALoop,
-	produceNameSharedIdMap,
-	reapplyLoopExitPoints
-} from '../../../../linker';
+import { findNonLocalReads, linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap, reapplyLoopExitPoints } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { patchFunctionCall } from '../common';
@@ -17,11 +14,9 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { IdentifierDefinition } from '../../../../../environments/identifier';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, type IdentifierDefinition, Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { applyCdsToAllInGraphButConstants, applyCdToReferences } from '../../../../../environments/reference-to-maybe';
 import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { linkAmbientStateWithinLoop } from './built-in-ambient-state';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
@@ -30,7 +25,6 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { REnvironment } from '../../../../../environments/environment';
-
 
 const ScalarTypes: ReadonlySet<Value['type']> = new Set(['interval', 'number', 'string', 'logical']);
 
@@ -56,18 +50,7 @@ function isNonEmptyRange<OtherInfo>(vector: RNode<OtherInfo & ParentInformation>
 	return [vector.lhs, vector.rhs].some(side => alwaysHolds(side, data, v => v.type !== 'vector' && hasElement(v)));
 }
 
-/** whether a for-loop over `vector` certainly runs its body at least once */
-function iteratesAtLeastOnce<OtherInfo>(vector: RNode<OtherInfo & ParentInformation>, entry: DataflowInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
-	return isNonEmptyRange(vector, entry, data) || alwaysHolds(vector, data, hasElement);
-}
-
-/**
- * Processes a for-loop call: `for(<variable> in <vector>) <body>`
- * desugared as:
- * ```r
- * `for`(<variable>, <vector>, <body>)
- * ```
- */
+/** Processes a for-loop call: `for(<variable> in <vector>) <body>` desugared as a call of `for` with the three as arguments. */
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -90,7 +73,7 @@ export function processForLoop<OtherInfo>(
 	}
 
 	/* resolved before the loop variable is bound, as it may share the name of what the vector reads */
-	const nonEmpty = iteratesAtLeastOnce(vectorArg, vector, data);
+	const nonEmpty = isNonEmptyRange(vectorArg, vector, data) || alwaysHolds(vectorArg, data, hasElement);
 	const variable = processDataflowFor(variableArg, data);
 	let headEnvironments = REnvironment.overwrite(vector.environment, variable.environment);
 	/* only the vector's references and entry point are read past this, its graph is not */
@@ -104,10 +87,10 @@ export function processForLoop<OtherInfo>(
 			type:      ReferenceType.Unknown,
 			value:     [vectorArg.info.id],
 			iterated:  true
-		} as IdentifierDefinition & { name: string };
+		} as IdentifierDefinition & { name: BrandedIdentifier };
 		headEnvironments = REnvironment.define(definition, false, headEnvironments);
 	}
-	(data as { environment: REnvironmentInformation }).environment = headEnvironments;
+	(data as Writable<typeof data>).environment = headEnvironments;
 
 	const body = processDataflowFor(bodyArg, data);
 	const cd = [{ id: name.info.id, when: true }];
@@ -141,14 +124,7 @@ export function processForLoop<OtherInfo>(
 
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), nextGraph);
 
-	patchFunctionCall({
-		nextGraph,
-		rootId,
-		name,
-		data,
-		argumentProcessResult: [variable, vector, body],
-		origin:                BuiltInProcName.ForLoop
-	});
+	patchFunctionCall({ nextGraph, rootId, name, data, argumentProcessResult: [variable, vector, body], origin: BuiltInProcName.ForLoop });
 	nextGraph.addEdge(rootId, body.entryPoint, EdgeType.NonStandardEvaluation);
 	nextGraph.addEdge(name.info.id, vector.entryPoint, EdgeType.Reads);
 
@@ -173,9 +149,10 @@ export function processForLoop<OtherInfo>(
 		entryPoint:        name.info.id,
 		cfgEntry:          ControlFlow.entryOf(vector),
 		cfgExit:           rootId,
-		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
+		/* unless the body certainly runs, it only jumps away when it runs */
+		exitPoints:        filterOutLoopExitPoints(once ? body.exitPoints : body.exitPoints.map(e => ({ ...e, cds: [...e.cds ?? data.cds ?? [], cd[0]] }))),
 		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,
-		hooks:             variable.hooks.concat(vector.hooks, body.hooks),
+		hooks:             variable.hooks.concat(vector.hooks, once ? body.hooks : hooksUnder(body.hooks, cd)),
 		kill:              loopKill,
 	};
 }

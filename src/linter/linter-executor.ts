@@ -1,5 +1,5 @@
-import { type LintingRuleConfig, type LintingRuleMetadata, type LintingRuleNames, type LintingRuleResult, LintingRules } from './linter-rules';
-import type { LintingResult, LintingResults, LintingRule } from './linter-format';
+import { type LintingRuleConfig, type LintingRuleMetadata, type LintingRuleNames, getLintingRule } from './linter-rules';
+import type { LintingResult, LintingResults } from './linter-format';
 import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { runSearch } from '../search/flowr-search-executor';
 import type { DeepPartial } from 'ts-essentials';
@@ -33,12 +33,10 @@ function locatedIn<Result extends LintingResult>(found: Result, idMap: AstIdMap)
 	return file === found.loc[4] ? found : { ...found, loc: [found.loc[0], found.loc[1], found.loc[2], found.loc[3], file] };
 }
 
-/**
- * Executes a specific linting rule on the given analysis provider input.
- */
+/** Executes a specific linting rule on the given analysis provider input. */
 export async function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: ReadonlyFlowrAnalysisProvider, lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>): Promise<LintingResults<Name>> {
 	try {
-		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
+		const rule = getLintingRule(ruleName);
 		const fullConfig = deepMergeObject<LintingRuleConfig<Name>>(rule.info.defaultConfig(input.inspectContext()), withoutUntrustedRegexes(ruleName, lintingRuleConfig));
 
 		const ruleSearch = rule.createSearch(fullConfig, input);
@@ -55,19 +53,13 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 		return {
 			...result,
 			results: result.results.map(found => locatedIn(found, idMap)),
-			'.meta': {
-				...(result['.meta'] as LintingRuleMetadata<Name> ?? {}),
-				searchTimeMs:  searchTime,
-				processTimeMs: processTime
-			}
+			'.meta': { ...(result['.meta'] as LintingRuleMetadata<Name> ?? {}), searchTimeMs: searchTime, processTimeMs: processTime }
 		};
 	} catch(e) {
 		/* a project without any code (e.g. a package of data only) has nothing to lint, which is no error of the rule */
 		if(!input.inspectContext().files.hasRequests()) {
 			return { results: [], '.meta': { searchTimeMs: 0, processTimeMs: 0 } } as unknown as LintingResults<Name>;
 		}
-		return {
-			error: e
-		};
+		return { error: e };
 	}
 }

@@ -1,6 +1,7 @@
 import { FlowrAnalyzerPackageVersionsPlugin, type SigDbLoadedInfo } from './flowr-analyzer-package-versions-plugin';
 import { compareByCodeUnit } from '../../../util/text/strings';
 import { SemVer, minVersion, type Range } from 'semver';
+import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
 import path from 'path';
 import { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
@@ -16,9 +17,12 @@ import { isSigDbEnabled, resolveAssumedRVersion, VersionSelection, type FlowrCon
 import { RRange, RVersion } from '../../../util/r-version';
 import { baseRPackages } from '../../../util/r-base-packages';
 import { DefaultMap } from '../../../util/collections/defaultmap';
+import { BoundedMap } from '../../../util/collections/bounded-map';
 import { uniqueArray } from '../../../util/collections/arrays';
 import { RReexports } from '../../../data/r-reexports.generated';
 import { SecureMode } from '../../../util/secure-mode';
+
+const Reexports: Readonly<Record<BrandedNamespace, (typeof RReexports)[string]>> = RReexports;
 
 /** the plugin's instance name (pass to `unregisterPlugins` to disable the default sigdb resolver) */
 export const SigDbPluginName = 'flowr-analyzer-package-versions-sigdb-plugin';
@@ -28,10 +32,7 @@ const CodecNames: Readonly<Record<string, string>> = { '.zst': 'zstd', '.br': 'b
 
 /** the codec name of a manifest's resolved shard + dict sources, or `mixed` when they do not all agree */
 function manifestFormat(set: SigDatabaseSet): string {
-	const paths = [
-		...set.manifest.shards.map(s => s.path),
-		...(set.manifest.dicts?.map(d => d.path) ?? [])
-	];
+	const paths = [...set.manifest.shards.map(s => s.path), ...(set.manifest.dicts?.map(d => d.path) ?? [])];
 	const codecs = uniqueArray(paths.map(p => CodecNames[compressedExtOf(resolveSource(set.baseDir, p)) ?? ''] ?? 'plain'));
 	return codecs.length === 1 ? codecs[0] : 'mixed';
 }
@@ -66,32 +67,26 @@ function envSources(): string[] {
  * The database flattens S3 methods into the export list, so we recover the `generic -> classes` map for
  * dispatch: an export `generic.class` is a method when the `generic` is itself exported (e.g. `print.foo`).
  */
-export function reconstructS3Generics(exported: readonly string[]): Map<string, string[]> {
+export function reconstructS3Generics(exported: readonly BrandedIdentifier[]): Map<BrandedIdentifier, string[]> {
 	const names = new Set(exported);
-	const generics = new Map<string, string[]>();
-	for(const name of exported) {
-		const dot = name.indexOf('.');
-		const generic = dot > 0 ? name.slice(0, dot) : undefined;
-		if(generic !== undefined && names.has(generic)) {
-			const classes = generics.get(generic) ?? [];
-			classes.push(name.slice(dot + 1));
-			generics.set(generic, classes);
-		}
-	}
-	return generics;
+	const methods = exported.filter(name => name.indexOf('.') > 0 && names.has(name.slice(0, name.indexOf('.'))));
+	const generics = Map.groupBy(methods, name => name.slice(0, name.indexOf('.')));
+	return new Map(generics.entries().map(([generic, ms]) => [generic, ms.map(name => name.slice(name.indexOf('.') + 1))]));
 }
 
 /**
  * `name -> packages of a source exporting it`, filled lazily per name and shared by every analyzer mounting that
  * source; this stays proportional to what a run actually asks about rather than scanning all ~1.1M export names up front.
  */
-const exportOwnersBySource = new WeakMap<PackageSignatureSource, DefaultMap<string, readonly string[]>>();
+const exportOwnersBySource = new WeakMap<PackageSignatureSource, DefaultMap<BrandedIdentifier, readonly BrandedNamespace[]>>();
+/** bounds the names {@link exportOwnersBySource} keeps per source, which lives as long as the process */
+const MaxExportOwnersPerSource = 65_536;
 
 /** The packages of `src` exporting `name`, most downloaded first, scanning only the first time a name is asked. */
-function exportOwners(src: PackageSignatureSource, name: string): readonly string[] {
+function exportOwners(src: PackageSignatureSource, name: BrandedIdentifier): readonly BrandedNamespace[] {
 	let byName = exportOwnersBySource.get(src);
 	if(byName === undefined) {
-		byName = new DefaultMap(n => src.packagesExporting(n));
+		byName = new DefaultMap(n => src.packagesExporting(n), new BoundedMap(MaxExportOwnersPerSource));
 		exportOwnersBySource.set(src, byName);
 	}
 	return byName.get(name);
@@ -112,11 +107,11 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	private sourcesKey:               string | undefined;
 	private analyzerCtx:              FlowrAnalyzerContext | undefined;
 	/** `packagesExporting` answers, merged across the source set and self-filtered; the per-source half is {@link exportOwners} */
-	private exportsByName             = new Map<string, readonly string[]>();
+	private exportsByName             = new Map<BrandedIdentifier, readonly BrandedNamespace[]>();
 	/** `pkg@assumedR` keys already reported via {@link baseVersionFor}'s fallback, so the info is logged once */
 	private readonly baseFallbacksLogged = new Set<string>();
 	/** installed package versions for `versionSelection: 'system'`, read once from R (see {@link warmInstalledVersions}) */
-	private installedVersions:        ReadonlyMap<string, string> | undefined;
+	private installedVersions:        ReadonlyMap<BrandedNamespace, string> | undefined;
 	/** guards the one-time async warm-up of {@link installedVersions} */
 	private installedVersionsPromise: Promise<void> | undefined;
 
@@ -259,7 +254,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	 * Packages in the loaded sources exporting `name`, self-package excluded, most downloaded first (so picking
 	 * the first is the package a script most likely means); backed by the per-source memo in {@link exportOwnersBySource}, filtered here rather than there so the memo stays analyzer-independent.
 	 */
-	public override packagesExporting(name: string): readonly string[] {
+	public override packagesExporting(name: BrandedIdentifier): readonly BrandedNamespace[] {
 		if(!isSigDbEnabled(this.analyzerCtx?.config)) {
 			return [];
 		}
@@ -362,7 +357,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	}
 
 	/** Whether the given name is the analyzed project itself (so we must not shadow its own definitions). */
-	private isSelfPackage(name: string): boolean {
+	private isSelfPackage(name: BrandedNamespace): boolean {
 		const desc = this.analyzerCtx?.files.getFilesByRole(FileRole.Description) ?? [];
 		return desc.some(d => d.packageName() === name);
 	}
@@ -371,7 +366,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	 * For a base package, the newest core version `<=` the assumed R version (see {@link FlowrAnalyzerContext.resolvedRVersion}).
 	 * If the assumed version predates every recorded core release, the closest supported (earliest) one is used and logged once as info.
 	 */
-	private baseVersionFor(src: PackageSignatureSource, name: string): string | undefined {
+	private baseVersionFor(src: PackageSignatureSource, name: BrandedNamespace): string | undefined {
 		const versions = src.coreVersions(name);
 		if(!versions || versions.length === 0) {
 			return undefined;
@@ -391,7 +386,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		return chosen.str;
 	}
 
-	private resolve(name: string, existing?: Package): Package | undefined {
+	private resolve(name: BrandedNamespace, existing?: Package): Package | undefined {
 		if(this.isSelfPackage(name)) {
 			return undefined;
 		}
@@ -437,7 +432,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	}
 
 	/** the concrete export view for a non-base package under the active {@link VersionSelection} policy, or `undefined` if none satisfies */
-	private selectVersion(src: PackageSignatureSource, name: string, range: Range | undefined, selection: VersionSelection): LibraryExports | undefined {
+	private selectVersion(src: PackageSignatureSource, name: BrandedNamespace, range: Range | undefined, selection: VersionSelection): LibraryExports | undefined {
 		if(selection === VersionSelection.System) {
 			const installed = this.installedVersions?.get(name);
 			const info = installed !== undefined ? src.lookup(name, installed) : undefined;
@@ -456,7 +451,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	 * Newest version satisfying the constraint. Fast path: prefer the source's latest (no history decompression for
 	 * the common `>=` case); only when that fails to satisfy, enumerate stored versions and pick the highest match (e.g. an upper-bound or exact-old pin).
 	 */
-	private newestSatisfying(src: PackageSignatureSource, name: string, range: Range | undefined): LibraryExports | undefined {
+	private newestSatisfying(src: PackageSignatureSource, name: BrandedNamespace, range: Range | undefined): LibraryExports | undefined {
 		const pinned = range ? minVersion(range)?.version : undefined;
 		const info = src.lookup(name, pinned) ?? src.lookup(name);
 		if(info && (range === undefined || RRange.satisfies(info.version, range))) {
@@ -465,27 +460,19 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		if(range === undefined) {
 			return undefined;
 		}
-		const satisfying = this.availableVersions(src, name).findLast(version => RRange.satisfies(version, range));
+		const satisfying = availableVersionEntries(src, name).findLast(e => RRange.satisfies(e.version, range))?.version;
 		return satisfying === undefined ? undefined : src.lookup(name, satisfying);
 	}
 
 	/** Lowest stored version satisfying the constraint (using the store's actual R-form version strings). */
-	private oldestSatisfying(src: PackageSignatureSource, name: string, range: Range | undefined): LibraryExports | undefined {
+	private oldestSatisfying(src: PackageSignatureSource, name: BrandedNamespace, range: Range | undefined): LibraryExports | undefined {
 		// versions are ascending, so the first satisfying one is the oldest
-		const satisfying = this.availableVersions(src, name).find(version => range === undefined || RRange.satisfies(version, range));
+		const satisfying = availableVersionEntries(src, name).find(e => range === undefined || RRange.satisfies(e.version, range))?.version;
 		return satisfying === undefined ? undefined : src.lookup(name, satisfying);
 	}
 
-	/**
-	 * The versions the source can answer for a package (dated releases, base-R core releases, and the latest),
-	 * ascending. Versions that differ in writing but not in order (`1.2` and `1.2.0`) are settled by release date.
-	 */
-	private availableVersions(src: PackageSignatureSource, pkg: string): string[] {
-		return availableVersionEntries(src, pkg).map(e => e.version);
-	}
-
 	/** build the resolved {@link Package} (namespace + version) from a source's export view */
-	private toResolvedPackage(name: string, info: LibraryExports): Package {
+	private toResolvedPackage(name: BrandedNamespace, info: LibraryExports): Package {
 		return packageFromExports(name, info, this.analyzerCtx?.env.statedFor(name)?.keys());
 	}
 }
@@ -494,7 +481,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
  * The resolved {@link Package} (namespace and version) of a source's export view. What the configuration states
  * for the package (`stated`) is part of its interface, even where the source misses it.
  */
-export function packageFromExports(name: string, info: Pick<LibraryExports, 'exported' | 's4Classes' | 'version' | 'reexports'>, stated?: Iterable<unknown>): Package {
+export function packageFromExports(name: BrandedNamespace, info: Pick<LibraryExports, 'exported' | 's4Classes' | 'version' | 'reexports'>, stated?: Iterable<unknown>): Package {
 	/* a source that records no re-exports lacks them altogether, so R's own answer for the package stands in */
 	const reexports = info.reexports ?? knownReexports(name);
 	const exported = uniqueArray([...info.exported, ...reexports?.keys() ?? [], ...[...stated ?? []].map(String)]);
@@ -516,21 +503,12 @@ export function packageFromExports(name: string, info: Pick<LibraryExports, 'exp
 }
 
 /** the re-exports R reports for `pkg`, see {@link RReexports} */
-function knownReexports(pkg: string): ReadonlyMap<string, string> | undefined {
-	const known = Object.hasOwn(RReexports, pkg) ? RReexports[pkg] : undefined;
+function knownReexports(pkg: BrandedNamespace): ReadonlyMap<BrandedIdentifier, BrandedNamespace> | undefined {
+	const known = Object.hasOwn(Reexports, pkg) ? Reexports[pkg] : undefined;
 	return known === undefined ? undefined : new Map(Object.entries(known.reexports));
 }
 
 /** the `importFrom(origin, names)` directives behind a source's re-exports, grouped by origin */
-function reexportImports(reexports: ReadonlyMap<string, string> | undefined): Map<string, string[]> {
-	const imports = new Map<string, string[]>();
-	for(const [fn, origin] of reexports ?? []) {
-		const names = imports.get(origin);
-		if(names === undefined) {
-			imports.set(origin, [fn]);
-		} else {
-			names.push(fn);
-		}
-	}
-	return imports;
+function reexportImports(reexports: ReadonlyMap<BrandedIdentifier, BrandedNamespace> | undefined): Map<BrandedNamespace, BrandedIdentifier[]> {
+	return new Map(Map.groupBy(reexports ?? [], ([, origin]) => origin).entries().map(([origin, fns]) => [origin, fns.map(([fn]) => fn)]));
 }

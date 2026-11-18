@@ -8,7 +8,6 @@ import { SourceLocation } from '../../util/range';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { AbsintContext } from '../../abstract-interpretation/abstract-semantics';
 import type { StateDomain } from '../../abstract-interpretation/domains/state-domain';
-import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { EdgeType } from '../../dataflow/graph/edge';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -98,7 +97,7 @@ export class CallProvenanceTracker implements TaintProvenanceTracker {
 				continue;
 			}
 			const node = idMap?.get(id);
-			graph.addVertex({ ...vertex, taint: { code: RNode.lexeme(node), loc: SourceLocation.fromNode(node), value: taint, call } }, undefined as unknown as REnvironmentInformation, true);
+			graph.addVertex({ ...vertex, taint: { code: RNode.lexeme(node), loc: SourceLocation.fromNode(node), value: taint, call } }, undefined, true);
 		}
 		for(const [from, targets] of this.edges.entries()) {
 			for(const [to, type] of targets) {

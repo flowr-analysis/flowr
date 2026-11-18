@@ -3,14 +3,12 @@ import { withTreeSitter } from '../../_helper/shell';
 import { assertLinterPackage } from '../../_helper/linter';
 import { LintingResultCertainty } from '../../../../src/linter/linter-format';
 
-const rd = (name: string, usage: string, args: readonly string[] = [], extra = '', aliases: readonly string[] = [name]) =>
-	`\\name{${name}}\n${aliases.map(a => `\\alias{${a}}`).join('\n')}\n${extra}\\title{T}\n\\usage{\n${usage}\n}\n` +
+const rd = (name: string, usage: string, args: readonly string[] = [], extra = '', aliases: readonly string[] = [name]) => `\\name{${name}}\n${aliases.map(a => `\\alias{${a}}`).join('\n')}\n${extra}\\title{T}\n\\usage{\n${usage}\n}\n` +
 	(args.length > 0 ? `\\arguments{\n${args.map(a => `  \\item{${a}}{desc}`).join('\n')}\n}\n` : '');
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('documentation-mismatch', () => {
-		const lint = (name: string, code: string, files: Record<string, string | null>, expected: Record<string, unknown>[], cfg: Record<string, unknown> = {}) =>
-			assertLinterPackage(name, parser, code, 'documentation-mismatch', expected, { files, ...cfg });
+		const lint = (name: string, code: string, files: Record<string, string | null>, expected: Record<string, unknown>[], cfg: Record<string, unknown> = {}) => assertLinterPackage(name, parser, code, 'documentation-mismatch', expected, { files, ...cfg });
 
 		describe('literal defaults', () => {
 			lint('infinite default', 'f <- function(n = Inf) n', { 'NAMESPACE': 'export(f)', 'man/f.Rd': rd('f', 'f(n = Inf)', ['n']) }, []);

@@ -4,12 +4,9 @@ import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter
 import { block } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Engines
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Engines */
 export class WikiEngine extends DocMaker<'wiki/Engines.md'> {
 	constructor() {
 		super('wiki/Engines.md', module.filename, 'engines');
@@ -64,10 +61,7 @@ The selection and preparation of the engine just reflects what the flowR analysi
 ## Dealing with the Tree-Sitter Engine
 
 ${
-	block({
-		type:    'WARNING',
-		content: 'As the tree-sitter engine is only for parsing, it cannot execute R code. This engine is now the default.'
-	})
+	block('WARNING', 'As the tree-sitter engine is only for parsing, it cannot execute R code. This engine is now the default.')
 }
 
 In general, there is no need for you to pass custom paths using either
@@ -86,10 +80,7 @@ you first must build the new wasm file. For this you have to:
 For tree-sitter, please rely on the [releases](https://github.com/tree-sitter/tree-sitter/releases).
 
 ${
-	block({
-		type:    'NOTE',
-		content: 'The tree-sitter grammar may not be able to parse all valid R code due to some bugs in the parser grammar. In that case, please report these to the [tree-sitter-r repository](https://github.com/r-lib/tree-sitter-r).'
-	})}
+	block('NOTE', 'The tree-sitter grammar may not be able to parse all valid R code due to some bugs in the parser grammar. In that case, please report these to the [tree-sitter-r repository](https://github.com/r-lib/tree-sitter-r).')}
 `;
 	}
 }

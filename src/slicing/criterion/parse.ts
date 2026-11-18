@@ -1,10 +1,8 @@
-import { SourceRange, type SourcePosition } from '../../util/range';
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
+import { SourceRange, type SourcePosition, type Column, type Line } from '../../util/range';
 import { expensiveTrace } from '../../util/log';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type {
-	AstIdMap,
-	RNodeWithParent
-} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { slicerLogger } from '../static/static-slicer';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -110,7 +108,7 @@ export const SlicingCriterion = {
 	 * The line and the name a `<line>@<name>` criterion points at, `undefined` for every other form.
 	 * The counterpart of writing such a criterion down as a template literal.
 	 */
-	nameAt(this: void, criterion: SlicingCriterion): { line: number, name: string } | undefined {
+	nameAt(this: void, criterion: SlicingCriterion): { line: number, name: BrandedIdentifier } | undefined {
 		const split = splitFileFilter(criterion);
 		const at = split?.rest.indexOf('@') ?? -1;
 		if(split === undefined || at <= 0) {
@@ -120,9 +118,7 @@ export const SlicingCriterion = {
 		const name = split.rest.slice(at + 1);
 		return /^\d+$/.test(line) && name.length > 0 && !name.startsWith('[') ? { line: Number(line), name } : undefined;
 	},
-	/**
-	 * Converts a node id to a slicing criterion in the form of `$id`
-	 */
+	/** Converts a node id to a slicing criterion in the form of `$id` */
 	fromId(this: void, id: NodeId): SlicingCriterion {
 		return `$${id}`;
 	}
@@ -131,7 +127,6 @@ export const SlicingCriterion = {
 /** several {@link SlicingCriterion}s, all of which are sliced for at once */
 export type SlicingCriteria = readonly SlicingCriterion[];
 
-
 export interface DecodedCriterion {
 	criterion: SlicingCriterion,
 	id:        NodeId
@@ -139,9 +134,7 @@ export interface DecodedCriterion {
 
 export type DecodedCriteria = ReadonlyArray<DecodedCriterion>;
 
-/**
- * Thrown if the given slicing criteria can not be found
- */
+/** Thrown if the given slicing criteria can not be found */
 export class CriteriaParseError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -195,7 +188,8 @@ function topLevelStatementToId<OtherInfo>(line: number, idMap: AstIdMap<OtherInf
 	let bestRange: SourceRange | undefined;
 	for(const node of SourceRange.nodesContaining(potentials, line)) {
 		const statement = RNode.topLevelStatement(node, idMap);
-		const range = SourceRange.fromNode(statement);
+		/* a block has no range of its own, only its braces and children do */
+		const range = SourceRange.fromNode(statement) ?? RNode.span(statement);
 		/* several statements may cover the line (`a <- 1; b <- 2`), the one starting first wins */
 		if(range !== undefined && (bestRange === undefined || SourceRange.compare(range, bestRange) < 0)) {
 			best = statement;
@@ -210,7 +204,7 @@ function topLevelStatementToId<OtherInfo>(line: number, idMap: AstIdMap<OtherInf
  * originating from a matching file. The regex may contain escaped parentheses (`3^(a\(b\)\.R)`).
  * Returns `undefined` if the regex is malformed.
  */
-function splitFileFilter(criterion: string): { rest: string, file: RegExp | undefined } | undefined {
+function splitFileFilter<S extends string>(criterion: S): { rest: string, file: RegExp | undefined } | undefined {
 	const match = /^([^()]*)\(((?:\\.|[^()])*)\)$/.exec(criterion);
 	if(match === null) {
 		return { rest: criterion, file: undefined };
@@ -227,11 +221,9 @@ function matchesFile<OtherInfo>(nodeInfo: RNodeWithParent<OtherInfo>, file: RegE
 	return file === undefined || file.test(nodeInfo.info.file ?? '');
 }
 
-/**
- * The last line covered by the given AST (restricted to `file`), used to resolve lines counted from the end.
- */
-function lastLineOf<OtherInfo>(dataflowIdMap: AstIdMap<OtherInfo>, file: RegExp | undefined): number {
-	let last = 0;
+/** The last line covered by the given AST (restricted to `file`), used to resolve lines counted from the end. */
+function lastLineOf<OtherInfo>(dataflowIdMap: AstIdMap<OtherInfo>, file: RegExp | undefined): Line {
+	let last: Line = 0;
 	for(const nodeInfo of dataflowIdMap.values()) {
 		const range = SourceRange.fromNode(nodeInfo);
 		if(range !== undefined && range[2] > last && matchesFile(nodeInfo, file)) {
@@ -270,7 +262,7 @@ function parseLocation<OtherInfo>(criterion: string, separator: string, dataflow
  * thus one and the same occurrence.
  */
 function nthOccurrenceToId<OtherInfo>(line: number, name: string, dataflowIdMap: AstIdMap<OtherInfo>, nth: number, file?: RegExp): NodeId | undefined {
-	const byColumn = new Map<number, RNodeWithParent<OtherInfo>>();
+	const byColumn = new Map<Column, RNodeWithParent<OtherInfo>>();
 
 	for(const nodeInfo of dataflowIdMap.values()) {
 		if(nodeInfo.location === undefined || nodeInfo.location[0] !== line || nodeInfo.lexeme !== name || !matchesFile(nodeInfo, file)) {

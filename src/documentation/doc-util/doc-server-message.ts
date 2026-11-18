@@ -22,16 +22,12 @@ export interface ServerMessageDescription {
 
 const messages: ServerMessageDescription[] = [];
 
-/**
- * Documents a server message for later printing.
- */
+/** Documents a server message for later printing. */
 export function documentServerMessage(description: ServerMessageDescription): void {
 	messages.push(description);
 }
 
-/**
- * Visualizes all documented server messages in markdown format.
- */
+/** Visualizes all documented server messages in markdown format. */
 export async function printServerMessages(treeSitter: KnownParser): Promise<string> {
 	let text = '<ul>';
 	for(const message of messages) {
@@ -40,9 +36,7 @@ export async function printServerMessages(treeSitter: KnownParser): Promise<stri
 	return text + '</ul>';
 }
 
-/**
- * Executes the given function within a server context.
- */
+/** Executes the given function within a server context. */
 export async function inServerContext<T>(shell: KnownParser, fn: (socket: FakeSocket, server: FakeServer) => Promise<T> | T): Promise<T> {
 	return withSocket(shell, async(socket, server) => {
 		return fn(socket, server);
@@ -116,9 +110,7 @@ function explainPingPong(
 	return result + '</ol>';
 }
 
-/**
- * Documents a ping-pong message exchange with the server.
- */
+/** Documents a ping-pong message exchange with the server. */
 export async function documentServerMessageResponse({
 	shell, title, messageType, messages
 }: MessagePingPongDocumentationArguments): Promise<string> {

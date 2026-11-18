@@ -4,7 +4,6 @@ import { ArrayQueue } from '../util/collections/queue';
 
 /**
  * Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies but ignoring cycles.
- * @param graph      - The control flow graph.
  * @param startNodes - The nodes to start the traversal from.
  * @param visitor    - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
  * @see {@link visitCfgInOrder} for a traversal in order
@@ -18,8 +17,7 @@ export function visitCfgInReverseOrder(
 	const visited = new Set<NodeId>();
 	const queue = startNodes.slice();
 	const hasBb = graph.mayHaveBasicBlocks();
-	while(queue.length > 0) {
-		const current = queue.pop() as NodeId;
+	for(let current; (current = queue.pop()) !== undefined;) {
 		if(visited.has(current)) {
 			continue;
 		}
@@ -42,7 +40,6 @@ export function visitCfgInReverseOrder(
 
 /**
  * Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies in execution order but ignoring cycles.
- * @param graph      - The control flow graph.
  * @param startNodes - The nodes to start the traversal from.
  * @param visitor    - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
  * @see {@link visitCfgInReverseOrder} for a traversal in reversed order
@@ -56,8 +53,7 @@ export function visitCfgInOrder(
 	const visited = new Set<NodeId>();
 	const queue = new ArrayQueue(startNodes);
 	const hasBb = graph.mayHaveBasicBlocks();
-	while(!queue.isEmpty()) {
-		const current = queue.dequeue() as NodeId;
+	for(let current = queue.dequeue(); current !== undefined; current = queue.dequeue()) {
 		if(visited.has(current)) {
 			continue;
 		}
@@ -84,9 +80,7 @@ export function visitCfgInOrder(
 	return visited;
 }
 
-/**
- * Check if a node can reach another node in the control flow graph.
- */
+/** Check if a node can reach another node in the control flow graph. */
 export function canReach(
 	graph: ControlFlowGraph,
 	from: NodeId[],

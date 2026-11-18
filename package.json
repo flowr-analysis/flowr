@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.17.4",
+  "version": "2.17.7",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "engines": {
     "node": ">=22"
@@ -26,7 +26,7 @@
     "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
     "summarizer": "ts-node src/cli/summarizer-app.ts",
     "prepare": "node scripts/prepare.js",
-    "build": "npm run gen:base-packages && tsc --project . && npm run build:copy-data",
+    "build": "npm run gen:base-packages && node --max-old-space-size=4096 node_modules/typescript/bin/tsc --project . && npm run build:copy-data",
     "build:dev": "npm run build && npm run build:copy-wasm",
     "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm",
     "build:copy-data": "ts-node --transpile-only scripts/sigdb-copy.ts",
@@ -46,11 +46,16 @@
     "license-compat": "license-checker-rseidelsohn --onlyAllow 'MIT;MPL-2.0;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'  --clarificationsFile license-clarifications.json",
     "check:generic-labels": "ts-node --transpile-only scripts/check-generic-labels.ts",
     "check:standalone-load": "ts-node --transpile-only scripts/check-standalone-load.ts",
+    "check:standalone-load:fresh": "npm run build && npm run check:standalone-load",
     "detect-circular-deps": "npx madge  --extensions ts,tsx --circular src/",
     "checkup": "ts-node scripts/checkup-parallel.ts",
-    "test": "vitest --exclude \"test/system-tests/**\" --exclude \"test/mutations/**\" --config test/vitest.config.mts",
+    "test": "node scripts/test-changed.mjs",
+    "test:all": "vitest --exclude \"test/system-tests/**\" --exclude \"test/mutations/**\" --config test/vitest.config.mts",
+    "test:changed": "node scripts/test-changed.mjs",
+    "test:branch": "npm run test:all -- --changed main --passWithNoTests",
+    "test:related": "vitest related --passWithNoTests --exclude \"test/system-tests/**\" --exclude \"test/mutations/**\" --config test/vitest.config.mts",
     "test:full": "npm run test:coverage -- --no-watch --reporter=default --reporter=json --outputFile.json=coverage/flowr-test-results.json -- --make-summary --test-installation",
-    "test:coverage": "npm run test -- --coverage",
+    "test:coverage": "npm run test:all -- --coverage",
     "test:verbose": "FLOWR_VERBOSE=true vitest --exclude \"test/system-tests/**\" --exclude \"test/mutations/**\" --config test/vitest.config.mts",
     "test:system": "vitest --dir test/system-tests --config test/system-tests/vitest.config.mts",
     "test:yields": "vitest --config test/yields/vitest.config.mts",
@@ -168,11 +173,13 @@
   "overrides": {
     "lodash.isequal": "npm:fast-deep-equal@^3.1.3",
     "get-uri": {
-      "basic-ftp": "6.2.3"
+      "basic-ftp": "^6.2.4"
     },
     "release-it": {
       "undici": "^7.30.1"
-    }
+    },
+    "glob": "^14.0.2",
+    "minimatch": "^11.0.1"
   },
   "devDependencies": {
     "@codemirror/autocomplete": "^6.20.4",
@@ -183,7 +190,7 @@
     "@codemirror/view": "^6.43.15",
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-angular": "^21.2.4",
-    "@eagleoutice/eslint-config-flowr": "^2.1.10",
+    "@eagleoutice/eslint-config-flowr": "^2.1.13",
     "@jupyterlab/nbformat": "^4.5.4",
     "@lezer/highlight": "^1.2.5",
     "@types/command-line-args": "^5.2.3",

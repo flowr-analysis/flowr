@@ -1,4 +1,5 @@
 import zlib from 'zlib';
+import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 
 /**
  * Where an on-demand signature source looks for the source of a package no database knows: CRAN, Bioconductor,
@@ -53,8 +54,7 @@ export interface OnDemandSourceOptions {
 	readonly githubMirrors?:       boolean;
 }
 
-const GitHubArchive = (owner: string, repo: string, ref: string) =>
-	`https://codeload.github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tar.gz/${ref.split('/').map(encodeURIComponent).join('/')}`;
+const GitHubArchive = (owner: string, repo: string, ref: string) => `https://codeload.github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tar.gz/${ref.split('/').map(encodeURIComponent).join('/')}`;
 
 /** A GitHub remote as `remotes`/`pak` write it: `owner/repo`, optionally `/subdir`, `@ref`, `#pr`, or a `github::` prefix. */
 export function parseGitHubRemote(remote: string): { owner: string, repo: string, subdir?: string, ref?: string } | undefined {
@@ -73,7 +73,7 @@ export function parseGitHubRemote(remote: string): { owner: string, repo: string
 }
 
 /** A package name R accepts, which is all that may go into a URL built from one. */
-export function isPackageName(name: string): boolean {
+export function isPackageName(name: BrandedNamespace): boolean {
 	return /^[A-Za-z][A-Za-z0-9.]*[A-Za-z0-9]$/.test(name);
 }
 
@@ -114,14 +114,14 @@ export function cranSource(options: OnDemandSourceOptions = {}): OnDemandSource 
 	const mirror = (options.cranMirror ?? 'https://cloud.r-project.org/src/contrib/').replace(/\/?$/, '/');
 	const github = options.githubMirrors !== false;
 	const indices = new Map<string, Promise<Map<string, string>>>();
-	const ofVersion = (name: string, version: string): PackageArchive[] => {
+	function ofVersion(name: string, version: string): PackageArchive[] {
 		const file = `${name}_${version}.tar.gz`;
 		return [
 			...github ? [{ url: GitHubArchive('cran', name, `refs/tags/${version}`), origin: 'cran' }] : [],
 			{ url: `${mirror}${file}`, origin: 'cran' },
 			{ url: `${mirror}Archive/${name}/${file}`, origin: 'cran' }
 		];
-	};
+	}
 	return {
 		name: 'cran',
 		async archives({ name, version }, fetch) {

@@ -1,17 +1,18 @@
 import { assert, describe, test } from 'vitest';
 import { withShell } from '../../_helper/shell';
 import { SlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
-import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { decorateLabelContext } from '../../_helper/label';
 import type { SourceRange } from '../../../../src/util/range';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RShell } from '../../../../src/r-bridge/shell';
-import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
+import { analyze } from '../../_helper/analyzer';
 
 function testRename(shell: RShell, name: string, input: string, symbol: SlicingCriterion, expectedRefs: SlicingCriteria | undefined) {
 	test(decorateLabelContext(name, ['other']), async() => {
-		const { dataflow, normalize } = await createDataflowPipeline(shell, { context: contextFromInput(input.trim()) }).allRemainingSteps();
+		const analyzer = await analyze(shell, input.trim());
+		const dataflow = await analyzer.dataflow();
+		const normalize = await analyzer.normalize();
 
 		const symbolId = SlicingCriterion.parse(symbol, normalize.idMap);
 		const refs = Dataflow.refsToSymbol(dataflow.graph, symbolId);
@@ -35,9 +36,8 @@ function testRename(shell: RShell, name: string, input: string, symbol: SlicingC
 					assert.fail('Could not find node in ast');
 				}
 
-				const range = node.info.fullRange as SourceRange;
-				range[3] = range[1] + (node.lexeme as string).length - 1;
-				return range;
+				const [sl, sc, el] = node.info.fullRange as SourceRange;
+				return [Number(sl), Number(sc), Number(el), sc + (node.lexeme as string).length - 1];
 			})
 			.sort((a, b) => a[0] === b[0] ? b[1] - a[1] : b[0] - a[0]);
 

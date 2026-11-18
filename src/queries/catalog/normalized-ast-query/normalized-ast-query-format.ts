@@ -1,14 +1,20 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { queryHeader } from '../../query-print';
-import { executeNormalizedAstQuery } from './normalized-ast-query-executor';
 import { normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
+import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
-/**
- * Simple re-returns the normalized AST of the analysis.
- */
+/** Executes the normalized-AST query. */
+export async function executeNormalizedAstQuery({ analyzer }: BasicQueryData, queries: readonly NormalizedAstQuery[]): Promise<NormalizedAstQueryResult> {
+	warnUnlessSingleQuery('Normalized-Ast', queries);
+	const startTime = Date.now();
+	const normalized = await analyzer.normalize();
+	return { ...metaSince(startTime), normalized };
+}
+
+/** Simple re-returns the normalized AST of the analysis. */
 export interface NormalizedAstQuery extends BaseQueryFormat {
 	readonly type: 'normalized-ast';
 }

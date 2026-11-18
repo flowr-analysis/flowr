@@ -2,7 +2,7 @@ import type { DependencyInfo } from './dependencies-query-format';
 import { Constant, Unknown } from './dependency-values';
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
@@ -17,7 +17,7 @@ interface TitleArgument {
 }
 
 /** where a call states the title of the plot it draws onto; every other call is asked for `main` */
-const TitleArguments: Readonly<Record<string, TitleArgument>> = {
+const TitleArguments: Readonly<Record<BrandedIdentifier, TitleArgument>> = {
 	ggtitle: { argIdx: 0, argName: 'label' },
 	labs:    { argName: 'title' }
 };
@@ -72,10 +72,10 @@ export function describePlots(written: readonly DependencyInfo[], plots: Depende
 	const { dataflow, normalize: ast } = run;
 	const dfg = dataflow.graph;
 	const located = (id: NodeId) => ast.idMap.get(id)?.location;
-	const bySource = (a: NodeId, b: NodeId) => {
+	function bySource(a: NodeId, b: NodeId) {
 		const [from, to] = [located(a), located(b)];
 		return from && to ? SourceRange.compare(from, to) : 0;
-	};
+	}
 	const roots = new Map<NodeId, number>();
 	plots.forEach(({ nodeId, linkedIds }, at) => {
 		if(nodeId !== undefined && !linkedIds?.length) {

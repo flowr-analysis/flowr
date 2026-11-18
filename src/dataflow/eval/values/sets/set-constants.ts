@@ -24,12 +24,8 @@ export function setOf(elements: readonly Value[]): Lift<ValueSet<Value[]>> {
 		return e.type === 'set' ? flattenSetElements(e.elements) : e;
 	});
 
-	return bottomTopGuardOf(vals) ?? {
-		type:     'set',
-		elements: vals
-	};
+	return bottomTopGuardOf(vals) ?? { type: 'set', elements: vals };
 }
-
 
 /**
  * Checks, whether the given value is a set.

@@ -4,6 +4,8 @@
  * @module
  */
 
+import type { BrandedIdentifier, BrandedNamespace } from '../dataflow/environments/identifier';
+
 /** read-only GitHub mirror of R's own SVN; base packages live under `src/library/<pkg>` */
 const RSourceMirror = 'https://github.com/wch/r-source';
 
@@ -16,17 +18,17 @@ function atLine(line: number | undefined): string {
 }
 
 /** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
-export function cranPageUrl(pkg: string): string {
+export function cranPageUrl(pkg: BrandedNamespace): string {
 	return `https://cran.r-project.org/package=${encodeURIComponent(pkg)}`;
 }
 
 /** the mirror repository of a CRAN package */
-export function cranMirrorRepoUrl(pkg: string): string {
+export function cranMirrorRepoUrl(pkg: BrandedNamespace): string {
 	return `${CranGithubMirror}/${encodeURIComponent(pkg)}`;
 }
 
 /** deep-link a definition into the CRAN mirror at the package's version tag (falling back to `HEAD`) */
-export function cranMirrorSourceUrl(pkg: string, version: string | undefined, file?: string, line?: number): string {
+export function cranMirrorSourceUrl(pkg: BrandedNamespace, version: string | undefined, file?: string, line?: number): string {
 	const ref = version ? encodeURIComponent(version) : 'HEAD';
 	return file ? `${cranMirrorRepoUrl(pkg)}/blob/${ref}/${file}${atLine(line)}` : `${cranMirrorRepoUrl(pkg)}/tree/${ref}`;
 }
@@ -41,35 +43,35 @@ export function rSourceRef(version: string | undefined): string {
 }
 
 /** deep-link a base-R definition into the R sources mirror at the release series of `version` */
-export function rSourceUrl(pkg: string, version: string | undefined, file?: string, line?: number): string {
+export function rSourceUrl(pkg: BrandedNamespace, version: string | undefined, file?: string, line?: number): string {
 	const root = `${RSourceMirror}/${file ? 'blob' : 'tree'}/${rSourceRef(version)}/src/library/${encodeURIComponent(pkg)}`;
 	return file ? `${root}/${file}${atLine(line)}` : `${root}/R`;
 }
 
 /** base R's own index of what a package documents, which rdrr.io has no page for */
-export function baseManualIndexUrl(pkg: string): string {
+export function baseManualIndexUrl(pkg: BrandedNamespace): string {
 	return `https://stat.ethz.ch/R-manual/R-devel/library/${encodeURIComponent(pkg)}/html/00Index.html`;
 }
 
 /** R's own manual page for a topic of a base package */
-export function baseManualTopicUrl(pkg: string, topic: string): string {
+export function baseManualTopicUrl(pkg: BrandedNamespace, topic: BrandedIdentifier): string {
 	return `https://stat.ethz.ch/R-manual/R-devel/library/${encodeURIComponent(pkg)}/html/${encodeURIComponent(topic)}.html`;
 }
 
 /** where rdrr.io lists what a CRAN package documents */
-export function rdrrPackageUrl(pkg: string): string {
+export function rdrrPackageUrl(pkg: BrandedNamespace): string {
 	return `https://rdrr.io/cran/${encodeURIComponent(pkg)}/`;
 }
 
 /** rdrr.io's manual page for a topic of a CRAN package */
-export function rdrrTopicUrl(pkg: string, topic: string): string {
+export function rdrrTopicUrl(pkg: BrandedNamespace, topic: BrandedIdentifier): string {
 	return `https://rdrr.io/cran/${encodeURIComponent(pkg)}/man/${encodeURIComponent(topic)}.html`;
 }
 
 /** a repository a package may come from */
 export interface RRepository {
 	readonly label: string;
-	readonly home:  (pkg: string) => string | undefined;
+	readonly home:  (pkg: BrandedNamespace) => string | undefined;
 }
 
 /** the repositories the database records, keyed by the lowercase name it states */

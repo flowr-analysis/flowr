@@ -3,26 +3,24 @@ import { parseLog } from '../../../json/parser';
 import { retrieveMetaStructure, retrieveOpName, currentSourceInfo } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
 import { expensiveTrace } from '../../../../../../../util/log';
-import { UnaryOperatorsInRAst } from '../../../../model/operators';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import { RType } from '../../../../model/type';
 import type { RNode } from '../../../../model/model';
 import type { RUnaryOp } from '../../../../model/nodes/r-unary-op';
 import type { NamedJsonEntry } from '../../../json/format';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
-
+import { BuiltInOperators } from '../../../../../../../dataflow/environments/default-builtin-config/base-operators';
 
 /**
  * Parses the construct as a {@link RUnaryOp}.
  * @param data     - The data used by the parser (see {@link NormalizerData})
- * @param operator - The operator token
  * @param operand  - The operand of the unary operator
  * @returns        The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
  */
 export function tryNormalizeUnary(data: NormalizerData, [operator, operand]: [NamedJsonEntry, NamedJsonEntry]): RNode | undefined {
 	expensiveTrace(parseLog, () => `unary op for ${operator.name} ${operand.name}`);
 
-	return UnaryOperatorsInRAst.has(operator.name) ? parseUnaryOp(data, operator, operand) : undefined;
+	return BuiltInOperators.unaryInRAst.has(operator.name) ? parseUnaryOp(data, operator, operand) : undefined;
 }
 
 function parseUnaryOp(data: NormalizerData, operator: NamedJsonEntry, operand: NamedJsonEntry): RUnaryOp {
@@ -33,12 +31,5 @@ function parseUnaryOp(data: NormalizerData, operator: NamedJsonEntry, operand: N
 	const operationName = retrieveOpName(operator);
 	const { location, content } = retrieveMetaStructure(operator.content);
 
-	return {
-		type:     RType.UnaryOp,
-		location,
-		operator: operationName,
-		lexeme:   content,
-		operand:  parsedOperand,
-		info:     currentSourceInfo(data)
-	};
+	return { type: RType.UnaryOp, location, operator: operationName, lexeme: content, operand: parsedOperand, info: currentSourceInfo(data) };
 }

@@ -1,20 +1,81 @@
-import { filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
+import { type BasicQueryData, filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
-import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
+import { functionBullet, queryHeader } from '../../query-print';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { executeFnPropsQuery } from './inspect-fn-props-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
-import { SourceLocation } from '../../../util/range';
-import type { FunctionArgumentRoles } from '../../../dataflow/fn/argument-roles';
-import type { StatedProps } from '../../../dataflow/environments/built-in-props';
-import { ArgProp, CallProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
+import { type FunctionArgumentRoles, DefaultDepth } from '../../../dataflow/fn/argument-roles';
+import {
+	type StatedProps,
+	type ArgProps,
+	type PropMask,
+	ArgProp,
+	CallProp,
+	SemanticCallTag
+} from '../../../dataflow/environments/built-in-props';
 import { enumMembers } from '../../../util/objects';
-import { DefaultDepth } from '../../../dataflow/fn/argument-roles';
 import { FunctionFilterSchema } from '../../query-function-property';
 import { uniqueArrayMerge } from '../../../util/collections/arrays';
+import { metaSince } from '../../query-meta';
+import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { QueryFunctionFilter } from '../../query-function-filter';
 
+/** every bit, for a query naming no properties to keep */
+const AllProps = ~0;
+
+/** The formals a query asks about, dropping the ones it does not name and the bits it does not want. */
+function keepRoles(all: Record<NodeId, FunctionArgumentRoles>, graph: DataflowGraph, formals: ReadonlySet<string> | undefined, mask: ArgProps): Record<NodeId, FunctionArgumentRoles> {
+	if(formals === undefined && mask === AllProps) {
+		return all;
+	}
+	const kept: Record<NodeId, FunctionArgumentRoles> = {};
+	for(const [id, roles] of Object.entries(all)) {
+		const some: FunctionArgumentRoles = {};
+		for(const [formal, props] of Object.entries(roles)) {
+			const named = NodeId.recoverName(NodeId.normalize(formal), graph.idMap);
+			if((formals === undefined || (named !== undefined && formals.has(named))) && (props & mask) !== 0) {
+				some[formal] = props & mask;
+			}
+		}
+		if(Object.keys(some).length > 0) {
+			kept[id] = some;
+		}
+	}
+	return kept;
+}
+
+/** The function properties a query asks about, dropping the ones it does not want. */
+function keepProps(all: Record<NodeId, StatedProps>, mask: PropMask | undefined): Record<NodeId, StatedProps> {
+	if(mask === undefined) {
+		return all;
+	}
+	const kept: Record<NodeId, StatedProps> = {};
+	for(const [id, stated] of Object.entries(all)) {
+		const some = FunctionSemantics.call.props.filter(stated, mask);
+		if(FunctionSemantics.call.props.hasAny(some)) {
+			kept[id] = some;
+		}
+	}
+	return kept;
+}
+
+/** Execute function-property inspection queries on the given analyzer. */
+export async function executeFnPropsQuery({ analyzer }: BasicQueryData, queries: readonly InspectFnPropsQuery[]): Promise<InspectFnPropsQueryResult> {
+	const start = Date.now();
+	const filterFor = await QueryFunctionFilter.criteria(queries, analyzer);
+	const [{ only, formals, props, maxDepth } = {} as InspectFnPropsQuery] = queries;
+
+	const ctx = analyzer.inspectContext();
+	const graph = (await analyzer.dataflow()).graph;
+	const inferred = FunctionSemantics.props(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx, maxDepth, only });
+
+	return {
+		...metaSince(start),
+		roles: keepRoles(inferred.roles, graph, formals && new Set(formals), props ? FunctionSemantics.call.argument.mask(props) : AllProps),
+		props: keepProps(inferred.props, props ? FunctionSemantics.call.props.mask(props) : undefined)
+	};
+}
 
 /** refuses a query that can only answer with nothing: `formals` narrowing an answer that carries none, or `props` naming only properties the single half it asks for cannot state */
 function rejectEmptyAnswer(query: InspectFnPropsQuery, helpers: Joi.CustomHelpers): InspectFnPropsQuery {
@@ -57,16 +118,14 @@ export const InspectFnPropsQueryDefinition = {
 	executor:        executeFnPropsQuery,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'inspect-fn-props'>['inspect-fn-props'];
-		result.push(`Query: ${bold('inspect-fn-props', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+		result.push(queryHeader('inspect-fn-props', formatter, out['.meta'].timing, true));
 		const idMap = (await processed.normalize()).idMap;
 		for(const id of new Set([...Object.keys(out.roles), ...Object.keys(out.props)])) {
-			const node = idMap.get(NodeId.normalize(id));
-			const loc = node ? SourceLocation.fromNode(node) : undefined;
 			const formals = Object.entries(out.roles[id] ?? {})
 				.map(([formal, props]) => `${NodeId.recoverName(NodeId.normalize(formal), idMap) ?? formal}: ${FunctionSemantics.call.argument.words(props).join(', ')}`)
 				.join(', ');
 			const states = FunctionSemantics.call.props.labels(out.props[id]).join(', ');
-			result.push(`  - Function ${bold(id, formatter)} (${SourceLocation.format(loc)}) ${formals}${states.length > 0 ? ` [${states}]` : ''}`);
+			result.push(`${functionBullet(id, formatter, idMap)} ${formals}${states.length > 0 ? ` [${states}]` : ''}`);
 		}
 		return true;
 	},

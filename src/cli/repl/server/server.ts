@@ -60,7 +60,6 @@ export class FlowRServer {
 	}
 }
 
-
 function notYetInitialized(c: Socket, id: string | undefined) {
 	sendMessage<FlowrErrorMessage>(c, {
 		id,
@@ -72,10 +71,5 @@ function notYetInitialized(c: Socket, id: string | undefined) {
 }
 
 function helloClient(c: Socket, name: string, versionInformation: VersionInformation) {
-	sendMessage<FlowrHelloResponseMessage>(c, {
-		id:         undefined,
-		type:       'hello',
-		clientName: name,
-		versions:   versionInformation
-	});
+	sendMessage<FlowrHelloResponseMessage>(c, { id: undefined, type: 'hello', clientName: name, versions: versionInformation });
 }

@@ -170,7 +170,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				'network-functions',
 				[{ certainty: LintingResultCertainty.Certain, function: 'GET', loc: [2, 1, 2, 25] }],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ noSigDb: true }
+				{ sigDb: false }
 			);
 		});
 

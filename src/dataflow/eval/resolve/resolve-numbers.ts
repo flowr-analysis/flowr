@@ -1,6 +1,6 @@
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import { Identifier } from '../../environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../environments/identifier';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
@@ -146,7 +146,7 @@ function numeric(node: RNodeWithParent, args: BuiltInEvalHandlerArgs): Operand |
 }
 
 /** the name a node calls, whether it is written as an operator or as a plain call of the quoted operator */
-function calledName(node: RNodeWithParent): string | undefined {
+function calledName(node: RNodeWithParent): BrandedIdentifier | undefined {
 	switch(node.type) {
 		case RType.UnaryOp:
 		case RType.BinaryOp:

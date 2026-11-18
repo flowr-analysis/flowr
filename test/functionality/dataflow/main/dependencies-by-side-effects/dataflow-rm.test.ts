@@ -10,15 +10,13 @@ import { RPipe } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-pi
 describe('Dataflow rm', { concurrent: false }, withShell(shell => {
 	assertDataflow(label('Removing breaks link', ['functions-with-global-side-effects']), shell,
 		'x <- 2\nrm(x)\nx',
-		emptyGraph()
+		emptyGraph().autoPrints([7], true)
 			.defineVariable('1@x', 'x', { definedBy: ['1@<-', '1@2'] })
-			.call('2@rm', 'rm', [argumentInCall('4')], { onlyBuiltIn: true, origin: [BuiltInProcName.Rm], reads: [NodeId.toBuiltIn('rm')] })
-			.calls('2@rm', NodeId.toBuiltIn('rm'))
+			.call('2@rm', 'rm', [argumentInCall(4)], { onlyBuiltIn: true, origin: [BuiltInProcName.Rm], reads: [NodeId.toBuiltIn('rm'), '1@x'] })
 			.returns('1@<-', '1@x')
 			.use('2@x')
 			.constant('1@2')
-			.call('1@<-', '<-', [argumentInCall('1'), argumentInCall('0')], { onlyBuiltIn: true, origin: [BuiltInProcName.Assignment], reads: [NodeId.toBuiltIn('<-'), 1] })
-			.calls('1@<-', NodeId.toBuiltIn('<-'))
+			.call('1@<-', '<-', [argumentInCall(1), argumentInCall(0)], { onlyBuiltIn: true, origin: [BuiltInProcName.Assignment], reads: [NodeId.toBuiltIn('<-'), 1] })
 			.nse('2@rm', '2@x')
 			.use('3@x'),
 		{

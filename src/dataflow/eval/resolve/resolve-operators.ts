@@ -1,6 +1,6 @@
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { Identifier } from '../../environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../environments/identifier';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
@@ -31,8 +31,8 @@ function asLogical(node: RNodeWithParent, args: BuiltInEvalHandlerArgs): boolean
 }
 
 /** the operands of a binary operator and its entry in `ops`, with R presenting the `%.%` ones as an infix call */
-function binary<T>(node: RNodeWithParent, ops: Record<string, T>): { op: T, lhs: RNodeWithParent, rhs: RNodeWithParent } | undefined {
-	let name: string, lhs: RNodeWithParent | undefined, rhs: RNodeWithParent | undefined;
+function binary<T>(node: RNodeWithParent, ops: Record<BrandedIdentifier, T>): { op: T, lhs: RNodeWithParent, rhs: RNodeWithParent } | undefined {
+	let name: BrandedIdentifier, lhs: RNodeWithParent | undefined, rhs: RNodeWithParent | undefined;
 	if(RBinaryOp.is(node)) {
 		[name, lhs, rhs] = [node.operator, node.lhs, node.rhs];
 	} else if(RFunctionCall.isNamed(node) && node.arguments.length === 2) {

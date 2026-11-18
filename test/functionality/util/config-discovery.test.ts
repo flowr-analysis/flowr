@@ -116,7 +116,7 @@ describe('Project config trust', () => {
 		]);
 		const sensitive = new Set(FlowrConfig.securitySensitivePaths().map(p => p.join('.')));
 		const unclassified: string[] = [];
-		const walk = (d: { type?: string, keys?: Record<string, unknown>, items?: unknown[], matches?: { schema?: unknown }[], patterns?: { rule?: unknown }[] } | undefined, at: string[]): void => {
+		function walk(d: { type?: string, keys?: Record<string, unknown>, items?: unknown[], matches?: { schema?: unknown }[], patterns?: { rule?: unknown }[] } | undefined, at: string[]): void {
 			if(!d || sensitive.has(at.join('.'))) {
 				return;
 			}
@@ -135,7 +135,7 @@ describe('Project config trust', () => {
 			for(const p of d.patterns ?? []) {
 				walk(p.rule as typeof d, [...at, '*']);
 			}
-		};
+		}
 		walk(FlowrConfig.Schema.describe(), []);
 		assert.deepStrictEqual(unclassified, [], 'classify these options in the config schema (securitySensitive) or in this test');
 	});

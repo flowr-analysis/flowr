@@ -1,18 +1,9 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
 import { type RecordedRun, recordsRuns } from '../plugins/file-plugins/files/recorded-runs';
-import type {
-	RParseRequestFromText,
-	RParseRequest,
-	RParseRequestFromFile } from '../../r-bridge/retriever';
-import { isParseRequest } from '../../r-bridge/retriever';
+import { type RParseRequestFromText, type RParseRequest, type RParseRequestFromFile, isParseRequest } from '../../r-bridge/retriever';
 import { guard } from '../../util/assert';
-import type {
-	FlowrAnalyzerLoadingOrderContext,
-	ReadOnlyFlowrAnalyzerLoadingOrderContext
-} from './flowr-analyzer-loading-order-context';
-import {
-	FlowrAnalyzerProjectDiscoveryPlugin
-} from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
+import type { FlowrAnalyzerLoadingOrderContext, ReadOnlyFlowrAnalyzerLoadingOrderContext } from './flowr-analyzer-loading-order-context';
+import { FlowrAnalyzerProjectDiscoveryPlugin } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
 import { type FilePath, FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole } from './flowr-file';
 import type { FlowrDescriptionFile } from '../plugins/file-plugins/files/flowr-description-file';
@@ -24,29 +15,20 @@ import { globMatcher } from '../../util/glob';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
 import type { FlowrManifestFile } from '../plugins/file-plugins/files/flowr-manifest-files';
-import type {
-	FlowrRdFile, FlowrRdIndexFile, FlowrRdMacroFile, FlowrRdMetaFile, FlowrRdTopicIndexFile, RdIndex
-} from '../plugins/file-plugins/files/flowr-rd-file';
-import { FlowrDataListFile, rdIndexOf } from '../plugins/file-plugins/files/flowr-rd-file';
-import type { SysdataObject } from '../plugins/file-plugins/files/flowr-sysdata-file';
-import { FlowrSysdataFile } from '../plugins/file-plugins/files/flowr-sysdata-file';
+import { type FlowrRdFile, type FlowrRdIndexFile, type FlowrRdMacroFile, type FlowrRdMetaFile, type FlowrRdTopicIndexFile, type RdIndex, FlowrDataListFile, rdIndexOf } from '../plugins/file-plugins/files/flowr-rd-file';
+import { type SysdataObject, FlowrSysdataFile } from '../plugins/file-plugins/files/flowr-sysdata-file';
 import type { ProjectKind } from './project-kind';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from './classify-project-kind';
 import { FlowrAnalyzer } from '../flowr-analyzer';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
-import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
-import { resetOnFullInvalidation } from '../cache/flowr-cache';
+import { type InvalidationEvent, type InvalidationEventReceiver, resetOnFullInvalidation } from '../cache/flowr-cache';
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
-/**
- * This is a request to process a folder as a project, which will be expanded by the registered {@link FlowrAnalyzerProjectDiscoveryPlugin}s.
- */
+/** This is a request to process a folder as a project, which will be expanded by the registered {@link FlowrAnalyzerProjectDiscoveryPlugin}s. */
 export interface RProjectAnalysisRequest {
 	readonly request: 'project';
-	/**
-	 * The path to the root folder (an absolute path is probably best here).
-	 */
+	/** The path to the root folder (an absolute path is probably best here). */
 	readonly content: string;
 }
 
@@ -74,13 +56,11 @@ export type RoleBasedFiles = {
 };
 
 function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]): FlowrFileProvider {
-	if(typeof file === 'string') {
-		return new FlowrTextFile(file, roles);
-	} else if('request' in file) {
-		return FlowrFile.fromRequest(file);
-	} else {
-		return file;
-	}
+	return typeof file === 'string' ? new FlowrTextFile(file, roles) : 'request' in file ? FlowrFile.fromRequest(file) : file;
+}
+
+function emptyRoles(): RoleBasedFiles {
+	return Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
 }
 
 /**
@@ -89,13 +69,9 @@ function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, role
  * If you are a {@link FlowrAnalyzerProjectDiscoveryPlugin} and want to modify the available files, you can use the {@link FlowrAnalyzerFilesContext} directly.
  */
 export interface ReadOnlyFlowrAnalyzerFilesContext {
-	/**
-	 * The name of this context.
-	 */
+	/** The name of this context. */
 	readonly name:         string;
-	/**
-	 * The loading order context provides access to the loading order of script files in the project.
-	 */
+	/** The loading order context provides access to the loading order of script files in the project. */
 	readonly loadingOrder: ReadOnlyFlowrAnalyzerLoadingOrderContext;
 	/**
 	 * Get all requests that have been added to this context.
@@ -156,14 +132,9 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	exists(path: string, ignoreCase: boolean): string | undefined;
 	/** The project root folder (common directory of the requested roots), or `undefined` if none was requested. */
 	root(): string | undefined;
-	/**
-	 * Until parsers support multiple request types from the virtual context system,
-	 * we resolve their contents.
-	 */
+	/** Until parsers support multiple request types from the virtual context system, we resolve their contents. */
 	resolveRequest(r: RParseRequest): { r: RParseRequestFromText, path?: string };
-	/**
-	 * Get all files that have been considered during dataflow analysis.
-	 */
+	/** Get all files that have been considered during dataflow analysis. */
 	consideredFilesList(): readonly string[];
 	/**
 	 * Classify the {@link ProjectKind} of the project from its files. A {@link ProjectKind.ShinyApp | shiny app}
@@ -223,7 +194,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private readonly discoveryPlugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[];
 
 	/* files that are part of the analysis, e.g. source files */
-	private byRole:           RoleBasedFiles = Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
+	private byRole:           RoleBasedFiles = emptyRoles();
 	/** cached {@link projectKind}, invalidated whenever the files change (added or reset) */
 	private projectKindCache: ProjectKind | undefined = undefined;
 	private requestedRoots:   string[] = [];
@@ -235,12 +206,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private caseIndex:        Map<string, Map<string, FilePath>> | undefined = undefined;
 	private readonly readdirCache = new Map<string, readonly string[] | undefined>();
 
-	constructor(
-		context: FlowrAnalyzerContext,
-		loadingOrder: FlowrAnalyzerLoadingOrderContext,
-		plugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[],
-		fileLoaders: readonly FlowrAnalyzerFilePlugin[]
-	) {
+	constructor(context: FlowrAnalyzerContext, loadingOrder: FlowrAnalyzerLoadingOrderContext, plugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[], fileLoaders: readonly FlowrAnalyzerFilePlugin[]) {
 		super(loadingOrder.getAttachedContext(), FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin(), []);
 		this.discoveryPlugins = plugins;
 		this.context = context;
@@ -253,13 +219,14 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		this.files = new Map<FilePath, FlowrFileProvider>();
 		this.consideredFiles.length = 0;
 		this.inlineFiles.length = 0;
-		this.byRole = Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
+		this.byRole = emptyRoles();
 		this.projectKindCache = undefined;
 		this.requestedRoots.length = 0;
 		this.rootCache = undefined;
 		this.rootResolved = false;
 		this.caseIndex = undefined;
 		this.readdirCache.clear();
+		this.implicitSourceDirs.clear();
 	}
 
 	private addRoot(root: string): void {
@@ -287,17 +254,13 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		resetOnFullInvalidation(this, event);
 	}
 
-	/**
-	 * Record that a file has been considered during dataflow analysis.
-	 */
+	/** Record that a file has been considered during dataflow analysis. */
 	public addConsideredFile(path: string): void {
 		this.consideredFiles.push(path);
 		this.projectKindCache = undefined;
 	}
 
-	/**
-	 * Get all files that have been considered during dataflow analysis.
-	 */
+	/** Get all files that have been considered during dataflow analysis. */
 	public consideredFilesList(): readonly string[] {
 		return this.consideredFiles;
 	}
@@ -330,8 +293,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 				entries.set(name, reader(f));
 			}
 		}
-		const pending = this.loadingOrder.getUnorderedRequests()
-			.filter(r => r.request === 'file').map(r => r.content);
+		const pending = this.loadingOrder.getUnorderedRequests().filter(r => r.request === 'file').map(r => r.content);
 		for(const p of [...pending, ...this.consideredFiles]) {
 			const name = path.basename(p).toLowerCase();
 			names.add(name);
@@ -339,17 +301,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 				entries.set(name, reader(this.getFileByPath(p) ?? new FlowrTextFile(p)));
 			}
 		}
-		return classifyProjectKind({
-			names,
-			entries,
-			descriptionTypes: descriptions.map(d => d.type() ?? ''),
-			descriptionCount: descriptions.length
-		}, opts);
+		return classifyProjectKind({ names, entries, descriptionTypes: descriptions.map(d => d.type() ?? ''), descriptionCount: descriptions.length }, opts);
 	}
 
-	/**
-	 * Add multiple requests to the context. This is just a convenience method that calls {@link addRequest} for each request.
-	 */
+	/** Add multiple requests to the context. This is just a convenience method that calls {@link addRequest} for each request. */
 	public addRequests(requests: readonly RAnalysisRequest[]): void {
 		/* every folder first, so that the files of one request are seen from the same root as those of the others */
 		for(const request of requests) {
@@ -357,9 +312,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 				this.addRoot(request.request === 'file' ? path.dirname(request.content) : request.content);
 			}
 		}
-		for(const request of requests) {
-			this.addRequest(request);
-		}
+		requests.forEach(r => this.addRequest(r));
 	}
 
 	/**
@@ -377,9 +330,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			this.projectKindCache = undefined;
 			return;
 		}
-		for(const req of this.activeDiscoveryPlugins().flatMap(p => p.processor(this.ctx, request))) {
-			this.addDiscovered(req);
-		}
+		this.activeDiscoveryPlugins().flatMap(p => p.processor(this.ctx, request)).forEach(req => this.addDiscovered(req));
 	}
 
 	/** The registered discovery plugins, or the built-in default when none are registered. */
@@ -424,13 +375,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}
 	}
 
-	/**
-	 * Add multiple files to the context. This is just a convenience method that calls {@link addFile} for each file.
-	 */
+	/** Add multiple files to the context. This is just a convenience method that calls {@link addFile} for each file. */
 	public addFiles(files: (string | FlowrFileProvider | RParseRequestFromFile)[]): void {
-		for(const file of files) {
-			this.addFile(file);
-		}
+		files.forEach(file => this.addFile(file));
 	}
 
 	/**
@@ -454,24 +401,14 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			known.roles?.forEach(r => wrapped.assignRole(r));
 		}
 		const f = this.fileLoadPlugins(wrapped);
-
-		f.addOnInvalidate(c => {
-			this.context.analyzer?.receive(c);
-		});
-
+		f.addOnInvalidate(c => this.context.analyzer?.receive(c));
 		if(f.path() === FlowrFile.INLINE_PATH) {
 			this.inlineFiles.push(f);
 		} else {
 			this.files.set(RPath.of(f.path()), f);
 			this.caseIndex = undefined;
 		}
-
-		if(f.roles) {
-			for(const r of f.roles) {
-				this.byRole[r].push(f as never);
-			}
-		}
-
+		f.roles?.forEach(r => this.byRole[r].push(f as never));
 		this.projectKindCache = undefined;
 		return f;
 	}
@@ -506,21 +443,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	private fileIndex(): ReadonlyMap<string, ReadonlyMap<string, FilePath>> {
 		if(this.caseIndex === undefined) {
-			const index = new Map<string, Map<string, FilePath>>();
-			for(const file of this.files.values()) {
-				const f = file.path();
-				const dir = RPath.dirname(f).toLowerCase();
-				let entries = index.get(dir);
-				if(entries === undefined) {
-					entries = new Map<string, FilePath>();
-					index.set(dir, entries);
-				}
-				const base = RPath.basename(f).toLowerCase();
-				if(!entries.has(base)) {
-					entries.set(base, f);
-				}
-			}
-			this.caseIndex = index;
+			const paths = Map.groupBy(this.files.values().map(file => file.path()), f => RPath.dirname(f).toLowerCase());
+			this.caseIndex = new Map(paths.entries().map(([dir, fs]) => [dir, new Map(fs.toReversed().map(f => [RPath.basename(f).toLowerCase(), f]))]));
 		}
 		return this.caseIndex;
 	}
@@ -544,11 +468,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public exists(p: string, ignoreCase: boolean): string | undefined {
 		try {
-			if(!ignoreCase) {
-				return this.hasFile(p) ? p : undefined;
-			}
-			if(this.hasFile(p)) {
-				return p;
+			const has = this.hasFile(p);
+			if(has || !ignoreCase) {
+				return has ? p : undefined;
 			}
 			const file = RPath.basename(p).toLowerCase();
 			// try to find in local known files first
@@ -631,13 +553,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		guard(file !== undefined && file !== null, `File ${r.content} not found in context.`);
 
 		const content = file.content();
-		return {
-			r: {
-				request: 'text',
-				content: typeof content === 'string' ? content : '',
-			},
-			path: file.path()
-		};
+		return { r: { request: 'text', content: typeof content === 'string' ? content : '' }, path: file.path() };
 	}
 
 	/**
@@ -654,25 +570,18 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public datasetObjects(dataset: string): readonly string[] {
 		for(const file of this.getFilesByRole(FileRole.Data)) {
-			if(file instanceof FlowrDataListFile) {
-				const objects = file.objectsOf(dataset);
-				if(objects.length > 0) {
-					return objects;
-				}
+			const objects = file instanceof FlowrDataListFile ? file.objectsOf(dataset) : [];
+			if(objects.length > 0) {
+				return objects;
 			}
 		}
 		return [];
 	}
 
 	public sysdataObjects(): readonly SysdataObject[] {
-		const objects: SysdataObject[] = [];
-		for(const file of this.getFilesByRole(FileRole.Data)) {
-			if(file instanceof FlowrSysdataFile) {
-				objects.push(...file.content());
-			}
-		}
-		return objects;
+		return this.getFilesByRole(FileRole.Data).flatMap(file => file instanceof FlowrSysdataFile ? file.content() : []);
 	}
+
 
 	public getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role] {
 		return this.byRole[role];

@@ -1,6 +1,7 @@
 import { assert, describe, test, vi } from 'vitest';
 import { formatLints, LinterOutputFormat } from '../../../src/linter/linter-output';
-import type { LinterQueryResult } from '../../../src/queries/catalog/linter-query/linter-query-format';
+import { LinterQueryDefinition, type LinterQueryResult } from '../../../src/queries/catalog/linter-query/linter-query-format';
+import { voidFormatter } from '../../../src/util/text/ansi';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
 /** the parts of a sarif log this suite asserts on */
@@ -191,5 +192,29 @@ describe('Linter output', () => {
 		assert.deepStrictEqual(Object.values(LinterOutputFormat), ['text', 'sarif', 'github']);
 		assert.isUndefined(formatLints(undefinedSymbol(LintingResultCertainty.Certain), LinterOutputFormat.Text, '1.2.3'));
 		assert.isDefined(formatLints(undefinedSymbol(LintingResultCertainty.Certain), LinterOutputFormat.Sarif, '1.2.3'));
+	});
+	describe('summary of rules without findings', () => {
+		/* an analyzer that asked for code, so no project root can be missing */
+		const analyzer = { inspectContext: () => ({ files: { hasRequests: () => true } }) } as never;
+		const empty = { results: [], '.meta': { searchTimeMs: 0, processTimeMs: 0 } };
+		function summary(results: LinterQueryResult['results']): string[] {
+			const lines: string[] = [];
+			LinterQueryDefinition.asciiSummarizer(voidFormatter, analyzer, { results, '.meta': { timing: 0 } } as never, lines);
+			return lines.slice(1);
+		}
+		test('few rules without findings are listed one by one', () => {
+			const lines = summary({ 'dead-code': empty, 'absolute-file-paths': empty } as never);
+			assert.deepStrictEqual(lines, ['   ╰ Dead Code (dead-code): no findings', '   ╰ Absolute Paths (absolute-file-paths): no findings']);
+		});
+		test('many rules without findings collapse to a count after those with findings', () => {
+			const lines = summary({ 'dead-code': empty, 'absolute-file-paths': empty, 'network-functions': empty, 'seeded-randomness': empty, ...undefinedSymbol(LintingResultCertainty.Certain) } as never);
+			assert.strictEqual(lines[0], '   ╰ Undefined Symbol (undefined-symbol):');
+			assert.strictEqual(lines.at(-1), '   ╰ +4 rules with no findings (:query* to see all)');
+			assert.isFalse(lines.some(l => l.includes('dead-code')));
+		});
+		test('all rules without findings', () => {
+			const lines = summary({ 'dead-code': empty, 'absolute-file-paths': empty, 'network-functions': empty, 'seeded-randomness': empty } as never);
+			assert.deepStrictEqual(lines, ['   ╰ all 4 rules with no findings (:query* to see all)']);
+		});
 	});
 });

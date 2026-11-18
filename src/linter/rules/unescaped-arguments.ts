@@ -1,24 +1,33 @@
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
-import type { ArgProps, FnSig, PropSelector } from '../../dataflow/environments/built-in-props';
-import { ArgProp, CallProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
-import { Identifier, PkgName } from '../../dataflow/environments/identifier';
+import {
+	type ArgProps,
+	type FnSig,
+	type PropSelector,
+	ArgProp,
+	CallProp,
+	SemanticCallTag
+} from '../../dataflow/environments/built-in-props';
+import { DefaultMap } from '../../util/collections/defaultmap';
+import { type BrandedIdentifier, Identifier, PkgName } from '../../dataflow/environments/identifier';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { FunctionArgument } from '../../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
+import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
+import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { CallTargets } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { contentFreeFunctions, narrowingFunctions } from '../../queries/catalog/input-sources-query/input-source-functions';
-import type { InputSource, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
-import { InputTraceType, InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
+import {
+	type InputSource,
+	type InputSources,
+	InputTraceType,
+	InputType
+} from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { RConstant, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
+import { RRole } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElement } from '../../search/flowr-search';
@@ -28,15 +37,19 @@ import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { Record } from '../../util/record';
-import type { LintingResult, LintingRule, LintQuickFix } from '../linter-format';
-import { prettyPrint, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import {
+	type LintingResult,
+	type LintingRule,
+	type LintQuickFix,
+	prettyPrint,
+	LintingResultCertainty,
+	LintingRuleCertainty
+} from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { uniqueArray } from '../../util/collections/arrays';
 
-/**
- * The kinds of critical operations to check for unescaped arguments.
- */
+/** The kinds of critical operations to check for unescaped arguments. */
 export enum UnescapedArgumentCategory {
 	/** Functions performing system commands, e.g. `system` */
 	System = 'system',
@@ -63,24 +76,13 @@ const AcceptedInputs: readonly InputType[] = [InputType.Constant, InputType.Deri
 const UncertainInputs: readonly InputType[] = [InputType.Unknown, InputType.Parameter, InputType.Scope];
 
 interface UnescapedArgumentsEntry {
-	/**
-	 * The call properties of critical functions calls that perform a critical operation
-	 * @see {@link PropSelector}
-	 */
+	/** The call properties ({@link PropSelector}) of critical functions calls that perform a critical operation */
 	readonly criticalCalls: PropSelector;
-	/**
-	 * The argument properties of critical arguments of critical functions
-	 * @see {@link ArgProps}
-	 */
+	/** The argument properties ({@link ArgProps}) of critical arguments of critical functions */
 	readonly criticalArgs:  ArgProps;
-	/**
-	 * The functions that escape an unescaped argument of a critical function
-	 */
+	/** The functions that escape an unescaped argument of a critical function */
 	readonly sanitizers:    readonly Identifier[];
-	/**
-	 * The function to wrap an unescaped expression in as quick fix
-	 * @see {@link EscapeQuickFix}
-	 */
+	/** The function to wrap an unescaped expression in as quick fix, see {@link EscapeQuickFix} */
 	readonly quickFix?:     EscapeQuickFix;
 	/** Methods whose unnamed arguments are critical, called on an object by `$` */
 	readonly methods?:      readonly CriticalMethod[];
@@ -123,9 +125,7 @@ export interface UnescapedArgumentsMetadata extends MergeableRecord {
 }
 
 export interface UnescapedArgumentsConfig extends MergeableRecord {
-	/**
-	 * The target, critical functions, critical arguments, sanitizers and quick fixes for each category
-	 */
+	/** The target, critical functions, critical arguments, sanitizers and quick fixes for each category */
 	readonly categories:         Record<UnescapedArgumentCategory, UnescapedArgumentsEntry>;
 	/**
 	 * The categories that should be disabled and not checked
@@ -137,9 +137,7 @@ export interface UnescapedArgumentsConfig extends MergeableRecord {
 	 * @see {@link InputType}
 	 */
 	readonly acceptedInputs:     readonly InputType[];
-	/**
-	 * The maximum depth to descent to find unescaped parts of an argument
-	 */
+	/** The maximum depth to descent to find unescaped parts of an argument */
 	readonly maxDecentDepth:     number;
 }
 
@@ -180,34 +178,27 @@ function getEnabledCriticalCalls(config: UnescapedArgumentsConfig, index: BuiltI
 }
 
 /** Gets all critical arguments of critical function calls in the data flow graph */
-function getCriticalTargets(
-	elements: readonly FlowrSearchElement<ParentInformation>[],
-	graph: DataflowGraph,
-	config: UnescapedArgumentsConfig,
-	builtIns: BuiltInIndex
-): CriticalTarget[] {
+function getCriticalTargets(elements: readonly FlowrSearchElement<ParentInformation>[], graph: DataflowGraph, config: UnescapedArgumentsConfig, builtIns: BuiltInIndex): CriticalTarget[] {
 	const criticalCalls = Map.groupBy(getEnabledCriticalCalls(config, builtIns), call => Identifier.getName(call.name));
 	const targets: CriticalTarget[] = [];
-	const seen = new Set<string>();
 	const ids = new Set(elements.map(({ node }) => node.info.id));
 	/* calls of an alias (`s <- system; s(x)`) link to the built-in they resolve to */
-	const aliases = new Map(graph.verticesOfType(VertexType.FunctionCall).map(([id]) => [id, new Set([...linkedBuiltIns(graph, id, EdgeType.Calls), ...wrappedBuiltIns(graph, id)])] as const));
-	for(const [id, names] of aliases) {
-		if(names.values().some(name => criticalCalls.has(name))) {
-			ids.add(id);
-		}
+	const aliases = new Map(graph.verticesOfType(VertexType.FunctionCall).map(([id]) => [id, new Set<BrandedIdentifier>([...linkedBuiltIns(graph, id, EdgeType.Calls), ...wrappedBuiltIns(graph, id)])] as const));
+	for(const [id] of aliases.entries().filter(([, names]) => names.values().some(name => criticalCalls.has(name)))) {
+		ids.add(id);
 	}
-	const locate = (arg: NodeId) => {
+	function locate(arg: NodeId) {
 		const node = graph.idMap?.get(arg);
 		const range = RNode.span(node);
 		return range === undefined || node === undefined ? undefined : SourceLocation.from(range, node.info.file);
-	};
+	}
 	for(const id of ids) {
 		const call = graph.getVertex(id);
 		if(!DfgVertex.isFunctionCall(call)) {
 			continue;
 		}
-		const aliased = aliases.get(id) ?? new Set<string>();
+		const aliased = aliases.get(id) ?? new Set<BrandedIdentifier>();
+		const seen = new DefaultMap<UnescapedArgumentCategory, Set<NodeId>>(() => new Set());
 		for(const { category, name, signature } of [Identifier.getName(call.name), ...aliased].flatMap(n => criticalCalls.get(n) ?? [])) {
 			const viaAlias = !Identifier.matches(name, call.name) && !Identifier.matches(call.name, name);
 			/* a function handed on (`purrr::map(x, system)`) is called where it lands, not here */
@@ -216,9 +207,8 @@ function getCriticalTargets(
 			}
 			for(const arg of FunctionSemantics.call.match.findWithProps(call.args, signature, config.categories[category].criticalArgs)) {
 				const location = locate(arg);
-				const key = `${category}-${call.id}-${arg}`;
-				if(location !== undefined && !seen.has(key)) {
-					seen.add(key);
+				if(location !== undefined && !seen.get(category).has(arg)) {
+					seen.get(category).add(arg);
 					targets.push({ category, call, signature, arg, location });
 				}
 			}
@@ -243,7 +233,7 @@ function methodCalls(graph: DataflowGraph, methods: readonly CriticalMethod[]): 
 		return [];
 	}
 	/* a value made by the constructor, also through a branch or block (`if(a) V8::v8() else ...`) or another alias */
-	const holds = (v: NodeId, receiver: Identifier, depth: number): boolean => {
+	function holds(v: NodeId, receiver: Identifier, depth: number): boolean {
 		const made = graph.getVertex(v);
 		const value = graph.idMap?.get(v);
 		if(DfgVertex.isVariableDefinition(made) || DfgVertex.hasOrigin(made, BuiltInProcName.Assignment)) {
@@ -253,13 +243,13 @@ function methodCalls(graph: DataflowGraph, methods: readonly CriticalMethod[]): 
 		}
 		return DfgVertex.isFunctionCall(made) && (Identifier.matches(made.name, receiver)
 			|| (depth > 0 && Dataflow.targetsOf(graph, v, EdgeType.Returns).some(r => holds(r, receiver, depth - 1))));
-	};
+	}
 	/* the named object where no binding of the program surely shadows it, otherwise what a binding holds */
-	const means = (symbol: RSymbol<ParentInformation>, receiver: Identifier, depth = 4): boolean => {
+	function means(symbol: RSymbol<ParentInformation>, receiver: Identifier, depth = 4): boolean {
 		const defs = Dataflow.targetsOf(graph, symbol.info.id, EdgeType.Reads).filter(d => !NodeId.isBuiltIn(d));
 		return (defs.every(d => graph.getVertex(d)?.cds?.length) && Identifier.matches(symbol.content, receiver))
 			|| (depth > 0 && defs.some(def => Dataflow.targetsOf(graph, def, EdgeType.DefinedBy).some(v => holds(v, receiver, depth))));
-	};
+	}
 	return graph.verticesOfType(VertexType.FunctionCall).flatMap(([id, call]) => {
 		const node = graph.idMap?.get(id);
 		const access = RFunctionCall.isUnnamed(node) ? node.calledFunction : undefined;
@@ -273,13 +263,13 @@ function methodCalls(graph: DataflowGraph, methods: readonly CriticalMethod[]): 
 }
 
 /** The names of the built-ins `id` links to with an edge of the given type, none if it may link to anything else (a closure checked where its body calls them) */
-function linkedBuiltIns(graph: DataflowGraph, id: NodeId, type: EdgeType): string[] {
+function linkedBuiltIns(graph: DataflowGraph, id: NodeId, type: EdgeType): BrandedIdentifier[] {
 	const linked = Dataflow.targetsOf(graph, id, type);
 	return linked.every(NodeId.isBuiltIn) ? linked.map(NodeId.fromBuiltIn) : [];
 }
 
 /** the built-ins handed to the call a called variable holds the result of, as `p` holds `purrr::partial(system)` */
-function wrappedBuiltIns(graph: DataflowGraph, id: NodeId): string[] {
+function wrappedBuiltIns(graph: DataflowGraph, id: NodeId): BrandedIdentifier[] {
 	return Dataflow.targetsOf(graph, id, EdgeType.Reads).flatMap(v => DfgVertex.isVariableDefinition(graph.getVertex(v)) ? Dataflow.targetsOf(graph, v, EdgeType.DefinedBy) : [])
 		.flatMap(w => {
 			const wrapper = graph.getVertex(w);
@@ -299,12 +289,11 @@ function mapInputSourceToArgs(call: DataflowGraphVertexFunctionCall, sources: In
  * Whether anything `start` reads is a parameter of an enclosing function. What the call sites happen to pass says
  * nothing here: the function escapes its parameter, and it is one call away from being handed anything at all.
  */
-function readsParameter(graph: DataflowGraph, start: NodeId, sanitizers: ReadonlySet<string>): boolean {
+function readsParameter(graph: DataflowGraph, start: NodeId, sanitizers: ReadonlySet<BrandedIdentifier>): boolean {
 	const seen = new Set<NodeId>([start]);
 	const queue = [start];
-	while(queue.length > 0) {
-		const id = queue.pop() as NodeId;
-		if(graph.idMap?.get(id)?.info.role === RoleInParent.ParameterName) {
+	for(let id; (id = queue.pop()) !== undefined;) {
+		if(RRole.isParameterName(id, graph.idMap)) {
 			return true;
 		}
 		const vertex = graph.getVertex(id);
@@ -334,18 +323,10 @@ function isCertainlyCritical(source: InputSource, config: UnescapedArgumentsConf
 	return source.types.some(type => !config.acceptedInputs.includes(type) && !UncertainInputs.includes(type));
 }
 
-/**
- * Gets all unescaped sources for the critical target calls of the given category
- */
-async function getUnescapedSources(
-	category: UnescapedArgumentCategory,
-	targets: readonly CriticalTarget[],
-	config: UnescapedArgumentsConfig,
-	data: ReadonlyFlowrAnalysisProvider,
-	graph: DataflowGraph
-): Promise<Map<CriticalTarget, InputSource[]>> {
+/** Gets all unescaped sources for the critical target calls of the given category */
+async function getUnescapedSources(category: UnescapedArgumentCategory, targets: readonly CriticalTarget[], config: UnescapedArgumentsConfig, data: ReadonlyFlowrAnalysisProvider, graph: DataflowGraph): Promise<Map<CriticalTarget, InputSource[]>> {
 	const sanitizers = config.categories[category].sanitizers ?? [];
-	const sanitizerNames = new Set(sanitizers.map(call => Identifier.getName(call)));
+	const sanitizerNames = new Set(sanitizers.map(Identifier.getName));
 	const builtIns = data.inspectContext().env.builtInIndex;
 	/* a count or a logical carries nothing that could be injected, even when it depends on the input */
 	const queryConfig = { narrowing: narrowingFunctions(builtIns), sanitizers: [...contentFreeFunctions(builtIns), ...sanitizers] };
@@ -354,8 +335,7 @@ async function getUnescapedSources(
 
 	while(entries.length > 0) {
 		const criteria = uniqueArray(entries.map(entry => SlicingCriterion.fromId(entry.call)));
-		const queryResult = await data.query([{ type: 'input-sources', criterion: criteria, config: queryConfig }]);
-		const classified = queryResult['input-sources']?.results ?? {};
+		const classified = (await data.query({ type: 'input-sources', criterion: criteria, config: queryConfig })).results;
 		const next: CriticalTargetEntry[] = [];
 		for(const entry of entries) {
 			const call = graph.getVertex(entry.call);
@@ -401,12 +381,7 @@ function escapeFix(fix: EscapeQuickFix, target: CriticalTarget, source: InputSou
 		leading = `${first}, `;
 	}
 	const call = Identifier.toString(fix.call);
-	return {
-		type:        'replace',
-		loc:         location,
-		description: `Escape the value with \`${call}\``,
-		replacement: `${call}(${leading}${lexeme})`
-	};
+	return { type: 'replace', loc: location, description: `Escape the value with \`${call}\``, replacement: `${call}(${leading}${lexeme})` };
 }
 
 function createResult(target: CriticalTarget, sources: InputSource[], config: UnescapedArgumentsConfig, idMap: AstIdMap): UnescapedArgumentsResult {
@@ -454,16 +429,11 @@ export const UNESCAPED_ARGUMENTS = {
 				}
 			}
 		}
-		return {
-			results,
-			'.meta': { totalCriticalArguments: targets.length, totalEscapedArguments: escaped }
-		};
+		return { results, '.meta': { totalCriticalArguments: targets.length, totalEscapedArguments: escaped } };
 	},
 	prettyPrint: prettyPrint(
-		result =>
-			`Unescaped ${result.category} argument of \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)}`,
-		result =>
-			`The argument of \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)} reaches a ${result.category} call unescaped (input: ${result.input.join(', ')})`
+		result => `Unescaped ${result.category} argument of \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)}`,
+		result => `The argument of \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)} reaches a ${result.category} call unescaped (input: ${result.input.join(', ')})`
 	),
 	info: {
 		name:          'Unescaped Arguments',
@@ -481,46 +451,26 @@ export const UNESCAPED_ARGUMENTS = {
 				[UnescapedArgumentCategory.Eval]: {
 					criticalCalls: [SemanticCallTag.Eval, CallProp.Lang],
 					criticalArgs:  ArgProp.Injectable,
-					sanitizers:    [
-						Identifier.from(['match.arg', PkgName.Base]),
-						Identifier.from(['make.names', PkgName.Base]),
-						Identifier.from(['arg_match', PkgName.Rlang])
-					]
+					sanitizers:    [...Identifier.fromAll(PkgName.Base, ['match.arg', 'make.names']), Identifier.from(['arg_match', PkgName.Rlang])]
 				},
 				[UnescapedArgumentCategory.Database]: {
 					criticalCalls: SemanticCallTag.Database,
 					criticalArgs:  ArgProp.Injectable,
-					sanitizers:    [
-						Identifier.from(['dbQuoteLiteral', PkgName.Dbi]),
-						Identifier.from(['dbQuoteString', PkgName.Dbi]),
-						Identifier.from(['dbQuoteIdentifier', PkgName.Dbi]),
-						Identifier.from(['sqlInterpolate', PkgName.Dbi]),
-						Identifier.from(['glue_sql', PkgName.Glue]),
-						Identifier.from(['glue_data_sql', PkgName.Glue])
-					],
-					quickFix: { call: Identifier.from(['dbQuoteLiteral', PkgName.Dbi]), firstArg: ArgProp.Handle, partsOnly: true }
+					sanitizers:    [...Identifier.fromAll(PkgName.Dbi, ['dbQuoteLiteral', 'dbQuoteString', 'dbQuoteIdentifier', 'sqlInterpolate']), ...Identifier.fromAll(PkgName.Glue, ['glue_sql', 'glue_data_sql'])],
+					quickFix:      { call: Identifier.from(['dbQuoteLiteral', PkgName.Dbi]), firstArg: ArgProp.Handle, partsOnly: true }
 				},
 				[UnescapedArgumentCategory.Html]: {
 					criticalCalls: SemanticCallTag.Html,
 					criticalArgs:  ArgProp.Injectable,
-					sanitizers:    [
-						Identifier.from(['htmlEscape', PkgName.HtmlTools]),
-						Identifier.from(['html_escape', 'xfun']),
-						Identifier.from(['URLencode', PkgName.Utils])
-					],
-					quickFix: { call: Identifier.from(['htmlEscape', PkgName.HtmlTools]) }
+					sanitizers:    [Identifier.from(['htmlEscape', PkgName.HtmlTools]), Identifier.from(['html_escape', 'xfun']), Identifier.from(['URLencode', PkgName.Utils])],
+					quickFix:      { call: Identifier.from(['htmlEscape', PkgName.HtmlTools]) }
 				},
 				[UnescapedArgumentCategory.JavaScript]: {
 					criticalCalls: SemanticCallTag.JavaScript,
 					criticalArgs:  ArgProp.Injectable,
-					sanitizers:    [
-						Identifier.from(['toJSON', PkgName.Jsonlite]),
-						Identifier.from(['serializeJSON', PkgName.Jsonlite]),
-						Identifier.from(['toJSON', 'RJSONIO']),
-						Identifier.from(['toJSON', 'rjson'])
-					],
-					quickFix: { call: Identifier.from(['toJSON', PkgName.Jsonlite]), partsOnly: true },
-					methods:  [
+					sanitizers:    [...Identifier.fromAll(PkgName.Jsonlite, ['toJSON', 'serializeJSON']), ...Identifier.fromAllIn(['RJSONIO', 'rjson'], ['toJSON'])],
+					quickFix:      { call: Identifier.from(['toJSON', PkgName.Jsonlite]), partsOnly: true },
+					methods:       [
 						...['eval', 'call', 'source'].flatMap(method => Identifier.fromAll('V8', ['v8', 'new_context']).map(receiver => ({ receiver, method }))),
 						...Identifier.fromAllIn([PkgName.HtmlTools, PkgName.Shiny], ['tags']).map(receiver => ({ receiver, method: 'script' }))
 					]

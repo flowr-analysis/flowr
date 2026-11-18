@@ -2,8 +2,7 @@ import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role'
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { FlowrFile } from '../../project/context/flowr-file';
-import type { MermaidGraphPrinterInfo } from './info';
-import { MermaidDefaultMarkStyle } from './info';
+import { type MermaidGraphPrinterInfo, MermaidDefaultMarkStyle } from './info';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Mermaid } from './mermaid';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -17,9 +16,7 @@ function identifyMermaidDirection(prefix: string): string {
 	return 'TD';
 }
 
-/**
- * Serialize the normalized AST to mermaid format
- */
+/** Serialize the normalized AST to mermaid format */
 export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeWithParent, { prefix = 'flowchart TD\n', markStyle = MermaidDefaultMarkStyle, includeOnlyIds, mark }: MermaidGraphPrinterInfo = {}): string {
 	let output = prefix;
 	function showNode(n: RNodeWithParent): void {
@@ -76,9 +73,7 @@ export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeW
 	return output;
 }
 
-/**
- * Use mermaid to visualize the normalized AST.
- */
+/** Use mermaid to visualize the normalized AST. */
 export function normalizedAstToMermaidUrl(ast: RProject<ParentInformation> | RNodeWithParent, info?: MermaidGraphPrinterInfo): string {
 	return Mermaid.codeToUrl(normalizedAstToMermaid(ast, info ?? {}));
 }

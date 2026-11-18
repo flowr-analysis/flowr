@@ -1,6 +1,5 @@
 import objectHash from 'object-hash';
-import type { Environment, REnvironmentInformation } from '../../dataflow/environments/environment';
-import { isDefaultBuiltInEnvironment } from '../../dataflow/environments/environment';
+import { type Environment, type REnvironmentInformation, isDefaultBuiltInEnvironment } from '../../dataflow/environments/environment';
 import type { IdentifierDefinition } from '../../dataflow/environments/identifier';
 import { Frame, type MemoryView } from '../../dataflow/environments/frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -34,7 +33,7 @@ function definitionHash(definition: IdentifierDefinition): Fingerprint {
 }
 
 /** digests plain strings and primitives as one string, which spares {@link objectHash} a reflective walk (and works in the browser, where `crypto` is stubbed) */
-function digest(parts: readonly (string | number | boolean | undefined)[]): Fingerprint {
+function digest(parts: readonly unknown[]): Fingerprint {
 	return objectHash(JSON.stringify(parts), HashOptions);
 }
 

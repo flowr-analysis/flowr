@@ -148,10 +148,7 @@ export function createSecretAnalysis({ credentialNamePattern = CredentialNamePat
 		.on(TaintFnCategory.pureComputer, strongestSecret)
 		.on(TaintFnCategory.pureShape, () => Top)
 		.from(
-			{
-				identifier: ['Sys.getenv', PkgName.Base],
-				condition:  { argValues: [{ pos: 0, name: 'x' }], conditionFn: credentialNameTaint }
-			},
+			{ identifier: ['Sys.getenv', PkgName.Base], condition: { argValues: [{ pos: 0, name: 'x' }], conditionFn: credentialNameTaint } },
 			{
 				identifier: [
 					...fns('keyring: key_get key_get_raw; config: get; base: readRenviron; httr: oauth2.0_token oauth1.0_token oauth_service_token; gargle: token_fetch credentials_service_account credentials_user_oauth2 credentials_app_default'),
@@ -184,10 +181,7 @@ export function createSecretAnalysis({ credentialNamePattern = CredentialNamePat
 				identifier: [...fns('httr: authenticate add_headers config'), ...sinksOf(s => s.class === SecretSinkClass.Auth)],
 				condition:  { allArgs: true, conditionFn: (_args, taints) => isSecret(taints) ? Credential : Top }
 			},
-			{
-				identifier: sinksOf(s => s.returns === 'request'),
-				condition:  { allArgs: true, conditionFn: strongestSecret }
-			},
+			{ identifier: sinksOf(s => s.returns === 'request'), condition: { allArgs: true, conditionFn: strongestSecret } },
 			{
 				identifier: [...Performers, ...sinksOf(s => s.returns === 'response')],
 				condition:  { argValues: [{ pos: 0, name: 'url' }], allArgs: true, conditionFn: responseTaint }

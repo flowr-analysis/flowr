@@ -6,7 +6,7 @@ describe('(AST) Retriever', () => {
 	describe('helper functions', () => {
 		describe('removeRQuotes', () => {
 			describe('extract', () => {
-				const positive = (source: string): void => {
+				function positive(source: string): void {
 					describe(source === '' ? '<empty>' : `${source}`, () => {
 						for(const letter of ['"', "'", '']) {
 							const str = `${letter}${source}${letter}`;
@@ -15,7 +15,7 @@ describe('(AST) Retriever', () => {
 							});
 						}
 					});
-				};
+				}
 				positive('');
 				positive('a');
 				positive('ReallyLongWord');

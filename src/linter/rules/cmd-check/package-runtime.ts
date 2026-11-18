@@ -6,7 +6,7 @@ import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation } from '../../../util/range';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier } from '../../../dataflow/environments/identifier';
 import { namesWith } from '../../linter-util';
 import { ArgProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import { FileRole } from '../../../project/context/flowr-file';
@@ -16,10 +16,10 @@ import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import { printer, type CmdCheckResult, type PackageInfo, isStandardPackage, projectNodes } from './cmd-check-util';
+import { printer, type CmdCheckResult, type PackageInfo, isStandardPackage, projectNodes, firstErrorRow } from './cmd-check-util';
 import type { PackageFiles } from './package-files';
 import { onPackageFiles } from './file-checks';
 import { packageCode } from './package-code';
@@ -77,13 +77,13 @@ export interface PackageRuntimeConfig extends MergeableRecord {
 export type PackageRuntimeMetadata = MergeableRecord;
 
 /** calls binding names in ways a scan of the assignments does not see, so an export may be defined after all */
-const DynamicDefiners: ReadonlySet<string> = new Set(['assign', 'delayedAssign', 'makeActiveBinding', 'eval', 'evalq', 'sys.source', 'list2env', 'source']);
+const DynamicDefiners: ReadonlySet<BrandedIdentifier> = new Set(['assign', 'delayedAssign', 'makeActiveBinding', 'eval', 'evalq', 'sys.source', 'list2env', 'source']);
 
 /** calls whose definitions put names into the namespace no scan of the code sees, such as the `.__C__` metadata of a class */
-const MetadataDefiners: ReadonlySet<string> = new Set(['setClass', 'setClassUnion', 'setRefClass', 'setGeneric', 'setMethod', 'setValidity', 'setOldClass']);
+const MetadataDefiners: ReadonlySet<BrandedIdentifier> = new Set(['setClass', 'setClassUnion', 'setRefClass', 'setGeneric', 'setMethod', 'setValidity', 'setOldClass']);
 
 interface Definitions {
-	readonly names:    ReadonlySet<string>
+	readonly names:    ReadonlySet<BrandedIdentifier>
 	/** whether the code may define names that no assignment states */
 	readonly dynamic:  boolean
 	/**
@@ -96,11 +96,11 @@ interface Definitions {
 }
 
 /** the names the top level of the package code binds, including the generics `setGeneric` creates */
-function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly string[], declaring: ReadonlySet<string>): Definitions {
-	const names = new Set<string>(data);
+function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly BrandedIdentifier[], declaring: ReadonlySet<BrandedIdentifier>): Definitions {
+	const names = new Set<BrandedIdentifier>(data);
 	let dynamic = false;
 	let metadata = false;
-	const topLevelCalls: string[] = [];
+	const topLevelCalls: BrandedIdentifier[] = [];
 	const idMap = ast.idMap;
 	for(const node of projectNodes(ast)) {
 		if(!pkg.isPackageCode(node.info.file)) {
@@ -108,7 +108,7 @@ function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly stri
 		}
 		if(RFunctionCall.isNamed(node)) {
 			const fn = Identifier.getName(node.functionName.content);
-			const parentNode = node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
+			const parentNode = RNode.directParent(node, idMap);
 			if(RExpressionList.is(parentNode) && parentNode.info.parent === undefined) {
 				topLevelCalls.push(fn);
 			}
@@ -126,7 +126,7 @@ function definitionsOf(ast: NormalizedAst, pkg: PackageInfo, data: readonly stri
 		if(!RBinaryOp.is(node) || !['<-', '=', '->', '<<-'].includes(node.operator)) {
 			continue;
 		}
-		const parent = node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
+		const parent = RNode.directParent(node, idMap);
 		if(parent !== undefined && !(RExpressionList.is(parent) && parent.info.parent === undefined)) {
 			continue;
 		}
@@ -155,7 +155,7 @@ function exportsAnything(ns: NamespaceInfo, matches: (pattern: string) => boolea
  * which is fine only for a package that `shipsData`, as its data sets are what it offers.
  * A pattern is only judged where the definitions are known (none `hidden` in binary files) and it reads the same in R and JavaScript.
  */
-function exportChecks(ns: NamespaceInfo, defs: Definitions, config: PackageRuntimeConfig, hidden: boolean, shipsData: boolean, at: (name: string) => SourceLocation, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
+function exportChecks(ns: NamespaceInfo, defs: Definitions, config: PackageRuntimeConfig, { hidden, shipsData }: { readonly hidden: boolean, readonly shipsData: boolean }, at: (name: BrandedIdentifier) => SourceLocation, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
 	const certainty = defs.dynamic ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain;
 	const judged = !hidden && !defs.opaque && !defs.metadata;
 	const names = [...defs.names, ...NamespaceInternals];
@@ -185,25 +185,15 @@ function lineMatching(text: string | undefined, pattern: RegExp): number | undef
 }
 
 /** the line of the first NAMESPACE directive mentioning `name` */
-function lineOf(text: string | undefined, name: string): number | undefined {
+function lineOf(text: string | undefined, name: BrandedIdentifier | BrandedNamespace): number | undefined {
 	return lineMatching(text, new RegExp(`(^|[(,\\s"'\`])${escapeRegex(name)}([)\\s,"'\`]|$)`));
 }
 
 /** the first row with a syntax error, `undefined` if the code parses */
 function syntaxErrorRow(code: string, data: ReadonlyFlowrAnalysisProvider): number | undefined {
 	try {
-		const tree = data.parseStandalone(code);
-		if(!tree.rootNode.hasError) {
-			return undefined;
-		}
-		const stack = [tree.rootNode];
-		for(let node = stack.pop(); node !== undefined; node = stack.pop()) {
-			if(node.isError || node.isMissing) {
-				return node.startPosition.row;
-			}
-			stack.push(...node.children.toReversed());
-		}
-		return 0;
+		const root = data.parseStandalone(code).rootNode;
+		return root.hasError ? firstErrorRow(root) ?? 0 : undefined;
 	} catch{
 		return undefined;
 	}
@@ -223,7 +213,7 @@ function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definition
 	const text = nsFile.rawText?.();
 	const relative = path.relative(files.root, nsFile.path()).split(path.sep).join('/');
 	/* the objects of `R/sysdata.rda` live in the namespace as well, under names only the binary file knows */
-	exportChecks(ns, defs, config, files.entries.some(e => e.relative === 'R/sysdata.rda'), shipsData, pattern => files.locate(relative, pattern === '' ? undefined : lineOf(text, pattern) ?? lineMatching(text, /^\s*exportPattern\s*\(/)), add);
+	exportChecks(ns, defs, config, { hidden: files.entries.some(e => e.relative === 'R/sysdata.rda'), shipsData }, pattern => files.locate(relative, pattern === '' ? undefined : lineOf(text, pattern) ?? lineMatching(text, /^\s*exportPattern\s*\(/)), add);
 	if(defs.opaque) {
 		return;
 	}
@@ -270,7 +260,7 @@ function namespaceChecks(files: PackageFiles, pkg: PackageInfo, defs: Definition
 	}
 }
 
-function testAndVignetteChecks(files: PackageFiles, pkg: PackageInfo, data: ReadonlyFlowrAnalysisProvider, config: PackageRuntimeConfig, writers: ReadonlyMap<string, ReadonlySet<string>>, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
+function testAndVignetteChecks(files: PackageFiles, pkg: PackageInfo, data: ReadonlyFlowrAnalysisProvider, config: PackageRuntimeConfig, writers: ReadonlyMap<BrandedIdentifier, ReadonlySet<BrandedIdentifier>>, add: (r: Omit<PackageRuntimeResult, 'involvedId'>) => void): void {
 	const entries = files.entries.filter(e => !e.isDirectory).map(e => e.relative);
 	const testFiles = entries.filter(f => /^tests\/[^/]+\.[rR]$/.test(f));
 	const testthatFiles = entries.filter(f => /^tests\/testthat\/test[^/]*\.[rR]$/.test(f));
@@ -374,7 +364,7 @@ export const PACKAGE_RUNTIME = {
 			add({ certainty: LintingResultCertainty.Certain, loc: files.locate(installed), kind: 'not-source-package', message: `${installed} belongs to an installed package, R CMD check needs the package sources` });
 		}
 		const index = ctx.env.builtInIndex;
-		const writers = new Map<string, Set<string>>(namesWith(index, SemanticCallTag.Writes).values().map(n => [n, new Set<string>()]));
+		const writers = new Map<BrandedIdentifier, Set<BrandedIdentifier>>(namesWith(index, SemanticCallTag.Writes).values().map(n => [n, new Set<BrandedIdentifier>()]));
 		for(const p of index.params(ArgProp.Resource)) {
 			writers.get(Identifier.getName(p.call))?.add(p.name);
 		}
@@ -387,11 +377,7 @@ export const PACKAGE_RUNTIME = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds what makes installing, loading, or running the package fail without doing so: undefined exports, export patterns matching nothing, a NAMESPACE exporting nothing, S3 methods without a function, bad NAMESPACE imports, a package attaching itself, tests that never run, test or vignette code that does not parse, missing vignette metadata, and files written into the working directory.',
-		defaultConfig: () => ({
-			checkWrites:    true,
-			checkExports:   true,
-			requireExports: true
-		})
+		defaultConfig: () => ({ checkWrites: true, checkExports: true, requireExports: true })
 	}
 } as const satisfies LintingRule<PackageRuntimeResult, PackageRuntimeMetadata, PackageRuntimeConfig>;
 

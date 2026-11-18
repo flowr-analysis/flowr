@@ -6,9 +6,7 @@ import { FlowrNamespaceFile } from './files/flowr-namespace-file';
 
 const NamespaceFilePattern = /^NAMESPACE(\.txt)?$/i;
 
-/**
- * This plugin provides support for R `NAMESPACE` files.
- */
+/** This plugin provides support for R `NAMESPACE` files. */
 export class FlowrAnalyzerNamespaceFilesPlugin extends FlowrAnalyzerPatternFilePlugin {
 	public readonly name = 'flowr-analyzer-namespace-file-plugin';
 	public readonly description = 'Reads NAMESPACE files into the NAMESPACE format.';

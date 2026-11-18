@@ -1,13 +1,9 @@
-/**
- * The Top symbol to represent the Top element of complete lattices (e.g. of abstract domains).
- */
+/** The Top symbol to represent the Top element of complete lattices (e.g. of abstract domains). */
 export type Top = typeof Top;
 export const Top = Symbol('top');
 export const TopSymbol = '⊤';
 
-/**
- * The Bottom symbol to represent the Bottom element of complete lattices (e.g. of abstract domains).
- */
+/** The Bottom symbol to represent the Bottom element of complete lattices (e.g. of abstract domains). */
 export type Bottom = typeof Bottom;
 export const Bottom = Symbol('bottom');
 export const BottomSymbol = '⊥';
@@ -20,64 +16,40 @@ export const BottomSymbol = '⊥';
  * @template Lift  - Type of the current element in the lattice (defaults to `Value | Top | Bot`)
  */
 export interface Lattice<Value, Top, Bot, Lift extends Value | Top | Bot = Value | Top | Bot> {
-	/**
-	 * The current abstract value of the lattice.
-	 */
+	/** The current abstract value of the lattice. */
 	get value(): Lift;
 
-	/**
-	 * Creates an abstract value of the lattice for a given value.
-	 */
+	/** Creates an abstract value of the lattice for a given value. */
 	create(value: Value | Top | Bot): this;
 
-	/**
-	 * Gets the Top element (greatest element) of the complete lattice (should additionally be provided as static function).
-	 */
+	/** Gets the Top element (greatest element) of the complete lattice (should additionally be provided as static function). */
 	top(): this & Lattice<Value, Top, Bot, Top>;
 
-	/**
-	 * Gets the Bottom element (least element) of the complete lattice (should additionally be provided as static function).
-	 */
+	/** Gets the Bottom element (least element) of the complete lattice (should additionally be provided as static function). */
 	bottom(): this & Lattice<Value, Top, Bot, Bot>;
 
-	/**
-	 * Checks whether the current abstract value equals to another abstract value.
-	 */
+	/** Checks whether the current abstract value equals to another abstract value. */
 	equals(other: this): boolean;
 
-	/**
-	 * Checks whether the current abstract value is less than or equal to another abstract value with respect to the partial order of the lattice.
-	 */
+	/** Checks whether the current abstract value is less than or equal to another abstract value with respect to the partial order of the lattice. */
 	leq(other: this): boolean;
 
-	/**
-	 * Joins the current abstract value with another abstract value by creating the least upper bound (LUB) in the lattice.
-	 */
+	/** Joins the current abstract value with another abstract value by creating the least upper bound (LUB) in the lattice. */
 	join(other: this | Value | Top | Bot): this;
 
-	/**
-	 * Meets the current abstract value with another abstract value by creating the greatest lower bound (GLB) in the lattice.
-	 */
+	/** Meets the current abstract value with another abstract value by creating the greatest lower bound (GLB) in the lattice. */
 	meet(other: this | Value | Top | Bot): this;
 
-	/**
-	 * Converts the lattice into a JSON serializable value.
-	 */
+	/** Converts the lattice into a JSON serializable value. */
 	toJSON(): unknown;
 
-	/**
-	 * Converts the lattice into a human-readable string.
-	 */
+	/** Converts the lattice into a human-readable string. */
 	toString(): string;
 
-	/**
-	 * Checks whether the current abstract value is the Top element of the complete lattice.
-	 */
+	/** Checks whether the current abstract value is the Top element of the complete lattice. */
 	isTop(): this is Lattice<Value, Top, Bot, Top>;
 
-	/**
-	 * Checks whether the current abstract value is the Bottom element of the complete lattice.
-	 */
+	/** Checks whether the current abstract value is the Bottom element of the complete lattice. */
 	isBottom(): this is Lattice<Value, Top, Bot, Bot>;
 
 	/**

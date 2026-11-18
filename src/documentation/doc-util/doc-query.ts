@@ -1,7 +1,13 @@
 import type { RShell } from '../../r-bridge/shell';
-import type { Queries, SupportedQuery, SupportedQueryTypes } from '../../queries/query';
-import { queryWikiPage, SupportedQueries } from '../../queries/query';
-import { SupportedVirtualQueries } from '../../queries/virtual-query/virtual-queries';
+import {
+	type Queries,
+	type SupportedQuery,
+	type SupportedQueryTypes,
+	queryWikiPage,
+	SupportedQueries,
+	asciiSummaryOfQueryResult
+} from '../../queries/query';
+import { SupportedVirtualQueries, type SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import { autoGenHeader } from './doc-auto-gen';
 import { section } from './doc-structure';
 import { guard } from '../../util/assert';
@@ -9,12 +15,9 @@ import path from 'path';
 import { jsonReplacer } from '../../util/json';
 import { markdownFormatter } from '../../util/text/ansi';
 import { FlowrWikiBaseRef } from './doc-files';
-import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
-import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock, jsonWithLimit } from './doc-code';
 import { docTook } from './doc-timings';
-import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { FlowrInlineTextFile } from '../../project/context/flowr-file';
 import { getReplCommand } from './doc-cli-option';
@@ -28,7 +31,6 @@ const QueryDocFile = 'src/documentation/wiki-query.ts';
 export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
 	readonly collapseResult?: boolean;
-	readonly collapseQuery?:  boolean;
 	/** whether to add the detailed JSON results besides the prettified ones (default: true) */
 	readonly withJson?:       boolean;
 	readonly shorthand?:      string;
@@ -39,16 +41,14 @@ export interface ShowQueryOptions {
 	readonly prepare?:        (builder: FlowrAnalyzerBuilder) => void;
 }
 
-/**
- * Visualizes a query and its results in markdown format.
- */
+/** Visualizes a query and its results in markdown format. */
 export async function showQuery<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
 >(
 	parser: KnownParser, code: string,
 	queries: Queries<Base, VirtualArguments>,
-	{ showCode, collapseResult, collapseQuery, withJson = true, shorthand, ctx, files, prepare }: ShowQueryOptions = {}
+	{ showCode, collapseResult, withJson = true, shorthand, ctx, files, prepare }: ShowQueryOptions = {}
 ): Promise<string> {
 	const now = performance.now();
 	const builder = new FlowrAnalyzerBuilder().setParser(parser);
@@ -66,10 +66,10 @@ export async function showQuery<
 The analysis${docTook(duration)} ran (including parsing and normalization and the query) within the generation environment.
 	`.trim();
 
-	const str = JSON.stringify(queries, jsonReplacer, collapseQuery ? ' ' : 2);
+	const str = JSON.stringify(queries, jsonReplacer, ' ');
 	return `
 
-${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{2,}/g, '$1 ').replace(/\s{2,}([\]}])/g, ' $1') : str)}
+${codeBlock('json', str.split('\n').join(' ').replace(/([{[])\s{2,}/g, '$1 ').replace(/\s{2,}([\]}])/g, ' $1'))}
 
 ${(function() {
 	if((queries.length === 1 && Object.keys(queries[0]).length === 1) || shorthand) {
@@ -102,7 +102,7 @@ ${
 	showCode ? `
 <details> <summary style="color:gray">Original Code</summary>
 
-${await printDfGraphForCode(parser, code, { switchCodeAndGraph: true })}
+${codeBlock('r', code)}
 
 </details>
 	` : ''
@@ -122,21 +122,20 @@ export interface QueryDocumentation {
 	readonly buildExplanation: (shell: RShell, ctx: GeneralDocContext) => Promise<string>;
 }
 
-export const RegisteredQueries = {
-	'active':  new Map<string, QueryDocumentation>(),
-	'virtual': new Map<string, QueryDocumentation>()
-};
+export const RegisteredQueries = { 'active': new Map<string, QueryDocumentation>(), 'virtual': new Map<string, QueryDocumentation>() };
 
-
-/**
- * Registers a new documentation for a query.
- */
+/** Registers a new documentation for a query. */
 export function registerQueryDocumentation(query: SupportedQueryTypes | SupportedVirtualQueryTypes, doc: QueryDocumentation) {
 	const map = RegisteredQueries[doc.type];
 	if(map.has(query)) {
 		throw new Error(`Query ${query} already registered`);
 	}
 	map.set(query, doc);
+}
+
+/** Registers the documentation of an active query, see {@link registerQueryDocumentation}. */
+export function registerActiveQuery(query: SupportedQueryTypes, shortDescription: string, buildExplanation: QueryDocumentation['buildExplanation']) {
+	registerQueryDocumentation(query, { type: 'active', shortDescription, buildExplanation });
 }
 
 /**
@@ -168,7 +167,6 @@ function queryPageUrl(id: string): string {
 export function linkToQueryOfName(id: SupportedQueryTypes | SupportedVirtualQueryTypes, linkText?: string) {
 	return `[${linkText ?? getQueryTitle(id)}](${queryPageUrl(id)})`;
 }
-
 
 /**
  * The table of contents for one kind of query, its entries sorted by the title they are shown under.
@@ -206,7 +204,6 @@ The ${name} is executed by ${ctx.link((supported?.executor ?? SupportedVirtualQu
 
 `.trim();
 }
-
 
 /** Keyed by the file path each page is written to. */
 export async function queryPages(shell: RShell, ctx: GeneralDocContext, type: 'active' | 'virtual'): Promise<Record<string, string>> {

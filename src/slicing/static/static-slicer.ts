@@ -1,13 +1,16 @@
+import { AmbientStateName } from '../../dataflow/environments/ambient-state-name';
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { assertUnreachable, guard } from '../../util/assert';
 import { log } from '../../util/log';
-import type { SliceResult } from './slicer-types';
+import type { NodeToSlice, SliceResult } from './slicer-types';
 import type { Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
-import { deferringCall, handleReturns, includeCalleesOfDefinition, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
+import { assignmentHidingValue, callsRuledOutAt, printedClosures, deferringCall, handleReturns, includeCalleesOfDefinition, ruledOutInSlice, ruledOutVia, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
+import { MaxContextDepth, methodOnlyEdges } from '../../dataflow/internal/dispatch-linking';
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { DfgVertex, type DataflowGraphVertexFunctionDefinition } from '../../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, VertexType } from '../../dataflow/graph/vertex';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { DfEdge, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import type { DataflowInformation } from '../../dataflow/info';
@@ -15,11 +18,13 @@ import type { DataflowGraph, ReadonlyOutgoingEdges } from '../../dataflow/graph/
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { SliceDirection } from '../../util/slice-direction';
-import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
+import { RRole } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { GasOverrides } from '../../gas';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
@@ -36,10 +41,7 @@ export interface StaticSliceOptions {
 	readonly ids:             readonly NodeId[]
 	/** Whether to slice forward or backward. Defaults to {@link SliceDirection.Backward}. */
 	readonly direction?:      SliceDirection
-	/**
-	 * Maximum BFS visits before the algorithm switches to over-approximation (includes everything).
-	 * Defaults to 75.
-	 */
+	/** Maximum BFS visits before the algorithm switches to over-approximation (includes everything). Defaults to 75. */
 	readonly threshold?:      number
 	/** Memoization cache that can be shared across multiple slices on the same graph. */
 	readonly cache?:          Map<Fingerprint, Set<NodeId>>
@@ -61,6 +63,8 @@ export interface StaticSliceOptions {
 	 * A slice always gets a contingent of its own, so it is never billed for the analysis or the slices before it.
 	 */
 	readonly gas?:            GasOverrides
+	/** Top-level statements the slice is known to reach, which run as late (backward) as the seeds do, see {@link outsideSeedRun}. */
+	readonly reached?:        readonly NodeId[]
 }
 
 /**
@@ -79,11 +83,11 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const resolvedCalleeBoundaries = new Set<NodeId>();
 	/* a body entered through a call gets its arguments from that call, so only bodies the slice starts in open their callers */
 	const openedBodies = new Set<NodeId>();
-	const openBodiesAround = (from: NodeId): void => {
+	function openBodiesAround(from: NodeId): void {
 		for(let fn = RNode.findEnclosing(from, idMap, RFunctionDefinition.is); fn !== undefined; fn = RNode.strictlyEnclosingFunction(fn, idMap)) {
 			openedBodies.add(fn);
 		}
-	};
+	}
 	const graph = sliceGraph ?? (direction === SliceDirection.Forward ? Dataflow.invertGraph(info.graph, ctx.env.makeCleanEnv()) : info.graph);
 	const emptyEnv = ctx.env.makeCleanEnv();
 	const basePrint = ctx.env.getCleanEnvFingerprint();
@@ -92,14 +96,20 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const callSigs: Parameters<typeof deferringCall>[3] = new Map();
 	/* the unknown side effects every slice keeps are seeds as well, so what they reach is not cut off as running too late */
 	const effects = [...graph.unknownSideEffects].filter((id): id is NodeId => typeof id !== 'object');
-	const missesSeeds = sliceGraph === undefined ? outsideSeedRun([...ids, ...effects], idMap, direction, graph) : undefined;
+	const reached = [...options.reached ?? []];
+	let missesSeeds = sliceGraph === undefined ? outsideSeedRun([...ids, ...effects], idMap, direction, graph, reached) : undefined;
+	/* the nodes whose edges {@link missesSeeds} cut, to follow again once the slice reaches further */
+	const cut: NodeToSlice[] = [];
 	const separatedWrite = (id: NodeId): boolean => info.graph.fileWritesPerCall?.has(id) === true
 		&& !openedBodies.has(RNode.findEnclosing(id, idMap, RFunctionDefinition.is) as NodeId);
-	const enqueue = (id: NodeId, env: REnvironmentInformation, print: Fingerprint): void => {
+	/* the dispatches within functions decided per call, as visited, and per call of such a function the dispatches it decides */
+	const dispatchVisits = new Map<NodeId, NodeToSlice>();
+	const dispatchesOfCall = new Map<NodeId, NodeId[]>();
+	function enqueue(id: NodeId, env: REnvironmentInformation, print: Fingerprint): void {
 		if(!queue.hasId(id)) {
 			queue.add(id, env, print, true);
 		}
-	};
+	}
 
 	let minNesting = Number.MAX_SAFE_INTEGER;
 	const sliceSeedIds = new Set<NodeId>();
@@ -121,20 +131,49 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 	}
 	/* a call asked about does what the functions it runs do, which includes what they print */
-	for(const id of outputWithinCallees(ids, graph)) {
+	for(const id of writesWithinCallees(ids, graph, PrintedOutput)) {
 		queue.add(id, emptyEnv, basePrint, false);
 	}
 
-	/* a drained queue completes the body slice, only then can a boundary decide whether its callers matter */
-	do{
-		while(queue.nonEmpty()) {
-			processNode();
-		}
-		resolveCalleeBoundaries();
-	} while(queue.nonEmpty());
+	/* and so do the calls in its arguments, which it evaluates (`suppressWarnings(f())` prints what `f` prints), once the slice knows the calls dispatching to the methods they run */
+	let argumentWrites: NodeId[] | undefined = writesWithinCallees(
+		ids.flatMap(id => [...RNode.collectAllIdsWithStop(idMap.get(id), RFunctionDefinition.is)].filter(part => part !== id && DfgVertex.isFunctionCall(graph.getVertex(part)))), graph, PrintedOutput);
 
-	function processNode(): void {
-		const current = queue.next();
+	/* a drained queue completes the body slice, only then can a boundary decide whether its callers matter */
+	drain();
+	/* a statement the slice keeps although it runs after the seeds (the close of a sink the seed opens) needs what runs before it as well */
+	for(let beyond = beyondSeeds(); beyond.length > 0; beyond = beyondSeeds()) {
+		reached.push(...beyond);
+		missesSeeds = outsideSeedRun([...ids, ...effects], idMap, direction, graph, reached);
+		cut.splice(0).forEach(c => processNode(c));
+		drain();
+	}
+
+	function beyondSeeds(): NodeId[] {
+		const misses = missesSeeds;
+		return direction === SliceDirection.Backward && misses !== undefined ? [...queue.status().result].filter(misses) : [];
+	}
+
+	function drain(): void {
+		do{
+			while(queue.nonEmpty()) {
+				processNode();
+			}
+			resolveCalleeBoundaries();
+			if(!queue.nonEmpty() && argumentWrites !== undefined) {
+				argumentWrites.forEach(id => queue.add(id, emptyEnv, basePrint, false));
+				argumentWrites = undefined;
+			}
+			/* what the reconstruction prints as written is in the slice, and so is what it needs, see {@link printedAsWritten} */
+			if(!queue.nonEmpty()) {
+				for(const id of printedAsWritten(queue, idMap, graph)) {
+					queue.add(id, emptyEnv, basePrint, false);
+				}
+			}
+		} while(queue.nonEmpty());
+	}
+
+	function processNode(current: NodeToSlice = queue.next()): void {
 		const { baseEnvironment, id, onlyForSideEffects, envFingerprint: baseEnvFingerprint } = current;
 		const currentInfo = graph.get(id, true);
 		if(currentInfo === undefined) {
@@ -145,8 +184,22 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		const strictlyEnclosing = RNode.strictlyEnclosingFunction(id, idMap);
 		/* code in a function links to what it meets at all its calls, so also to what cannot meet the seeds; forward,
 		   a function links to all its calls, and none running before the seeds can */
-		const currentEdges = missesSeeds !== undefined && (strictlyEnclosing !== undefined || direction === SliceDirection.Forward)
+		const reachable = missesSeeds !== undefined && (strictlyEnclosing !== undefined || direction === SliceDirection.Forward)
 			? withoutMissed(allEdges, missesSeeds) : allEdges;
+		if(reachable !== allEdges) {
+			cut.push(current);
+		}
+		/* a dispatch decided per call of its function runs only what the calls of it in the slice may run */
+		const perCall = direction === SliceDirection.Backward && sliceGraph === undefined && DfgVertex.isFunctionCall(currentVertex) ? currentVertex.ruledOutAt : undefined;
+		let ruledOut: ReadonlySet<NodeId> | undefined;
+		if(perCall !== undefined) {
+			if(!dispatchVisits.has(id)) {
+				callsRuledOutAt(perCall).forEach(call => dispatchesOfCall.set(call, [...dispatchesOfCall.get(call) ?? [], id]));
+			}
+			dispatchVisits.set(id, current);
+			ruledOut = ruledOutInSlice(perCall, strictlyEnclosing, info.graph, queue, openedBodies);
+		}
+		const currentEdges = ruledOut === undefined ? reachable : withoutTypes(reachable, methodOnlyEdges(info.graph, id, ruledOut));
 		if(!enclosingHandled.has(strictlyEnclosing)) {
 			enclosingHandled.add(strictlyEnclosing);
 			definitionWithHolders(strictlyEnclosing, idMap, graph, trackCallees ? undefined : openedBodies).forEach(outer => enqueue(outer, emptyEnv, basePrint));
@@ -172,6 +225,20 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		if(deferring !== undefined) {
 			enqueue(deferring, baseEnvironment, baseEnvFingerprint);
 		}
+		/* what a promise changes happens where it is forced, and a forcing statement of the program must not print what it did not */
+		const binding = deferring !== undefined && (graph.ambientAccessOf(id)?.writes.size ?? 0) > 0 ? FunctionSemantics.call.quoted.promisedBinding(graph, deferring) : undefined;
+		for(const site of binding === undefined ? [] : FunctionSemantics.promiseForcingPoints(binding, graph)) {
+			const node = idMap.get(site);
+			enqueue(site, baseEnvironment, baseEnvFingerprint);
+			if(node !== undefined && RNode.strictlyEnclosingFunction(site, idMap) === undefined) {
+				enqueue(RNode.topLevelStatement(node, idMap).info.id, baseEnvironment, baseEnvFingerprint);
+			}
+		}
+		/* a read running an active binding keeps its top-level statement, which would otherwise print what the read yields */
+		const read = strictlyEnclosing === undefined && DfgVertex.isFunctionCall(currentVertex) ? idMap.get(id) : undefined;
+		if(RSymbol.is(read)) {
+			enqueue(RNode.topLevelStatement(read, idMap).info.id, baseEnvironment, baseEnvFingerprint);
+		}
 		/* a call or a definition within a promise runs only when the promise is forced, within captured code only when it is evaluated */
 		if(DfgVertex.isFunctionCall(currentVertex) || DfgVertex.isVariableDefinition(currentVertex)) {
 			const dependencies = FunctionSemantics.promiseDependencies(id, graph);
@@ -182,8 +249,31 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 				enqueue(dep, baseEnvironment, baseEnvFingerprint);
 			}
 		}
+		for(const printed of direction === SliceDirection.Backward ? printedClosures(id, graph, idMap) : []) {
+			enqueue(printed, baseEnvironment, baseEnvFingerprint);
+		}
 		if(DfgVertex.isFunctionCall(currentVertex)) {
-			sliceForCall(current, currentVertex, info, queue, ctx);
+			sliceForCall(current, currentVertex, info, queue, ctx, ruledOut);
+			const hiding = direction === SliceDirection.Backward ? assignmentHidingValue(id, info, idMap) : undefined;
+			if(hiding !== undefined) {
+				enqueue(hiding, baseEnvironment, baseEnvFingerprint);
+			}
+			/* a built-in dispatching to a method of the program (`print(x)` running `print.foo`) changes the state as the calls within the method do */
+			const written = Array.isArray(currentVertex.origin) && !(currentVertex.origin as readonly string[]).includes('function') ? graph.ambientAccessOf(id)?.writes : undefined;
+			if(written !== undefined && written.size > 0) {
+				for(const inner of writesWithinCallees([id], graph, new Set(written.keys()), ruledOut)) {
+					enqueue(inner, emptyEnv, basePrint);
+				}
+			}
+			/* a call of a function joining the slice late lets the dispatches within run what it may run, once, as they may be such calls themselves */
+			const waiting = dispatchesOfCall.get(id) ?? [];
+			dispatchesOfCall.delete(id);
+			for(const dispatch of waiting) {
+				const visit = dispatchVisits.get(dispatch);
+				if(visit !== undefined) {
+					processNode(visit);
+				}
+			}
 		}
 		/* forward, a definition a call hands to a read in its body has both edges itself */
 		if(direction === SliceDirection.Forward) {
@@ -245,6 +335,22 @@ function withoutMissed(edges: ReadonlyOutgoingEdges, misses: (id: NodeId) => boo
 	return edges;
 }
 
+/** The `edges` without the types `drop` names for their targets. */
+function withoutTypes(edges: ReadonlyOutgoingEdges, drop: ReadonlyMap<NodeId, EdgeType>): ReadonlyOutgoingEdges {
+	if(drop.size === 0) {
+		return edges;
+	}
+	const kept = new Map<NodeId, DfEdge>();
+	for(const [target, edge] of edges) {
+		const types = drop.get(target);
+		const rest = types === undefined ? edge : DfEdge.without(edge, types);
+		if(DfEdge.hasAnyType(rest)) {
+			kept.set(target, rest);
+		}
+	}
+	return kept;
+}
+
 /** The calls handing a definition over and the reads it is handed to, if its edges have both. */
 function handedOnCall(edges: ReadonlyOutgoingEdges): NodeId[] {
 	let defines = false;
@@ -278,12 +384,12 @@ function topLevelStatement(id: NodeId, idMap: AstIdMap): [NodeId, number] | unde
  * theirs; forward, it is a call running only before them, outside of any function. `undefined` if a seed is in a
  * function, which may run any time.
  */
-function outsideSeedRun(ids: readonly NodeId[], idMap: AstIdMap, direction: SliceDirection, graph: DataflowGraph): ((id: NodeId) => boolean) | undefined {
+function outsideSeedRun(ids: readonly NodeId[], idMap: AstIdMap, direction: SliceDirection, graph: DataflowGraph, reached: readonly NodeId[] = []): ((id: NodeId) => boolean) | undefined {
 	const backward = direction === SliceDirection.Backward;
 	const bounds = new Map<NodeId, number>();
-	for(const id of ids) {
+	for(const id of [...ids, ...reached]) {
 		const at = topLevelStatement(id, idMap);
-		if(at === undefined || RNode.findEnclosing(id, idMap, RFunctionDefinition.is) !== undefined) {
+		if(at === undefined || (!reached.includes(id) && RNode.findEnclosing(id, idMap, RFunctionDefinition.is) !== undefined)) {
 			return undefined;
 		}
 		const bound = bounds.get(at[0]) ?? at[1];
@@ -303,26 +409,100 @@ function outsideSeedRun(ids: readonly NodeId[], idMap: AstIdMap, direction: Slic
 	};
 }
 
-/** The calls writing output (`cat`, `print`, ...: a side effect linked to `sink`) within the functions the call `seeds` run, transitively. */
-function outputWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph): NodeId[] {
-	const writers = new Set<NodeId>();
-	for(const effect of graph.unknownSideEffects) {
-		if(typeof effect === 'object') {
-			writers.add(effect.id);
-		}
+const PrintedOutput: ReadonlySet<AmbientStateName> = new Set([AmbientStateName.sinkOutput]);
+
+/** per graph, which does not change while it is sliced: the calls writing each combination of states asked for, and the calls a dispatch is decided for */
+const WritesPerGraph = new WeakMap<DataflowGraph, { readonly writers: Map<string, ReadonlySet<NodeId>>, contexts?: ReadonlySet<NodeId> }>();
+
+function writesOf(graph: DataflowGraph): { readonly writers: Map<string, ReadonlySet<NodeId>>, contexts?: ReadonlySet<NodeId> } {
+	let known = WritesPerGraph.get(graph);
+	if(known === undefined) {
+		known = { writers: new Map() };
+		WritesPerGraph.set(graph, known);
+	}
+	return known;
+}
+
+/** The calls writing one of the `states` (`cat`, `print`, ...: they print into {@link AmbientStateName.sinkOutput}) within the functions the `seeds` call (a printed value its `print` method), transitively, but for the methods the slice rules out for the seeds (`ruledOutHere`). */
+function writesWithinCallees(seeds: Iterable<NodeId>, graph: DataflowGraph, states: ReadonlySet<AmbientStateName>, ruledOutHere?: ReadonlySet<NodeId>): NodeId[] {
+	const known = writesOf(graph);
+	const key = [...states].sort().join(',');
+	let writers = known.writers.get(key);
+	if(writers === undefined) {
+		writers = new Set([...graph.ambientAccessIds()].filter(id => graph.ambientAccessOf(id)?.writes.keys().some(state => states.has(state))));
+		known.writers.set(key, writers);
 	}
 	if(writers.size === 0) {
 		return [];
 	}
 	const found: NodeId[] = [];
 	const seen = new Set<NodeId>();
-	const calls = [...seeds].filter(id => DfgVertex.isFunctionCall(graph.getVertex(id)));
-	while(calls.length > 0) {
-		for(const target of Dataflow.calleeIdsOf(graph, calls.pop() as NodeId).filter(t => !seen.has(t))) {
-			seen.add(target);
+	/* the functions that print themselves */
+	const printsThrough = new Set<NodeId>();
+	/* each call with the calls that ran the function holding it, innermost first, which a dispatch decided per call depends on */
+	const calls: [NodeId, readonly NodeId[]][] = [...seeds].map(id => [id, []]);
+	const decided = new Set<string>();
+	/* the calls a dispatch is decided for, which have to be followed again for every other way they are run */
+	const contexts = known.contexts ??= new Set(graph.verticesOfType(VertexType.FunctionCall).flatMap(([, v]) => callsRuledOutAt(v.ruledOutAt ?? [])));
+	for(let next = calls.pop(); next !== undefined; next = calls.pop()) {
+		const [call, via] = next;
+		const ruledOut = ruledOutVia((graph.getVertex(call) as Partial<DataflowGraphVertexFunctionCall> | undefined)?.ruledOutAt, via);
+		const chain = [call, ...via].slice(0, MaxContextDepth);
+		const callees = Dataflow.calleeIdsOf(graph, call).filter(t => !ruledOut.includes(t) && (via.length > 0 || ruledOutHere?.has(t) !== true));
+		/* a function runs the exit hooks it keeps (its definition calls them), and prints what they print */
+		for(const target of [...callees, ...callees.flatMap(c => Dataflow.targetsOf(graph, c, EdgeType.Calls).filter(h => DfgVertex.isFunctionDefinition(graph.getVertex(h))))]) {
 			const callee = graph.getVertex(target) as DataflowGraphVertexFunctionDefinition;
-			found.push(...[...callee.subflow.graph].filter(inner => writers.has(inner)));
-			calls.push(...[...Dataflow.callsIn(callee, graph)].map(([inner]) => inner));
+			const first = !seen.has(target);
+			seen.add(target);
+			if(first) {
+				const written = [...callee.subflow.graph].filter(inner => writers.has(inner));
+				found.push(...written);
+				if(written.length > 0) {
+					printsThrough.add(target);
+				}
+			}
+			/* what a callee prints is printed through the calls leading there, which a slice keeps as well: `f(3)` within `g` for `g()` */
+			if(printsThrough.has(target)) {
+				found.push(...chain);
+			}
+			for(const [innerCall, vertex] of Dataflow.callsIn(callee, graph)) {
+				/* a function run again by other calls decides its dispatches anew */
+				const key = JSON.stringify([innerCall, ...chain]);
+				if(first || ((vertex.ruledOutAt !== undefined || contexts.has(innerCall)) && !decided.has(key))) {
+					decided.add(key);
+					calls.push([innerCall, chain]);
+				}
+			}
+		}
+	}
+	return found;
+}
+
+/**
+ * The parts of the program the slice will print although nothing selected them: a selected named call is printed with its arguments as
+ * they are written (but for a block handed to it, see `reconstructCallOfBlock`), so a function handed to it prints its whole body,
+ * `lg <<- c(lg, "r")` in `h(function() { lg <<- c(lg, "r"); 1 })` included, which then needs the definition of `lg` as well.
+ */
+function printedAsWritten(queue: VisitingQueue, idMap: AstIdMap, graph: DataflowGraph): NodeId[] {
+	const found: NodeId[] = [];
+	for(const id of queue.visitedIds()) {
+		const call = idMap.get(id);
+		if(!RFunctionCall.isNamed(call)) {
+			continue;
+		}
+		for(const arg of call.arguments) {
+			const value = RArgument.valueOf(arg);
+			if(value === undefined || (RExpressionList.is(value) && value.grouping?.[0].content === '{')) {
+				continue;
+			}
+			/* a function the slice runs part of prints its whole body, an argument the slice leaves out otherwise is just not evaluated */
+			for(const part of RNode.collectAllIds(value)) {
+				const node = idMap.get(part);
+				const body = RFunctionDefinition.is(node) ? [...RNode.collectAllIds(node.body)] : [];
+				if(body.some(inner => queue.hasId(inner))) {
+					found.push(...body.filter(inner => !queue.hasId(inner) && graph.hasVertex(inner)));
+				}
+			}
 		}
 	}
 	return found;
@@ -355,8 +535,8 @@ function definitionWithHolders(definition: NodeId | undefined, idMap: AstIdMap, 
  * undefined, and so does one that reads nothing at all (a name the program never defines). Reading a built-in
  * is no such case, as those are there whatever the slice contains.
  */
-function freeNamesOf(slice: ReadonlySet<NodeId>, graph: DataflowGraph): readonly string[] {
-	const free = new Set<string>();
+function freeNamesOf(slice: ReadonlySet<NodeId>, graph: DataflowGraph): readonly BrandedIdentifier[] {
+	const free = new Set<BrandedIdentifier>();
 	for(const id of slice) {
 		if(!DfgVertex.isUse(graph.getVertex(id))) {
 			continue;
@@ -411,7 +591,7 @@ export function staticDice(
 function extendSlices(results: ReadonlySet<NodeId>, ast: AstIdMap): Set<NodeId> {
 	const res = new Set(results);
 	for(const id of results) {
-		const statement = RNode.findEnclosing(id, ast, n => n.info.role === RoleInParent.Root || n.info.role === RoleInParent.ExpressionListChild);
+		const statement = RNode.findEnclosing(id, ast, RRole.isStatement);
 		for(const inner of statement === undefined ? [] : RNode.collectAllIds(ast.get(statement))) {
 			res.add(inner);
 		}
@@ -432,11 +612,6 @@ export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target
 			queue.potentialAdditions.delete(target);
 		}
 	} else {
-		queue.potentialAdditions.set(target, [id, {
-			id:                 target,
-			baseEnvironment,
-			envFingerprint,
-			onlyForSideEffects: false
-		}]);
+		queue.potentialAdditions.set(target, [id, { id: target, baseEnvironment, envFingerprint, onlyForSideEffects: false }]);
 	}
 }

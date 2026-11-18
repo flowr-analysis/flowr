@@ -1,11 +1,10 @@
-import { RString } from '../nodes/r-string';
 import type { AstIdMap, ParentInformation } from './decorate';
 import type { DataflowGraph } from '../../../../../dataflow/graph/graph';
 import { DfgVertex } from '../../../../../dataflow/graph/vertex';
-import { RNode } from '../model';
+import type { RNode } from '../model';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
 import type { BuiltInProcName } from '../../../../../dataflow/environments/built-in-proc-name';
-import { compareByCodeUnit } from '../../../../../util/text/strings';
+import { compareByCodeUnit, splitRQuotes } from '../../../../../util/text/strings';
 
 /**
  * The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.
@@ -14,13 +13,13 @@ import { compareByCodeUnit } from '../../../../../util/text/strings';
  */
 export type NodeId<T extends string | number = string | number> = T & { __brand?: 'node-id' };
 
-/**
- * A variant of {@link NodeId} that represents built-in functions or operators. The string is prefixed with `built-in:` to avoid confusion with other node ids.
- */
+/** A variant of {@link NodeId} that represents built-in functions or operators. The string is prefixed with `built-in:` to avoid confusion with other node ids. */
 export type BuiltIn<T extends string = string> = `built-in:${T}`;
 
 /** whether the id starts as a number does, which `+id` alone does not tell: it turns a blank string into `0` */
-function startsNumeric(id: string): boolean {
+const ArgumentSuffix = '-arg';
+
+function startsNumeric<S extends string>(id: S): boolean {
 	const c = id.charCodeAt(0);
 	return c >= 48 && c <= 57 /* 0-9 */ || c === 45 /* - */ || c === 43 /* + */ || c === 46;
 }
@@ -44,6 +43,14 @@ export const NodeId = {
 		const [x, y] = [NodeId.normalize(a), NodeId.normalize(b)];
 		return typeof x === 'number' && typeof y === 'number' ? x - y : compareByCodeUnit(String(x), String(y));
 	},
+	/** The id of the argument flowR wraps around a node handed over without one, like the left side of `x |> f()`. */
+	argumentOf(this: void, id: NodeId): NodeId {
+		return `${id}${ArgumentSuffix}`;
+	},
+	/** The node an argument of {@link NodeId.argumentOf} wraps, `undefined` for any other id. */
+	wrappedByArgument(this: void, id: NodeId): NodeId | undefined {
+		return typeof id === 'string' && id.endsWith(ArgumentSuffix) ? id.slice(0, -ArgumentSuffix.length) : undefined;
+	},
 	/**
 	 * Normalizes a node id by converting numeric strings to numbers.
 	 * This allows us to use numeric ids without storing them as strings, while still allowing custom string ids if needed.
@@ -65,9 +72,7 @@ export const NodeId = {
 	isWritten(this: void, id: NodeId): boolean {
 		return typeof NodeId.normalize(id) === 'number';
 	},
-	/**
-	 * The prefix used for built-in function or operator ids.
-	 */
+	/** The prefix used for built-in function or operator ids. */
 	builtInPrefix: 'built-in:',
 	/**
 	 * Checks if a given node id is a built-in function or operator id by checking if it is a string that starts with the built-in prefix.
@@ -142,6 +147,10 @@ export const NodeId = {
 	anonymousCall(this: void, functionId: NodeId): NodeId {
 		return AnonymousCallPrefix + String(functionId);
 	},
+	/** Whether `id` is a made-up {@link NodeId.anonymousCall}. */
+	isAnonymousCall(this: void, id: NodeId): boolean {
+		return typeof id === 'string' && id.startsWith(AnonymousCallPrefix);
+	},
 	/** The node `id` belongs to; for a made-up {@link NodeId.anonymousCall} the anonymous function it calls. */
 	nodeOf<Info>(this: void, id: NodeId, idMap: AstIdMap<Info> | undefined): RNode<Info & ParentInformation> | undefined {
 		const node = idMap?.get(id);
@@ -154,11 +163,12 @@ export const NodeId = {
 	 */
 	recoverBareName(this: void, id: NodeId, idMap?: AstIdMap): string | undefined {
 		const lexeme = NodeId.recoverName(id, idMap);
-		return lexeme === undefined ? undefined : RString.unquote(lexeme);
+		return lexeme === undefined ? undefined : splitRQuotes(lexeme).content;
 	},
 	/**
 	 * What the node the id belongs to stands for: the name a call resolved to, the unquoted name of a use, and
-	 * the lexeme of anything else.
+	 * the lexeme of anything else. It reads the lexeme itself, as the AST helpers would make loading the identifiers expensive.
+	 * @lintIgnore
 	 * @see {@link NodeId.recoverName} - for the lexeme alone, which needs no graph
 	 */
 	recoverContent(this: void, id: NodeId, graph: DataflowGraph): string | undefined {
@@ -170,9 +180,9 @@ export const NodeId = {
 		if(node === undefined) {
 			return undefined;
 		}
-		const lexeme = RNode.ownLexeme(node) ?? '';
+		const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
 		if(DfgVertex.isUse(vertex)) {
-			return RString.unquote(lexeme);
+			return splitRQuotes(lexeme).content;
 		}
 		return lexeme;
 	}

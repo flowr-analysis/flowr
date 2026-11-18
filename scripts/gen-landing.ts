@@ -18,7 +18,7 @@ import { OriginType } from '../src/dataflow/origin/dfg-get-origin';
 import { stringifyValue } from '../src/dataflow/eval/values/r-value';
 import { SliceDirection } from '../src/util/slice-direction';
 import { explain } from './page-lib/lint-text';
-import { arraySum, uniqueArray  } from '../src/util/collections/arrays';
+import { arraySum, uniqueArray } from '../src/util/collections/arrays';
 import { highlightR, renderRToken, tokenizeR, escapeHtml as escape } from '../src/util/text/r-highlight';
 
 /**
@@ -98,7 +98,7 @@ async function sliceLines(code: string, criterion: string, direction = SliceDire
 async function dependencyLines(code: string): Promise<string[][]> {
 	const analyzer = await analyzerFor(code);
 	const idMap = (await analyzer.normalize()).idMap;
-	const found = (await analyzer.query([{ type: 'dependencies' }])).dependencies as unknown as
+	const found = (await analyzer.query({ type: 'dependencies' })) as unknown as
 		Record<string, readonly { value?: string, nodeId?: string | number }[]>;
 	return ([['library', 'library'], ['source', 'source'], ['read', 'read'], ['write', 'write'], ['transform', 'transform'], ['visualize', 'visualize']] as const)
 		.flatMap(([key, label]) => (found[key] ?? []).map(entry => [
@@ -115,7 +115,7 @@ async function dependencyLines(code: string): Promise<string[][]> {
 async function lintLines(code: string): Promise<Finding[]> {
 	interface Raw { loc?: [number, number, number, number] }
 	const analyzer = await analyzerFor(code);
-	const answer = (await analyzer.query([{ type: 'linter' }])).linter as unknown as
+	const answer = (await analyzer.query({ type: 'linter' })) as unknown as
 		{ results?: Record<string, { results?: Raw[], '.meta'?: object }> };
 	const rules = answer.results ?? {};
 	return Object.entries(rules).flatMap(([rule, found]) => (found?.results ?? []).map((finding): Finding => ({
@@ -153,9 +153,8 @@ async function valueLines(code: string): Promise<string[][]> {
 	   by the criterion, so each one is asked for on its own. */
 	const resolved: string[][] = [];
 	for(const criterion of ValueNames) {
-		const answer = await analyzer.query([{ type: 'resolve-value', criteria: [criterion] }]);
-		const values = uniqueArray(Object.values(answer['resolve-value'].results)
-			.flatMap(found => found.values.map(v => stringifyValue(v)))).filter(v => v.length > 0 && !/^(top|⊤|⊥|bottom)$/.test(v));
+		const found = await analyzer.query({ type: 'resolve-value', criteria: [criterion] });
+		const values = uniqueArray(found.values.map(v => stringifyValue(v))).filter(v => v.length > 0 && !/^(top|⊤|⊥|bottom)$/.test(v));
 		if(values.length > 0) {
 			/* the comment says what it means, the tooltip keeps flowR's own form (`[6L, 6L]`) */
 			resolved.push([criterion, values.map(plain).join(', '), values.join(', ')]);
@@ -197,8 +196,7 @@ async function originLines(code: string): Promise<string[][]> {
 	const idMap = (await analyzer.normalize()).idMap;
 	const lines: string[][] = [];
 	for(const criterion of OriginNames) {
-		const result = await analyzer.query([{ type: 'origin', criterion }]);
-		for(const origin of result.origin.results[criterion] ?? []) {
+		for(const origin of await analyzer.query({ type: 'origin', criterion }) ?? []) {
 			const at = idMap?.get(origin.id);
 			const line = SourceRange.getStartLine(at?.location);
 			const what = at?.lexeme ?? String(origin.id);
@@ -240,7 +238,7 @@ function phrase(type: OriginType, what: string, line: number | undefined, builtI
 /** What the database holds for one function, straight off the `signature` query's {@link SignatureFunctionView}. */
 async function signatureLines(code: string, pkg: string, fn: string): Promise<string[][]> {
 	const analyzer = await analyzerFor(code);
-	const found = (await analyzer.query([{ type: 'signature', package: pkg, function: fn }])).signature.function;
+	const found = (await analyzer.query({ type: 'signature', package: pkg, function: fn })).function;
 	if(found === undefined) {
 		return [];
 	}
@@ -280,10 +278,10 @@ function timings(): { rows: string[][], files: string, lines: string, when: stri
 		return undefined;
 	}
 	const of = (benches: Benchmark[], name: string): number | undefined => benches.find(b => b.name === name)?.value;
-	const sum = (benches: Benchmark[], names: string[]): number | undefined => {
+	function sum(benches: Benchmark[], names: string[]): number | undefined {
 		const parts = names.map(n => of(benches, n));
 		return parts.every(v => v !== undefined) ? arraySum(parts) : undefined;
-	};
+	}
 	const Analysis = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information'];
 	const wanted: [string, (b: Benchmark[]) => number | undefined][] = [
 		['analyzing a script', b => sum(b, Analysis)],
@@ -491,7 +489,9 @@ function render(data: PageData): string {
 	 */
 	const pointable = (code: string, criteria: readonly string[], found: string[][] = []): string => code.split('\n').map((line, index) => {
 		const mine = criteria.filter(c => c.startsWith(`${index + 1}@`));
-		const said = (criterion: string): string => found.filter(([c]) => c === criterion).map(([, , text]) => text).join('; ');
+		function said(criterion: string): string {
+			return found.filter(([c]) => c === criterion).map(([, , text]) => text).join('; ');
+		}
 		const named = highlightWithMarks(line, marksFor(line, index + 1, mine.map(criterion => ({
 			criterion,
 			name: criterion.slice(criterion.indexOf('@') + 1),
@@ -530,8 +530,7 @@ function render(data: PageData): string {
 		return `\t\t\t<span class="line" data-line="${number}">${html}</span>`;
 	}).join('\n');
 
-	const kindsOn = (pairs: string[][], line: number): string[] =>
-		uniqueArray(pairs.filter(([, , at]) => at === String(line)).map(([kind]) => kind));
+	const kindsOn = (pairs: string[][], line: number): string[] => uniqueArray(pairs.filter(([, , at]) => at === String(line)).map(([kind]) => kind));
 	const depSource = (code: string, pairs: string[][]): string => code.split('\n').map((line, index) => {
 		const number = index + 1;
 		const mine = pairs.filter(([, , at]) => at === String(number));

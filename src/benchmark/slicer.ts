@@ -26,15 +26,14 @@ import type {
 	SlicerStatsDfShape
 } from './stats/stats';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SlicingCriteria } from '../slicing/criterion/parse';
-import { SlicingCriterion } from '../slicing/criterion/parse';
+import { type SlicingCriteria, SlicingCriterion } from '../slicing/criterion/parse';
 import { createSlicePipeline, type DEFAULT_SLICING_PIPELINE, type TREE_SITTER_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import { retrieveNumberOfRTokensOfLastParse, type RParseRequestFromFile, type RParseRequestFromText } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
 import { collectAllSlicingCriteria, type SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
 import { getSizeOfCfGraph, getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
 import type { AutoSelectPredicate } from '../reconstruct/auto-select/auto-select-defaults';
-import type { KnownParser, KnownParserName, KnownParserType } from '../r-bridge/parser';
+import { type KnownParser, type KnownParserName, type KnownParserType, ParserName } from '../r-bridge/parser';
 import type { SyntaxNode, Tree } from 'web-tree-sitter';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
@@ -43,8 +42,7 @@ import { DfgVertex } from '../dataflow/graph/vertex';
 import { ControlFlowEdgeTypes, DfEdge } from '../dataflow/graph/edge';
 import { equidistantSampling, arraySum } from '../util/collections/arrays';
 import { FlowrConfig } from '../config';
-import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { extractCfg } from '../control-flow/control-flow-graph';
+import { type ControlFlowInformation, extractCfg } from '../control-flow/control-flow-graph';
 import { AbstractInterpreter } from '../abstract-interpretation/absint-inference';
 import { DataFrameShapeAnalysis } from '../abstract-interpretation/data-frame/shape-inference';
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
@@ -57,9 +55,7 @@ import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { runCalibration } from './calibration';
 
-/**
- * The logger to be used for benchmarking as a global object.
- */
+/** The logger to be used for benchmarking as a global object. */
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' });
 
 /**
@@ -126,18 +122,15 @@ export class BenchmarkSlicer {
 	private totalStopwatch:      IStoppableStopwatch;
 	private finished = false;
 	// Yes, this is unclean, but we know that we assign the executor during the initialization and this saves us from having to check for nullability every time
-	private executor:            PipelineExecutor<SupportedPipelines> = null as unknown as PipelineExecutor<SupportedPipelines>;
-	private parser:              KnownParser  = null as unknown as KnownParser;
+	private executor!:           PipelineExecutor<SupportedPipelines>;
+	private parser!:             KnownParser;
 
 	constructor(parserName: KnownParserName) {
 		this.totalStopwatch = this.commonMeasurements.start('total');
 		this.parserName = parserName;
 	}
 
-	/**
-	 * Initialize the slicer on the given request.
-	 * Can only be called once for each instance.
-	 */
+	/** Initialize the slicer on the given request. Can only be called once for each instance. */
 	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfig,
 		autoSelectIf?: AutoSelectPredicate, threshold?: number, inlineSources?: boolean, includeCallees?: boolean,
 		inlineFull?: InlineFull) {
@@ -146,7 +139,7 @@ export class BenchmarkSlicer {
 		// we know these are in sync so we just cast to one of them
 		this.parser = await this.commonMeasurements.measure(
 			'initialize R session', async() => {
-				if(this.parserName === 'r-shell') {
+				if(this.parserName === ParserName.Shell) {
 					return new RShell(FlowrConfig.getForEngine(config, 'r-shell'));
 				} else {
 					await TreeSitterExecutor.initTreeSitter(FlowrConfig.getForEngine(config, 'tree-sitter'));
@@ -180,18 +173,18 @@ export class BenchmarkSlicer {
 		const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8');
 		let numberOfRTokens: number;
 		let numberOfRTokensNoComments: number;
-		if(this.parser.name === 'r-shell') {
+		if(this.parser.name === ParserName.Shell) {
 			// retrieve number of R tokens - flowr_parsed should still contain the last parsed code
 			numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.parser as RShell);
 			numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(this.parser as RShell, true);
 		} else {
-			const countChildren = function(node: SyntaxNode, ignoreComments = false): number {
+			function countChildren(node: SyntaxNode, ignoreComments = false): number {
 				let ret = node.type === TreeSitterType.Comment && ignoreComments ? 0 : 1;
 				for(const child of node.children) {
 					ret += countChildren(child, ignoreComments);
 				}
 				return ret;
-			};
+			}
 			const root = (this.loadedXml as Tree[]).map(t => t.rootNode);
 			numberOfRTokens = arraySum(root.map(r => countChildren(r)));
 			numberOfRTokensNoComments = arraySum(root.map(r => countChildren(r, true)));
@@ -280,21 +273,17 @@ export class BenchmarkSlicer {
 
 		const measurements = new Measurements<PerSliceMeasurements>();
 		const stats: PerSliceStats = {
-			measurements:                undefined as never,
+			measurements:                new Map(),
 			slicingCriteria:             [],
 			numberOfDataflowNodesSliced: 0,
 			timesHitThreshold:           0,
-			reconstructedCode:           {
-				code:                  '',
-				linesWithAutoSelected: 0
-			}
+			reconstructedCode:           { code: '', linesWithAutoSelected: 0 }
 		};
 		this.perSliceMeasurements.set(slicingCriteria, stats);
 
 		this.executor.updateRequest({ criterion: slicingCriteria });
 
 		const totalStopwatch = measurements.start('total');
-
 
 		const slicedOutput = await this.measureSliceStep('slice', measurements, 'static slicing');
 		const decodedCriteria = SlicingCriterion.decodeAll(slicingCriteria, (this.normalizedAst as NormalizedAst).idMap);
@@ -319,11 +308,7 @@ export class BenchmarkSlicer {
 		stats.timesHitThreshold = slicedOutput.timesHitThreshold;
 
 		stats.measurements = measurements.get();
-		return {
-			stats,
-			slice: slicedOutput,
-			code:  stats.reconstructedCode
-		};
+		return { stats, slice: slicedOutput, code: stats.reconstructedCode };
 	}
 
 	/**
@@ -430,9 +415,7 @@ export class BenchmarkSlicer {
 			}
 			const state = inference.getAbstractTrace().get(node.info.id);
 
-			const nodeStats: PerNodeStatsDfShape = {
-				numberOfEntries: state?.isValue() ? state.value.size : 0
-			};
+			const nodeStats: PerNodeStatsDfShape = { numberOfEntries: state?.isValue() ? state.value.size : 0 };
 
 			if(operations !== undefined) {
 				nodeStats.mappedOperations = operations.map(op => op.operation);
@@ -477,8 +460,8 @@ export class BenchmarkSlicer {
 			this.guardActive();
 			const analyzer = await this.buildAnalyzerForAdditionalPhases();
 			if(analyzer !== undefined) {
-				await this.measureAdditional('dependencies query', () => analyzer.query([{ type: 'dependencies' }]));
-				await this.measureAdditional('linter run', () => analyzer.query([{ type: 'linter' }]));
+				await this.measureAdditional('dependencies query', () => analyzer.query({ type: 'dependencies' }));
+				await this.measureAdditional('linter run', () => analyzer.query({ type: 'linter' }));
 			}
 			if(calibrate) {
 				/* the calibration times itself, so that neither the warmup nor the reps it discards count */
@@ -712,9 +695,7 @@ export class BenchmarkSlicer {
 		};
 	}
 
-	/**
-	 * Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead.
-	 */
+	/** Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead. */
 	public ensureSessionClosed(): void {
 		this.parser?.close();
 	}

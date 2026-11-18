@@ -1,23 +1,29 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { bold } from '../../../util/text/ansi';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import Joi from 'joi';
+import { queryHeader } from '../../query-print';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { executeControlFlowQuery } from './control-flow-query-executor';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type ControlFlowInformation, CfgVertex } from '../../../control-flow/control-flow-graph';
 import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { type CfgSimplificationPassName, CfgSimplificationPasses } from '../../../control-flow/cfg-simplification';
+import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
 
-/**
- * Provides the control flow graph with an optional, fixed configuration
- */
+/** Executes the control flow query with the given simplification passes. */
+export async function executeControlFlowQuery({ analyzer }: BasicQueryData, queries: readonly ControlFlowQuery[]): Promise<ControlFlowQueryResult> {
+	warnUnlessSingleQuery('The control flow', queries);
+
+	const query = queries[0];
+
+	const start = Date.now();
+	const controlFlow = await analyzer.controlflow(query.config?.simplificationPasses);
+	return { ...metaSince(start), controlFlow };
+}
+
+/** Provides the control flow graph with an optional, fixed configuration */
 export interface ControlFlowQuery extends BaseQueryFormat {
 	readonly type:    'control-flow';
 	readonly config?: {
-		/**
-		 * If set, the control flow graph will be simplified using the given passes.
-		 * Defaults to the default simplification order.
-		 */
+		/** If set, the control flow graph will be simplified using the given passes. Defaults to the default simplification order. */
 		simplificationPasses?: readonly CfgSimplificationPassName[];
 	}
 }
@@ -31,7 +37,7 @@ export const ControlFlowQueryDefinition = {
 	executor:        executeControlFlowQuery,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'control-flow'>['control-flow'];
-		result.push(`Query: ${bold('control-flow', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+		result.push(queryHeader('control-flow', formatter, out['.meta'].timing, true));
 		result.push(`   ╰ CFG: ${cfgToMermaidUrl(out.controlFlow, await analyzer.normalize())}`);
 		return true;
 	},

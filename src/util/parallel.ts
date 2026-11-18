@@ -12,10 +12,7 @@ import { SecureMode } from './secure-mode';
 export type Arguments = string[];
 type WorkingQueue = Arguments[];
 
-/**
- * This is not really generic but written especially for the benchmarking script.
- * It offers a work stealing thread pool executor.
- */
+/** This is not really generic but written especially for the benchmarking script. It offers a work stealing thread pool executor. */
 export class LimitedThreadPool {
 	private readonly workingQueue:  WorkingQueue;
 	private readonly limit:         number;
@@ -84,7 +81,6 @@ export class LimitedThreadPool {
 		// schedule re-schedule
 		await new Promise<void>(resolve => child.on('exit', resolve)).then(() => clearTimeout(timeout)).then(() => this.runNext());
 	}
-
 
 	private onChildExit(args: string[]) {
 		return (code: number, signal: unknown) => {

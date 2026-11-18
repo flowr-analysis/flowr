@@ -1,6 +1,5 @@
 import { assert, describe, test } from 'vitest';
-import { FlowrNamespaceFile } from '../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
-import type { NamespaceInfo } from '../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
+import { FlowrNamespaceFile, type NamespaceInfo } from '../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import { label } from '../_helper/label';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';

@@ -6,8 +6,7 @@ import { withTreeSitter } from '../_helper/shell';
 import { label } from '../_helper/label';
 import { queryCase, runQuery } from '../_helper/query';
 import { InspectFnPropsQueryDefinition } from '../../../src/queries/catalog/inspect-fn-props-query/inspect-fn-props-query-format';
-import type { StatedProps, ArgProps } from '../../../src/dataflow/environments/built-in-props';
-import { ArgProp, CallProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
+import { type StatedProps, type ArgProps, ArgProp, CallProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
 
 describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	/**
@@ -21,13 +20,19 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 		assert.deepStrictEqual({ ...found }, { ...expected });
 	}
 
+	/** What the guards add is the topic of the tests of the guards, the cases here are about what the calls in a body state. */
+	const FromGuards = ArgProp.Required | ArgProp.Guarded;
+
 	/** The roles the query gives the formals of `f` for the given body, keyed by the name each is written as. */
 	function testRoles(name: string, code: string, expected: Record<string, ArgProps>) {
 		queryCase(parser, 'inspect-fn-props', name, code, ({ result, idMap }) => {
 			const found: Record<string, ArgProps> = {};
 			for(const roles of Object.values(result.roles)) {
 				for(const [formal, props] of Object.entries(roles)) {
-					found[NodeId.recoverName(Number(formal), idMap) ?? formal] = props;
+					const own = props & ~FromGuards;
+					if(own !== 0) {
+						found[NodeId.recoverName(Number(formal), idMap) ?? formal] = own;
+					}
 				}
 			}
 			assertProps(found, expected, FunctionSemantics.call.argument.words);

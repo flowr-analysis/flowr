@@ -66,11 +66,7 @@ describe('Constant Parsing', { concurrent: false }, withShell(shell => {
 		describe('numbers', () => {
 			for(const number of RNumberPool.filter(n => !RedundantNumbers.has(n.str))) {
 				assertAst(label(number.str, ['numbers', ...(number.val.complexNumber ? ['numbers-complex' as const] : [])]),
-					shell, number.str, exprList(num(number.str, [1, 1], number.val)), {
-						// https://github.com/r-lib/tree-sitter-r/issues/159
-						skipTreeSitter: /[pP]/.test(number.str)
-					}
-				);
+					shell, number.str, exprList(num(number.str, [1, 1], number.val)));
 			}
 		});
 		describe('strings', () => {

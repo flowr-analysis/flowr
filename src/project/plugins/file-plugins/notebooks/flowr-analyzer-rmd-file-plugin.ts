@@ -3,9 +3,7 @@ import { FlowrAnalyzerRMarkdownFilePlugin } from './flowr-analyzer-rmarkdown-fil
 /* `.Rmarkdown` is the knitr-only variant used by blogdown and quarto */
 export const RmdPattern = /\.(rmd|rmarkdown)$/i;
 
-/**
- * The plugin provides support for R Markdown (`.rmd`) files
- */
+/** The plugin provides support for R Markdown (`.rmd`) files */
 export class FlowrAnalyzerRmdFilePlugin extends FlowrAnalyzerRMarkdownFilePlugin {
 	public readonly name =    'rmd-file-plugin';
 	public readonly description = 'Parses R Markdown files';

@@ -4,8 +4,7 @@ import { TaintFnCategory } from '../../../src/taint-analysis/function-categories
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { FiniteDomainBuilder } from '../../../src/taint-analysis/builder/domain';
 import { Bottom, Top } from '../../../src/abstract-interpretation/domains/lattice';
-import type { TaintAnalysisExpectation } from './helper';
-import { testTaintAnalysis, testTaintAnalyses } from './helper';
+import { type TaintAnalysisExpectation, testTaintAnalysis, testTaintAnalyses } from './helper';
 import { decorateLabelContext, label } from '../_helper/label';
 
 function testCategory(

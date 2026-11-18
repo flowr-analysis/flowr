@@ -34,10 +34,7 @@ export interface BenchmarkCliOptions {
 
 const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [], {
 	subtitle: 'Slice given files with additional benchmark information',
-	examples: [
-		'{italic example-folder/}',
-		'{bold --help}'
-	]
+	examples: ['{italic example-folder/}', '{bold --help}']
 });
 
 if(options.input.length === 0) {
@@ -149,7 +146,6 @@ async function collectFiles(files: RequestFile[], paths: string[], getBaseDir: (
 
 /**
  * Find the common base directory of a list of paths.
- * @param paths - list of paths
  * @returns     the common base directory
  */
 function findCommonBaseDir(paths: string[]): string {

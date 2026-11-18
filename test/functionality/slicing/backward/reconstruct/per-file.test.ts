@@ -10,8 +10,7 @@ import { PluginType } from '../../../../../src/project/plugins/flowr-analyzer-pl
 import {
 	FlowrAnalyzerLoadingOrderImplicitSourcesPlugin
 } from '../../../../../src/project/plugins/loading-order-plugins/flowr-analyzer-loading-order-implicit-sources-plugin';
-import { reconstructSlice } from '../../../../../src/queries/catalog/slice-query-options';
-import type { SliceQueryOptions } from '../../../../../src/queries/catalog/slice-query-options';
+import { reconstructSlice, type SliceQueryOptions } from '../../../../../src/queries/catalog/slice-query-options';
 
 const dirs: string[] = [];
 
@@ -35,8 +34,7 @@ async function reconstruct(files: Record<string, string>, options: SliceQueryOpt
 	return reconstructSlice(res.normalize, res.dataflow.graph, new Set(res.normalize.idMap.keys()), options);
 }
 
-const names = (result: { files?: readonly { path: string | undefined }[] }) =>
-	result.files?.map(f => f.path === undefined ? '<inline>' : path.basename(f.path));
+const names = (result: { files?: readonly { path: string | undefined }[] }) => result.files?.map(f => f.path === undefined ? '<inline>' : path.basename(f.path));
 
 const twoFiles = {
 	'main.R':   'source("helper.R")\nf()\n',

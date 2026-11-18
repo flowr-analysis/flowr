@@ -7,10 +7,7 @@ import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
-
-/**
- * Try to parse the construct as a {@link RIfThenElse}.
- */
+/** Try to parse the construct as a {@link RIfThenElse}. */
 export function tryNormalizeIfThen(
 	data: NormalizerData,
 	[ifT, lpT, cT, rpT, tT]: [

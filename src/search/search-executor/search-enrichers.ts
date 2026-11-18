@@ -1,10 +1,5 @@
 import type { FlowrSearchElement, FlowrSearchElements } from '../flowr-search';
-import type {
-	NormalizedAst,
-	AstIdMap,
-	ParentInformation,
-	RNodeWithParent
-} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../dataflow/info';
 import { type MergeableRecord, deepMergeObject } from '../../util/objects';
 import { DfgVertex } from '../../dataflow/graph/vertex';
@@ -26,7 +21,6 @@ import type { KnownRoxygenTags, RoxygenTag } from '../../r-bridge/roxygen2/roxyg
 import { FlowrSearchBuilder } from '../flowr-search-builder';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
-
 /** The search element of the node `id` belongs to (see {@link NodeId.nodeOf}), `undefined` if there is none. */
 function elementOf(id: NodeId, idMap: AstIdMap<ParentInformation>): FlowrSearchElement<ParentInformation> | undefined {
 	const node = NodeId.nodeOf(id, idMap);
@@ -34,19 +28,19 @@ function elementOf(id: NodeId, idMap: AstIdMap<ParentInformation>): FlowrSearchE
 }
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
-	/**
-	 * A function that is applied to each element of the search to enrich it with additional data.
-	 */
+	/** A function that is applied to each element of the search to enrich it with additional data. */
 	readonly enrichElement?: (element: FlowrSearchElement<ParentInformation>, search: FlowrSearchElements<ParentInformation>, analyzer: ReadonlyFlowrAnalysisProvider, args: ElementArguments | undefined, previousValue: ElementContent | undefined) => AsyncOrSync<ElementContent>
 	readonly enrichSearch?:  (search: FlowrSearchElements<ParentInformation>, data: ReadonlyFlowrAnalysisProvider, args: SearchArguments | undefined, previousValue: SearchContent | undefined) => AsyncOrSync<SearchContent>
-	/**
-	 * The mapping function used by the {@link Mapper.Enrichment} mapper.
-	 */
+	/** The mapping function used by the {@link Mapper.Enrichment} mapper. */
 	readonly mapper?:        (content: ElementContent) => FlowrSearchElement<ParentInformation>[]
 }
 export type EnrichmentElementContent<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer EC, infer _EA, infer _SC, infer _SA> ? EC : never;
 export type EnrichmentElementArguments<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _EC, infer EA, infer _SC, infer _SA> ? EA : never;
 export type EnrichmentSearchContent<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _EC, infer _EA, infer SC, infer _SA> ? SC : never;
+/** the registered enrichment, typed by what its name stands for */
+export function getEnrichment<E extends Enrichment>(enrichment: E): EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>, EnrichmentSearchContent<E>, EnrichmentSearchArguments<E>> {
+	return Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>, EnrichmentSearchContent<E>, EnrichmentSearchArguments<E>>;
+}
 export type EnrichmentSearchArguments<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _EC, infer _EA, infer _SC, infer SA> ? SA : never;
 
 /**
@@ -86,9 +80,7 @@ export interface LastCallSearchContent extends CallTargetsSearchContent {
 }
 
 export interface CfgInformationElementContent extends MergeableRecord {
-	/**
-	 * Whether the current node is a root node in the CFG, which is a node that is not contained inside of a function definition.
-	 */
+	/** Whether the current node is a root node in the CFG, which is a node that is not contained inside of a function definition. */
 	isRoot:       boolean
 	/**
 	 * Whether the current node is reachable from the root of the CFG.
@@ -97,9 +89,7 @@ export interface CfgInformationElementContent extends MergeableRecord {
 	isReachable?: boolean
 }
 export interface CfgInformationSearchContent extends MergeableRecord {
-	/**
-	 * The CFG attached to the search, extracted using {@link extractCfg}.
-	 */
+	/** The CFG attached to the search, extracted using {@link extractCfg}. */
 	cfg:             ControlFlowInformation
 	/**
 	 * The nodes the control flow reaches, together with the syntax that holds them.
@@ -217,10 +207,7 @@ function dedupeCallTargets(
  */
 export const Enrichments = {
 	[Enrichment.CallTargets]: {
-		enrichSearch: async(_search, data, _args, prev) => prev ?? {
-			dfg: await data.dataflow(),
-			ast: await data.normalize()
-		},
+		enrichSearch:  async(_search, data, _args, prev) => prev ?? { dfg: await data.dataflow(), ast: await data.normalize() },
 		enrichElement: async(e, s, analyzer, args, prev) => {
 			const content: CallTargetsContent = { targets: [] };
 			const shared = s.enrichmentContent(Enrichment.CallTargets) as CallTargetsSearchContent | undefined;
@@ -328,21 +315,13 @@ export const Enrichments = {
 			};
 		},
 		enrichSearch: async(_search, data, args, prev) => {
-			args = {
-				forceRefresh:         false,
-				checkReachable:       false,
-				simplificationPasses: DefaultCfgSimplificationOrder,
-				...args
-			};
+			args = { forceRefresh: false, checkReachable: false, simplificationPasses: DefaultCfgSimplificationOrder, ...args };
 
 			// short-circuit if we already have a cfg stored (and the reachability info if requested)
 			if(!args.forceRefresh && prev?.cfg && (!args.checkReachable || prev.reachableNodes)) {
 				return prev;
 			}
-			const content: CfgInformationSearchContent = {
-				...prev,
-				cfg: await data.controlflow(args.simplificationPasses),
-			};
+			const content: CfgInformationSearchContent = { ...prev, cfg: await data.controlflow(args.simplificationPasses) };
 			if(args.checkReachable) {
 				content.reachableNodes = cfgFindAllReachable(content.cfg);
 				content.aliveNodes = collectAliveNodes(await data.normalize(), content.reachableNodes);
@@ -353,10 +332,7 @@ export const Enrichments = {
 	[Enrichment.Roxygen]: {
 		enrichSearch:  async(_search, data, _args, prev) => prev ?? { ast: await data.normalize() },
 		enrichElement: async(e, search, analyzer, _args, prev) => {
-			const content = (prev ?? {
-				documentation: [],
-				tags:          {}
-			}) as DeepWritable<RoxygenElementContent>;
+			const content = (prev ?? { documentation: [], tags: {} }) as DeepWritable<RoxygenElementContent>;
 			const shared = search.enrichmentContent(Enrichment.Roxygen) as RoxygenSearchContent | undefined;
 			const normalize = shared?.ast ?? await analyzer.normalize();
 			const roxygen = RNode.documentation(e.node.info.id, normalize.idMap);
@@ -388,18 +364,13 @@ export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<Pa
 	return e?.enrichments?.[enrichment] as EnrichmentElementContent<E>;
 }
 
-/**
- * Enriches the given search element with the given enrichment type, using the provided analysis data.
- */
+/** Enriches the given search element with the given enrichment type, using the provided analysis data. */
 export async function enrichElement<Element extends FlowrSearchElement<ParentInformation>, E extends Enrichment>(
 	e: Element, s: FlowrSearchElements<ParentInformation>, analyzer: ReadonlyFlowrAnalysisProvider, enrichment: E, args?: EnrichmentElementArguments<E>): Promise<Element> {
-	const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>>;
+	const enrichmentData = getEnrichment(enrichment);
 	const prev = e?.enrichments;
 	return {
 		...e,
-		enrichments: {
-			...prev ?? {},
-			[enrichment]: await enrichmentData.enrichElement?.(e, s, analyzer, args, prev?.[enrichment])
-		}
+		enrichments: { ...prev ?? {}, [enrichment]: await enrichmentData.enrichElement?.(e, s, analyzer, args, prev?.[enrichment]) }
 	};
 }

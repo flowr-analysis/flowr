@@ -4,9 +4,7 @@ import type { Pipeline } from './pipeline';
 import { jsonReplacer } from '../../../util/json';
 import { partitionArray } from '../../../util/collections/arrays';
 
-/**
- * Given a set of {@link IPipelineStep|steps} with their dependencies, this function verifies all requirements of {@link createPipeline}.
- */
+/** Given a set of {@link IPipelineStep|steps} with their dependencies, this function verifies all requirements of {@link createPipeline}. */
 export function verifyAndBuildPipeline(steps: readonly IPipelineStep[]): Pipeline {
 	if(steps.length === 0) {
 		throw new InvalidPipelineError('0) Pipeline is empty');
@@ -36,11 +34,7 @@ export function verifyAndBuildPipeline(steps: readonly IPipelineStep[]): Pipelin
 	const sorted = sortedPerFile.concat(sortedPerRequest);
 	validateStepOutput(sorted, perRequestStepMap, steps);
 
-	return {
-		steps:               perRequestStepMap,
-		order:               sorted,
-		firstStepPerRequest: sortedPerFile.length
-	};
+	return { steps: perRequestStepMap, order: sorted, firstStepPerRequest: sortedPerFile.length };
 }
 
 function validateStepOutput(sorted: readonly PipelineStepName[], stepMap: Map<PipelineStepName, IPipelineStep>, steps: readonly IPipelineStep[]) {
@@ -72,8 +66,7 @@ function handleStep(step: IPipelineStep, init: PipelineStepName, visited: Set<Pi
 function topologicalSort(inits: PipelineStepName[], stepMap: Map<PipelineStepName, IPipelineStep>, visited: Set<PipelineStepName>) {
 	const sorted: PipelineStepName[] = [];
 
-	while(inits.length > 0) {
-		const init = inits.pop() as PipelineStepName;
+	for(let init; (init = inits.pop()) !== undefined;) {
 		sorted.push(init);
 		visited.add(init);
 

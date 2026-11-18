@@ -13,7 +13,7 @@ import { RFunctionCall, EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 
@@ -56,7 +56,7 @@ const NoCredentialName = /[_.](?:label|prompt|pattern|regex|env|var|file|path|di
 const MaxCredentialHops = 3;
 
 export interface NoLeakedCredentialsResult extends LintingResult {
-	readonly variableName: string
+	readonly variableName: BrandedIdentifier
 }
 
 export interface NoLeakedCredentialsConfig extends MergeableRecord {
@@ -74,7 +74,7 @@ export interface NoLeakedCredentialsMetadata extends MergeableRecord {
 }
 
 interface CredentialContext {
-	readonly name:      string
+	readonly name:      BrandedIdentifier
 	readonly anchor:    RNode<ParentInformation>
 	/** the literal is the last unnamed argument, where `authenticate` and the like take the secret */
 	readonly handedTo?: boolean
@@ -97,7 +97,7 @@ function definedName(node: RNode<ParentInformation>, idMap: AstIdMap): string {
 }
 
 class CredentialContexts {
-	constructor(private readonly dfg: DataflowGraph, private readonly idMap: AstIdMap, private readonly callPattern: RegExp, private readonly namePattern: RegExp, private readonly pure: ReadonlySet<string>) {}
+	constructor(private readonly dfg: DataflowGraph, private readonly idMap: AstIdMap, private readonly callPattern: RegExp, private readonly namePattern: RegExp, private readonly pure: ReadonlySet<BrandedIdentifier>) {}
 
 	/** the variables, arguments, or credential-taking functions a literal ends up in, followed through up to {@link MaxCredentialHops} uses */
 	public of(node: RNode<ParentInformation>, hops = 0, seen = new Set<NodeId>()): CredentialContext[] {
@@ -150,7 +150,7 @@ export const NO_LEAKED_CREDENTIALS = {
 		const normalize = await data.normalize();
 		const dfg = (await data.dataflow()).graph;
 		const contexts = new CredentialContexts(dfg, normalize.idMap, new RegExp(config.credentialCallPattern, 'i'), namePattern,
-			new Set(data.inspectContext().env.builtInIndex.pure.flatMap(p => [Identifier.getName(p), Identifier.toString(p)])));
+			new Set<BrandedIdentifier>(data.inspectContext().env.builtInIndex.pure.flatMap((p): BrandedIdentifier[] => [Identifier.getName(p), Identifier.toString(p)])));
 		let totalChecked = 0;
 		const results = new Map<NodeId, NoLeakedCredentialsResult>();
 		for(const element of elements.getElements()) {

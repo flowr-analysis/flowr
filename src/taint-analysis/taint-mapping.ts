@@ -1,13 +1,13 @@
 import type { AbstractDomain, AbstractValue, AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { FunctionParameterLocation } from '../abstract-interpretation/data-frame/arguments';
 import type { ArgProps, FnSig } from '../dataflow/environments/built-in-props';
-import { Identifier } from '../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../dataflow/environments/identifier';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export class TaintMapper<Domain extends AnyAbstractDomain> {
 	public readonly mapper: TaintMappingInternal<Domain>[] = [];
 	/** the mappings by the name they map, in the order they were added; a mapping only ever applies to a call of its name */
-	private readonly byName = new Map<string, TaintMappingInternal<Domain>[]>();
+	private readonly byName = new Map<BrandedIdentifier, TaintMappingInternal<Domain>[]>();
 
 	constructor(mapper?: readonly TaintMappingInternal<Domain>[]) {
 		mapper?.forEach(m => this.add(m));
@@ -24,9 +24,7 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 		}
 	}
 
-	/**
-	 * Add one or more taint mapping rules to the mapper
-	 */
+	/** Add one or more taint mapping rules to the mapper */
 	public pushMapping(mappings: TaintMapping<Domain>[]) {
 		this.mapRulesToInternal(mappings).forEach(m => this.add(m));
 	}
@@ -45,9 +43,7 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 		}
 	}
 
-	/**
-	 * Get all mappings belonging to the given identifier
-	 */
+	/** Get all mappings belonging to the given identifier */
 	public getMappings(identifier: Identifier) {
 		return this.byName.get(Identifier.getName(identifier))?.filter(m => TaintMapper.matches(m.identifier, identifier)) ?? [];
 	}
@@ -57,9 +53,7 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 		return Identifier.matches(mapped, called) || (Identifier.getNamespace(called) === undefined && Identifier.matches(called, mapped));
 	}
 
-	/**
-	 * Create a new, independent mapper containing the same taint mappings
-	 */
+	/** Create a new, independent mapper containing the same taint mappings */
 	public clone(): TaintMapper<Domain> {
 		return new TaintMapper<Domain>(this.mapper);
 	}
@@ -124,10 +118,7 @@ export type TaintMapping<Domain extends AnyAbstractDomain> =
 	| TaintFixedMapping<Domain>
 	| TaintConditionMapping<Domain>;
 
-/**
- * Internal representation of a taint rule.
- * Each rule is mapped to a single identifier simplifying search and retrieval.
- */
+/** Internal representation of a taint rule. Each rule is mapped to a single identifier simplifying search and retrieval. */
 type TaintMappingInternal<Domain extends AnyAbstractDomain> = {
 	readonly role?:             TaintRole;
 	readonly category?:         string;

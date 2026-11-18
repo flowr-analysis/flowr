@@ -21,6 +21,8 @@ export default defineConfig({
 			]
 		},
 		testTimeout: 60 * 1000,
+		/* a `beforeAll` like that of `assertSliced` runs the analysis the tests then check, so it gets as long as a test */
+		hookTimeout: 60 * 1000,
 		sequence:    {
 			/* each test file that does not support parallel execution will be executed in sequence by stating this explicitly */
 			concurrent: true,
@@ -50,6 +52,16 @@ export default defineConfig({
 			'test/system-tests/**',
 			'test/mutations/**'
 		],
-		include: [`${TestSuites.functionality.folder}/**/*.test.ts`]
+		include:            [`${TestSuites.functionality.folder}/**/*.test.ts`],
+		/* changes no test imports, but which every test may depend on, run everything (also for `--changed`) */
+		forceRerunTriggers: [
+			...configDefaults.forceRerunTriggers,
+			'**/test/vitest.config.mts',
+			'**/test/functionality/test-setup*.ts',
+			'**/test/testfiles/**',
+			'**/package.json',
+			'**/package-lock.json',
+			'**/tsconfig.json'
+		]
 	},
 });

@@ -32,10 +32,7 @@ export interface SingleBenchmarkCliOptions {
 
 const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [], {
 	subtitle: 'Will slice for all possible variables, signal by exit code if slicing was successful, and can be run standalone',
-	examples: [
-		'{italic example-file.R} --output {italic output.json}',
-		'{bold --help}'
-	]
+	examples: ['{italic example-file.R} --output {italic output.json}', '{bold --help}']
 });
 
 if(options.verbose) {
@@ -125,12 +122,7 @@ async function benchmark() {
 		}
 
 		const { stats } = slicer.finish();
-		const output = {
-			filename:  options.input,
-			'file-id': options['file-id'],
-			'run-num': options['run-num'],
-			stats
-		};
+		const output = { filename: options.input, 'file-id': options['file-id'], 'run-num': options['run-num'], stats };
 
 		// append line by line
 		console.log(`Appending benchmark of ${options.input} to ${options.output}`);

@@ -10,6 +10,7 @@ import { log } from '../../../util/log';
 import { uniqueArray } from '../../../util/collections/arrays';
 import fs from 'fs';
 import path from 'path';
+import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 
 export const libraryLog = log.getSubLogger({ name: 'flowr-analyzer-package-versions-library-plugin' });
 
@@ -48,7 +49,7 @@ function libraryRoots(opts: InstalledLibraryOptions, projectRoot?: string): stri
  * The package installed under `name` in one of `roots`, read from its own `DESCRIPTION` and `NAMESPACE`.
  * An installed package keeps both, so its exports are recoverable even when no signature database knows it.
  */
-function installedPackage(name: string, roots: readonly string[]): Package | undefined {
+function installedPackage(name: BrandedNamespace, roots: readonly string[]): Package | undefined {
 	for(const root of roots) {
 		const dir = path.join(root, name);
 		const description = path.join(dir, 'DESCRIPTION');

@@ -1,5 +1,8 @@
+import { RBaseGuardsVersion } from '../data/r-base-guards.generated';
 import type { RShell } from '../r-bridge/shell';
+import { CloneAlgorithm } from '../clones/clone-detector';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { defaultDependencyCategories, type DefaultDependencyCategoryName, type DependencyCategorySettings } from '../queries/catalog/dependencies-query/dependencies-query-format';
 import { Constant, Unknown } from '../queries/catalog/dependencies-query/dependency-values';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
@@ -9,10 +12,12 @@ import {
 	assertAllQueriesDocumented,
 	linkToQueryOfName,
 	queryPages,
+	registerActiveQuery,
 	registerQueryDocumentation,
 	showQuery,
 	sliceQueryShorthand,
-	tocForQueryType
+	tocForQueryType,
+	type ShowQueryOptions
 } from './doc-util/doc-query';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/text/ansi';
@@ -28,10 +33,8 @@ import { printCfgCode } from './doc-util/doc-cfg';
 import { documentReplSession } from './doc-util/doc-repl';
 import type { SlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
 import { escapeNewline } from './doc-util/doc-escape';
-import type { ShowQueryOptions } from './doc-util/doc-query';
 import { DefaultAssumedRVersion } from '../config';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import type { ArgProp, CallProp } from '../dataflow/environments/built-in-props';
 import { SliceDirection } from '../util/slice-direction';
@@ -39,12 +42,13 @@ import type { AbsintQueryType } from '../queries/catalog/absint-query/absint-que
 import { warnMissingSigDb } from './doc-util/doc-sigdb';
 import type { AnyPredefinedTaintAnalysisName } from '../taint-analysis/predefined/predefined';
 
+/** the criterion mode of a query inspecting functions, answering only for the function defined in the first line */
+async function functionFilterExample(shell: RShell, ctx: GeneralDocContext, code: string, type: 'inspect-higher-order' | 'inspect-recursion' | 'inspect-fn-props', showCode = true): Promise<string> {
+	return `This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
+${await showQuery(shell, code, [{ type, filter: ['1@function'] }], { showCode, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(code)), ctx })}`;
+}
 
-registerQueryDocumentation('call-context', {
-	type:             'active',
-	shortDescription: 'Finds all calls in a set of files that matches specified criteria.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		return `
+registerActiveQuery('call-context', 'Finds all calls in a set of files that matches specified criteria.', async(shell, ctx) => `
 Call context queries can be used to identify calls to specific functions that match criteria of your interest.
 For now, we support two criteria:
 
@@ -95,114 +99,83 @@ my_test_function()
 		], { showCode: false, ctx }));
 	})()
 }
-		`;
-	}
-});
+		`);
 
-registerQueryDocumentation('dataflow', {
-	type:             'active',
-	shortDescription: 'Returns the dataflow graph of the given code.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x + 1';
-		return `
+registerActiveQuery('dataflow', 'Returns the dataflow graph of the given code.', async(shell, ctx) => {
+	const exampleCode = 'x + 1';
+	return `
 Maybe you want to handle only the result of the query execution, or you just need the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} again.
 This query type does exactly that!
 
 Using the example code \`${exampleCode}\`, the following query returns the dataflow graph of the code:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'dataflow' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'dataflow' }], { showCode: true, ctx })
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('call-graph', {
-	type:             'active',
-	shortDescription: 'Returns the call graph of the given code.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x + 1';
-		return `
+registerActiveQuery('call-graph', 'Returns the call graph of the given code.', async(shell, ctx) => {
+	const exampleCode = 'x + 1';
+	return `
 This query calculates and returns the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')} of the given code.
 
 Using the example code \`${exampleCode}\`, the following query returns the dataflow graph of the code:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'call-graph' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'call-graph' }], { showCode: true, ctx })
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('does-call', {
-	type:             'active',
-	shortDescription: 'Checks whether a function calls another function matching given constraints.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'f <- function(x) { eval(x) };\nf("1 + 1")';
-		return `
+registerActiveQuery('does-call', 'Checks whether a function calls another function matching given constraints.', async(shell, ctx) => {
+	const exampleCode = 'f <- function(x) { eval(x) };\nf("1 + 1")';
+	return `
 This query checks whether a function calls another function matching given constraints.
 
 Using the example code:
 ${codeBlock('r', exampleCode)}
 the following query checks whether the call to \`f\` calls \`eval\`:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'does-call', queryId: 'calls-eval', call: '2@f', calls: { type: 'name', name: 'eval', nameExact: true } }], { showCode: true, collapseQuery: false, shorthand: '(2@f:"eval")', ctx })
+	await showQuery(shell, exampleCode, [{ type: 'does-call', queryId: 'calls-eval', call: '2@f', calls: { type: 'name', name: 'eval', nameExact: true } }], { showCode: true, shorthand: '(2@f:"eval")', ctx })
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('files', {
-	type:             'active',
-	shortDescription: 'Returns the files matching the given criteria.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		return `
+registerActiveQuery('files', 'Returns the files matching the given criteria.', async(shell, ctx) => `
 This query returns the files that match the given criteria.
 ${
-	await showQuery(shell, '', [{ type: 'files' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, '', [{ type: 'files' }], { showCode: true, ctx })
 }
-		`;
-	}
-});
+		`);
 
-registerQueryDocumentation('project', {
-	type:             'active',
-	shortDescription: 'Returns information about the analyzed project',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x + 1';
-		return `
+registerActiveQuery('project', 'Returns information about the analyzed project', async(shell, ctx) => {
+	const exampleCode = 'x + 1';
+	return `
 This query returns the information about the analyzed project.
 If present, it will incorporate plugins to, e.g., extract author and license information from R package DESCRIPTION files.
 
 ${
-	await showQuery(shell, exampleCode, [{ type: 'project' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'project' }], { showCode: true, ctx })
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('normalized-ast', {
-	type:             'active',
-	shortDescription: 'Returns the normalized AST of the given code.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x + 1';
-		return `
+registerActiveQuery('normalized-ast', 'Returns the normalized AST of the given code.', async(shell, ctx) => {
+	const exampleCode = 'x + 1';
+	return `
 Maybe you want to handle only the result of the query execution, or you just need the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} again.
 This query type does exactly that!
 
 Using the example code \`${exampleCode}\`, the following query returns the normalized AST of the code:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'normalized-ast' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'normalized-ast' }], { showCode: true, ctx })
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('dataflow-cluster', {
-	type:             'active',
-	shortDescription: 'Calculates and returns all the clusters present in the dataflow graph.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleA = 'x <- 1; x';
-		const exampleB = 'x <- 1; y';
-		return `
+registerActiveQuery('dataflow-cluster', 'Calculates and returns all the clusters present in the dataflow graph.', async(shell, ctx) => {
+	const exampleA = 'x <- 1; x';
+	const exampleB = 'x <- 1; y';
+	return `
 This query automatically calculates clusters in flowR's dataflow graph 
 and returns a list of all clusters found. 
 Clusters are to be interpreted as literal clusters on the graph traversing
@@ -210,26 +183,20 @@ edges in both directions. From this perspective,
 the code \`${exampleA}\` has one cluster (given that all code is related), 
 while the code \`${exampleB}\` has two clusters (given that the \`y\` has no relation to the previous definition).
 
-${details('Example <code>' + exampleA + '</code>',
-	await showQuery(shell, exampleA, [{ type: 'dataflow-cluster' }], { showCode: false, ctx }))}
-${details('Example <code>' + exampleB + '</code>',
-	await showQuery(shell, exampleB, [{ type: 'dataflow-cluster' }], { showCode: false, ctx }))}
+${details('Example <code>' + exampleA + '</code>', await showQuery(shell, exampleA, [{ type: 'dataflow-cluster' }], { showCode: false, ctx }))}
+${details('Example <code>' + exampleB + '</code>', await showQuery(shell, exampleB, [{ type: 'dataflow-cluster' }], { showCode: false, ctx }))}
 
 Using the example code from above, the following query returns all clusters:
 ${
-	await showQuery(shell, exampleQueryCode, [{ type: 'dataflow-cluster' }], { showCode: false, collapseQuery: true, ctx })
+	await showQuery(shell, exampleQueryCode, [{ type: 'dataflow-cluster' }], { showCode: false, ctx })
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('resolve-value', {
-	type:             'active',
-	shortDescription: 'Provides access to flowR\'s value tracking (which is configurable)',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x <- 1\ny <-2\nprint(x)\nprint(y)';
-		const criteria = ['3@x', '4@y'] as SlicingCriteria;
-		return `
+registerActiveQuery('resolve-value', 'Provides access to flowR\'s value tracking (which is configurable)', async(shell, ctx) => {
+	const exampleCode = 'x <- 1\ny <-2\nprint(x)\nprint(y)';
+	const criteria = ['3@x', '4@y'] as SlicingCriteria;
+	return `
 With this query you can use flowR's value-tracking capabilities to resolve identifiers to all potential values they may have at runtime (if possible).
 The extent to which flowR traces values (e.g., built-ins vs. constants) can be configured in flowR's Configuration file (see the ${ctx.linkPage('wiki/Interface', 'Interface')} wiki page for more information).
 
@@ -238,60 +205,64 @@ ${
 	await showQuery(shell, exampleCode, [{ type: 'resolve-value', criteria: criteria }], { showCode: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('inspect-higher-order', {
-	type:             'active',
-	shortDescription: 'Determine whether functions are higher-order functions',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'f <- function() function(x) x; f()';
-		return `
+registerActiveQuery('inspect-higher-order', 'Determine whether functions are higher-order functions', async(shell, ctx) => {
+	const exampleCode = 'f <- function() function(x) x; f()';
+	return `
 With this query you can identify which functions in the code are higher-order functions, i.e., either take a function as an argument or return a function.
 A parameter the body itself calls (\`function(g) g()\`, \`function(g) lapply(x, g)\`) counts as well, without any call site having to hand a function over.
 Please note, that functions that are just identities (e.g., \`function(x) x\`) are not considered higher-order if they do not take a function as an argument.
 
 Using the example code \`${exampleCode}\` the following query returns the information for all identified function definitions whether they are higher-order functions:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-higher-order' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-higher-order' }], { showCode: true, ctx })
 }
 
-This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
-${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-higher-order', filter: ['1@function'] }], { showCode: false, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
-}
+${await functionFilterExample(shell, ctx, exampleCode, 'inspect-higher-order', false)}
 		`;
-	}
 });
 
-registerQueryDocumentation('inspect-recursion', {
-	type:             'active',
-	shortDescription: 'Determine whether functions are recursive',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'fact <- function(n) { if(n <= 1) 1 else n * fact(n - 1) }';
-		return `
+registerActiveQuery('inspect-recursion', 'Determine whether functions are recursive', async(shell, ctx) => {
+	const exampleCode = 'fact <- function(n) { if(n <= 1) 1 else n * fact(n - 1) }';
+	return `
 With this query you can identify which functions in the code are recursive.
 Please note, that functions that *may* be recursive due to indirect calls are also considered recursive.
 
 Using the example code \`${exampleCode}\` the following query returns the information for all identified function definitions whether they are recursive:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-recursion' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-recursion' }], { showCode: true, ctx })
 }
 
-This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
-${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-recursion', filter: ['1@function'] }], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
-}
+${await functionFilterExample(shell, ctx, exampleCode, 'inspect-recursion')}
 		`;
-	}
 });
 
-registerQueryDocumentation('inspect-fn-props', {
-	type:             'active',
-	shortDescription: 'Determine what functions and their formals do',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, FUN); x }';
-		return `
+registerActiveQuery('ambient-access', 'What code reads and writes of the global state', async(shell, ctx) => {
+	const exampleCode = 'f <- function() options(digits = 3)\nf()\nSys.setenv(A = "1")';
+	return `
+This query reports what code reads and writes of the global state, such as options, environment variables,
+the working directory, open devices, or the search path, as the pseudo variables of ${ctx.link('AmbientStateName')}
+(\`#option:digits\`, \`#env:A\`, ...). A call counts with what the functions it calls access, so \`f()\` above writes \`digits\`.
+It also names the global variables the code binds (\`x <<- 1\`) and the drawing calls it makes.
+The same is available in code as \`Dataflow.sideEffects.ambientAccess\`.
+
+Without criteria, the query answers for every file and for the whole project (\`<project>\`):
+${
+	await showQuery(shell, exampleCode, [{ type: 'ambient-access' }], { showCode: true, ctx })
+}
+
+With slicing criteria, it answers for each criterion with all the code its node spans, so \`3^\` asks for the statement on line 3.
+Set \`functions\` to also learn what calling each function accesses:
+${
+	await showQuery(shell, exampleCode, [{ type: 'ambient-access', criteria: ['2^'], functions: true }], { showCode: false, shorthand: sliceQueryShorthand(['2^'], escapeNewline(exampleCode)), ctx })
+}
+		`;
+});
+
+registerActiveQuery('inspect-fn-props', 'Determine what functions and their formals do', async(shell, ctx) => {
+	const exampleCode = 'f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, FUN); x }';
+	return `
 Per function definition this states what each formal is used for, as ${ctx.link('ArgProp')} bits, and what the
 function itself does, as ${ctx.link('CallProp')} bits: the very scheme flowR states its built-ins and the
 signature database stores its parameters with.
@@ -317,22 +288,96 @@ properties named as the \`ArgProp\`/\`CallProp\` members they are.
 
 Using the example code \`${exampleCode}\` the following query returns what every identified function and formal does:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-fn-props' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-fn-props' }], { showCode: true, ctx })
 }
 
-This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
-${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-fn-props', filter: ['1@function'] }], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
-}
+${await functionFilterExample(shell, ctx, exampleCode, 'inspect-fn-props')}
 		`;
-	}
 });
 
-registerQueryDocumentation('inspect-exception', {
-	type:             'active',
-	shortDescription: 'Determine whether functions throw exceptions (known to flowR)',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = `mayFail <- function(x) {
+registerActiveQuery('inspect-fn-guards', 'Infer what functions ask of the calls they return from', async(shell, ctx) => {
+	const exampleCode = 'f <- function(x, n, type = c("a", "b")) {\n  type <- match.arg(type)\n  if(!is.numeric(x) || x < 0) stop("invalid x")\n  if(length(x) < n) stop("x is too short")\n  sum(x)\n}';
+	const predicateConfig = `new FlowrAnalyzerBuilder().amendConfig(c => {
+	c.semantics.environment.overwriteBuiltIns.definitions = [{
+		type: 'function', names: ['is_text'], processor: BuiltInProcName.DefaultReadAllArgs,
+		config: { guards: { is_text: { predicate: { yes: RValueType.Character, exact: true } } } }
+	}];
+})`;
+	return `
+This query works out the *contract* of every function of a program: what a call has to fulfill to return normally, read off the checks in the body.
+In the example below, \`f\` stops unless \`x\` is a non-negative number at least \`n\` long, and \`match.arg\` only lets \`type\` be \`"a"\` or \`"b"\`.
+The query states exactly that: per formal what a call has to give and what holds of it, and what relates several formals, like \`length(x) >= n\`:
+
+${await showQuery(shell, exampleCode, [{ type: 'inspect-fn-guards' }], { showCode: true, ctx })}
+
+### Where the contracts are used
+
+- the \`call-contracts\` linting rule reports a call that cannot fulfill the contract of what it calls, like \`f(-1)\` or \`f("a")\`
+- the ${linkToQueryOfName('inspect-fn-props')} reports the formals a call has to supply (${ctx.linkE<typeof ArgProp>('ArgProp', 'Required')}) and those a condition reads (${ctx.linkE<typeof ArgProp>('ArgProp', 'Guarded')})
+- the ${linkToQueryOfName('signature')} and the [signature browser](https://flowr-analysis.github.io/flowr/wiki/sigdb/) show the contracts of the functions of R and of packages
+- the playground shows the contract of the function under the cursor
+
+### Reading the result
+
+Each function the program defines gets ${ctx.link('FunctionGuards')}:
+
+- ${ctx.link('FunctionGuards::clauses')}: one ${ctx.link('GuardClause')} per check, with the condition as R code and as a ${ctx.link('GuardTerm')} tree (\`succeeds(e)\` stands for \`e\` not raising an error), whether R checks it itself (\`implicit\`, like \`x + 1\` for a value that is no number) or the code does (\`explicit\`, like the \`stop\` above), and the message of the failure
+- ${ctx.link('FunctionGuards::formals')}: what the conditions together claim of each formal, as a ${ctx.link('FormalClaim')}:
+
+| field | a normal return makes sure that |
+|---|---|
+| \`types\` | \`typeof(x)\` is one of these |
+| \`unclassedTypes\` | the same, but only for an \`x\` without a class (a classed one may bring its own method) |
+| \`values\`, \`partial\` | \`x\` is one of these strings, or with \`partial\` abbreviates one (\`match.arg\`) |
+| \`classes\` | \`x\` inherits from one of these |
+| \`bounds\` | \`x\` (\`value\`), \`length(x)\`, \`nchar(x)\`, \`nrow(x)\`, ... lie in this range |
+| \`whole\`, \`notNA\`, \`callable\` | \`trunc(x) == x\`, \`!anyNA(x)\`, \`x\` is or names a function |
+| \`resolves\` | a name built from \`x\`, like \`paste0("f_", x)\`, exists |
+| \`cases\` | what holds in each case a branch on \`x\` tells apart, like \`if(is.logical(center)) ... else ...\` |
+
+- ${ctx.link('FunctionGuards::relations')}: what relates several formals, like \`length(x) >= n\`, each with the formals it speaks of and what lets a call through anyway (\`unless\`)
+- ${ctx.link('FunctionGuards::conditional')}: what holds of a formal unless something about the others lets the call through, like \`m\` having to be a number unless \`x\` is no count
+- ${ctx.link('FunctionGuards::returns')}: what holds of the value a call returns normally
+- ${ctx.link('FunctionGuards::conditions')}: per formal the checks as they read in R, also those no claim has a word for, like \`stopifnot(x %% 2 == 0)\`
+- ${ctx.link('FunctionGuards::required')}: the formals a call has to supply
+- ${ctx.link('FunctionGuards::pure')}: the checks that fail before the function does anything but compute, so a call failing on them leaves nothing behind
+
+The query takes \`kind\` (keep only \`implicit\` or \`explicit\` conditions), \`onlyPure\`, \`formals\` (only these formals), and \`builtIns\` (also state the contracts of the functions of R and of the packages flowR knows).
+
+### What counts as a check
+
+- \`stop\`, \`rlang::abort\`, and every other function that always fails, reached under \`if\`, \`&&\`, \`||\`, and \`switch\`, taking an earlier \`return\` into account: \`if(a) return(1); if(!is.numeric(x)) stop()\` asks \`a || is.numeric(x)\`
+- \`stopifnot\`, \`assertthat::assert_that\`, \`match.arg\`, \`rlang::arg_match\`, and the \`assert_*\` functions of \`checkmate\`
+- what R fails on by itself, like \`strsplit\` for anything but a character vector
+- names that have to resolve, like \`do.call(paste0("f_", x), list())\`, and a \`UseMethod\` without a default method
+- the methods a dispatch may run: a generic asks what its \`default\` method (or that of an implicit class like \`matrix\`) asks, unless \`is.object(x)\`
+- the contracts of the functions a body surely calls, in terms of what it hands them, and predicates of the program like \`is_count <- function(v) is.numeric(v) && v >= 0\`
+
+### Teaching flowR about more functions
+
+A contract can only be as good as what flowR knows about the functions a body calls. There are three places to add that knowledge:
+
+1. **A predicate or check of your own code base, without changing flowR.** Describe it in the configuration of the analyzer (the same \`overwriteBuiltIns\` works in a configuration file). With this, \`f <- function(x) { stopifnot(is_text(x)); x }\` claims that \`x\` is a character vector:
+
+${codeBlock('ts', predicateConfig)}
+
+   Besides \`predicate\`, the guard facts can state \`asks\` (what the function fails on per formal), \`required\` (formals a call has to give), \`check\` (the function fails unless its argument passes, like \`checkmate::assert_numeric\`), \`asserts\` (it fails unless every argument is \`TRUE\`, like \`stopifnot\`), and \`returns\`. All of them are typed in \`src/dataflow/environments/guard-facts.ts\`.
+2. **A function of R or a package that flowR should know for everyone.** Add its guard facts to the built-in configuration: \`src/dataflow/environments/default-builtin-config/guards.ts\` for functions of base R and packages, \`guards-primitive-ops.ts\` for the operators and math primitives. For example \`'which': { asks: { x: fails(is('is.logical'), 'argument to \\'which\\' is not logical') } }\` makes every \`which(x)\` ask for a logical \`x\`.
+3. **The closures of the base packages.** Their contracts are read off R itself with \`npx ts-node --transpile-only scripts/gen-base-guards.ts\`, which writes \`src/data/r-base-guards.generated.ts\` (currently from R ${RBaseGuardsVersion}). Rerun it after changing what flowR knows, as the base contracts are built on top of that knowledge.
+
+### Limits
+
+Every condition the query reports is *necessary*: a call that breaks one fails in R. What flowR cannot state exactly (a loop body, a variable with several definitions, a function it does not know) weakens a condition or drops it, it never makes one stronger than what the code asks for.
+
+- A condition speaks of the value at the check, so a formal overwritten before it is read as what it was overwritten with.
+- A default value claims nothing: \`function(n = 5L)\` still takes \`n = 1.5\`. Only \`match.arg\` and \`rlang::arg_match\` read the default, as the values they allow.
+- What R fails on depends on the R version flowR assumes (\`solver.sigdb.assumedRVersion\`, else R ${RBaseGuardsVersion}): a condition of \`if\` longer than one only fails since R 4.2.0, an operand of \`&&\` longer than one since R 4.3.0.
+- A missing argument handed on to another function written in R is only required if that function needs it, as R hands it on as a promise: \`matpoints(x)\` passes its missing \`y\` to \`matplot\`, which checks \`missing(y)\`.
+		`;
+});
+
+registerActiveQuery('inspect-exception', 'Determine whether functions throw exceptions (known to flowR)', async(shell, ctx) => {
+	const exampleCode = `mayFail <- function(x) {
   if(x < 0) stop("Negative value!")
   else sqrt(x)
 }
@@ -342,26 +387,22 @@ safeFail <- function(x) {
     error = function(e) { NA }
   )
 }`;
-		return `
+	return `
 With this query you can identify which functions in the code throw exceptions (known to flowR).
 
 Using the following example code:
 ${codeBlock('r', exampleCode)}
 the following query returns the information for all identified function definitions whether they throw exceptions:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'inspect-exception' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-exception' }], { showCode: true, ctx })
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('origin', {
-	type:             'active',
-	shortDescription: 'Retrieve the origin of a variable, function call, ...',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x <- 1\nprint(x)';
-		const criterion = '2@x';
-		return `
+registerActiveQuery('origin', 'Retrieve the origin of a variable, function call, ...', async(shell, ctx) => {
+	const exampleCode = 'x <- 1\nprint(x)';
+	const criterion = '2@x';
+	return `
 With this query you can use flowR's origin tracking to find out the read origins of a variable,
 the functions called by a call, and more.
 
@@ -370,31 +411,23 @@ ${
 	await showQuery(shell, exampleCode, [{ type: 'origin', criterion: criterion }], { showCode: true, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('search', {
-	type:             'active',
-	shortDescription: 'Provides access to flowR\'s search API',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x + 1';
-		return `
+registerActiveQuery('search', 'Provides access to flowR\'s search API', async(shell, ctx) => {
+	const exampleCode = 'x + 1';
+	return `
 With this query you can use the ${ctx.linkPage('wiki/Search API', 'Search API')} to conduct searches on the flowR analysis result.
 
 Using the example code \`${exampleCode}\`, the following query returns all uses of 'x' in the code:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'search', search: Q.var('x').filter(VertexType.Use).build() }], { showCode: true, collapseQuery: false, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'search', search: Q.var('x').filter(VertexType.Use).build() }], { showCode: true, ctx })
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('happens-before', {
-	type:             'active',
-	shortDescription: 'Check whether one normalized AST node happens before another in the CFG.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x <- 1\ny <- 2';
-		return `
+registerActiveQuery('happens-before', 'Check whether one normalized AST node happens before another in the CFG.', async(shell, ctx) => {
+	const exampleCode = 'x <- 1\ny <- 2';
+	return `
 With this query you can analyze the control flow graph:
 
 Using the example code:
@@ -403,38 +436,28 @@ ${codeBlock('r', exampleCode)}
 
 the following query returns that the first assignment happens always before the other:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'happens-before', a: '1@x', b: '2@y' }], { showCode: true, collapseQuery: false, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'happens-before', a: '1@x', b: '2@y' }], { showCode: true, ctx })
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('id-map', {
-	type:             'active',
-	shortDescription: 'Returns the id-map of the normalized AST of the given code.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x + 1';
-		return `
+registerActiveQuery('id-map', 'Returns the id-map of the normalized AST of the given code.', async(shell, ctx) => {
+	const exampleCode = 'x + 1';
+	return `
 This query provides access to all nodes in the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} as a mapping from their id to the node itself.
 
 Using the example code \`${exampleCode}\`, the following query returns all nodes from the code:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'id-map' }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'id-map' }], { showCode: true, ctx })
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('config', {
-	type:             'active',
-	shortDescription: 'Returns the current configuration of flowR.',
-
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		return `
+registerActiveQuery('config', 'Returns the current configuration of flowR.', async(shell, ctx) => `
 This query provides access to the current configuration of the flowR instance. See the ${ctx.linkPage('wiki/Interface', 'Interface')} wiki page for more information on what the configuration represents.
 Additionally, you can use this query to update the configuration of flowR on-the-fly (please do not rely on this mechanism it is mostly of interest for demonstrations).
 ${
-	await showQuery(shell, '', [{ type: 'config', update: { ignoreSourceCalls: true } }], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
+	await showQuery(shell, '', [{ type: 'config', update: { ignoreSourceCalls: true } }], { showCode: false, collapseResult: true, ctx })
 }
 
 Please note that, in the REPL, a special syntax starting with \`+\` (which should be autocompleted) can be used to update the configuration on the fly:
@@ -455,51 +478,38 @@ ${
 
 One of the most useful options to change on-the-fly are probably those under \`repl\`. For example, setting ${ctx.linkConfig('repl.quickStats', true)}
 enables quick statistics after each REPL command. Likewise, ${ctx.linkConfig('repl.dfProcessorHeat', true)} enables the dataflow processor heatmap after each REPL command.
-`;
-	}
-});
+`);
 
-registerQueryDocumentation('absint', {
-	type:             'active',
-	shortDescription: 'Returns the abstract values inferred for every expression or at specific locations.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const criteria: SlicingCriteria = ['1@df', '1@data.frame'];
-		const inference: AbsintQueryType = 'df-shape';
-		const exampleCode = 'df <- data.frame(id = 1:3) |>\n  filter(df, FALSE)';
-		return `
+registerActiveQuery('absint', 'Returns the abstract values inferred for every expression or at specific locations.', async(shell, ctx) => {
+	const criteria: SlicingCriteria = ['1@df', '1@data.frame'];
+	const inference: AbsintQueryType = 'df-shape';
+	const exampleCode = 'df <- data.frame(id = 1:3) |>\n  filter(df, FALSE)';
+	return `
 This query infers all shapes of dataframes within the code using abstract interpretation. For example, you can use:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'absint', inference: inference }], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'absint', inference: inference }], { showCode: true, ctx })
 }
 
 The query optionally also accepts slice criteria to narrow the results to specific nodes. For example:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'absint', inference: inference, criteria: criteria }], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'absint', inference: inference, criteria: criteria }], { showCode: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 `;
-	}
 });
 
-registerQueryDocumentation('taint', {
-	type:             'active',
-	shortDescription: 'Returns the taint values inferred for every expression.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const defs: AnyPredefinedTaintAnalysisName[] = ['normalization-constant'];
-		const exampleCode = `
+registerActiveQuery('taint', 'Returns the taint values inferred for every expression.', async(shell, ctx) => {
+	const defs: AnyPredefinedTaintAnalysisName[] = ['normalization-constant'];
+	const exampleCode = `
 			x <- c(1 , 2 , 3 , 4 , 5)\n
 			y <- scale(x)\n
 			z <- mean(y)`;
-		return `
+	return `
 This query infers all taints for one or multiple analysis definitions within the code using taint analysis. 
 For example, you can use the following query to get the results of the normalization analysis:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'taint',
-		defs: defs
-	}], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'taint', defs: defs }], { showCode: true, ctx })
 }
 `;
-	}
 });
 
 registerQueryDocumentation('compound', {
@@ -543,15 +553,12 @@ Now, the results no longer contain calls to \`plot\` that are not defined locall
 	}
 });
 
-registerQueryDocumentation('static-slice', {
-	type:             'active',
-	shortDescription: 'Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
-		const criteria = ['3@z', '4@x'] as SlicingCriteria;
-		const sourceExample = 'source("library.R")\nprint(greeting)';
-		const sourceCriteria = ['2@print'] as SlicingCriteria;
-		return `
+registerActiveQuery('static-slice', 'Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).', async(shell, ctx) => {
+	const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
+	const criteria = ['3@z', '4@x'] as SlicingCriteria;
+	const sourceExample = 'source("library.R")\nprint(greeting)';
+	const sourceCriteria = ['2@print'] as SlicingCriteria;
+	return `
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
 return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice).
 Given this, the backward slice is essentially the subpart of the program that may influence the value of the variables you are interested in.
@@ -595,16 +602,12 @@ ${
 You can disable ${ctx.linkPage('wiki/Interface', 'magic comments', 'slice-magic-comments')} using the \`noMagicComments\` flag.
 This query replaces the old ${ctx.linkPage('wiki/Interface', '`request-slice`', 'message-request-slice')} message.
 		`;
-	}
 });
 
-registerQueryDocumentation('provenance', {
-	type:             'active',
-	shortDescription: 'Calculate the provenance of a given variable, optionally restricted to its enveloping fdef',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
-		const criterion: SlicingCriterion = '4@x';
-		return `
+registerActiveQuery('provenance', 'Calculate the provenance of a given variable, optionally restricted to its enveloping fdef', async(shell, ctx) => {
+	const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
+	const criterion: SlicingCriterion = '4@x';
+	return `
 Given a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion), flowR will return the provenance
 of the given program element (i.e., all related vertices in a non-interprocedural and non-context sensitive backward slice).
 
@@ -616,25 +619,21 @@ ${
 	await showQuery(shell, exampleCode, [{ type: 'provenance', criterion }], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
 }
 `;
-	}
 });
 
-registerQueryDocumentation('input-sources', {
-	type:             'active',
-	shortDescription: 'Classify the input sources of function calls',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = `
+registerActiveQuery('input-sources', 'Classify the input sources of function calls', async(shell, ctx) => {
+	const exampleCode = `
 f <- function(x) {
 	x <- x * 2
 	print(x)
 }`.trim();
-		const criterion: SlicingCriterion = '3@print';
-		const shinyCode = `
+	const criterion: SlicingCriterion = '3@print';
+	const shinyCode = `
 server <- function(input, output, session) {
 	system(paste("convert", input$file))
 }`.trim();
-		const shinyCriterion: SlicingCriterion = '2@system';
-		return `
+	const shinyCriterion: SlicingCriterion = '2@system';
+	return `
 Given a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) to
 something like a function call, flowR classifies the types of all input sources (e.g., arguments).
 
@@ -676,14 +675,14 @@ ${codeBlock('json', JSON.stringify({ inputSources: {
 	linkedEntryPoints: [{ call: 'myframework::serve', argName: 'handler', argIdx: 0, params: ['ctx', null] }]
 } }, undefined, 2))}
 `;
-	}
 });
 
 /** what a script takes in, what it puts out, and what it does with data in between, by category of the dependencies query */
 const DependencyRoles: readonly (readonly [title: string, categories: readonly DefaultDependencyCategoryName[]])[] = [
 	['Inputs', ['library', 'remote', 'source', 'read']],
 	['Outputs', ['write', 'visualize']],
-	['What the script does with data', ['transform', 'statistics', 'test']]
+	['What the script does with data', ['transform', 'statistics', 'test']],
+	['What only works in an interactive session', ['interactive']]
 ];
 
 /** the categories and the values they report, generated from the categories the query knows */
@@ -713,19 +712,16 @@ What the \`value\` of an entry tells, and the fields that say more:
 `;
 }
 
-registerQueryDocumentation('dependencies', {
-	type:             'active',
-	shortDescription: 'Returns all direct dependencies (in- and outputs) of a given R script',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'library(x)';
-		const transformCode = `
+registerActiveQuery('dependencies', 'Returns all direct dependencies (in- and outputs) of a given R script', async(shell, ctx) => {
+	const exampleCode = 'library(x)';
+	const transformCode = `
 library(dplyr)
 library(ggplot2)
 small <- measurements |> filter(x > 1) |> select(x, y)
 p <- ggplot(small, aes(x, y)) + geom_point() + ggtitle("Small")
 ggsave("small.png", plot = p)
 		`;
-		const longerCode = `
+	const longerCode = `
 source("sample.R")
 foo <- loadNamespace("bar")
 
@@ -737,8 +733,8 @@ ggplot(data, aes(x=x, y=y)) + geom_point()
 better::write.csv(data, "data2.csv")
 print("hello world!")
 		`;
-		const categories = defaultDependencyCategories((await new FlowrAnalyzerBuilder().setParser(shell).build()).inspectContext());
-		return `
+	const categories = defaultDependencyCategories((await new FlowrAnalyzerBuilder().setParser(shell).build()).inspectContext());
+	return `
 This query extracts all dependencies from an R script, using a combination of a ${linkToQueryOfName('call-context')}
 and more advanced tracking in the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph')}.
 Loaded libraries are resolved against the ${ctx.linkPage('wiki/Signature Database', 'signature database')}.
@@ -747,7 +743,7 @@ ${dependencyOverview(ctx, categories)}
 
 For a script reading \`${exampleCode}\`, the following query returns the loaded library:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'dependencies' }], { showCode: false, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'dependencies' }], { showCode: false, ctx })
 }
 
 The query also handles more complicated scripts and offers information on the loaded _libraries_, _sourced_ files, data which is _read_ and data which is _written_.
@@ -755,7 +751,7 @@ For example, consider the following script:
 ${codeBlock('r', longerCode)}
 The following query returns the dependencies of the script.
 ${
-	await showQuery(shell, longerCode, [{ type: 'dependencies' }], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
+	await showQuery(shell, longerCode, [{ type: 'dependencies' }], { showCode: false, collapseResult: true, ctx })
 }
 
 Currently, the dependency extraction may fail as it is essentially a set of heuristics guessing the dependencies.
@@ -764,7 +760,7 @@ We welcome any feedback on this (consider opening a [new issue](${NewIssueUrl}))
 In the meantime we offer several properties to overwrite the default behavior (e.g., function names that should be collected)
 
 ${
-	await showQuery(shell, longerCode, [{ type: 'dependencies', ignoreDefaultFunctions: true, enabledCategories: ['library'], libraryFunctions: [{ package: 'base', name: 'print', argIdx: 0, argName: 'library', resolveValue: true }] }], { showCode: false, collapseQuery: false, collapseResult: true, ctx })
+	await showQuery(shell, longerCode, [{ type: 'dependencies', ignoreDefaultFunctions: true, enabledCategories: ['library'], libraryFunctions: [{ package: 'base', name: 'print', argIdx: 0, argName: 'library', resolveValue: true }] }], { showCode: false, collapseResult: true, ctx })
 }
 
 Here, \`resolveValue\` tells the dependency query to resolve the value of this argument in case it is not a constant.
@@ -775,7 +771,7 @@ Set \`assumedPackages\` to have those reported as well, as \`library\` entries m
 \`nodeId\` (no single call stands for "R attached this"), with the calls that pulled the package in listed as
 \`linkedIds\`:
 ${
-	await showQuery(shell, 'sd(c(1, 2, 3))', [{ type: 'dependencies', assumedPackages: true, enabledCategories: ['library'] }], { showCode: true, collapseQuery: false, collapseResult: false, ctx })
+	await showQuery(shell, 'sd(c(1, 2, 3))', [{ type: 'dependencies', assumedPackages: true, enabledCategories: ['library'] }], { showCode: true, collapseResult: false, ctx })
 }
 
 \`base\` is reported alongside the others but additionally marked \`alwaysAttached\`. The other six are attached by
@@ -787,7 +783,7 @@ To see what takes part in a dependency, ask the query to \`focus\` on it: \`.met
 dependency depends on and every node that depends on it, so a client can gray out the rest. In the REPL, the
 criteria go in parentheses, as with ${ctx.replCmd('query')} \`@dependencies (3@read.csv)\`, which prints the lines taking part:
 ${
-	await showQuery(shell, 'f <- "a.csv"\ng <- 2\nd <- read.csv(f)\nh <- g + 1\nprint(d)', [{ type: 'dependencies', focus: ['3@read.csv'], enabledCategories: ['read'] }], { showCode: true, collapseQuery: false, collapseResult: true, ctx })
+	await showQuery(shell, 'f <- "a.csv"\ng <- 2\nd <- read.csv(f)\nh <- g + 1\nprint(d)', [{ type: 'dependencies', focus: ['3@read.csv'], enabledCategories: ['read'] }], { showCode: true, collapseResult: true, ctx })
 }
 
 Beyond libraries, files and outputs, the query knows the \`visualize\` category (plots) and the \`transform\` category
@@ -807,46 +803,38 @@ resolved with the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} inste
 * Every plot additionally carries its \`title\` (from \`ggtitle\`, \`labs(title = )\` or \`main =\`) and the file it is written to as \`savedTo\`
   (by \`ggsave\`, which names its \`plot\` or saves \`last_plot()\`, or by the graphics device open when it is drawn).
 ${
-	await showQuery(shell, transformCode, [{ type: 'dependencies', enabledCategories: ['transform', 'visualize'] }], { showCode: true, collapseQuery: true, collapseResult: false, ctx })
+	await showQuery(shell, transformCode, [{ type: 'dependencies', enabledCategories: ['transform', 'visualize'] }], { showCode: true, collapseResult: false, ctx })
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('linter', {
-	type:             'active',
-	shortDescription: 'Lints a given R script for common issues.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'read.csv("i_do_not_exist.csv")';
-		return `
+registerActiveQuery('linter', 'Lints a given R script for common issues.', async(shell, ctx) => {
+	const exampleCode = 'read.csv("i_do_not_exist.csv")';
+	return `
 This query lints a given R script for common issues, such as missing files, unused variables, and more.
 
 For a script reading \`${exampleCode}\`, the following query returns all smells detected:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'linter' }], { showCode: false, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'linter' }], { showCode: false, ctx })
 }
 
 You can also configure which rules to apply and what settings to use for these rules:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'linter', rules: ['file-path-validity'] }], { showCode: false, collapseQuery: true, shorthand: `rules:file-path-validity "${exampleCode}"`, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'linter', rules: ['file-path-validity'] }], { showCode: false, shorthand: `rules:file-path-validity "${exampleCode}"`, ctx })
 }
 
 We welcome any feedback and suggestions for new rules on this (consider opening a [new issue](${NewIssueUrl})).
 		`;
-	}
 });
 
-registerQueryDocumentation('control-flow', {
-	type:             'active',
-	shortDescription: 'Provides the control-flow of the program.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'if(TRUE) 1 else 2';
-		return `
+registerActiveQuery('control-flow', 'Provides the control-flow of the program.', async(shell, ctx) => {
+	const exampleCode = 'if(TRUE) 1 else 2';
+	return `
 This control-flow query provides you access to the control flow graph.
 
 For a script reading \`${exampleCode}\`, the following query returns the CFG:
 ${
-	await showQuery(shell, exampleCode, [{ type: 'control-flow' }], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'control-flow' }], { showCode: false, collapseResult: true, ctx })
 }
 
 You can also overwrite the simplification passes to tune the perspective. for example, if you want to have basic blocks:
@@ -879,16 +867,12 @@ this produces:
 ${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart LR\n', simplifications: ['analyze-dead-code', 'remove-dead-code'], ctx })}
 
 		`;
-	}
 });
 
-registerQueryDocumentation('location-map', {
-	type:             'active',
-	shortDescription: 'Returns a simple mapping of ids to their location in the source file',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x + 1\nx * 2';
-		const criteria = ['1@x', '2@x'] as SlicingCriteria;
-		return `
+registerActiveQuery('location-map', 'Returns a simple mapping of ids to their location in the source file', async(shell, ctx) => {
+	const exampleCode = 'x + 1\nx * 2';
+	const criteria = ['1@x', '2@x'] as SlicingCriteria;
+	return `
 A query like the ${linkToQueryOfName('id-map')} query can return a huge result, especially for larger scripts.
 If you are not interested in all of the information contained within the full map, you can use the location map query to get a simple mapping of ids to their location in the source file.   
 
@@ -899,27 +883,47 @@ ${codeBlock('r', exampleCode)}
 The following query then gives you the aforementioned mapping:
 
 ${
-	await showQuery(shell, exampleCode, [{ type: 'location-map' }], { showCode: false, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'location-map' }], { showCode: false, ctx })
 }
 
 The query also accepts a list of slice criteria to filter the results to only include the locations of specific nodes. For example:
 
 ${
-	await showQuery(shell, exampleCode, [{ type: 'location-map', ids: criteria }], { showCode: false, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'location-map', ids: criteria }], { showCode: false, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 
 All locations are given as a ${ctx.link('SourceRange')} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.
 
 		`;
-	}
 });
 
-registerQueryDocumentation('dice', {
-	type:             'active',
-	shortDescription: 'Reduces the code to the parts that carry information from a given start point to a given end point.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x <- 1\ny <- 2\nz <- x + y\nw <- z * 2\nprint(z)';
-		return `
+registerActiveQuery('data-columns', 'Returns the columns of a data frame that can be written at a position, as an editor offers them to complete.', async(shell, ctx) => {
+	const exampleCode = 'library(dplyr)\npenguins |> filter(year > 2008, bi)';
+	return `
+Editors complete names, and within code that works on a data frame the names worth offering are often its columns:
+after \`df$\`, but also in every argument a call evaluates within its data, as \`filter\`, \`mutate\`, \`subset\`, \`with\`, or \`aes\` do.
+flowR knows which arguments a call evaluates that way (they are _quoted_ in the dataflow graph), so this works for every such call,
+not just for a fixed list of them. The data frame is another argument of that call, the left side of a pipe into it, or, for a layer
+like \`geom_point(aes(...))\`, an argument of what it is added to. Its columns come from the ${linkToQueryOfName('absint')} of data frame shapes,
+which also knows the data sets R finds as lazy data, like \`penguins\` of \`datasets\` or \`starwars\` of \`dplyr\` (once loaded, or as \`dplyr::starwars\`).
+
+Consider the following code, with the cursor just after the \`bi\` (line 2, column 34):
+
+${codeBlock('r', exampleCode)}
+
+The query asks for the columns at that position:
+
+${
+	await showQuery(shell, exampleCode, [{ type: 'data-columns', positions: ['2:34'] }], { showCode: false, shorthand: sliceQueryShorthand(['2:34'] as SlicingCriteria, escapeNewline(exampleCode)), ctx })
+}
+
+The position has to fall within a node. An editor completing a name not typed yet, as in \`filter(penguins, )\`, inserts a placeholder name at the cursor first.
+		`;
+});
+
+registerActiveQuery('dice', 'Reduces the code to the parts that carry information from a given start point to a given end point.', async(shell, ctx) => {
+	const exampleCode = 'x <- 1\ny <- 2\nz <- x + y\nw <- z * 2\nprint(z)';
+	return `
 While the ${linkToQueryOfName('static-slice')} answers "what affects this point?" (or "what does this point affect?"),
 a _dice_ answers the two-sided question: **which parts of the program carry information from A to B?**
 It is the intersection of a forward slice seeded at \`from\` and a backward slice seeded at \`to\`,
@@ -946,15 +950,11 @@ ${
 	details('Multiple Criteria per Side', 'Each side accepts several criteria, which are seeded together:' + await showQuery(shell, exampleCode, [{ type: 'dice', from: ['1@x', '2@y'] as SlicingCriteria, to: ['5@print'] as SlicingCriteria }], { showCode: false, ctx }))
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('dataflow-lens', {
-	type:             'active',
-	shortDescription: 'Returns a simplified view on the dataflow graph, reduced to definitions, uses, and calls.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'f <- function(a) a + 1\nx <- 1\ny <- f(x)\nprint(y)';
-		return `
+registerActiveQuery('dataflow-lens', 'Returns a simplified view on the dataflow graph, reduced to definitions, uses, and calls.', async(shell, ctx) => {
+	const exampleCode = 'f <- function(a) a + 1\nx <- 1\ny <- f(x)\nprint(y)';
+	return `
 The ${linkToQueryOfName('dataflow')} hands you the complete dataflow graph, which is precise but quickly grows too large to read.
 The dataflow lens returns a _reduced_ view of that same graph, keeping only what is usually interesting when looking at it by hand:
 
@@ -969,22 +969,15 @@ ${codeBlock('r', exampleCode)}
 ${await showQuery(shell, exampleCode, [{ type: 'dataflow-lens' }], { showCode: false, ctx })}
 
 ${
-	block({
-		type:    'NOTE',
-		content: `This is a presentation aid, not a semantic one: the reduced graph is not a sound basis for slicing.
-Use the ${linkToQueryOfName('dataflow')} if you need the complete graph, or the ${linkToQueryOfName('dataflow-cluster')} if you want the graph partitioned instead of shrunk.`
-	})
+	block('NOTE', `This is a presentation aid, not a semantic one: the reduced graph is not a sound basis for slicing.
+Use the ${linkToQueryOfName('dataflow')} if you need the complete graph, or the ${linkToQueryOfName('dataflow-cluster')} if you want the graph partitioned instead of shrunk.`)
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('signature', {
-	type:             'active',
-	shortDescription: 'Inspects the signature database: packages, function signatures, source and documentation links.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'library(dplyr)\nlead(1:10, n = 1)';
-		return `
+registerActiveQuery('signature', 'Inspects the signature database: packages, function signatures, source and documentation links.', async(shell, ctx) => {
+	const exampleCode = 'library(dplyr)\nlead(1:10, n = 1)';
+	return `
 This query is the read-side interface to flowR's ${ctx.linkPage('wiki/Signature Database', 'signature database')}&mdash;the very same database
 that resolves \`library()\` and \`::\` calls during the dataflow analysis. It lets you ask what flowR actually _knows_ about a package
 or a function, without needing R or a network connection.
@@ -1012,33 +1005,21 @@ The \`parameters\` and \`requiredParameters\` properties additionally filter by 
 functions you only half-remember: \`{ package: '*', parameters: ['data', 'mapping'] }\` finds every known function taking both of these.
 
 ${
-	block({
-		type:    'NOTE',
-		content: `The results depend on which database shards are mounted; with none available the query reports that no database is loaded rather than failing.
+	block('NOTE', `The results depend on which database shards are mounted; with none available the query reports that no database is loaded rather than failing.
 See the ${ctx.linkPage('wiki/Signature Database')} page for the storage format, the configuration under ${ctx.linkConfig('solver.sigdb', true)}, and how to obtain further shards.
-To find out what a script _uses_, reach for the ${linkToQueryOfName('dependencies')}; to find out which versions it is compatible with, see the ${linkToQueryOfName('guess-dep-versions')}.`
-	})
+To find out what a script _uses_, reach for the ${linkToQueryOfName('dependencies')}; to find out which versions it is compatible with, see the ${linkToQueryOfName('guess-dep-versions')}.`)
 }
 		`;
-	}
 });
 
 /** Pins the R version so this page reports the same bounds, whatever R the machine regenerating it has. */
 function guessDepVersionsExampleOptions(ctx: GeneralDocContext): ShowQueryOptions {
-	return {
-		showCode:       false,
-		collapseResult: true,
-		ctx,
-		prepare:        b => b.configure('solver.sigdb.assumedRVersion', DefaultAssumedRVersion)
-	};
+	return { showCode: false, collapseResult: true, ctx, prepare: b => b.configure('solver.sigdb.assumedRVersion', DefaultAssumedRVersion) };
 }
 
-registerQueryDocumentation('guess-dep-versions', {
-	type:             'active',
-	shortDescription: 'Guesses the version range each dependency must have, from declared constraints and actual code usage.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'library(dplyr)\nmutate(mtcars, across(everything(), round))';
-		return `
+registerActiveQuery('guess-dep-versions', 'Guesses the version range each dependency must have, from declared constraints and actual code usage.', async(shell, ctx) => {
+	const exampleCode = 'library(dplyr)\nmutate(mtcars, across(everything(), round))';
+	return `
 A script rarely says which version of a package it needs, but it shows you. If it passes an argument that a function only
 gained in some release, it cannot run on anything older. This query turns that observation into a concrete version range per dependency.
 
@@ -1084,22 +1065,58 @@ and, where the project declares constraints, against \`declaredCombinations\` (w
 says how much the guess added).
 
 ${
-	block({
-		type:    'NOTE',
-		content: `This query needs the ${ctx.linkPage('wiki/Signature Database', 'signature database')}, and specifically a database carrying the _history_ of a package,
+	block('NOTE', `This query needs the ${ctx.linkPage('wiki/Signature Database', 'signature database')}, and specifically a database carrying the _history_ of a package,
 since bounding a version means comparing releases. Without one it returns no guesses and says so in its \`message\`.
-See the ${linkToQueryOfName('signature')} to inspect the signatures the guess is drawn from.`
-	})
+See the ${linkToQueryOfName('signature')} to inspect the signatures the guess is drawn from.`)
 }
 		`;
-	}
 });
 
-registerQueryDocumentation('function-info', {
-	type:             'active',
-	shortDescription: 'Reports where a function name comes from: which packages export it, their signature, and whether flowR itself has a built-in definition for it.',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		return `
+registerActiveQuery('code-clones', 'Finds code clones in all analyzed files with a configurable selection of AST, token, and fingerprint based algorithms.', async(shell, ctx) => {
+	const example = `normalize <- function(v) {
+  m <- mean(v)
+  (v - m) / sd(v)
+}
+scale_it <- function(values) {
+  mu <- mean(values)
+  (values - mu) / sd(values)
+}`;
+	return `
+This query reports pairs of code fragments that are clones of each other, that is, code that was copied and possibly
+adapted. It runs over all files of the analysis, for example a whole folder or package, with three published algorithms:
+
+| algorithm | compares | after |
+|-----------|----------|-------|
+| \`baxter\` | all AST subtrees above a mass threshold, hashed by structure (ignoring identifiers and constants) and compared with \`2S / (2S + L + R)\` | Baxter et al., [Clone Detection Using Abstract Syntax Trees](https://doi.org/10.1109/ICSM.1998.738528), ICSM 1998 |
+| \`gst\` | the token strings of functions or files with Greedy String Tiling | as in [JPlag](https://github.com/jplag/JPlag), see Prechelt et al., [Finding Plagiarisms among a Set of Programs with JPlag](https://doi.org/10.3217/jucs-008-11-1016), 2002 |
+| \`winnowing\` | k-gram fingerprints selected by robust winnowing, reported with the matched passages | Schleimer et al., [Winnowing: Local Algorithms for Document Fingerprinting](https://doi.org/10.1145/872757.872770), SIGMOD 2003, the algorithm behind MOSS |
+
+Before the detection, the query presents the code in one of three \`perspective\`s:
+
+- \`syntax\` shows the code as written.
+- \`canonical\` (the default) rewrites syntactic sugar and newer R features into one core form. Pipes become calls, \`\\(x)\` becomes \`function(x)\`, right and equal assignments become \`<-\`, \`(e)\` and \`{e}\` become \`e\`, \`x[["a"]]\` becomes \`x$a\`, \`T\` and \`F\` become \`TRUE\` and \`FALSE\`, and a tail \`return(e)\` becomes \`e\`. Every rewritten node keeps the id of the node it stems from, so all findings point to the original source.
+- \`dataflow\` additionally inlines temporaries that are used exactly once along the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, so \`t <- f(x)\` followed by \`g(t)\` looks like \`g(f(x))\`. It only inlines where this cannot change what the code computes, and it is the only perspective that needs the dataflow analysis.
+
+With \`exportIndex\`, the query also returns the clone index of the analyzed files (their normalized ASTs).
+A later query can pass such indices as \`against\` to search new code in a corpus of pre-analyzed projects without analyzing them again.
+Use \`config\` to tune the thresholds of each algorithm, and \`maxPairs\` to limit the number of reported pairs, as \`n\` copies of the same function already form \`n(n-1)/2\` pairs.
+
+${await showQuery(shell, example, [{ type: 'code-clones', algorithms: [CloneAlgorithm.Gst, CloneAlgorithm.Winnowing] }], { showCode: true, collapseResult: true, ctx })}
+
+In code, passing the query on its own to ${ctx.linkM(FlowrAnalyzer, 'query')} returns its result directly:
+
+${codeBlock('typescript', `const { pairs } = await analyzer.query({ type: 'code-clones', algorithms: ['gst', 'winnowing'] });
+for(const { algorithm, similarity, a, b } of pairs) {
+	console.log(\`\${algorithm} (\${similarity.toFixed(2)}): \${a.name ?? a.file} ~ \${b.name ?? b.file}\`);
+}`)}
+
+${
+	block('NOTE', `The ${ctx.linkPage('wiki/Linter', 'linter')} offers the same detection as its \`code-clones\` rule, which is not active by default. In the REPL, \`:query @code-clones gst winnowing <code>\` runs the query with the given algorithms.`)
+}
+`;
+});
+
+registerActiveQuery('function-info', 'Reports where a function name comes from: which packages export it, their signature, and whether flowR itself has a built-in definition for it.', async(shell, ctx) => `
 This query answers "where does this function come from?" for a bare name, combining two sources flowR otherwise
 consults separately: the ${ctx.linkPage('wiki/Signature Database', 'signature database')} (which packages export
 the name, and their signature/definition site) and flowR's own built-in configuration (whether flowR models the
@@ -1117,19 +1134,12 @@ flowR states for it:
 ${await showQuery(shell, '', [{ type: 'function-info', name: 'get' }], { showCode: false, collapseResult: true, ctx })}
 
 ${
-	block({
-		type:    'NOTE',
-		content: `To find out what a script _uses_, reach for the ${linkToQueryOfName('dependencies')}; to inspect a specific
-package/version in the database directly, reach for the ${linkToQueryOfName('signature')}. In the REPL, \`:signature info <name>\` is a shorthand for this query.`
-	})
+	block('NOTE', `To find out what a script _uses_, reach for the ${linkToQueryOfName('dependencies')}; to inspect a specific
+package/version in the database directly, reach for the ${linkToQueryOfName('signature')}. In the REPL, \`:signature info <name>\` is a shorthand for this query.`)
 }
-		`;
-	}
-});
+		`);
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Query-API
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Query-API */
 export class WikiQuery extends DocMaker<'wiki/Query API.md'> {
 	constructor() {
 		super('wiki/Query API.md', module.filename, 'query API');
@@ -1148,18 +1158,26 @@ export class WikiQuery extends DocMaker<'wiki/Query API.md'> {
 		return `
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
 Please see the ${ctx.linkPage('wiki/Interface')} wiki page for more information on how to access this API.
+In code, you run queries with ${ctx.linkM(FlowrAnalyzer, 'query')}.
+Pass it a single query object, and it answers with the result of that query directly, which is the most common case and also the fastest, as there is nothing to group.
+For queries that report one entry per query (e.g., the ${linkToQueryOfName('static-slice')}), the result is just that entry.
+A failing single query throws an error.
+
+${codeBlock('ts', 'const { slice, reconstruct } = await analyzer.query({ type: \'static-slice\', criteria: [\'3@x\'] });')}
+
+Pass it a list of queries, and it answers with a record of the results by query type.
+Queries of the same type run together, and a failing query type is reported as an error without affecting the others:
+
+${codeBlock('ts', 'const results = await analyzer.query([{ type: \'id-map\' }, { type: \'dataflow\' }]);\nconst graph = results.dataflow.graph;')}
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 There are many ways to query a dataflow graph created by flowR.
 For example, you can use the ${ctx.linkPage('wiki/Interface', '`request-query`', 'message-request-query')} message
 with a running flowR server, or the ${getReplCommand('query')} command in the flowR ${ctx.linkPage('wiki/Interface', 'REPL', '-using-the-repl')}.
 
 Also, check out the [${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for a complete example project using the query API.
-			`.trim()
-	})
+			`.trim())
 }
 
 ## The Query Format

@@ -15,9 +15,7 @@ function unsupportedFunctions(functions: Record<IdentifierString, UnsupportedFun
 	return Record.entries(functions).map(([identifier, info]) => ({ identifier: Identifier.parse(identifier), ...info }));
 }
 
-/**
- * List of known function calls that may change the environment unresolvable/implicitly.
- */
+/** List of known function calls that may change the environment unresolvable/implicitly. */
 const UnsupportedFunctionsList = unsupportedFunctions({
 	'base::.Primitive':           {},
 	'base::.Internal':            {},
@@ -46,13 +44,9 @@ const UnsupportedFunctionsList = unsupportedFunctions({
 	'utils::assignInMyNamespace': {},
 });
 
-/**
- * Helper for unsupported functions that may change the environment.
- */
+/** Helper for unsupported functions that may change the environment. */
 export const UnsupportedFunctions = {
-	/**
-	 * Checks whether a data flow graph vertex represents an unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...)
-	 */
+	/** Checks whether a data flow graph vertex represents an unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...) */
 	isUnsupportedCall(this: void, vertex: DataflowGraphVertexArgument | undefined, dfg: DataflowGraph): boolean {
 		if(!DfgVertex.isFunctionCall(vertex)) {
 			return false;

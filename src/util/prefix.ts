@@ -14,11 +14,11 @@
  * findByPrefixIfUnique('', [ 'hello', 'hell' ]) // => undefined (empty prefix)
  * ```
  */
-export function findByPrefixIfUnique(prefix: string, keys: Iterable<string>): string | undefined {
+export function findByPrefixIfUnique<S extends string>(prefix: S, keys: Iterable<S>): S | undefined {
 	if(prefix === '') {
 		return undefined;
 	}
-	let found: string | undefined = undefined;
+	let found: S | undefined = undefined;
 	let matchPartial = true;
 	for(const key of keys) {
 		if(key === prefix) {

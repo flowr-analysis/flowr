@@ -1,10 +1,9 @@
 import { Mermaid } from './mermaid';
-import { type DataflowFunctionFlowInformation, type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
+import { type DataflowFunctionFlowInformation, type DataflowGraph, FunctionArgument, UnknownSideEffect } from '../../dataflow/graph/graph';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceTypeReverseMapping } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { DFControlFlowEdge } from '../../dataflow/graph/edge';
-import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../../dataflow/graph/edge';
+import { type DFControlFlowEdge, ControlFlowEdgeTypes, DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { DfgVertex, type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { MermaidDefaultMarkStyle, type MermaidMarkdownMark, type MermaidMarkStyle } from './info';
@@ -14,9 +13,7 @@ import { DataflowInformation } from '../../dataflow/info';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
-/**
- * Internal representation of a mermaid graph in flowR
- */
+/** Internal representation of a mermaid graph in flowR */
 export interface MermaidGraph {
 	nodeLines:           string[]
 	edgeLines:           string[]
@@ -25,7 +22,7 @@ export interface MermaidGraph {
 	markStyle:           MermaidMarkStyle
 	/** in the form of from-\>to because I am lazy, see {@link encodeEdge} */
 	presentEdges:        Set<string>
-	presentVertices:     Set<string>
+	presentVertices:     Set<NodeId>
 	// keep for sub-flows
 	rootGraph:           DataflowGraph
 	/** if given, the dataflow graph will only focus on the "important" parts */
@@ -35,7 +32,6 @@ export interface MermaidGraph {
 	/** an additional line shown in the vertex with the given id as mermaid markdown */
 	annotate?:           (id: NodeId) => string | undefined
 }
-
 
 function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformation | undefined, mermaid: MermaidGraph, idPrefix = ''): void {
 	if(subflow === undefined) {
@@ -85,7 +81,6 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
 	mermaid.presentEdges.add(edgeId);
 }
 
-
 function printArg(arg: FunctionArgument | undefined): string {
 	if(arg === undefined) {
 		return '??';
@@ -126,10 +121,7 @@ function boldLexeme(lexeme: string, display: string): string {
 	return `**${Mermaid.escape(display)}**`;
 }
 
-
-/**
- * Translates a vertex tag to the corresponding mermaid node brackets.
- */
+/** Translates a vertex tag to the corresponding mermaid node brackets. */
 export function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: string, close: string } {
 	let open: string;
 	let close: string;
@@ -149,9 +141,7 @@ export function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open
 	return { open, close };
 }
 
-/**
- * Prints an identifier definition in a human-readable format.
- */
+/** Prints an identifier definition in a human-readable format. */
 export function printIdentifier(id: IdentifierDefinition): string {
 	return `**${id.name ? Identifier.toString(id.name) : 'undefined'}** (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.cds ? ' cds: {' + id.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
 }
@@ -167,10 +157,22 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 		return ['Built-in'];
 	}
 	const lines = [...printEnvironmentToLines(env.parent), `${environmentLevel(env)}${'-'.repeat(40)}`];
-	const longestName = Math.max(...[...env.memory.keys()].map(x => x.length));
-	for(const [name, defs] of env.memory.entries()) {
-		const printName = `${name}:`;
-		lines.push(`  ${printName.padEnd(longestName + 1, ' ')} {${defs.map(printIdentifier).join(', ')}}`);
+	/* what a package attaches are hundreds of names that say nothing about the code, so they show as the packages they come from */
+	const attached = new Set<string>();
+	const own = [...env.memory.entries()].filter(([, defs]) => {
+		const packages = defs.map(d => NodeId.toPkgFn(d.nodeId)?.[0]);
+		if(packages.length === 0 || packages.includes(undefined)) {
+			return true;
+		}
+		packages.forEach(p => attached.add(p as string));
+		return false;
+	});
+	const longestName = Math.max(...own.map(([name]) => name.length));
+	for(const [name, defs] of own) {
+		lines.push(`  ${`${name}:`.padEnd(longestName + 1, ' ')} {${defs.map(printIdentifier).join(', ')}}`);
+	}
+	if(attached.size > 0) {
+		lines.push(`  and what ${[...attached].sort().join(', ')} attach`);
 	}
 	return lines;
 }
@@ -239,7 +241,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	if(mark?.has(id)) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} ${mermaid.markStyle.vertex} `);
 	}
-	if(mermaid.rootGraph.unknownSideEffects.values().some(l => NodeId.normalize(l as string) === NodeId.normalize(origId))) {
+	if(mermaid.rootGraph.unknownSideEffects.values().some(l => NodeId.normalize(UnknownSideEffect.id(l)) === NodeId.normalize(origId))) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:red,stroke-width:5px; `);
 	}
 	if(DfgVertex.isFunctionDefinition(info)) {
@@ -321,7 +323,6 @@ export interface MermaidGraphConfiguration {
 	annotate?:            (id: NodeId) => string | undefined
 }
 
-
 // make the passing of root ids more performant again
 function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
@@ -353,13 +354,10 @@ export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGr
 	return `${prefix}flowchart TD\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`;
 }
 
-/**
- * Converts two dataflow graphs to a mermaid url that visualizes their differences.
- */
+/** Converts two dataflow graphs to a mermaid url that visualizes their differences. */
 export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, prefix: string): string {
 	return Mermaid.codeToUrl(diffGraphsToMermaid(left, right, prefix));
 }
-
 
 /**
  * The helper object for all things regarding the mermaid based visualization of dataflow graphs!
@@ -375,9 +373,7 @@ export const DataflowMermaid = {
 		const mermaid = graphToMermaidGraph(config.includeOnlyIds ?? config.graph.rootIds(), config);
 		return { string: `${mermaid.nodeLines.join('\n')}\n${mermaid.edgeLines.join('\n')}`, mermaid };
 	},
-	/**
-	 * This is a simplified version of {@link DataflowMermaid.convert}
-	 */
+	/** This is a simplified version of {@link DataflowMermaid.convert} */
 	raw(this: void, graph: DataflowGraph | DataflowInformation, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false, qualifyBaseR = true): string {
 		graph = DataflowInformation.is(graph) ? graph.graph : graph;
 		return DataflowMermaid.convert({ graph, includeEnvironments, mark, simplified, qualifyBaseR }).string;

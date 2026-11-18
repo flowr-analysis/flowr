@@ -1,7 +1,7 @@
 import { Bottom, Top } from '../../abstract-interpretation/domains/lattice';
 import { TaintAnalysisDefinition } from '../builder/taint-analysis-definition';
 import { FiniteDomainBuilder } from '../builder/domain';
-import { PkgName  } from '../../dataflow/environments/identifier';
+import { PkgName } from '../../dataflow/environments/identifier';
 import type { TaintCondition, TaintMapping } from '../taint-mapping';
 import { withTaintOrigins } from '../builder/report-template';
 import { TaintFnCategory } from '../function-categories';
@@ -22,12 +22,10 @@ export const normalizationDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bo
 	.build();
 
 /** Yield bottom when the input carries one of the given normalization taints. */
-const checkKnownConstant = (...checkedTaints: symbol[]): TaintCondition<typeof normalizationDomain> => {
-	return {
-		argDefinition: [{ pos: 0, name: 'x' }],
-		conditionFn:   (_args, [taint]) => checkedTaints.includes(taint.value) ? Bottom : (taint.value ?? Top)
-	};
-};
+const checkKnownConstant = (...checkedTaints: symbol[]): TaintCondition<typeof normalizationDomain> => ({
+	argDefinition: [{ pos: 0, name: 'x' }],
+	conditionFn:   (_args, [taint]) => checkedTaints.includes(taint.value) ? Bottom : (taint.value ?? Top)
+});
 
 /** Yield bottom for any concrete normalization taint. */
 const checkAnyNormalized = checkKnownConstant(MinMax, ZeroCentered, UnitVariance, ZScore);
@@ -37,10 +35,7 @@ const normalizationSources: TaintMapping<typeof normalizationDomain>[] = [
 	{
 		identifier: ['scale', PkgName.Base],
 		condition:  {
-			argValues: [
-				{ pos: 1, name: 'center', default: true },
-				{ pos: 2, name: 'scale', default: true }
-			],
+			argValues:     [{ pos: 1, name: 'center', default: true }, { pos: 2, name: 'scale', default: true }],
 			argDefinition: [{ pos: 0, name: 'x' }],
 			conditionFn:   ([center, scale], [taint], provenance) => {
 				if(center === true && scale === true) {

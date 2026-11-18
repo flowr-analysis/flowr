@@ -7,10 +7,7 @@ import { identifyLinkToNestedRelation } from './identify-link-to-nested-call-rel
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import { assertUnreachable } from '../../../util/assert';
 
-/**
- * This facade selects the appropriate link-to relation identification function
- * based on the type of link-to relation specified.
- */
+/** This facade selects the appropriate link-to relation identification function based on the type of link-to relation specified. */
 export async function identifyLinkToRelation(
 	from: NodeId,
 	analyzer: ReadonlyFlowrAnalysisProvider,

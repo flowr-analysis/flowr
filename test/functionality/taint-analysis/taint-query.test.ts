@@ -1,8 +1,7 @@
 import { describe, test, assert } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { executeQueries } from '../../../src/queries/query';
-import { TaintQueryDefinition } from '../../../src/queries/catalog/taint-query/taint-query-format';
-import type { TaintQuery, TaintQueryResult } from '../../../src/queries/catalog/taint-query/taint-query-format';
+import { TaintQueryDefinition, type TaintQuery, type TaintQueryResult } from '../../../src/queries/catalog/taint-query/taint-query-format';
 import type { AnyPredefinedTaintAnalysisName } from '../../../src/taint-analysis/predefined/predefined';
 import { voidFormatter } from '../../../src/util/text/ansi';
 import { jsonReplacer } from '../../../src/util/json';

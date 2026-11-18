@@ -17,8 +17,5 @@ export function overwriteEnvironment(base: REnvironmentInformation | undefined, 
 	}
 
 	({ base, next } = padToCommonScope(base, next));
-	return {
-		current: base.current.overwrite(next.current, applyCds),
-		level:   base.level
-	};
+	return { current: base.current.overwrite(next.current, applyCds), level: base.level };
 }

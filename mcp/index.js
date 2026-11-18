@@ -14,10 +14,29 @@ const { SupportedQueries } = require('@eagleoutice/flowr/queries/query');
 /* over http, the code is untrusted */
 const overHttp = isMainThread ? process.argv.includes('--http') : workerData.overHttp;
 
+/** @param {string} text, without the bug report links of its stack traces and the space before each, found by plain search so a long run of spaces costs no backtracking */
+function withoutBugLinks(text) {
+	const marker = 'Report a Bug: ';
+	let out = '';
+	let from = 0;
+	for(let at = text.indexOf(marker); at >= 0; at = text.indexOf(marker, at + 1)) {
+		let end = at + marker.length;
+		while(end < text.length && text[end].trim() !== '') {
+			end++;
+		}
+		if(end > at + marker.length) {
+			out += text.slice(from, at).trimEnd();
+			from = end;
+			at = end - 1;
+		}
+	}
+	return out + text.slice(from);
+}
+
 /** @param {string} text, cut so that, e.g., a whole call graph does not flood the client's context */
 function answer(text, isError = false) {
 	/* over http, do not reveal the server's paths in stack traces */
-	const shown = overHttp ? text.replace(/\s*Report a Bug: \S+/g, '') : text;
+	const shown = overHttp ? withoutBugLinks(text) : text;
 	return { content: [{ type: 'text', text: shown.length > 5e4 ? `${shown.slice(0, 5e4)}\n[cut at 50000 characters, narrow the query]` : shown }], isError };
 }
 

@@ -1,9 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { RArgument } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { pathPattern } from '../../../scripts/playground/dependency-view';
+import { analyze } from '../_helper/analyzer';
 
 describe('the path an unknown file name builds', withTreeSitter(ts => {
 	test.each([
@@ -15,8 +14,7 @@ describe('the path an unknown file name builds', withTreeSitter(ts => {
 		['paste0(name, ".csv", collapse = "")', undefined],
 		['tolower(name)', undefined]
 	])('%s', async(code, expected) => {
-		const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
-		analyzer.addRequest(requestFromInput(`write.csv(d, ${code})`));
+		const analyzer = await analyze(ts, `write.csv(d, ${code})`);
 		const ast = await analyzer.normalize();
 		const call = ast.ast.files[0].root.children[0] as { arguments: readonly unknown[] };
 		expect(pathPattern(RArgument.valueOf(call.arguments[1] as never))).toBe(expected);

@@ -1,22 +1,22 @@
 import { assertSliced, assumeLoadedPackages, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe } from 'vitest';
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
 
 assumeLoadedPackages('magrittr');
 
 describe('dollar access', { concurrent: false }, withShell(shell => {
 	describe('problems in practice', () => {
 		/* in this case, we assume that it may have an impact! */
-		assertSliced(label('access addition', ['name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'dollar-access', 'newlines']),
+		assertSliced(label('access addition', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, ...BuiltInOperators.byName['+'].capabilities, 'dollar-access', 'newlines']),
 			shell, `
 cor <- t$estimate
 pv <- t$p.value
 print(cor + pv)
 		`, ['4@print'], 'cor <- t$estimate\npv <- t$p.value\nprint(cor + pv)');
 
-		assertSliced(label('nested access', ['name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'dollar-access', 'newlines']),
+		assertSliced(label('nested access', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, ...BuiltInOperators.byName['+'].capabilities, 'dollar-access', 'newlines']),
 			shell, `
 person <- list(name = list(a = list(b = "Jane")))
 person$name$a$b <- "John"
@@ -32,7 +32,7 @@ data <- data ${pipe} filter(age >= 30)
 print(data)
 		`.trim();
 
-			assertSliced(label(`${pipe}-pipe with access`, ['name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'dollar-access', 'replacement-functions', 'newlines', 'pipe-and-pipe-bind']),
+			assertSliced(label(`${pipe}-pipe with access`, ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, ...BuiltInOperators.byName['+'].capabilities, 'dollar-access', 'replacement-functions', 'newlines', 'pipe-and-pipe-bind']),
 				shell, code, ['5@print'], code, {
 					minRVersion: MIN_VERSION_PIPE
 				});

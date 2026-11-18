@@ -1,4 +1,4 @@
-import { Identifier, PkgName } from './identifier';
+import { Identifier, PkgName, type BrandedIdentifier } from './identifier';
 
 /**
  * Functions that data-mask (or tidy-select) their non-first argument: symbols there name columns of the first
@@ -42,4 +42,4 @@ export const DataMaskingFunctionIdentifiers = DataMaskingFunctions.map(([name, p
 
 /** Names to treat as data-masking in the pipe: the {@link DataMaskingFunctions} plus `with`/`within` (own processor). */
 /* a formula (`~`) finds a name no data supplies where it was made, so `lm(y ~ x)` reads `x` */
-export const DataMaskingFunctionNames: ReadonlySet<string> = new Set([...DataMaskingFunctions.map(([name]) => name), 'with', 'within', '~']);
+export const DataMaskingFunctionNames: ReadonlySet<BrandedIdentifier> = new Set([...DataMaskingFunctions.map(([name]) => name), 'with', 'within', '~']);

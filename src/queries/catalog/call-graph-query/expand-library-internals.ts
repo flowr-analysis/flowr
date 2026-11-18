@@ -1,3 +1,4 @@
+import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { CallGraph } from '../../../dataflow/graph/call-graph';
 import { DataflowGraph } from '../../../dataflow/graph/graph';
@@ -6,8 +7,8 @@ import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/
 
 /** the internal callees of a library/built-in leaf call, and the package they belong to */
 export interface LibraryLeafExpansion {
-	readonly pkg:     string;
-	readonly callees: readonly string[];
+	readonly pkg:     BrandedNamespace;
+	readonly callees: readonly BrandedIdentifier[];
 }
 
 /**

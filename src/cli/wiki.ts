@@ -6,8 +6,7 @@ import type { DocMakerArgs, DocMakerLike, DocMakerOutputArgs } from '../document
 import fs from 'fs';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-import type { OptionDefinition } from 'command-line-usage';
-import commandLineUsage from 'command-line-usage';
+import commandLineUsage, { type OptionDefinition } from 'command-line-usage';
 import commandLineArgs from 'command-line-args';
 import { flowrVersion } from '../util/version';
 import { WikiFaq } from '../documentation/wiki-faq';
@@ -85,9 +84,7 @@ function warnIfNearGitHubLimit(file: string): void {
 	}
 }
 
-/**
- * Updates and optionally re-creates all flowR wikis.
- */
+/** Updates and optionally re-creates all flowR wikis. */
 export async function makeAllWikis(force: boolean, filter: string[] | undefined) {
 	const setupStart = new Date();
 	console.log('Setting up wiki generation...');
@@ -176,18 +173,8 @@ if(require.main === module) {
 			header:  `flowR (version ${flowrVersion().toString()})`,
 			content: 'Documentation (wiki, issue, ...) generator for flowR'
 		},
-		{
-			header:  'Synopsis',
-			content: [
-				'$ wiki {bold --help}',
-				'$ wiki {bold --force}',
-				'$ wiki {bold --filter} {italic "dataflow"}'
-			]
-		},
-		{
-			header:     'Options',
-			optionList: wikiOptions
-		}
+		{ header: 'Synopsis', content: ['$ wiki {bold --help}', '$ wiki {bold --force}', '$ wiki {bold --filter} {italic "dataflow"}'] },
+		{ header: 'Options', optionList: wikiOptions }
 	];
 
 	setMinLevelOfAllLogs(LogLevel.Fatal);

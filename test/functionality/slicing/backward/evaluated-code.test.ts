@@ -1,8 +1,8 @@
 import { assert, describe, test } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { assumeLoadedPackages, sliceOf, withTreeSitter } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import type { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { analyze } from '../../_helper/analyzer';
 
 assumeLoadedPackages('glue');
 
@@ -25,8 +25,7 @@ describe('Slicing code that is evaluated indirectly', withTreeSitter(parser => {
 		const count = 250;
 		const evals = Array.from({ length: count }, (_, i) => `eval(quote(v${i % 7} + w))`).join('; ');
 		const callers = Array.from({ length: count }, (_, i) => `h${i} <- function(z) { v${i % 7} <- z; w <- 2; g() }`);
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest([`g <- function() { ${evals} }`, ...callers].join('\n'));
+		const analyzer = await analyze(parser, [`g <- function() { ${evals} }`, ...callers].join('\n'));
 		const started = Date.now();
 		await analyzer.dataflow();
 		assert.isBelow(Date.now() - started, 30_000);
@@ -51,7 +50,7 @@ describe('Slicing code that is evaluated indirectly', withTreeSitter(parser => {
 	testSlice('an expression evaluated by a function called in a loop',
 		'e <- quote(w <<- w + 1)\nw <- 1\nf <- function() eval(e)\nfor(i in 1:3) f()\nprint(w)', '5@print', 'e <- quote(w <<- w + 1)\nw <- 1\nf <- function() eval(e)\nfor(i in 1:3) f()\nprint(w)');
 	testSlice('an expression evaluated by a function called via lapply',
-		'e <- quote(w <<- w + 1)\nw <- 1\nf <- function(i) eval(e)\ninvisible(lapply(1:3, f))\nprint(w)', '5@print', 'e <- quote(w <<- w + 1)\nw <- 1\nf <- function(i) eval(e)\nlapply(1:3, f)\nprint(w)');
+		'e <- quote(w <<- w + 1)\nw <- 1\nf <- function(i) eval(e)\ninvisible(lapply(1:3, f))\nprint(w)', '5@print', 'e <- quote(w <<- w + 1)\nw <- 1\nf <- function(i) eval(e)\ninvisible(lapply(1:3, f))\nprint(w)');
 	testSlice('an expression evaluated by a recursive function',
 		'e <- quote(w <<- w + 1)\nw <- 1\nf <- function(n) { eval(e); if(n > 1) f(n - 1) }\nf(3)\nprint(w)', '5@print', 'e <- quote(w <<- w + 1)\nw <- 1\nf <- function(n) {\n        eval(e)\n        if(n > 1) f(n - 1)\n    }\nf(3)\nprint(w)');
 	testSlice('an expression evaluated by a function another function calls',

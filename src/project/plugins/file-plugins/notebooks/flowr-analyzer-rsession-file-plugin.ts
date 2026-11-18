@@ -7,9 +7,7 @@ import { FlowrRSessionFile } from '../files/flowr-rsession-file';
 /* `R CMD check` compares a test against its `.Rout.save` */
 export const RSessionPattern = /\.(rout|rout\.save|rsession|rconsole)$/i;
 
-/**
- * The plugin provides support for R console transcripts (`.Rout`, `.Rout.save`)
- */
+/** The plugin provides support for R console transcripts (`.Rout`, `.Rout.save`) */
 export class FlowrAnalyzerRSessionFilePlugin extends FlowrAnalyzerPatternFilePlugin {
 	public readonly name =    'rsession-file-plugin';
 	public readonly description = 'Parses R console transcripts';

@@ -1,5 +1,4 @@
-import type { FlowrFileProvider } from '../../../context/flowr-file';
-import { FileRole, FlowrFile } from '../../../context/flowr-file';
+import { type FlowrFileProvider, FileRole, FlowrFile } from '../../../context/flowr-file';
 import { guard } from '../../../../util/assert';
 import { type Node, Parser } from 'commonmark';
 import { load as loadYaml } from 'js-yaml';
@@ -26,9 +25,7 @@ export class FlowrRMarkdownFile extends FlowrFile {
 		super(wrapped.path(), wrapped.roles ? [...wrapped.roles, FileRole.Source] : [FileRole.Source]);
 	}
 
-	/**
-	 * Gets the parsed R Markdown information
-	 */
+	/** Gets the parsed R Markdown information */
 	get rmd(): RmdInfo {
 		if(!this.data) {
 			this.loadContent();
@@ -41,7 +38,6 @@ export class FlowrRMarkdownFile extends FlowrFile {
 		const defaults = globalChunkOptions(this.rmd.options);
 		return this.rmd.blocks.filter(b => isExecutableCell(b, defaults));
 	}
-
 
 	/** The text of the document itself, as its content is only the code it holds. */
 	public rawText(): string {
@@ -65,9 +61,7 @@ export class FlowrRMarkdownFile extends FlowrFile {
 		return this.mergedCode;
 	}
 
-	/**
-	 * Postprocess blocks with options like child='other.Rmd'
-	 */
+	/** Postprocess blocks with options like child='other.Rmd' */
 	private postProcessCodeBlocks() {
 		guard(this.data !== undefined);
 		for(const block of this.data.blocks) {
@@ -208,7 +202,6 @@ function parseFrontmatter(raw: string): unknown {
 
 /**
  * Parse the contents of a RMarkdown file into complete code and blocks
- * @param raw - the raw file content
  * @returns   Rmd Info
  */
 export function parseRMarkdownFile(raw: string): RmdInfo {
@@ -229,20 +222,12 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 		const options = parseCodeBlockOptions(node.info, node.literal);
 		const engineOpt = options.get('engine');
 		if(engineOpt === undefined || engineOpt.trim().toLowerCase() === 'r') {
-			blocks.push({
-				code:     node.literal,
-				options,
-				header:   node.info,
-				startpos: { line: node.sourcepos[0][0] + 1, col: 0 }
-			});
+			blocks.push({ code: node.literal, options, header: node.info, startpos: { line: node.sourcepos[0][0] + 1, col: 0 } });
 		}
 	}
 	blocks.push(...parseIncludeShortcodes(raw));
 	blocks.sort((a, b) => a.startpos.line - b.startpos.line);
-	return {
-		blocks,
-		options: typeof frontmatter === 'object' && frontmatter !== null ? frontmatter : {}
-	};
+	return { blocks, options: typeof frontmatter === 'object' && frontmatter !== null ? frontmatter : {} };
 }
 
 const IncludeShortcodeRegex = /{{<\s*include\s+["']?(.+?)["']?\s*>}}/;
@@ -251,21 +236,14 @@ const IncludeShortcodeRegex = /{{<\s*include\s+["']?(.+?)["']?\s*>}}/;
 function parseIncludeShortcodes(raw: string): CodeBlock[] {
 	return raw.split(LineRegex).flatMap((line, i) => {
 		const match = IncludeShortcodeRegex.exec(line);
-		return match ? [{
-			code:     '',
-			options:  new Map([['child', match[1]]]),
-			header:   '',
-			startpos: { line: i + 1, col: 0 }
-		}] : [];
+		return match ? [{ code: '', options: new Map([['child', match[1]]]), header: '', startpos: { line: i + 1, col: 0 } }] : [];
 	});
 }
 
 /** The info string of an R chunk, `{r}` or `{r label, eval = FALSE}`; the `[\s,]` keeps `{rust}` out */
 export const RTagRegex = /{[rR](?:[\s,][^}]*)?}/;
 
-/**
- * Checks whether a CommonMark node is an R code block
- */
+/** Checks whether a CommonMark node is an R code block */
 export function isRCodeBlock(node: Node): node is Node & { literal: string, info: string } {
 	return node.type === 'code_block' && node.literal !== null && node.info !== null && RTagRegex.test(node.info);
 }
@@ -275,18 +253,16 @@ function countNewlines(str: string): number {
 	return str.split(LineRegex).length - 1;
 }
 
-/**
- * Restores an Rmd file from code blocks, filling non-code lines with empty lines
- */
+/** Restores an Rmd file from code blocks, filling non-code lines with empty lines */
 export function restoreBlocksWithoutMd(blocks: readonly CodeBlock[], totalLines: number): string {
 	let line = 1;
 	let output = '';
 
-	const goToLine = (n: number) => {
+	function goToLine(n: number) {
 		const diff = Math.max(n - line, 0);
 		line += diff;
 		output += '\n'.repeat(diff);
-	};
+	}
 
 	for(const block of blocks) {
 		goToLine(block.startpos.line);
@@ -299,9 +275,7 @@ export function restoreBlocksWithoutMd(blocks: readonly CodeBlock[], totalLines:
 
 const OptionsRegex = /([\w_.-]*)\s*[:=]\s*["']?([^,"']*)/g;
 
-/**
- * Parses the options of an R code block from its header and content
- */
+/** Parses the options of an R code block from its header and content */
 export function parseCodeBlockOptions(header: string, content: string): CodeBlockOptions {
 	const headerOpts = header.length === 3 // '{r}' => header.length=3 (no options in header)
 		? ''

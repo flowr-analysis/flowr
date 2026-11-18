@@ -6,9 +6,7 @@ export function date2string(date: Date = new Date()): string {
 	return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}-${date.getHours()}-${date.getMinutes()}-${date.getSeconds()}-${date.getMilliseconds()}`;
 }
 
-/**
- * Print a number of milliseconds in a human-readable format including correct spacing.
- */
+/** Print a number of milliseconds in a human-readable format including correct spacing. */
 export function printAsMs(ms: number, precision = 1): string {
 	return `${ms.toFixed(precision)}\u2009ms`;
 }

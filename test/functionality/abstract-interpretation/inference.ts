@@ -1,13 +1,13 @@
 import { assert, test } from 'vitest';
+import { testAnalyzerBuilder } from '../_helper/analyzer';
 import { isArray } from '../../../src/util/collections/arrays';
 import { AbstractInterpreter, type AbsintAnalysis, type AbsintVisitorConfiguration } from '../../../src/abstract-interpretation/absint-inference';
 import type { AnyAbstractDomain } from '../../../src/abstract-interpretation/domains/abstract-domain';
 import type { AbstractProduct } from '../../../src/abstract-interpretation/domains/partial-product-domain';
 import type { StateDomain } from '../../../src/abstract-interpretation/domains/state-domain';
-import { FlowrConfig } from '../../../src/config';
+import type { FlowrConfig } from '../../../src/config';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { AstIdMap, ParentInformation } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -15,11 +15,10 @@ import { RoleInParent } from '../../../src/r-bridge/lang-4.x/ast/model/processin
 import type { RShell } from '../../../src/r-bridge/shell';
 import { SlicingCriterion, type SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../src/util/assert';
-import { SourceRange } from '../../../src/util/range';
+import { SourceRange, type Line } from '../../../src/util/range';
 import { Record } from '../../../src/util/record';
 import { decorateLabelContext, type TestLabel } from '../_helper/label';
-import { skipTestBecauseConfigNotMet, type TestConfiguration } from '../_helper/shell';
-import { assumedPackagesOf, withAssumedPackages } from '../_helper/shell';
+import { skipTestBecauseConfigNotMet, type TestConfiguration, assumedPackagesOf } from '../_helper/shell';
 
 /**
  * Whether an inferred value should equal the expected value, or should be an over-approximation of the expected value.
@@ -54,7 +53,7 @@ export interface InferenceTestOptions {
 interface TestEntry<Domain extends AnyAbstractDomain> {
 	criterion: SlicingCriterion,
 	node:      RSymbol<ParentInformation>,
-	line:      number
+	line:      Line
 	inferred:  Domain | undefined,
 }
 
@@ -86,9 +85,8 @@ export async function runInterpreter<Interpreter extends { start(): void }>(
 	createInterpreter: (config: AbsintVisitorConfiguration) => Interpreter,
 	options?: InferenceTestOptions
 ): Promise<Interpreter> {
-	const analyzer = await new FlowrAnalyzerBuilder()
+	const analyzer = await testAnalyzerBuilder(undefined, { config: options?.config, assumeLoaded: assumedPackagesOf(undefined) })
 		.setEngine('tree-sitter')
-		.setConfig(withAssumedPackages(options?.config ?? FlowrConfig.default(), assumedPackagesOf(undefined)))
 		.build();
 
 	analyzer.addRequest(code);

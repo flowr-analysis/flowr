@@ -1,15 +1,9 @@
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Identifier } from '../dataflow/environments/identifier';
-import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
+import { type AnyAbstractDomain, AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { VariableResolve } from '../config';
-import {
-	getArgumentValue,
-	getFunctionArgument,
-	getVertexArguments
-} from '../abstract-interpretation/data-frame/arguments';
-import type { PotentiallyEmptyRArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { getArgumentValue, getFunctionArgument, getVertexArguments } from '../abstract-interpretation/data-frame/arguments';
+import { type PotentiallyEmptyRArgument, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { DataflowGraph } from '../dataflow/graph/graph';
@@ -17,17 +11,17 @@ import { MatchArgs } from '../dataflow/graph/match-args';
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import { isUndefined } from '../util/assert';
 import { taintLogger } from './logger';
-import type {
-	TaintCondition,
-	TaintConditionDomain,
-	TaintConditionMapping,
-	TaintMapping,
-	TaintParameterLocation,
-	TaintRuleProvenance,
-	TaintRuleRecord,
-	TaintRuleRecorder
+import {
+	type TaintRuleProvenance,
+	type TaintRuleRecord,
+	type TaintRuleRecorder,
+	type TaintCondition,
+	type TaintConditionDomain,
+	type TaintConditionMapping,
+	type TaintMapping,
+	type TaintParameterLocation,
+	TaintRole
 } from './taint-mapping';
-import { TaintRole } from './taint-mapping';
 import type { ResolveInfo } from '../dataflow/eval/resolve/alias-tracking';
 
 export interface ResolvedTaint<Domain extends AnyAbstractDomain = AnyAbstractDomain> {

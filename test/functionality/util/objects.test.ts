@@ -1,18 +1,18 @@
-import { type Mergeable, deepMergeObject, isObjectOrArray } from '../../../src/util/objects';
+import { type Mergeable, deepMergeObject, isObjectOrArray, setOnPath } from '../../../src/util/objects';
 import { describe, assert, test } from 'vitest';
 
 describe('Objects', () => {
 	describe('isObjectOrArray', () => {
-		const positive = (a: unknown, msg: string): void => {
+		function positive(a: unknown, msg: string): void {
 			test(msg, () => {
 				assert.isTrue(isObjectOrArray(a));
 			});
-		};
-		const negative = (a: unknown, msg: string): void => {
+		}
+		function negative(a: unknown, msg: string): void {
 			test(msg, () => {
 				assert.isFalse(isObjectOrArray(a), `${msg} is not considered an object`);
 			});
-		};
+		}
 
 		describe('return true for objects', () => {
 			positive({}, 'null');
@@ -33,16 +33,16 @@ describe('Objects', () => {
 	});
 
 	describe('deepMergeObject', () => {
-		const merged = <T extends Mergeable>(a: T, b: T, expected: T, msg: string): void => {
+		function merged<T extends Mergeable>(a: T, b: T, expected: T, msg: string): void {
 			test(msg, () => {
 				assert.deepStrictEqual(deepMergeObject(a, b), expected, `${JSON.stringify(a)} & ${JSON.stringify(b)}`);
 			});
-		};
-		const throws = <T extends Mergeable>(a: T, b: T, msg: string): void => {
+		}
+		function throws<T extends Mergeable>(a: T, b: T, msg: string): void {
 			test(msg, () => {
 				assert.throws(() => deepMergeObject(a, b), Error, undefined, msg);
 			});
-		};
+		}
 		describe('objects only', () => {
 			describe('with empty', () => {
 				for(const empty of [null, undefined, {}] as Mergeable[]) {
@@ -117,6 +117,19 @@ describe('Objects', () => {
 		});
 		describe('with undefined', () => {
 			merged({ a: 3, b: 4 }, { a: undefined, b: 7 }, { a: 3, b: 7 }, 'do not overwrite on undefined');
+		});
+	});
+	describe('setOnPath', () => {
+		for(const path of ['__proto__.polluted', 'a.__proto__.polluted', 'constructor.prototype.polluted']) {
+			test(`refuses ${path}`, () => {
+				assert.throws(() => setOnPath({ a: {} }, path, true));
+				assert.isUndefined(({} as Record<string, unknown>).polluted);
+			});
+		}
+		test('writes a plain path', () => {
+			const obj = {};
+			setOnPath(obj, 'a.b', 3);
+			assert.deepStrictEqual(obj, { a: { b: 3 } });
 		});
 	});
 });

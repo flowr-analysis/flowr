@@ -1,22 +1,20 @@
 import { retrieveNormalizedAst, withShell } from '../_helper/shell';
 import { defaultQuadIdGenerator, serialize2quads } from '../../../src/util/quads';
 import { dataflowGraphToQuads } from '../../../src/core/print/dataflow-printer';
-import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { assert, describe, test } from 'vitest';
-import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
+import { analyze } from '../_helper/analyzer';
 
 describe('Quads', { concurrent: false }, withShell(shell => {
 	const context = 'test';
 	const domain = 'https://uni-ulm.de/r-ast/';
 
-	const compareQuadsCfg = async(code: string, expected: string) => {
+	async function compareQuadsCfg(code: string, expected: string) {
 		const ast = await retrieveNormalizedAst(shell, code);
 		const decorated = decorateAst(ast.ast, {}).ast;
 		const serialized = serialize2quads(decorated.files[0].root, { context, domain, getId: defaultQuadIdGenerator() });
 		assert.strictEqual(serialized.trim(), expected.trim());
-	};
+	}
 
 	test('should generate quads for the cfg', async() => {
 		const idPrefix =  `${domain}${context}/`;
@@ -35,15 +33,12 @@ describe('Quads', { concurrent: false }, withShell(shell => {
     `);
 	});
 
-	const compareQuadsDfg = async(code: string, expected: string) => {
-		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			context: contextFromInput(code),
-			parser:  shell
-		}).allRemainingSteps();
+	async function compareQuadsDfg(code: string, expected: string) {
+		const dataflow = await (await analyze(shell, code)).dataflow();
 
-		const serialized = dataflowGraphToQuads(info.dataflow, { context, domain, getId: defaultQuadIdGenerator() });
+		const serialized = dataflowGraphToQuads(dataflow, { context, domain, getId: defaultQuadIdGenerator() });
 		assert.strictEqual(serialized.trim(), expected.trim());
-	};
+	}
 
 	test('should generate quads for the dfg', async() => {
 		const idPrefix =  `${domain}${context}/`;

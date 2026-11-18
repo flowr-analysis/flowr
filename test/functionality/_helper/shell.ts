@@ -1,7 +1,7 @@
 import { deepMergeObject, type MergeableRecord } from '../../../src/util/objects';
-import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct';
+import { reconstructToCode } from '../../../src/reconstruct/reconstruct';
+import { staticDice } from '../../../src/slicing/static/static-slicer';
 import { guard } from '../../../src/util/assert';
-import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { decorateLabelContext, dropTestLabel, modifyLabelName, type TestLabel, type TestLabelContext } from './label';
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
@@ -18,21 +18,12 @@ import {
 	type ParentInformation,
 	type RNodeWithParent
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	createNormalizePipeline,
-	createSlicePipeline,
-	DEFAULT_NORMALIZE_PIPELINE,
-	type DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
-	TREE_SITTER_NORMALIZE_PIPELINE,
-	type TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
-} from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../src/util/mermaid/dfg';
-import type {
-	SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import {
+	type SlicingCriteria,
 	SlicingCriterion
 } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
@@ -40,23 +31,21 @@ import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/a
 import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/util/diff-graph';
 import { extractCfg } from '../../../src/control-flow/control-flow-graph';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { assertCfgSatisfiesProperties, type CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { FlowrConfig } from '../../../src/config';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
+import { analyze, joinedCode, type SliceTestResult, type SliceOptions, staticSliceOf } from './analyzer';
 import type { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { SliceDirection } from '../../../src/util/slice-direction';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
-import type { DeepWritable } from 'ts-essentials';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -65,18 +54,17 @@ import { promisify } from 'util';
 import { EdgeType } from '../../../src/dataflow/graph/edge';
 import { uniqueArray } from '../../../src/util/collections/arrays';
 
-export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => {
-	return test(msg, async function(this: unknown): Promise<void> {
-		let shell: RShell | null = null;
-		try {
-			shell = new RShell();
-			await fn(shell, this);
-		} finally {
-			// ensure we close the shell in error cases too
-			shell?.close();
-		}
-	}, timeout);
-};
+/** Runs the given test with a shell. */
+export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => test(msg, async function(this: unknown): Promise<void> {
+	let shell: RShell | null = null;
+	try {
+		shell = new RShell();
+		await fn(shell, this);
+	} finally {
+		// ensure we close the shell in error cases too
+		shell?.close();
+	}
+}, timeout);
 
 let testShell: RShell | undefined = undefined;
 
@@ -161,14 +149,8 @@ function assertAstEqual<Info>(ast: RProject<Info> | RNode<Info>, expected: RProj
 	}
 }
 
-/**
- * this is an old, and nowadays outdated method to retrieve the normalized AST for a given input
- * Please prefer using the {@link FlowrAnalyzer} for new code!
- */
-export const retrieveNormalizedAst = async(parser: KnownParser, input: `${typeof fileProtocol}${string}` | string): Promise<NormalizedAst> => {
-	const context = contextFromInput(input);
-	return (await createNormalizePipeline(parser, { context }).allRemainingSteps()).normalize;
-};
+/** The normalized AST of the given input, as the {@link FlowrAnalyzer} produces it. */
+export const retrieveNormalizedAst = async(parser: KnownParser, input: `${typeof fileProtocol}${string}` | string): Promise<NormalizedAst> => (await analyze(parser, input)).normalize();
 
 export interface TestConfiguration extends MergeableRecord {
 	/** the (inclusive) minimum version of R required to run this test, e.g., {@link MIN_VERSION_PIPE} */
@@ -186,7 +168,7 @@ export interface TestConfigurationWithOutput extends TestConfiguration {
 	trimOutput:          boolean
 }
 
-export const defaultTestConfiguration: TestConfiguration = {
+const defaultTestConfiguration: TestConfiguration = {
 	minRVersion:            undefined,
 	needsNetworkConnection: false
 };
@@ -216,25 +198,6 @@ export function assumedPackagesOf(config: Pick<TestConfiguration, 'assumeLoaded'
 		return config.assumeLoaded;
 	}
 	return collectingWithPackages.file === collectingFile() ? collectingWithPackages.packages : [];
-}
-
-/** Applies the packages a test runs with to `builder`. Pass what {@link assumedPackagesOf} returned at collection time. */
-export function applyAssumedPackages<B extends { amendConfig(f: (c: DeepWritable<FlowrConfig>) => void): B }>(
-	builder: B, assumed: readonly string[]
-): B {
-	return assumed.length === 0 ? builder : builder.amendConfig(c => {
-		c.solver.assumeAttachedPackages = [...(c.solver.assumeAttachedPackages ?? []), ...assumed];
-	});
-}
-
-/** `config` with `assumeLoaded` applied, so a test states the packages its snippet uses instead of attaching them itself. */
-export function withAssumedPackages(config: FlowrConfig, assumeLoaded: readonly string[] | undefined): FlowrConfig {
-	if(assumeLoaded === undefined || assumeLoaded.length === 0) {
-		return config;
-	}
-	return FlowrConfig.amend(config, c => {
-		c.solver.assumeAttachedPackages = [...(c.solver.assumeAttachedPackages ?? []), ...assumeLoaded];
-	});
 }
 
 /** Automatically skip a test if no internet connection is available */
@@ -322,13 +285,11 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 		});
 
 		async function makeShellAst(): Promise<RProject> {
-			const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, { parser: shell, context: contextFromInput(input) }).allRemainingSteps();
-			return result.normalize.ast;
+			return (await retrieveNormalizedAst(shell, input)).ast;
 		}
 
 		async function makeTsAst(): Promise<RProject> {
-			const result = await new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, { parser: ts as TreeSitterExecutor, context: contextFromInput(input) }).allRemainingSteps();
-			return result.normalize.ast;
+			return (await retrieveNormalizedAst(ts as TreeSitterExecutor, input)).ast;
 		}
 	});
 }
@@ -336,13 +297,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 /** call within describeSession */
 export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, expected: RNodeWithParent<Decorated>, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig, input))(name, async function() {
-		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds),
-			parser:  shell,
-			context: contextFromInput(input),
-		}).allRemainingSteps();
-
-		const ast = result.normalize.ast;
+		const { ast } = await (await analyze(shell, input, { getId: deterministicCountingIdGenerator(startIndexForDeterministicIds) })).normalize();
 
 		assertAstEqual(ast, expected, false, false, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 	});
@@ -354,7 +309,7 @@ export function mapProblematicNodesToIds(problematic: readonly ProblematicDiffIn
 }
 
 /** Assert that the given input code produces the expected output in R. Trims by default. */
-export function assertOutput(name: string | TestLabel, parser: KnownParser, input: string | RParseRequests, expected: string | RegExp, userConfig?: Partial<TestConfigurationWithOutput>): void {
+function assertOutput(name: string | TestLabel, parser: KnownParser, input: string | RParseRequests, expected: string | RegExp, userConfig?: Partial<TestConfigurationWithOutput>): void {
 	if(typeof input !== 'string') {
 		throw new Error('Currently, we have no support for expecting the output of arbitrary requests');
 	}
@@ -422,17 +377,12 @@ export function assertDataflow(
 	const effectiveName = decorateLabelContext(name, [userConfig?.context ?? 'dataflow']);
 	const assumed = assumedPackagesOf(userConfig);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig, parser instanceof RShell && typeof input === 'string' ? input : undefined))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
-		let analyzer = await new FlowrAnalyzerBuilder()
-			.setInput({
-				getId: deterministicCountingIdGenerator(startIndexForDeterministicIds)
-			})
-			.setConfig(withAssumedPackages(config, assumed))
-			.setParser(parser)
-			.build();
-		analyzer.addRequest(input);
-		if(userConfig?.addFiles) {
-			analyzer.addFile(...userConfig.addFiles);
-		}
+		let analyzer = await analyze(parser, input, {
+			config,
+			assumeLoaded: assumed,
+			getId:        deterministicCountingIdGenerator(startIndexForDeterministicIds),
+			files:        userConfig?.addFiles
+		});
 
 		if(userConfig?.modifyAnalyzer) {
 			analyzer = userConfig.modifyAnalyzer(analyzer) ?? analyzer;
@@ -495,36 +445,13 @@ function printIdMapping(ids: readonly NodeId[], map: AstIdMap): string {
 export function assertReconstructed(name: string | TestLabel, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfigurationWithOutput>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)) {
 	const selectedIds = Array.isArray(ids) ? ids : [ids];
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig, input))(decorateLabelContext(name, ['slice']), async function(this: unknown) {
-		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-			getId:   getId,
-			context: contextFromInput(input),
-			parser:  shell
-		}).allRemainingSteps();
-		const reconstructed = NAIVE_RECONSTRUCT.processor({
-			normalize: result.normalize,
-			slice:     {
-				slicedFor:         [],
-				timesHitThreshold: 0,
-				result:            new Set(selectedIds)
-			}
-		}, {});
+		const normalize = await (await analyze(shell, input, { getId })).normalize();
+		const reconstructed = reconstructToCode(normalize, { nodes: new Set(selectedIds) });
 		assert.strictEqual(reconstructed.code, expected,
-			`got: ${reconstructed.code as string}, vs. expected: ${expected}, for input ${input} (ids ${JSON.stringify(ids)}:\n${[...result.normalize.idMap].map(i => `${i[0]}: '${i[1].lexeme}'`).join('\n')})`);
+			`got: ${reconstructed.code as string}, vs. expected: ${expected}, for input ${input} (ids ${JSON.stringify(ids)}:\n${[...normalize.idMap].map(i => `${i[0]}: '${i[1].lexeme}'`).join('\n')})`);
 	});
 	handleAssertOutput(name, shell, input, userConfig);
 }
-
-function testWrapper(skip: boolean | undefined, shouldFail: boolean, testName: string, testFunction: () => void) {
-	if(skip) {
-		test.skip(testName, testFunction);
-	} else if(shouldFail) {
-		test.fails(testName, testFunction);
-	} else {
-		test(testName, testFunction);
-	}
-}
-
-export type TestCaseFailType = 'fail-shell' | 'fail-tree-sitter' | 'fail-both' | undefined;
 
 /**
  * This is a forward slicing convenience function that allows you to assert the result of a forward slice.
@@ -550,8 +477,6 @@ interface TestCaseParams {
 	skipCompare:          boolean,
 	/** Which CFG properties to exclude for CFG checks */
 	cfgExcludeProperties: readonly CfgProperty[],
-	/** Denotes whether the tests should fail in all cases or only for shell or Tree-sitter tests */
-	testCaseFailType:     TestCaseFailType,
 	/** The RNode ID generator */
 	getId:                () => IdGenerator<NoInfo>,
 	/** The flowr configuration to be used for the test */
@@ -577,122 +502,76 @@ export function assertSliced(
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const assumed = assumedPackagesOf(testConfig);
 	const skip = skipTestBecauseConfigNotMet(testConfig, input);
-	const failType = testConfig?.testCaseFailType;
-	/* whether the test of `parser` is expected to fail */
-	const fails = (parser: 'shell' | 'tree-sitter') => failType === 'fail-both' || failType === `fail-${parser}`;
-	if(skip || failType === 'fail-both') {
+	if(skip) {
 		// drop it again because the test is not to be counted
 		dropTestLabel(name);
 	}
+	const skipTreeSitter = testConfig?.skipTreeSitter === true;
 	describe.skipIf(skip)(fullname, () => {
-		const ts = !testConfig?.skipTreeSitter ? new TreeSitterExecutor() : undefined;
-		let shellResult: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
-		let tsResult: PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
+		const ts = skipTreeSitter ? undefined : new TreeSitterExecutor();
+		let shellResult: SliceTestResult | undefined;
+		let tsResult: SliceTestResult | undefined;
 		const getId = testConfig?.getId ?? (() => deterministicCountingIdGenerator(0));
 		beforeAll(async() => {
-			shellResult = await executePipeline(shell);
-			if(!testConfig?.skipTreeSitter) {
-				tsResult = await executePipeline(ts as TreeSitterExecutor);
+			const config = FlowrConfig.clone(testConfig?.flowrConfig ?? FlowrConfig.default());
+			if(testConfig?.extendSlice) {
+				FlowrConfig.setInConfigInPlace(config, 'solver.slicer.autoExtend', true);
+			}
+			const options: SliceOptions = {
+				config,
+				assumeLoaded:   assumed,
+				files:          testConfig?.addFiles,
+				direction:      testConfig?.sliceDirection,
+				includeCallees: testConfig?.includeCallees,
+				autoSelectIf:   testConfig?.autoSelectIf
+			};
+			shellResult = await staticSliceOf(shell, input, criteria, { ...options, getId: getId() });
+			if(ts) {
+				tsResult = await staticSliceOf(ts, input, criteria, { ...options, getId: getId() });
 			}
 		});
 		afterAll(() => ts?.close());
 
-		testWrapper(
-			false,
-			fails('shell'),
-			'shell',
-			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>, !fails('shell')),
-		);
-
-		testWrapper(
-			testConfig?.skipTreeSitter,
-			fails('tree-sitter'),
-			'tree-sitter',
-			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, !fails('tree-sitter')),
-		);
-
-		testWrapper(
-			testConfig?.skipTreeSitter || testConfig?.skipCompare,
-			false,
-			'compare ASTs',
-			function() {
-				const tsAst = tsResult?.normalize.ast as RProject<ParentInformation>;
-				const shellAst = shellResult?.normalize.ast as RProject<ParentInformation>;
-				assertAstEqual(
-					tsAst, shellAst, true, true,
-					() => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`,
-					false
-				);
-			},
-		);
-
-		testWrapper(
-			testConfig?.skipTreeSitter,
-			false,
-			'cfg SAT properties',
-			() => {
-				const res = tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>;
-				const cfg = extractCfg(res.dataflow);
-				const check = assertCfgSatisfiesProperties(cfg, testConfig?.cfgExcludeProperties);
-				try {
-					assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');
-				} catch(e: unknown) {
-					console.error('cfg properties:', cfgToMermaidUrl(cfg, res.normalize));
-					throw e;
-				}
-			},
-		);
+		test('shell', () => testSlice(shellResult as SliceTestResult));
+		test.skipIf(skipTreeSitter)('tree-sitter', () => testSlice(tsResult as SliceTestResult));
+		test.skipIf(skipTreeSitter || testConfig?.skipCompare === true)('compare ASTs', () => {
+			const tsAst = tsResult?.normalize.ast as RProject<ParentInformation>;
+			const shellAst = shellResult?.normalize.ast as RProject<ParentInformation>;
+			assertAstEqual(
+				tsAst, shellAst, true, true,
+				() => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`,
+				false
+			);
+		});
+		test.skipIf(skipTreeSitter)('cfg SAT properties', () => {
+			const res = tsResult as SliceTestResult;
+			const cfg = extractCfg(res.dataflow);
+			const check = assertCfgSatisfiesProperties(cfg, testConfig?.cfgExcludeProperties);
+			try {
+				assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');
+			} catch(e: unknown) {
+				console.error('cfg properties:', cfgToMermaidUrl(cfg, res.normalize));
+				throw e;
+			}
+		});
 
 		handleAssertOutput(name, shell, input, testConfig);
 
-		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
-			const context =  contextFromInput(input, withAssumedPackages(FlowrConfig.clone(testConfig?.flowrConfig ?? FlowrConfig.default()), assumed));
-			if(testConfig?.extendSlice) {
-				FlowrConfig.setInConfigInPlace(context.config, 'solver.slicer.autoExtend', true);
+		function testSlice({ normalize, dataflow, slice, reconstruct }: SliceTestResult) {
+			const context = `for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(slice.slicedFor, normalize.idMap)}), url: ${Dataflow.visualize.mermaid.url(dataflow.graph, true, slice.result)}`;
+			if(Array.isArray(expected)) {
+				const decodedExpected = expected.map(e => NodeId.normalize(SlicingCriterion.parse(e, normalize.idMap))).sort(NodeId.compare);
+				const inSlice = Array.from(slice.result, NodeId.normalize).sort(NodeId.compare);
+				assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not the slice ${JSON.stringify(inSlice)}, ${context}`);
+			} else {
+				assert.strictEqual(reconstruct.code, expected, `got:\n${joinedCode(reconstruct)}\nvs. expected:\n${expected}\n${context}`);
 			}
-			if(testConfig?.addFiles) {
-				context.addFiles(testConfig.addFiles);
-			}
-			return await createSlicePipeline(parser, {
-				getId:          getId(),
-				context:        context,
-				criterion:      criteria,
-				autoSelectIf:   testConfig?.autoSelectIf,
-				direction:      testConfig?.sliceDirection,
-				includeCallees: testConfig?.includeCallees
-			}).allRemainingSteps();
-		}
-		function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {
-			try {
-				if(Array.isArray(expected)) {
-					// check whether all ids are present in the slice result
-					const decodedExpected = expected.map(e => SlicingCriterion.parse(e, result.normalize.idMap))
-						.sort((a, b) => String(a).localeCompare(String(b)))
-						.map(NodeId.normalize);
-					const inSlice = Array.from(result.slice.result)
-						.sort((a, b) => String(a).localeCompare(String(b)))
-						.map(NodeId.normalize);
-					assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not in the slice result ${JSON.stringify(inSlice)}, for input ${input} (slice for ${printIdMapping(result.slice.slicedFor, result.normalize.idMap)}), url: ${Dataflow.visualize.mermaid.url(result.dataflow.graph, true, result.slice.result)}`);
-				} else {
-					assert.strictEqual(
-						result.reconstruct.code, expected,
-						`got: ${result.reconstruct.code as string}, vs. expected: ${JSON.stringify(expected)}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.slicedFor, result.normalize.idMap)}), url: ${Dataflow.visualize.mermaid.url(result.dataflow.graph, true, result.slice.result)}`
-					);
-				}
-				assert.strictEqual(result.slice.timesHitThreshold, 0, 'the slice shall not hit the threshold');
-			} /* v8 ignore start */ catch(e) {
-				if(printError) {
-					console.error(`got:\n${result.reconstruct.code as string}\nvs. expected:\n${JSON.stringify(expected)}`);
-					console.error(normalizedAstToMermaidUrl(result.normalize.ast));
-				}
-				throw e;
-			} /* v8 ignore stop */
+			assert.strictEqual(slice.timesHitThreshold, 0, 'the slice shall not hit the threshold');
 		}
 		/* running the slice catches both a slice that drops what the criterion needs and one that does not parse */
-		if(testConfig?.expectedSliceOutput !== undefined && testConfig?.testCaseFailType === undefined) {
+		if(testConfig?.expectedSliceOutput !== undefined) {
 			test('slice output', async() => {
-				const reconstructed = (shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>).reconstruct.code;
-				const code = Array.isArray(reconstructed) ? reconstructed.join('\n') : reconstructed;
+				const code = joinedCode((shellResult as SliceTestResult).reconstruct);
 				const lines = await shell.sendCommandWithOutput(code, { automaticallyTrimOutput: testConfig?.trimOutput ?? true });
 				/* we have to reset in between such tests! */
 				shell.clearEnvironment();
@@ -740,18 +619,13 @@ export function assertDiced(
 ): void {
 	const effectiveName = typeof name === 'string' ? name : decorateLabelContext(name, ['slice']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig, input))(`[dice] ${effectiveName}`, async function() {
-		const { staticDice } = await import('../../../src/slicing/static/static-slicer');
-		const { reconstructToCode } = await import('../../../src/reconstruct/reconstruct');
-		const { doNotAutoSelect } = await import('../../../src/reconstruct/auto-select/auto-select-defaults');
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
-		analyzer.addRequest(input);
+		const analyzer = await analyze(shell, input);
 		const ast  = await analyzer.normalize();
 		const df   = await analyzer.dataflow();
 		const startIds = SlicingCriterion.convertAll(from, ast.idMap);
 		const endIds   = SlicingCriterion.convertAll(to, ast.idMap);
 		const slice    = staticDice(analyzer.inspectContext(), df, ast, startIds, endIds);
-		const rec      = reconstructToCode(ast, { nodes: slice.result }, doNotAutoSelect);
-		const code     = (Array.isArray(rec.code) ? rec.code.join('\n') : rec.code).trim();
+		const code     = joinedCode(reconstructToCode(ast, { nodes: slice.result })).trim();
 
 		const opts: DiceTestExpect = typeof expect === 'string' ? { code: expect } : expect;
 
@@ -783,8 +657,7 @@ export function assertDiced(
 
 /** the code the static-slice query of a fresh analyzer reconstructs for `criterion` */
 export async function sliceOf(parser: KnownParser, code: string, criterion: SlicingCriterion): Promise<string> {
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-	analyzer.addRequest(code);
+	const analyzer = await analyze(parser, code);
 	const sliced = await analyzer.query([{ type: 'static-slice', criteria: [criterion] }]);
 	return (Object.values(sliced['static-slice'].results)[0] as { reconstruct: { code: string } }).reconstruct.code;
 }
@@ -805,8 +678,7 @@ export function assertSliceKeeps(name: string, parser: KnownParser, code: string
 /** asserts which of the given definitions the call at `criterion` reaches with a calls edge */
 export function assertCallTargets(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, { reaches = [], misses = [] }: { reaches?: readonly SlicingCriterion[], misses?: readonly SlicingCriterion[] }) {
 	test(name, async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest(code);
+		const analyzer = await analyze(parser, code);
 		const { idMap } = await analyzer.normalize();
 		const targets = new Set(Dataflow.targetsOf((await analyzer.dataflow()).graph, SlicingCriterion.parse(criterion, idMap), EdgeType.Calls));
 		for(const r of reaches) {
@@ -821,7 +693,6 @@ export function assertCallTargets(name: string, parser: KnownParser, code: strin
 /** asserts that the slice for `criterion`, run by {@link printedByR}, prints `lastLine` last, as the whole program does */
 export function assertSliceRunsInR(name: string, parser: KnownParser, code: string, criterion: SlicingCriterion, lastLine: string, config?: Partial<TestConfiguration>) {
 	test.skipIf(skipTestBecauseConfigNotMet(config, code))(name, async({ skip }) => {
-		await skipWithoutRPackages(code, skip);
 		const slice = await sliceOf(parser, code, criterion);
 		/* the program goes first, as a failing slice must not hide that an old R cannot run the program either */
 		const running = printedByR(slice);
@@ -835,28 +706,88 @@ export function assertSliceRunsInR(name: string, parser: KnownParser, code: stri
 
 const execFileAsync = promisify(execFile);
 
-/** what `Rscript` prints for `code` in a fresh directory, failing on an error or after 20 seconds; the code goes through a file, as windows cuts `-e` at the first line break */
-export async function printedByR(code: string): Promise<string> {
+/* each test file runs its tests concurrently, so without a bound every worker starts an R for each of them at once, which runs out of memory */
+const MaxRunningR = 2;
+let runningR = 0;
+const waitingForR: (() => void)[] = [];
+
+async function withRSlot<T>(this: void, run: () => Promise<T>): Promise<T> {
+	if(runningR >= MaxRunningR) {
+		await new Promise<void>(resolve => waitingForR.push(resolve));
+	}
+	runningR++;
+	try {
+		return await run();
+	} finally {
+		runningR--;
+		waitingForR.shift()?.();
+	}
+}
+
+const RTimedOut = new Error('Rscript did not finish within 20 seconds');
+
+/**
+ * What `Rscript` prints for `script`, killed after 20 seconds with all its children, as on windows `Rscript.exe` only
+ * launches the R that holds the output, so killing the launcher alone leaves the run waiting forever.
+ * Not the `timeout` of execFile: when a blocked event loop (e.g., loading the signature database) runs it late, it drops
+ * the output of an R that finished long ago and reports success, hence the grace period before giving up.
+ */
+async function runRscript(script: string, cwd: string): Promise<string> {
+	const running = execFileAsync('Rscript', ['--vanilla', script], { cwd, maxBuffer: 1 << 24 });
+	let timer: NodeJS.Timeout | undefined;
+	let killed = false;
+	const timedOut = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => {
+			killed = true;
+			const pid = running.child.pid;
+			if(process.platform === 'win32' && pid !== undefined) {
+				execFile('taskkill', ['/pid', String(pid), '/T', '/F'], () => undefined);
+			} else {
+				running.child.kill('SIGKILL');
+			}
+			timer = setTimeout(() => reject(RTimedOut), 5_000);
+		}, 20_000);
+	});
+	try {
+		return (await Promise.race([running, timedOut])).stdout.replace(/\r\n/g, '\n').trimEnd();
+	} catch(e) {
+		throw killed ? RTimedOut : e;
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
+/**
+ * What `Rscript` prints for `code` in a fresh directory holding `files`, failing on an error or after 20 seconds.
+ * The code goes through a file, as windows cuts `-e` at the first line break.
+ * Use {@link printedByProgram} for the program of a test, as not every R can run it.
+ */
+export async function printedByR(code: string, files: Readonly<Record<string, string>> = {}): Promise<string> {
 	const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'flowr-r-'));
 	const cwd = path.join(root, 'work');
 	const script = path.join(root, 'script.R');
 	try {
 		await fs.promises.mkdir(cwd);
 		await fs.promises.writeFile(script, code);
-		return (await execFileAsync('Rscript', ['--vanilla', script], { cwd, timeout: 20_000, killSignal: 'SIGKILL', maxBuffer: 1 << 24 })).stdout.replace(/\r\n/g, '\n').trimEnd();
+		await Promise.all(Object.entries(files).map(([name, content]) => fs.promises.writeFile(path.join(cwd, name), content)));
+		/* an R that hangs on a trivial program is the machine, not the program, so it gets a second run */
+		const rscript = () => withRSlot(() => runRscript(script, cwd));
+		return await rscript().catch(e => e === RTimedOut ? rscript() : Promise.reject(e as Error));
 	} finally {
 		await fs.promises.rm(root, { recursive: true, force: true });
 	}
 }
 
 /**
- * What the program `code` prints, skipping the test when an R other than the one CI mainly tests (`ACTION_R_VERSION`)
- * cannot run the program itself: base functions differ between versions (e.g., `untar`), which says nothing about the
- * slice. The main R, and any run without that variable (e.g., locally), still fails.
+ * What the program `code` prints, skipping the test when this R lacks a package it loads (see {@link skipWithoutRPackages})
+ * or when an R other than the one CI mainly tests (`ACTION_R_VERSION`) cannot run the program itself: base functions
+ * differ between versions (e.g., `untar`), which says nothing about flowR. The main R, and any run without that
+ * variable (e.g., locally), still fails.
  */
-async function printedByProgram(code: string, skip: (condition: boolean, note?: string) => void): Promise<string> {
+export async function printedByProgram(code: string, skip: (condition: boolean, note?: string) => void, files?: Readonly<Record<string, string>>): Promise<string> {
+	await skipWithoutRPackages(code, skip);
 	try {
-		return await printedByR(code);
+		return await printedByR(code, files);
 	} catch(e) {
 		const main = process.env.ACTION_R_VERSION, version = globalThis.rVersion;
 		if(main && version && !semver.eq(version, main)) {
@@ -890,7 +821,6 @@ export async function skipWithoutRPackages(code: string, skip: (condition: boole
  */
 export function assertSliceMatchesR(parser: KnownParser, name: string, code: string, { criterion, dropped, whole, sigdb }: { criterion?: SlicingCriterion, dropped?: string, whole?: boolean, sigdb?: boolean } = {}) {
 	test.skipIf(skipTestBecauseConfigNotMet(undefined, code))(name, async({ skip }) => {
-		await skipWithoutRPackages(code, skip);
 		const lines = code.split('\n');
 		const disabled = process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
 		if(sigdb) {

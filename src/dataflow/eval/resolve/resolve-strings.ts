@@ -1,15 +1,14 @@
-import type { RNamedFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RNamedFunctionCall, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
-import { Identifier, PkgName } from '../../environments/identifier';
+import { type BrandedIdentifier, Identifier, PkgName } from '../../environments/identifier';
 import { isValue, RValue, Top, type Value } from '../values/r-value';
 import { setOf } from '../values/sets/set-constants';
 import { stringFrom } from '../values/string/string-constants';
 import { intervalFrom } from '../values/intervals/interval-constants';
 import { matchCallArguments } from './match-arguments';
-import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeValue } from './node-value';
 
 /** everything after the last separator, with trailing separators dropped first (`a/b/` is `b`, `/` is the empty string) */
@@ -77,9 +76,9 @@ function format(fmt: string, parts: readonly string[]): string | undefined {
  * parameter with a default. The rest take a fixed number of arguments under the names R documents.
  */
 export const StringFns = {
-	/* the joining calls, which differ only in their separator and what the argument overriding it is called */
+	/* the joining calls, `paste0` has no separator, so a `sep` is one more part */
 	paste:       { pkg: PkgName.Base, params: ['...', 'sep'], defaults: { sep: ' ' }, ignored: ['collapse'], fold: (parts: string[], sep: string) => parts.join(sep) },
-	paste0:      { pkg: PkgName.Base, params: ['...', 'sep'], defaults: { sep: '' }, ignored: ['collapse'], fold: (parts: string[], sep: string) => parts.join(sep) },
+	paste0:      { pkg: PkgName.Base, params: ['...'], ignored: ['collapse'], fold: (parts: string[]) => parts.join('') },
 	'file.path': { pkg: PkgName.Base, params: ['...', 'fsep'], defaults: { fsep: '/' }, fold: (parts: string[], fsep: string) => parts.join(fsep) },
 	sprintf:     { pkg: PkgName.Base, params: ['fmt', '...'], fold: (fmt: string, parts: string[] = []) => format(fmt, parts) },
 	/* the project root stays implicit, so the fold yields the path below it */
@@ -96,7 +95,7 @@ export const StringFns = {
 } as const satisfies Record<string, StringFn>;
 
 /** the entries that join what they are handed, the ones a name at construction time may be built from */
-export const PasteLikeCalls: ReadonlySet<string> =
+export const PasteLikeCalls: ReadonlySet<BrandedIdentifier> =
 	new Set(Object.entries(StringFns as Record<string, StringFn>).filter(([, fn]) => fn.params.includes('...')).map(([name]) => name));
 
 /**
@@ -114,7 +113,7 @@ function foldStringCall<Info>(this: void, node: RNamedFunctionCall<Info>, resolv
 	if(ns !== undefined && ns !== known.pkg) {
 		return undefined;
 	}
-	const matched = matchCallArguments(node as unknown as RNodeWithParent, known.params, known.ignored);
+	const matched = matchCallArguments(node, known.params, known.ignored);
 	if(matched === undefined) {
 		return undefined;
 	}
@@ -204,7 +203,7 @@ function foldAcrossValues(this: void, node: RNamedFunctionCall<ParentInformation
 	const ids = [...options.keys()];
 	const pick = new Map<NodeId, string>();
 	const results: (string | number)[] = [];
-	const enumerate = (at: number): boolean => {
+	function enumerate(at: number): boolean {
 		if(at === ids.length) {
 			const folded = foldStringCall(node, arg => pick.get(arg.info.id));
 			if(folded !== undefined) {
@@ -216,7 +215,7 @@ function foldAcrossValues(this: void, node: RNamedFunctionCall<ParentInformation
 			pick.set(ids[at], s);
 			return enumerate(at + 1);
 		}) ?? false;
-	};
+	}
 	return enumerate(0) ? results : undefined;
 }
 

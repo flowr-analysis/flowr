@@ -17,6 +17,7 @@ import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { DfgVertex } from '../../../src/dataflow/graph/vertex';
 import { withTreeSitter } from '../_helper/shell';
 import { label } from '../_helper/label';
+import { analyze } from '../_helper/analyzer';
 
 const caps = ['project-on-demand-sources'] as const;
 const name = (n: string) => label(n, caps, ['other']);
@@ -107,7 +108,7 @@ describe('On-demand package sources', withTreeSitter(parser => {
 			assert.strictEqual(pkg?.version, '0.1.0');
 			assert.sameMembers([...pkg?.exported ?? []], ['tracePlot', 'itemInfoPlot', '%>%']);
 			const trace = pkg?.functions.find(f => f.name === 'tracePlot');
-			assert.deepStrictEqual(trace?.signature.map(p => [p.name, p.default]), [['model', undefined], ['items', 'NULL'], ['theta_range', 'c(-4,4)'], ['title', '"Item Char…']]);
+			assert.deepStrictEqual(trace?.signature.map(p => [String(p.name), p.default]), [['model', undefined], ['items', 'NULL'], ['theta_range', 'c(-4,4)'], ['title', '"Item Char…']]);
 			assert.isTrue(trace?.exported);
 			assert.strictEqual(trace?.file, 'R/tracePlot.r');
 			assert.isFalse(pkg?.functions.find(f => f.name === 'helper')?.exported);
@@ -221,8 +222,7 @@ describe('On-demand package sources', withTreeSitter(parser => {
 				fetched.push(url);
 				return Promise.resolve(served.get(url));
 			};
-			const recoverer = (sources: readonly OnDemandSource[] = [GitHubSource, cranSource(), bioconductorSource()]) =>
-				new OnDemandRecoverer({ enabled: true, ...options }, { sources, fetch, parse, cacheDir, now: () => now });
+			const recoverer = (sources: readonly OnDemandSource[] = [GitHubSource, cranSource(), bioconductorSource()]) => new OnDemandRecoverer({ enabled: true, ...options }, { sources, fetch, parse, cacheDir, now: () => now });
 			return { cacheDir, fetched, recoverer, advance: (hours: number) => {
 				now += hours * 60 * 60 * 1000;
 			} };
@@ -325,14 +325,18 @@ describe('On-demand package sources', withTreeSitter(parser => {
 
 	describe('what the code says it uses', () => {
 		async function named(code: string) {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(code);
+			const analyzer = await analyze(parser, code);
 			return packagesNamedIn(await analyzer.normalize());
 		}
 		test(name('loads, qualified names, and installs'), async() => {
 			const { names, github } = await named('library(a)\nrequire("b")\nrequireNamespace("c", quietly = TRUE)\npacman::p_load(d, e)\nf::g()\nh:::i\nremotes::install_github("masurp/ggmirt")\npak::pkg_install("o/r@v1")\nlibrary(j, character.only = TRUE)');
 			assert.sameMembers([...names], ['a', 'b', 'c', 'pacman', 'd', 'e', 'f', 'h', 'remotes', 'pak', 'j']);
 			assert.deepStrictEqual([...github], [['ggmirt', 'masurp/ggmirt'], ['r', 'o/r@v1']]);
+		});
+		test(name('loaders and installers follow the built-ins'), async() => {
+			const { names, github } = await named('groundhog::groundhog.library(a, "2024-01-01")\npacman::p_load_gh("o/b")\nrenv::install("o/c")\nremove.packages("o/d")\nlibrarian::shelf("o/e")');
+			assert.sameMembers([...names], ['groundhog', 'a', 'pacman', 'b', 'renv', 'librarian', 'e']);
+			assert.deepStrictEqual([...github], [['b', 'o/b'], ['c', 'o/c'], ['e', 'o/e']]);
 		});
 	});
 
@@ -352,10 +356,10 @@ describe('On-demand package sources', withTreeSitter(parser => {
 			return { analyzer, graph, fetched, cacheDir };
 		}
 		const code = 'remotes::install_github("masurp/ggmirt")\nlibrary(ggmirt)\np <- tracePlot(fit, theta_range = c(-3, 3))';
-		const qualifiedTracePlot = (graph: Awaited<ReturnType<typeof analyze>>['graph']) => {
+		function qualifiedTracePlot(graph: Awaited<ReturnType<typeof analyze>>['graph']) {
 			const call = graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === 'tracePlot');
 			return call === undefined ? undefined : Dataflow.qualify(call[0], graph, false);
-		};
+		}
 		test(name('a bare call of an export names the package, and its formals are known'), async() => {
 			const { analyzer, graph, fetched } = await analyze(code);
 			assert.deepStrictEqual(fetched, ['https://codeload.github.com/masurp/ggmirt/tar.gz/HEAD']);
@@ -439,10 +443,10 @@ describe('On-demand package sources', withTreeSitter(parser => {
 			analyzer.addRequest(code);
 			return { analyzer, graph: (await analyzer.dataflow()).graph, cacheDir };
 		}
-		const namespaceOf = (graph: Awaited<ReturnType<typeof analyze>>['graph'], fn: string) => {
+		function namespaceOf(graph: Awaited<ReturnType<typeof analyze>>['graph'], fn: string) {
 			const call = graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === fn);
 			return call === undefined ? undefined : Identifier.getNamespace(Dataflow.qualify(call[0], graph, false) ?? '');
-		};
+		}
 		test(name('so system and eval stay base R, and its harmless exports still resolve'), async() => {
 			const body = 'cmd <- readline()\nsystem(cmd)\neval(parse(text = cmd))\nd <- read.csv(cmd)\nharmless(1)';
 			const [{ graph }, { graph: without }] = await Promise.all([analyze(`library(evil)\n${body}`), analyze(body)]);

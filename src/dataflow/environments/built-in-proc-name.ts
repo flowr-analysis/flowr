@@ -1,6 +1,4 @@
-/**
- * This contains all names of built-in function handlers and origins
- */
+/** This contains all names of built-in function handlers and origins */
 export enum BuiltInProcName {
 	/** for subsetting operations, see {@link processAccess} */
 	Access = 'builtin:acc',
@@ -56,9 +54,7 @@ export enum BuiltInProcName {
 	PurrrFormula = 'builtin:purrr-f',
 	/** for `quote`, and other substituting calls, see {@link processQuote} */
 	Quote = 'builtin:quote',
-	/**
-	 * for `recall` calls, see {@link processRecall}
-	 */
+	/** for `recall` calls, see {@link processRecall} */
 	Recall = 'builtin:recall',
 	/** for `on.exìt` and other hooks, see {@link processRegisterHook} */
 	RegisterHook = 'builtin:r-hook',
@@ -120,4 +116,15 @@ export enum BuiltInProcName {
 	WhileLoop = 'builtin:wl',
 	/** for `with` calls that evaluate an expression inside a named environment, see {@link processWithEnv} */
 	With = 'builtin:with',
+}
+const ProcNamePrefix = 'builtin:';
+
+/** Whether an origin of a call is the name of a built-in processor, rather than, for example, `'function'`. */
+export function isBuiltInProcName(this: void, origin: string): origin is BuiltInProcName {
+	return origin.startsWith(ProcNamePrefix);
+}
+
+/** The processor name without what marks it as one, as the id of the processor's built-in is made from it. */
+export function bareProcName(this: void, proc: BuiltInProcName): string {
+	return proc.slice(ProcNamePrefix.length);
 }

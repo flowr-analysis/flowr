@@ -3,36 +3,42 @@ import type { VisitingQueue } from './visiting-queue';
 import { guard } from '../../util/assert';
 import { envFingerprint, type Fingerprint } from './fingerprint';
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
+import {
+	type CallRuledOut,
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexFunctionDefinition,
+	type DataflowGraphVertexInfo,
+	DfgVertex
+} from '../../dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { type DataflowGraph, FunctionArgument, type ReadonlyOutgoingEdges } from '../../dataflow/graph/graph';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { ReferenceType } from '../../dataflow/environments/identifier';
-import { retrieveActiveEnvironment } from '../../dataflow/internal/process/functions/call/built-in/built-in-function-definition';
+import { type BrandedIdentifier, ReferenceType } from '../../dataflow/environments/identifier';
+import { callBoundInScope, retrieveActiveEnvironment } from '../../dataflow/internal/process/functions/call/built-in/built-in-function-definition';
 import { updatePotentialAddition } from './static-slicer';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import { DfgVertex } from '../../dataflow/graph/vertex';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { Dataflow } from '../../dataflow/graph/df-helper';
-import { ArgProp, FnSig, SemanticCallTag } from '../../dataflow/environments/built-in-props';
+import { ArgProp, CallProp, CallProps, FnSig, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { callFnProps } from '../../dataflow/environments/query-fn-props';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { AmbientStateName, MessageSinks } from '../../dataflow/environments/ambient-state-name';
 
 const NoCallTargets: ReadonlySet<DataflowGraphVertexInfo> = new Set();
 
-const linkedByGraph = new WeakMap<DataflowGraph, Map<string, ReadonlySet<DataflowGraphVertexInfo>>>();
+const linkedByGraph = new WeakMap<DataflowGraph, Map<BrandedIdentifier, ReadonlySet<DataflowGraphVertexInfo>>>();
 
 function linkedFunctionsOf(defs: readonly NodeId[], graph: DataflowGraph): ReadonlySet<DataflowGraphVertexInfo> {
 	let known = linkedByGraph.get(graph);
 	if(known === undefined) {
-		linkedByGraph.set(graph, known = new Map<string, ReadonlySet<DataflowGraphVertexInfo>>());
+		linkedByGraph.set(graph, known = new Map<BrandedIdentifier, ReadonlySet<DataflowGraphVertexInfo>>());
 	}
 	const key = defs.join(';');
 	let linked = known.get(key);
@@ -42,16 +48,18 @@ function linkedFunctionsOf(defs: readonly NodeId[], graph: DataflowGraph): Reado
 	return linked;
 }
 
-/**
- * Returns the function call targets (definitions) by the given caller
- */
-export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext): [ReadonlySet<DataflowGraphVertexInfo>, REnvironmentInformation] {
+/** Returns the function call targets (definitions) by the given caller */
+export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext, ruledOut?: ReadonlySet<NodeId>): [ReadonlySet<DataflowGraphVertexInfo>, REnvironmentInformation] {
 	guard(dataflowGraph.hasVertex(callerInfo.id), () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`);
 	// bind with call-local environments during slicing
 	const activeEnvironment = callerInfo.environment === undefined ? baseEnvironment : retrieveActiveEnvironment(callerInfo.environment, baseEnvironment, ctx);
-	const resolved = (Resolve.byName(callerInfo.name, activeEnvironment) ?? []).filter(d => !NodeId.isBuiltIn(d.definedAt));
+	/* the environment knows nothing of the scopes a closure is nested in, the graph does for a name they bind first */
+	const resolved = callBoundInScope(callerInfo.id, dataflowGraph) ? [] : (Resolve.byName(callerInfo.name, activeEnvironment) ?? []).filter(d => !NodeId.isBuiltIn(d.definedAt));
 	const functionCallDefs = [...resolved.map(d => d.nodeId), ...Dataflow.targetsOf(dataflowGraph, callerInfo.id, EdgeType.Calls)];
-	const functionCallTargets = functionCallDefs.length === 0 ? NoCallTargets : linkedFunctionsOf(functionCallDefs, dataflowGraph);
+	const linked = functionCallDefs.length === 0 ? NoCallTargets : linkedFunctionsOf(functionCallDefs, dataflowGraph);
+	/* a lookup by name still finds the methods the dispatch of the call rules out */
+	const excludes = callerInfo.ruledOut;
+	const functionCallTargets = excludes === undefined && ruledOut === undefined ? linked : new Set(linked.values().filter(t => !excludes?.includes(t.id) && !ruledOut?.has(t.id)));
 	return [functionCallTargets, activeEnvironment];
 }
 
@@ -75,9 +83,12 @@ function linkCallTargets(
 	}
 }
 
-/** Links the call `callerInfo` to the definitions it resolves to, or to the closures of its arguments if it resolves to none. */
-export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, { graph }: DataflowInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): void {
-	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargetsForSlice(graph, callerInfo, current.baseEnvironment, ctx);
+/**
+ * Links the call `callerInfo` to the definitions it resolves to, or to the closures of its arguments if it resolves to none.
+ * @param ruledOut - the methods the dispatch of the call does not run in this slice, beyond those it never runs
+ */
+export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, { graph }: DataflowInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext, ruledOut?: ReadonlySet<NodeId>): void {
+	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargetsForSlice(graph, callerInfo, current.baseEnvironment, ctx, ruledOut);
 	/* hashing the environment is expensive, so only a call that links something pays for it */
 	let fingerprint: Fingerprint | undefined;
 	const activeEnvironmentFingerprint = () => fingerprint ??= activeEnvironment === current.baseEnvironment ? current.envFingerprint : envFingerprint(activeEnvironment);
@@ -88,10 +99,10 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 	/*
 	 * if we do not have any call to resolve this function, we have to assume that every function passed is actually called!
 	 * hence, we add all argument values to the queue causing directly
-	 * (an assignment only stores the function, and a call handing an argument back unchanged, like `return(f)`,
-	 * did not call it either: what it is bound to is called later, or never)
+	 * (an assignment or a replacement like `e$h <- f` only stores the function, and a call handing an argument back
+	 * unchanged, like `return(f)`, did not call it either: what it is bound to is called later, or never)
 	 */
-	if(DfgVertex.hasOrigin(callerInfo, BuiltInProcName.Assignment)) {
+	if(DfgVertex.hasOrigin(callerInfo, BuiltInProcName.Assignment) || DfgVertex.hasOrigin(callerInfo, BuiltInProcName.Replacement)) {
 		return;
 	}
 	for(const arg of callerInfo.args) {
@@ -100,6 +111,64 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 			linkCallTargets(false, linkedFunctionsOf([reference], graph), activeEnvironment, activeEnvironmentFingerprint, queue);
 		}
 	}
+}
+
+/**
+ * The methods a dispatch decided per call of the function `enclosing` holding it does not run in a slice: those it rules
+ * out at every call of `enclosing` the slice holds, at such a call with what it rules out at every call the slice holds
+ * of the function holding that call in turn. A slice starting in a function, or holding none of its calls, keeps all.
+ * @example
+ * ```ts
+ * // f <- function(x) UseMethod("f"), sliced for f(structure(1, class = "a")) alone
+ * ruledOutInSlice(dispatch.ruledOutAt, idOfF, graph, queue, opened); // the method f.b
+ * ```
+ */
+export function ruledOutInSlice(perCall: readonly CallRuledOut[], enclosing: NodeId | undefined, graph: DataflowGraph, queue: VisitingQueue, opened: ReadonlySet<NodeId>): ReadonlySet<NodeId> | undefined {
+	if(enclosing === undefined || opened.has(enclosing)) {
+		return undefined;
+	}
+	let common: ReadonlySet<NodeId> | undefined;
+	for(const caller of Dataflow.sourcesOf(graph, enclosing, EdgeType.Calls)) {
+		if(queue.hasId(caller)) {
+			const at = perCall.find(p => p.call === caller);
+			const outer = at?.within === undefined || graph.idMap === undefined ? undefined : ruledOutInSlice(at.within, RNode.strictlyEnclosingFunction(caller, graph.idMap), graph, queue, opened);
+			const methods = [...at?.methods ?? [], ...outer ?? []];
+			const before = common;
+			common = new Set(before === undefined ? methods : methods.filter(m => before.has(m)));
+			if(common.size === 0) {
+				return undefined;
+			}
+		}
+	}
+	return common;
+}
+
+/**
+ * The methods a dispatch decided per call does not run when the calls `via` ran it, the call of the function holding
+ * it first, then the call of the function holding that one, and so on.
+ * @example
+ * ```ts
+ * // f <- function(x) UseMethod("f"); g <- function(v) f(v); g(structure(1, class = "a"))
+ * ruledOutVia(dispatch.ruledOutAt, [idOfFInG, idOfGCall]); // the method f.b
+ * ```
+ */
+export function ruledOutVia(perCall: readonly CallRuledOut[] | undefined, via: readonly NodeId[]): NodeId[] {
+	const ruledOut: NodeId[] = [];
+	let level = perCall;
+	for(const call of via) {
+		const at = level?.find(p => p.call === call);
+		if(at === undefined) {
+			break;
+		}
+		ruledOut.push(...at.methods);
+		level = at.within;
+	}
+	return ruledOut;
+}
+
+/** Every call `perCall` decides for, at any depth. */
+export function callsRuledOutAt(perCall: readonly CallRuledOut[]): NodeId[] {
+	return perCall.flatMap(p => [p.call, ...callsRuledOutAt(p.within ?? [])]);
 }
 
 /**
@@ -196,6 +265,10 @@ function runsElsewhere(prop: number): boolean {
 interface DeferringInfo {
 	readonly sig?:      FnSig
 	readonly evaluates: boolean
+	/** the call does nothing but hand back its argument invisibly, as `invisible(x)` does, which keeps a slice from printing what the program does not */
+	readonly hides:     boolean
+	/** the call muffles conditions its argument signals, as `suppressMessages(x)` does, which decides whether what the argument reports reaches the message sink */
+	readonly muffles:   boolean
 }
 
 /**
@@ -215,16 +288,58 @@ export function deferringCall(id: NodeId, info: DataflowInformation, idMap: AstI
 		let known = sigs.get(call);
 		if(known === undefined) {
 			const props = callFnProps(call, info);
-			known = { sig: props?.sig, evaluates: props?.tags?.includes(SemanticCallTag.Eval) === true };
+			known = { sig: props?.sig, evaluates: props?.tags?.includes(SemanticCallTag.Eval) === true, hides: CallProps.hasAll(props, CallProp.Invisible | CallProp.Pure), muffles: (props?.muffles?.length ?? 0) > 0 };
 			sigs.set(call, known);
 		}
 		/* quoted code the dataflow evaluates in place needs neither the quote nor the evaluating call */
 		if(DfgVertex.hasOrigin(info.graph.getVertex(call), BuiltInProcName.Quote)) {
 			return undefined;
 		}
-		if(known.evaluates || (known.sig !== undefined && runsElsewhere(FnSig.propAt(FnSig.layout(known.sig), parent.arguments.indexOf(child))))) {
+		const prop = known.sig === undefined ? undefined : FnSig.propAt(FnSig.layout(known.sig), parent.arguments.indexOf(child));
+		const handsOn = ((known.muffles && reports(id, info)) || (known.hides && RArgument.valueOf(child)?.info.id === id)) && prop !== undefined && (prop & ArgProp.Alias) !== 0;
+		if(known.evaluates || handsOn || (prop !== undefined && runsElsewhere(prop))) {
 			return call;
 		}
 	}
 	return undefined;
+}
+
+/** Whether running `id` may write into the message sink, as a message or a warning does, in its arguments (an inner `suppressWarnings(message(m))`) and the functions it calls as well. */
+function reports(id: NodeId, info: DataflowInformation): boolean {
+	return Dataflow.sideEffects.ambientAccess(info, id).writes.has(MessageSinks.used);
+}
+
+/** Whether the call `id` runs while the output is diverted (`sink(f)`), so that what it prints is part of what the program writes, `true` if it keeps no environment to tell. */
+function runsDiverted(id: NodeId, info: DataflowInformation): boolean {
+	const vertex = info.graph.getVertex(id);
+	const environment = DfgVertex.isFunctionCall(vertex) ? vertex.environment : undefined;
+	return environment === undefined || (Resolve.byName(AmbientStateName.sinkOpener, environment) ?? []).some(d => !NodeId.isBuiltIn(d.nodeId));
+}
+
+/**
+ * The top-level assignment `x <- call` the call `id` is the value of, if the call may hand back a visible value while the output is diverted, which R would print
+ * into the diversion once a slice dropped the assignment: it runs a closure (a method of the program `print` dispatches to among them), or a built-in not known to return invisibly.
+ */
+export function assignmentHidingValue(id: NodeId, info: DataflowInformation, idMap: AstIdMap): NodeId | undefined {
+	const node = idMap.get(id);
+	const parent = node === undefined ? undefined : RNode.directParent(node, idMap);
+	if(parent === undefined || RNode.topLevelStatement(parent, idMap) !== parent || !DfgVertex.hasOrigin(info.graph.getVertex(parent.info.id), BuiltInProcName.Assignment)
+		|| Dataflow.hasEdge(info.graph, parent.info.id, id, EdgeType.Returns)) {
+		return undefined;
+	}
+	const visible = Dataflow.calleeIdsOf(info.graph, id).some(t => !NodeId.isBuiltIn(t)) || !CallProps.hasAny(callFnProps(id, info), CallProp.Invisible);
+	return visible && runsDiverted(id, info) ? parent.info.id : undefined;
+}
+
+/** Every node of the closures what the output `id` reads (`sink()` ending a diversion) prints, as printing a closure deparses its whole definition (`f` at the top level, `print(f)`), but for the methods printing calls. */
+export function printedClosures(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): NodeId[] {
+	const prints = (at: NodeId, kind: 'reads' | 'writes') => graph.ambientAccessOf(at)?.[kind].has(AmbientStateName.sinkOutput) === true;
+	if(!prints(id, 'reads')) {
+		return [];
+	}
+	return Dataflow.targetsOf(graph, id, EdgeType.Reads).filter(printer => printer !== id && prints(printer, 'writes')).flatMap(printer => {
+		const called = Dataflow.calleeIdsOf(graph, printer);
+		return [...getAllLinkedFunctionDefinitions(new Set([printer]), graph)[0]].filter(closure => !called.includes(closure.id))
+			.flatMap(closure => [...RNode.collectAllIds(idMap.get(closure.id))].filter(n => graph.hasVertex(n)));
+	});
 }

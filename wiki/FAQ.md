@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-10-17, 21:45:25 UTC (v2.16.2, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-11-15, 17:22:57 UTC (v2.17.7, R v4.5.0), do not edit directly._
 
 Is your question not answered below? Please [ask it as an issue](https://github.com/flowr-analysis/flowr/issues/new?template=question.yaml) and we will answer it.
 Answers regularly end up on this page, so asking helps everyone who wonders the same thing later.
@@ -84,17 +84,17 @@ To enter the development repl, execute `npm run main-dev` in contrast to `npm ru
 <details><summary>How to get flowR to <b>talk</b>?</summary>
 
 When using flowR from the CLI, you can use the <span title="Description (Command Line Argument): Run with verbose logging (will be passed to the corresponding script)">`--verbose`</span> option to get more information about what flowR is doing.
-While coding, however, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/log.ts#L9"><code><span title="Update the minimum level of all flowr loggers.">setMinLevelOfAllLogs</span></code></a> function to set the minimum level of logs to be displayed (this works with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L22"><code>FlowrLogger</code></a> abstraction).
-In general, you can configure the levels of individual logs, such as the general `log` (obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L94"><code>getActiveLog</code></a>) or the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/parser/json/parser.ts#L14"><code>parseLog</code></a>.
+While coding, however, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/log.ts#L9"><code><span title="Update the minimum level of all flowr loggers.">setMinLevelOfAllLogs</span></code></a> function to set the minimum level of logs to be displayed (this works with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L23"><code>FlowrLogger</code></a> abstraction).
+In general, you can configure the levels of individual logs, such as the general `log` (obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L91"><code>getActiveLog</code></a>) or the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/parser/json/parser.ts#L14"><code>parseLog</code></a>.
 Please note that flowR makes no guarantees that log outputs are persistent across versions, and it is up to the implementors to provide sensible logging.
 If you are an implementor and want to add logging, please make sure there are no larger runtime implications when logging is disabled.
-Have a look at the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L6"><code>expensiveTrace</code></a> function for example, which uses a function to generate the log message only when the log level is reached.
+Have a look at the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L7"><code><span title="Logs the supplied message on trace level, only computing it if that level is enabled.">expensiveTrace</span></code></a> function for example, which uses a function to generate the log message only when the log level is reached.
 
 </details>
 
 <details><summary>How to run <b>tests</b> with <b>verbose</b> logging?</summary>
 
-Use the dedicated npm script to run all tests with trace-level log output:
+Use the dedicated npm script to run all tests with trace-level log output (unlike `npm run test`, it runs every test):
 
 ```shell
 npm run test:verbose
@@ -125,6 +125,28 @@ With `npm` you have to pass arguments in a specific way. The `--` operator is us
 ```shell
 npm run flowr -- --help
 ```
+
+</details>
+
+<details><summary>Why does `npm run test` not run <b>all tests</b>?</summary>
+
+By default, `npm run test` only runs the tests affected by your uncommitted changes, using [`vitest --changed`](https://vitest.dev/guide/cli#changed).
+A test is affected if it imports a changed file, directly or through other files.
+This already works on the very first run, without a complete run beforehand, and runs nothing if you have no changes.
+If you name test files, directories, or a name filter (`-t`), it runs exactly those instead.
+To choose a different set of tests, use one of these scripts (`test:related` uses [`vitest related`](https://vitest.dev/guide/cli#vitest-related)):
+
+```shell
+npm run test:all                     # every test, like CI
+npm run test:branch                  # the tests affected by all changes against main
+npm run test:related -- src/x.ts     # the tests depending on the given files
+```
+
+CI, `npm run test:full`, and `npm run checkup` always run every test, so nothing is skipped before a release.
+Keep in mind that most tests share the test helpers and the setup, so the selection is often broader than you might expect.
+Changes to the test setup, the files under `test/testfiles`, the vitest configuration, or `package.json` run every test.
+Other data files and generated files are not visible in the imports, so they may select too few tests. Run `npm run test:all` whenever you are unsure.
+For more ways to run only some tests, see the [testing wiki section](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing#running-only-some-tests).
 
 </details>
 
@@ -185,9 +207,9 @@ Anything you configure directly wins over the value the project kind defaults to
 <details><summary>Where do I find <b>all the helper objects</b>?</summary>
 
 flowR stores its data as plain values and puts the behavior beside it in a helper object named after the
-thing it is about (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L323"><code><span title="Utility functions for source locations . As every SourceRange is a location without a file, the readers of SourceRange apply to locations as well; the ones re-exported here save you the detour via SourceLocation.getRange .">SourceLocation</span></code></a>,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L225"><code><span title="The one helper to ask a vertex what it is. Every check tolerates an absent vertex, which is what getVertex() hands back for an id the graph does not know.">DfgVertex</span></code></a>,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L51"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a>, ...).
+thing it is about (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L296"><code><span title="Utility functions for source locations . As every SourceRange is a location without a file, the readers of SourceRange apply to locations as well; the ones re-exported here save you the detour via SourceLocation.getRange .">SourceLocation</span></code></a>,
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L208"><code><span title="The one helper to ask a vertex what it is.">DfgVertex</span></code></a>,
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L31"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a>, ...).
 The [Helper Objects](https://github.com/flowr-analysis/flowr/wiki/Helper-Objects) wiki page lists every one of them, grouped by what
 it is about, so you can find the one that answers your question without knowing where it lives.
 

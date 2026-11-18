@@ -1,11 +1,11 @@
 import { describe, test, expect } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import type { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { VertexType } from '../../../../src/dataflow/graph/vertex';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { WorkingDirectory, type WorkingDirectoryResolution } from '../../../../src/dataflow/eval/resolve/resolve-working-directory';
 import { label } from '../../_helper/label';
+import { analyze } from '../../_helper/analyzer';
 
 /** `mark()` stands for an arbitrary program point (any call would do) whose working directory we query */
 const MARK = 'mark';
@@ -15,8 +15,7 @@ describe('resolveWorkingDirectoryAt', withTreeSitter((ts: TreeSitterExecutor) =>
 
 	/** the resolution at every `mark()` point, in source order */
 	async function wdMarks(code: string, baseWd = 'proj') {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-		analyzer.addRequest(code);
+		const analyzer = await analyze(ts, code);
 		const dfg = (await analyzer.dataflow()).graph;
 		const cfg = (await analyzer.controlflow()).graph;
 		const changes = WorkingDirectory.collect(dfg, analyzer.inspectContext());
@@ -29,8 +28,7 @@ describe('resolveWorkingDirectoryAt', withTreeSitter((ts: TreeSitterExecutor) =>
 		return marks.sort((a, b) => a.id - b.id).map(r => norm(r.res));
 	}
 
-	const wdMarksCase = (name: string, code: string, expected: WorkingDirectoryResolution[]) =>
-		test(label(name, ['working-directory'], ['dataflow', 'resolve']), async() => expect(await wdMarks(code)).toEqual(expected.map(norm)));
+	const wdMarksCase = (name: string, code: string, expected: WorkingDirectoryResolution[]) => test(label(name, ['working-directory'], ['dataflow', 'resolve']), async() => expect(await wdMarks(code)).toEqual(expected.map(norm)));
 	const wdCase = (name: string, code: string, expected: WorkingDirectoryResolution) => wdMarksCase(name, code, [expected]);
 
 	wdCase('no setwd', 'mark()', { candidates: ['proj'], certain: true });

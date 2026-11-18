@@ -27,6 +27,8 @@ import type { InputClassifierConfig } from './queries/catalog/input-sources-quer
 import { InputType } from './queries/catalog/input-sources-query/input-types';
 import { uniqueArray } from './util/collections/arrays';
 import { SecureMode } from './util/secure-mode';
+import type { BrandedNamespace } from './dataflow/environments/identifier';
+import { CacheScope, GlobalCaches } from './util/global-caches';
 
 /** Marks an option that decides what flowR executes or loads, it is dropped from untrusted configs (see {@link FlowrConfig.fromFile}). */
 function securitySensitive<T extends Joi.Schema>(schema: T): T {
@@ -60,9 +62,7 @@ export enum VersionSelection {
 	System = 'system'
 }
 
-/**
- * How to infer the working directory from a script
- */
+/** How to infer the working directory from a script */
 export enum InferWorkingDirectory {
 	/** Don't infer the working directory */
 	No = 'no',
@@ -74,9 +74,7 @@ export enum InferWorkingDirectory {
 	AnyScript = 'any-script'
 }
 
-/**
- * How to handle fixed strings in a source path
- */
+/** How to handle fixed strings in a source path */
 export enum DropPathsOption {
 	/** Don't drop any parts of the sourced path */
 	No = 'no',
@@ -107,6 +105,11 @@ export type ConfigPlugin<T extends BuiltInFlowrPluginName | string> =
 /** One {@link FlowrConfig.specializeConfig} entry: a config overwrite, optionally `inherit`ing another kind's overwrite (own keys win). */
 export type SpecializeConfigEntry = DeepPartial<FlowrConfig> & { readonly inherit?: ProjectKind };
 
+/** A config to amend, in which the built-in definitions stay as stated: they are replaced as a whole, not edited. */
+type Writable<T> = T extends string | BuiltInDefinitions | RegExp | ((...args: never[]) => unknown) ? T
+	: T extends object ? { -readonly [K in keyof T]: K extends 'specializeConfig' ? T[K] : Writable<T[K]> } : T;
+export type WritableFlowrConfig = Writable<FlowrConfig>;
+
 /**
  * The configuration file format for flowR.
  * @see {@link FlowrConfig.default} for the default configuration.
@@ -126,6 +129,19 @@ export interface FlowrConfig {
 				readonly loadDefaults?: boolean
 				readonly definitions:   BuiltInDefinitions
 			}
+		}
+		readonly ambient?: {
+			/**
+			 * Whether a call drawing on a graphics device (`plot`, `lines`, ...) writes what is drawn, the pseudo variable `#canvas`, defaults to false.
+			 * Turn it on if the drawn plot is the output you slice for or compare, and keep it off if you only care about the
+			 * graphics parameters (`par`), as every plot then depends on all earlier plots on the same device.
+			 * It has to be set before the analysis runs, as the setting is applied when the calls are processed.
+			 * @example
+			 * ```ts
+			 * const analyzer = await new FlowrAnalyzerBuilder().configure('semantics.ambient.drawingWritesDevice', true).build();
+			 * ```
+			 */
+			readonly drawingWritesDevice?: boolean
 		}
 	},
 	readonly defaultPlugins: ConfigPlugin<string>[]
@@ -220,7 +236,7 @@ export interface FlowrConfig {
 			readonly autoSync?:                   boolean
 			readonly versionSelection?:           VersionSelection
 			/** Force an exact version for specific packages (mapping a package name to a version), overriding both the project constraint and the {@link versionSelection} policy; a version missing from the database falls back with a warning (default `{}`). */
-			readonly versionOverrides?:           Record<string, string>
+			readonly versionOverrides?:           Record<BrandedNamespace, string>
 			/**
 			 * Recovering a package no signature database knows (e.g. `maptools`) from its local install: `DESCRIPTION`
 			 * states the version, `NAMESPACE` the exports. Opt-in, since it reads outside the analyzed project.
@@ -547,7 +563,7 @@ function specialize(current: unknown, base: unknown, overwrite: unknown): unknow
  * default one instead of being appended to it, so options such as `defaultPlugins` can be reduced and not just extended.
  */
 function mergeConfigOntoDefaults(base: FlowrConfig, addon: DeepPartial<FlowrConfig>): FlowrConfig {
-	const merge = (b: unknown, a: unknown): unknown => {
+	function merge(b: unknown, a: unknown): unknown {
 		if(a === undefined) {
 			return b;
 		}
@@ -559,7 +575,7 @@ function mergeConfigOntoDefaults(base: FlowrConfig, addon: DeepPartial<FlowrConf
 			out[key] = merge(out[key], value);
 		}
 		return out;
-	};
+	}
 	return merge(base, addon) as FlowrConfig;
 }
 
@@ -614,12 +630,8 @@ export const FlowrConfig = {
 			ignoreSourceCalls: false,
 			ignoreLoadCalls:   false,
 			semantics:         {
-				environment: {
-					overwriteBuiltIns: {
-						loadDefaults: true,
-						definitions:  []
-					}
-				}
+				environment: { overwriteBuiltIns: { loadDefaults: true, definitions: [] } },
+				ambient:     { drawingWritesDevice: false }
 			},
 			defaultPlugins: FlowrDefaultPlugins,
 			repl:           {
@@ -631,12 +643,8 @@ export const FlowrConfig = {
 				queryStats:          true,
 				showPlugins:         false,
 			},
-			project: {
-				resolveUnknownPathsOnDisk: true,
-				failOnInaccessiblePath:    false,
-				assumeImplicitEcho:        true
-			},
-			linter: {
+			project: { resolveUnknownPathsOnDisk: true, failOnInaccessiblePath: false, assumeImplicitEcho: true },
+			linter:  {
 				/* tests and the R CMD check rules only make sense for a package, which re-enables them below */
 				disabledRules: ['software-has-tests'],
 				disabledTags:  ['cmd-check']
@@ -672,45 +680,24 @@ export const FlowrConfig = {
 				},
 				transitiveSideEffectRounds: DefaultTransitiveSideEffectRounds,
 				maxOverlayDepth:            DefaultMaxOverlayDepth,
-				instrument:                 {
-					dataflowExtractors: undefined
-				},
-				slicer: {
-					threshold:  50,
-					autoExtend: false
-				}
+				instrument:                 { dataflowExtractors: undefined },
+				slicer:                     { threshold: 50, autoExtend: false }
 			},
 			abstractInterpretation: {
 				wideningThreshold: 4,
 				followCalls:       true,
-				dataFrame:         {
-					maxColNames:    50,
-					readLoadedData: {
-						readExternalFiles: true,
-						maxReadLines:      1e6
-					}
-				}
+				dataFrame:         { maxColNames: 50, readLoadedData: { readExternalFiles: true, maxReadLines: 1e6 } }
 			},
 			incremental: {
 				alwaysIncremental: false,
 				parsing:           {
 					activated:  false,
-					heuristics: {
-						activated:       true,
-						mtime:           true,
-						linesFrom:       500,
-						bytesFrom:       50_000,
-						alwaysWithEdits: false,
-						minFiles:        1,
-					}
+					heuristics: { activated: true, mtime: true, linesFrom: 500, bytesFrom: 50_000, alwaysWithEdits: false, minFiles: 1 }
 				}
 			},
 			gas: {
-				thresholds: {
-					memory: { problematic: 0.7,       critical: 0.9 },
-					timeMs: { problematic: 100_000,   critical: 120_000 }
-				},
-				features: {}
+				thresholds: { memory: { problematic: 0.7,       critical: 0.9 }, timeMs: { problematic: 100_000,   critical: 120_000 } },
+				features:   {}
 			}
 		};
 	},
@@ -727,7 +714,10 @@ export const FlowrConfig = {
 					loadDefaults: Joi.boolean().optional().description('Should the default configuration still be loaded?'),
 					definitions:  Joi.array().items(Joi.object()).optional().description('The definitions to load/overwrite.')
 				}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
-			}).optional().description('Semantics regarding how to handle the R environment.')
+			}).optional().description('Semantics regarding how to handle the R environment.'),
+			ambient: Joi.object({
+				drawingWritesDevice: Joi.boolean().optional().description('Whether calls drawing on a graphics device (e.g., `plot`) count as writing to it, which the ambient state queries then report.')
+			}).optional().description('Semantics regarding the global state (options, devices, files, ...) calls access.')
 		}).description('Configure language semantics and how flowR handles them.'),
 		defaultPlugins: Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The default plugins to load when creating a new instance of FlowrAnalyzer'),
 		repl:           Joi.object({
@@ -959,17 +949,13 @@ export const FlowrConfig = {
 		const dropped = FlowrConfig.dropSecuritySensitive(raw);
 		return SecureMode.isEnabled() ? [...dropped, ...FlowrConfig.regexPaths().flatMap(p => dropPath(raw, p, ''))] : dropped;
 	},
-	/**
-	 * Creates a new flowr config that has the updated values.
-	 */
+	/** Creates a new flowr config that has the updated values. */
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- amendments usually mutate in place and return nothing
-	amend(this: void, config: FlowrConfig, amendmentFunc: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): FlowrConfig {
+	amend(this: void, config: FlowrConfig, amendmentFunc: (config: WritableFlowrConfig) => FlowrConfig | void): FlowrConfig {
 		const newConfig = FlowrConfig.clone(config);
 		return amendmentFunc(newConfig) ?? newConfig;
 	},
-	/**
-	 * Clones the given flowr config object.
-	 */
+	/** Clones the given flowr config object. */
 	clone(this: void, config: FlowrConfig): FlowrConfig {
 		return deepClonePreserveUnclonable(config);
 	},
@@ -1011,9 +997,7 @@ export const FlowrConfig = {
 	specializationFor(this: void, config: FlowrConfig, kind: ProjectKind): DeepPartial<FlowrConfig> | undefined {
 		return resolveSpecialization(config.specializeConfig, kind);
 	},
-	/**
-	 * Gets the configuration for the given engine type from the config.
-	 */
+	/** Gets the configuration for the given engine type from the config. */
 	getForEngine<T extends EngineConfig['type']>(this: void, config: FlowrConfig, engine: T): EngineConfig & { type: T } | undefined {
 		const engines = config.engines;
 		if(engines.length > 0) {
@@ -1034,7 +1018,7 @@ export const FlowrConfig = {
 	 */
 	changedPaths(this: void, config: FlowrConfig): string[] {
 		const found: string[] = [];
-		const walk = (current: unknown, base: unknown, path: string[], siblings: readonly string[][]): void => {
+		function walk(current: unknown, base: unknown, path: string[], siblings: readonly string[][]): void {
 			if(current !== null && base !== null && typeof current === 'object' && typeof base === 'object'
 				&& !Array.isArray(current) && !Array.isArray(base)) {
 				const keys = uniqueArray([...Object.keys(current), ...Object.keys(base)]);
@@ -1046,7 +1030,7 @@ export const FlowrConfig = {
 				const short = path.map((key, at) => shortestPrefix(key, siblings[at]));
 				found.push(`${short.join('.')}=${JSON.stringify(current)}`);
 			}
-		};
+		}
 		walk(config, FlowrConfig.default(), [], []);
 		return found;
 	},
@@ -1133,7 +1117,8 @@ export function persistSigDbPathToGlobalConfig(dbPath: string): string {
 	return file;
 }
 
-const taggedPathsCache = new Map<string, readonly (readonly string[])[]>();
+/** per schema meta tag, of which there are a handful */
+const taggedPathsCache = GlobalCaches.map<string, readonly (readonly string[])[]>('config-tagged-paths', CacheScope.Process, 64);
 
 function taggedPaths(meta: string): readonly (readonly string[])[] {
 	let paths = taggedPathsCache.get(meta);

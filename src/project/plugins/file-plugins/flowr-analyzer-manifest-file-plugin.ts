@@ -8,10 +8,7 @@ const RProjectFilePattern = /^rproject\.toml$/i;
 const UvrManifestFilePattern = /^uvr\.toml$/i;
 const RigProjectFilePattern = /^rproj\.toml$/i;
 
-/**
- * Tags a project manifest with the {@link FileRole.Manifest} role and lifts it, so the meta plugins reading it
- * can look it up by role.
- */
+/** Tags a project manifest with the {@link FileRole.Manifest} role and lifts it, so the meta plugins reading it can look it up by role. */
 abstract class FlowrAnalyzerManifestFilePlugin extends FlowrAnalyzerPatternFilePlugin {
 	public readonly version = new SemVer('0.1.0');
 }

@@ -229,7 +229,9 @@ function forcesOf(graph: DataflowGraph, parameter: NodeId, cfg: ControlFlowGraph
 		return known.forces;
 	}
 	const sites = Deferred.forcedAt(graph, parameter, cfg);
-	const forces = sites.length > 0 ? { cfg, sites, binding: parameter, reach: reachOf(sites) } : undefined;
+	/* new reads that leave the forces where they were keep them, and with them what was linked with them */
+	const same = known?.forces !== undefined && sites.length === known.forces.sites.length && sites.every((site, i) => site === known.forces?.sites[i]);
+	const forces = same ? known.forces : sites.length > 0 ? { cfg, sites, binding: parameter, reach: reachOf(sites) } : undefined;
 	forcing.set(parameter, { version, reads, forces });
 	return forces;
 }

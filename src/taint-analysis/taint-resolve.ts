@@ -23,30 +23,33 @@ import type {
 	TaintConditionMapping,
 	TaintMapping,
 	TaintParameterLocation,
-	TaintRuleProvenance
+	TaintRuleProvenance,
+	TaintRuleRecord,
+	TaintRuleRecorder
 } from './taint-mapping';
 import { TaintRole } from './taint-mapping';
 import type { ResolveInfo } from '../dataflow/eval/resolve/alias-tracking';
 
 export interface ResolvedTaint<Domain extends AnyAbstractDomain = AnyAbstractDomain> {
-	readonly value:             Domain
-	readonly role?:             TaintRole
-	readonly category?:         string
-	readonly recordProvenance:  boolean
-	readonly defaultSuppressed: boolean
-	readonly notes:             readonly string[]
+	readonly value:            Domain
+	readonly role?:            TaintRole
+	readonly category?:        string
+	/** What the rule that decided the taint states about the provenance of the call */
+	readonly record:           TaintRuleRecord
+	/** Replaces what the provenance records about the call by default, see {@link TaintRuleProvenance.suppressDefault} */
+	readonly suppressDefault?: TaintRuleRecorder
 }
 
 class RuleProvenance implements TaintRuleProvenance {
 	public readonly notes: string[] = [];
-	public suppressed = false;
+	public recorder?:      TaintRuleRecorder;
 
 	public note(info: string): void {
 		this.notes.push(info);
 	}
 
-	public suppressDefault(): void {
-		this.suppressed = true;
+	public suppressDefault(recorder: TaintRuleRecorder): void {
+		this.recorder = recorder;
 	}
 }
 
@@ -72,22 +75,25 @@ export function resolveFnCallToTaint<Domain extends AnyAbstractDomain>(
 	dfg: DataflowGraph,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): ResolvedTaint<Domain> {
+	const args = dfg.idMap !== undefined ? getVertexArguments(call, dfg.idMap) : [];
+	const unmapped: TaintRuleRecord = { notes: [], passthrough: false, inputs: args.flatMap(arg => arg === EmptyArgument || arg.value === undefined ? [] : [arg.value.info.id]) };
 	if(mappings.length === 0) {
-		return { value: domain.top(), recordProvenance: false, defaultSuppressed: false, notes: [] };
+		return { value: domain.top(), record: unmapped };
 	}
 	const context = { domain, call, dfg, ctx, projectArg };
 	const roleTaints = Object.values(TaintRole).flatMap(role => {
 		const mapping = mappings.find(m => m.role === role);
 		const provenance = new RuleProvenance();
-		const taint = resolveMappingToTaint(mapping, context, provenance);
-		return taint === undefined ? [] : [{ role, category: mapping?.category, taint, recordProvenance: mapping?.recordProvenance !== false, defaultSuppressed: provenance.suppressed, notes: provenance.notes }];
+		const inputs: NodeId[] = [];
+		const taint = resolveMappingToTaint(mapping, { ...context, inputs }, provenance);
+		return taint === undefined ? [] : [{ role, category: mapping?.category, taint, record: { notes: provenance.notes, passthrough: mapping?.recordProvenance === false, inputs }, suppressDefault: provenance.recorder }];
 	});
 
 	const value = AbstractDomain.meetAll(roleTaints.map(entry => entry.taint), domain.top());
 
 	// for eval only: the mapping whose taint determined the resolved value, and whether it stems from a function category
 	const winner = roleTaints.find(entry => entry.taint.equals(value));
-	return { value, role: winner?.role, category: winner?.category, recordProvenance: winner?.recordProvenance ?? false, defaultSuppressed: winner?.defaultSuppressed ?? false, notes: winner?.notes ?? [] };
+	return { value, role: winner?.role, category: winner?.category, record: winner?.record ?? unmapped, suppressDefault: winner?.suppressDefault };
 }
 
 type ResolveContext<Domain extends AnyAbstractDomain> = {
@@ -95,7 +101,8 @@ type ResolveContext<Domain extends AnyAbstractDomain> = {
 	domain:     Domain,
 	dfg:        DataflowGraph,
 	ctx:        ReadOnlyFlowrAnalyzerContext,
-	projectArg: (id: NodeId) => Domain | undefined
+	projectArg: (id: NodeId) => Domain | undefined,
+	inputs:     NodeId[]
 };
 
 function resolveMappingToTaint<Domain extends AnyAbstractDomain>(
@@ -115,7 +122,7 @@ function resolveMappingToTaint<Domain extends AnyAbstractDomain>(
 
 function resolveTaintCondition<Domain extends AnyAbstractDomain>(
 	mapping: TaintConditionMapping<Domain>,
-	{ call, dfg, ctx, domain, projectArg }: ResolveContext<Domain>,
+	{ call, dfg, ctx, domain, projectArg, inputs }: ResolveContext<Domain>,
 	provenance: TaintRuleProvenance
 ) {
 	const allArgs = dfg.idMap !== undefined ? getVertexArguments(call, dfg.idMap) : [];
@@ -132,6 +139,12 @@ function resolveTaintCondition<Domain extends AnyAbstractDomain>(
 	if(everyArg) {
 		taintIds.push(...allArgs.map(arg => arg === EmptyArgument ? undefined : arg.value?.info.id));
 	}
+
+	const argumentValueIds = (mapping.condition.argValues ?? []).map(location => {
+		const arg = getFunctionArgument(allArgs, location, resolveInfo);
+		return arg === undefined || arg === EmptyArgument ? undefined : arg.value?.info.id;
+	});
+	inputs.push(...[...taintIds, ...argumentValueIds].filter(id => !isUndefined(id)));
 
 	const incomingTaints = taintIds
 		.map(id => isUndefined(id) ? domain.top() : projectArg(id))

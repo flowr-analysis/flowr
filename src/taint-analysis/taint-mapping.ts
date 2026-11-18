@@ -2,6 +2,7 @@ import type { AbstractDomain, AbstractValue, AnyAbstractDomain } from '../abstra
 import type { FunctionParameterLocation } from '../abstract-interpretation/data-frame/arguments';
 import type { ArgProps, FnSig } from '../dataflow/environments/built-in-props';
 import { Identifier } from '../dataflow/environments/identifier';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export class TaintMapper<Domain extends AnyAbstractDomain> {
 	public readonly mapper: TaintMappingInternal<Domain>[] = [];
@@ -141,9 +142,28 @@ export type TaintConditionDomain<Domain extends AnyAbstractDomain> =
 export type TaintConditionFunction<Domain extends AnyAbstractDomain> =
 	(args: unknown[], taints: TaintConditionDomain<Domain>[], provenance: TaintRuleProvenance) => AbstractValue<Domain> | undefined;
 
+/**
+ * What the taint rule that decided the taint of a call recorded
+ */
+export interface TaintRuleRecord {
+	/** The notes the mapping left while deciding the taint */
+	readonly notes:       readonly string[]
+	/** Whether the call only passes its input on */
+	readonly passthrough: boolean
+	/** The arguments whose taints or values the mapping read, all arguments for calls without mapping */
+	readonly inputs:      readonly NodeId[]
+}
+
+/** Takes over what the provenance records about a call when {@link suppressDefault} is called */
+export type TaintRuleRecorder = (record: TaintRuleRecord) => TaintRuleRecord | undefined;
+
 export interface TaintRuleProvenance {
 	note(info: string): void
-	suppressDefault(): void
+	/**
+	 * Suppresses what the provenance records about the call by default, recording what the given recorder returns instead.
+	 * @param recorder - How the provenance should record instead
+	 */
+	suppressDefault(recorder: TaintRuleRecorder): void
 }
 
 export interface TaintParameterLocation {

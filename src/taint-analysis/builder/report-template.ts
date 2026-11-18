@@ -3,8 +3,9 @@ import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SourceLocation } from '../../util/range';
 import { SourceLocation as SourceLocationOps } from '../../util/range';
+import { uniqueArray } from '../../util/collections/arrays';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { TaintOrigin } from '../provenance/taint-provenance-tracker';
+import type { TaintOrigin } from '../provenance/taint-provenance-graph';
 
 
 /** Per-finding context handed to a {@link ReportTemplate}. */
@@ -88,14 +89,14 @@ export function defaultReportTemplate(s: string) {
 
 /** Default pattern for provenance reporting */
 export function withTaintOrigins(message: string, finding: FindingContext): string {
-	const reasons = finding.taintOrigins.map((origin, index) => {
+	const reasons = finding.taintOrigins.map(origin => {
 		const inputs = (origin.inputs ?? []).flatMap(({ taint }) => {
 			const text = taint?.toString();
 			return taint === undefined || taint.isTop() ? [] : [text];
 		});
-		const withInputs = inputs.length > 0 ? ` with input ${inputs.join(', ')}` : '';
+		const withInputs = inputs.length > 0 ? ` with input ${uniqueArray(inputs).join(', ')}` : '';
 		const suffix = origin.notes.length > 0 ? ` (${origin.notes.join(', ')})` : '';
-		return `${'  '.repeat(index)}╰ ${origin.value.toString()} because: call to ${origin.code}${withInputs}${suffix} in line ${origin.loc?.[0]}`;
+		return `${'  '.repeat(origin.depth)}╰ ${origin.value.toString()} because: call to ${origin.code}${withInputs}${suffix} in line ${origin.loc?.[0]}`;
 	});
 	return [message, ...reasons].join('\n');
 }

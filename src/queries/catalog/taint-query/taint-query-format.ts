@@ -15,6 +15,7 @@ import type { CommandCompletions } from '../../../cli/repl/completion';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
 import { queryLineCode } from '../../../cli/repl/parser/slice-query-parser';
+import { TaintProvenanceGraph } from '../../../taint-analysis/provenance/taint-provenance-graph';
 
 
 
@@ -122,7 +123,14 @@ export const TaintQueryDefinition = {
 				for(const finding of result.findings) {
 					const [first, ...reasons] = (finding.msg ?? '').split('\n');
 					resultStrings.push(`          ╰ ${first} `, ...reasons.map(reason => `              ${reason}`));
+					if(result.provenance !== undefined) {
+						const provenanceGraph = TaintProvenanceGraph.hidePassthrough(TaintProvenanceGraph.ofFinding(result.provenance.graph, finding.nodeId), [finding.nodeId]);
+						resultStrings.push(`                  ╰ Provenance-Graph: ${TaintProvenanceGraph.toMermaidUrl(provenanceGraph, name)}`);
+					}
 				}
+			} else if(result.provenance !== undefined && result.provenance.graph.rootIds().size > 0) {
+				const provenanceGraph = TaintProvenanceGraph.hidePassthrough(result.provenance.graph);
+				resultStrings.push(`      ╰ Provenance: ${TaintProvenanceGraph.toMermaidUrl(provenanceGraph, name)}`);
 			}
 
 			if(lift === Bottom) {
@@ -143,10 +151,11 @@ export const TaintQueryDefinition = {
 	jsonFormatter: (queryResults: BaseQueryResult) => {
 		const { results, ...out } = queryResults as QueryResults<'taint'>['taint'];
 		const json = new Map(
-			Array.from(results, ([name, { domains, msg, findings }]) => [name, {
+			Array.from(results, ([name, { domains, msg, findings, provenance }]) => [name, {
 				domains: domains.value === Bottom ? domains.value.description : Object.fromEntries(domains.value.entries().map(([key, domain]) => [key, domain?.toJSON() ?? null])),
 				msg,
 				findings,
+				...provenance === undefined ? {} : { provenance: TaintProvenanceGraph.toJson(provenance.graph) }
 			}])
 		);
 		const result = { results: json, ...out } as object;

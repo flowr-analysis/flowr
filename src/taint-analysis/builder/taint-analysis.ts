@@ -18,7 +18,8 @@ import { guard, isNotUndefined } from '../../util/assert';
 import { buildFindingContext, renderReport } from './report-template';
 import type { TaintConditionFunction, TaintRole } from '../taint-mapping';
 import type { TaintFnCategory } from '../function-categories';
-import { CallProvenanceTracker, findOrigins, type TaintProvenanceTracker } from '../provenance/taint-provenance-tracker';
+import { CallProvenanceTracker, type TaintProvenanceTracker } from '../provenance/taint-provenance-tracker';
+import { TaintProvenanceGraph } from '../provenance/taint-provenance-graph';
 
 /**
  * Information passed to a {@link FnCallHook} for each function call visited during taint analysis.
@@ -73,7 +74,8 @@ export interface TaintInferenceResult {
 	msg?:        string
 	/** The findings produced by the analysis, i.e. one per AST node whose inferred taint reached Bottom */
 	findings:    TaintFinding[]
-	provenance?: TaintProvenanceTracker
+	/** The tracker that recorded the provenance and the resulting graph */
+	provenance?: { tracker: TaintProvenanceTracker, graph: TaintProvenanceGraph }
 }
 
 /**
@@ -184,14 +186,14 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 		const dfg = (await analyzer.dataflow()).graph;
 		const ctx = analyzer.inspectContext();
 		for(const def of this.defs) {
-			const provenance = this.createTracker?.();
+			const provenanceTracker = this.createTracker?.();
 			const baseConfig: TaintVisitorConfiguration = {
 				controlFlow:   await analyzer.controlflow(),
 				ctx:           ctx,
 				dfg:           dfg,
 				normalizedAst: await analyzer.normalize(),
 				fnCallHook:    this.wrapFnCallHook(this.fnCallHook, def.name, dfg, ctx),
-				provenance,
+				provenanceTracker,
 			};
 
 			const interpreter = def.createVisitor(baseConfig, this.categories);
@@ -200,16 +202,18 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 			const endState = def.resultState(interpreter);
 			const report = def.msg;
 			const idMap = baseConfig.normalizedAst.idMap;
+			const provenanceGraph = provenanceTracker?.graph(id => endState.get(id), idMap);
 			const findings: TaintFinding[] = report === undefined ? [] : endState.getBottomNodes().map(nodeId => {
 				const node = idMap.get(nodeId);
 				const loc = SourceLocation.fromNode(node);
 				return typeof report === 'function'
-					? { nodeId, loc, msg: renderReport(report, buildFindingContext(def.name, nodeId, node, loc, findOrigins(provenance, nodeId, dfg, idMap))) }
+					? { nodeId, loc, msg: renderReport(report, buildFindingContext(def.name, nodeId, node, loc, provenanceGraph === undefined ? [] : TaintProvenanceGraph.origins(provenanceGraph, nodeId))) }
 					: { nodeId, loc };
 			});
 
 			// If the report message is a constant string, save it only once
 			const msg = typeof report === 'string' ? report : undefined;
+			const provenance = provenanceTracker === undefined || provenanceGraph === undefined ? undefined : { tracker: provenanceTracker, graph: provenanceGraph };
 			results.set(def.name, { domains: endState, msg, findings, provenance });
 		}
 		return results;

@@ -3,7 +3,7 @@ import path from 'path';
 import http, { type IncomingMessage } from 'http';
 import https from 'https';
 import crypto from 'crypto';
-import { sigDbCacheDir, uniqueTempPath } from './decompress';
+import { moveIntoPlace, sigDbCacheDir, uniqueTempPath } from './decompress';
 import { CompressedExtPattern, compressedExtOf, readableExtsPreferred, stripCompressedExt } from './codec';
 import CommittedRemote from '../../data/sigdb/sigdb.remote.json';
 import { joinUntrustedSegment } from '../../util/files';
@@ -125,7 +125,7 @@ async function downloadTo(url: string, dest: string, name: string, progress: (ms
 				throw new Error(`sha256 mismatch (expected ${expected.sha256.slice(0, 12)}..., got ${actual.slice(0, 12)}...); the download is corrupt or sigdb.remote.json is outdated`);
 			}
 		}
-		fs.renameSync(part, dest);
+		moveIntoPlace(part, dest);
 		return received;
 	} finally {
 		fs.rmSync(part, { force: true });

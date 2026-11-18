@@ -97,6 +97,21 @@ function isWritableDir(dir: string, create: boolean): boolean {
 /** a temp path next to `target`, unique even across containers sharing a volume */
 export const uniqueTempPath = (target: string, ext: string): string => `${target}.${process.pid}-${randomBytes(6).toString('hex')}.${ext}`;
 
+/**
+ * Moves the finished `tmp` to `target`. Another process writing the same content (the names are keyed by it) may have put it
+ * there first, and Windows does not let a rename replace a file that is open, so a target of the same size is taken as it is.
+ */
+export function moveIntoPlace(tmp: string, target: string): void {
+	try {
+		fs.renameSync(tmp, target);
+	} catch(e) {
+		if(!fs.existsSync(target) || fs.statSync(target).size !== fs.statSync(tmp).size) {
+			throw e;
+		}
+		fs.rmSync(tmp, { force: true });
+	}
+}
+
 /** read the (small) header line of a possibly-compressed bundle without decompressing the whole thing */
 export async function readHeaderOf(source: string): Promise<Record<string, unknown> | undefined> {
 	if(!isCompressed(source)) {
@@ -171,7 +186,7 @@ function commitPlain(source: string, tmp: string, plain: string, idx: string, op
 	if(opts.bytes !== undefined && size !== opts.bytes) {
 		throw new Error(`decompressing ${source} gave ${size} bytes, expected ${opts.bytes}; the file is corrupt or does not match its manifest`);
 	}
-	fs.renameSync(tmp, plain);
+	moveIntoPlace(tmp, plain);
 	if(!opts.indexless) {
 		writeCacheIndex(source, idx, opts.index);
 	}

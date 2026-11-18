@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { label } from '../../../_helper/label';
 import { downloadFullSigDb, sha256File, SigDbDownloadError, syncedSigDbDir, sigDbNeedsSync, type SigDbRemote } from '../../../../../src/project/sigdb/sigdb-download';
 import crypto from 'crypto';
 import http from 'http';
 import type { AddressInfo } from 'net';
 import { sigDbBundleDirs } from '../../../../../src/project/sigdb/manifest';
+import { moveIntoPlace } from '../../../../../src/project/sigdb/decompress';
 import { writeRemotePointer } from '../../../../../scripts/sigdb-remote';
 import fs from 'fs';
 import os from 'os';
@@ -193,5 +194,25 @@ describe('SigDb auto-sync (pointer)', { concurrent: false }, () => {
 		fs.utimesSync(older, new Date(), new Date());
 		await downloadFullSigDb();
 		expect(sigDbBundleDirs()[0]).toBe(dir);
+	});
+
+	test(label('a file another process put in place first is kept when the rename cannot replace it, as on Windows', [], ['other']), () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-move-'));
+		cleanups.push(() => fs.rmSync(dir, { recursive: true, force: true }));
+		const target = path.join(dir, 'cache.sigs.ndjson');
+		const tmp = `${target}.tmp`;
+		fs.writeFileSync(target, 'same');
+		fs.writeFileSync(tmp, 'same');
+		const refused = Object.assign(new Error('EPERM: operation not permitted, rename'), { code: 'EPERM' });
+		const rename = vi.spyOn(fs, 'renameSync').mockImplementation(() => {
+			throw refused;
+		});
+		cleanups.push(() => rename.mockRestore());
+		moveIntoPlace(tmp, target);
+		expect(fs.existsSync(tmp)).toBe(false);
+		expect(fs.readFileSync(target, 'utf8')).toBe('same');
+		/* a target that is not the same content is no reason to swallow the error */
+		fs.writeFileSync(tmp, 'other content');
+		expect(() => moveIntoPlace(tmp, target)).toThrow('EPERM');
 	});
 });

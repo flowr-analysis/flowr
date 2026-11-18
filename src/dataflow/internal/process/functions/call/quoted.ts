@@ -142,7 +142,7 @@ export const Quoted = {
 				const tracked = trackedEnvOf(vertex, evalEnv);
 				/* a tracked `eval.env` that binds every name the promise reads leaves no other binding in play, its writes still reach later reads */
 				const bound = tracked !== undefined && Quoted.evaluateIn(graph, promise, tracked, idMap).length === 0;
-				const candidates = bound ? { definitions: new Map(), uses: promised.uses } : promised;
+				const candidates = bound ? { definitions: new Map(), uses: promised.uses, held: promised.held } : promised;
 				const forces = flow !== undefined && sites?.length && binding !== undefined ? { cfg: flow, sites, binding } : undefined;
 				Deferred.link(graph, promise, candidates, idMap, forces);
 				if(binding !== undefined) {
@@ -369,7 +369,7 @@ function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertex
 			if(!linked.has(expr)) {
 				linked.add(expr);
 				const forces = cfg === undefined || sites === undefined ? undefined : { cfg, sites, binding: id, reach };
-				Deferred.link(graph, expr, { definitions: bindings, uses: names.uses }, idMap, forces);
+				Deferred.link(graph, expr, { definitions: bindings, uses: names.uses, held: names.held }, idMap, forces);
 				Deferred.publish(graph, expr, names, idMap, id, sites ?? []);
 			}
 		} else {

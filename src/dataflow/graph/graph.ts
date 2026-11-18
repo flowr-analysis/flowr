@@ -98,6 +98,9 @@ export type ReadonlyOutgoingEdges<Edge extends DfEdge = DfEdge> = ReadonlyMap<No
 /** The shared answer for a vertex without edges. */
 export const NoEdges: ReadonlyMap<NodeId, never> = new Map<NodeId, never>();
 
+/** from this many edges leaving a vertex on, {@link DataflowGraph#edgesBeyondSideEffects} keeps those it hands out */
+const ManyEdges = 64;
+
 /** Resolves the `pkg::fn` name of the call `id`, without and with the base-R qualification. Passed to {@link DataflowGraph#qualify}, which caches what it returns. */
 export type CallQualifier =
 	(graph: DataflowGraph, id: NodeId, vertex: DataflowGraphVertexInfo | undefined) => readonly [bare: Identifier | undefined, baseR: Identifier | undefined];
@@ -181,6 +184,8 @@ export class DataflowGraph<
 	private edgeInformation:   Map<NodeId, OutgoingEdges<Edge>> = new Map<NodeId, OutgoingEdges<Edge>>();
 	/* the reverse of `edgeInformation`, built on demand, then kept up to date by `addEdge` and dropped only on a bulk write (`mergeEdges`, `fromJson`): rebuilding it per lookup made every caller asking for the ingoing edges of many nodes scan the whole graph once per node */
 	private incomingIndex?:    Map<NodeId, IngoingEdges<Edge>>;
+	/* per vertex with many edges leaving it, those carrying more than a side effect on a call, see `edgesBeyondSideEffects`; dropped for a vertex whenever its edges change */
+	private beyondSideEffects: Map<NodeId, readonly [NodeId, Edge][]> = new Map();
 
 	/* tag to the ids carrying it; a lookup re-checks the vertex, as another graph may retag an object they share */
 	private types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
@@ -236,6 +241,7 @@ export class DataflowGraph<
 		const graph = new DataflowGraph<Vertex, Edge>(this._idMap);
 		graph.rootVertices = this.rootVertices;
 		graph.edgeInformation = this.edgeInformation;
+		graph.beyondSideEffects = this.beyondSideEffects;
 		graph.types = this.types;
 		graph.vertexInformation = new Map(Array.from(this.vertexInformation, ([id, vertex]) => [id, (DfgVertex.isFunctionDefinition(vertex)
 			? { ...vertex, environment: undefined, subflow: { ...vertex.subflow, environment: undefined } }
@@ -265,12 +271,26 @@ export class DataflowGraph<
 	 * @useInstead {@link DataflowGraph#edgesFrom|edgesFrom()} - unless you mean to write into what you get back
 	 */
 	public outgoingEdges(id: NodeId): OutgoingEdges | undefined {
+		/* the caller may write into it */
+		this.beyondSideEffects.delete(id);
 		return this.edgeInformation.get(id);
 	}
 
 	/** The edges leaving `id`, i.e. what it depends on, as a map from target to edge. */
 	public edgesFrom(id: NodeId): ReadonlyOutgoingEdges {
 		return this.edgeInformation.get(id) ?? NoEdges;
+	}
+
+	/**
+	 * The edges leaving `id` but those that only state a {@link EdgeType.SideEffectOnCall}: a write escaping into thousands of calls
+	 * has an edge to each, which a walk along the flow of values steps over every time it passes the write.
+	 */
+	public edgesBeyondSideEffects(id: NodeId): Iterable<[NodeId, Edge]> {
+		const edges = this.edgeInformation.get(id);
+		if(edges === undefined || edges.size < ManyEdges) {
+			return edges ?? NoEdges;
+		}
+		return getOrSet(this.beyondSideEffects, id, () => edges.entries().filter(([, e]) => !DfEdge.isOnlyType(e, EdgeType.SideEffectOnCall)).toArray());
 	}
 
 	/** The edges arriving at `id`, i.e. what depends on it, as a map from source to edge. */
@@ -522,6 +542,7 @@ export class DataflowGraph<
 		}
 		this.dropQualifications();
 		this.countRead(to, type);
+		this.beyondSideEffects.delete(from);
 		edge.types &= ~type;
 		if(DfEdge.hasAnyType(edge)) {
 			/* the reverse index holds this very object, so a narrowed type is already visible through it */
@@ -590,6 +611,7 @@ export class DataflowGraph<
 			return this;
 		}
 		this.dropQualifications();
+		this.beyondSideEffects.delete(fromId);
 		if(existing !== undefined) {
 			/* the reverse index holds this very object, so a widened type is already visible through it */
 			existing.types |= type;
@@ -636,6 +658,7 @@ export class DataflowGraph<
 		this.dropQualifications();
 		this.vertexInformation = otherGraph.vertexInformation;
 		this.edgeInformation = otherGraph.edgeInformation;
+		this.beyondSideEffects = otherGraph.beyondSideEffects;
 		this.types = otherGraph.types;
 		this.incomingIndex = undefined;
 		const takeRoots = mergeRootVertices && this.rootVertices.size === 0;
@@ -687,6 +710,7 @@ export class DataflowGraph<
 	private mergeEdges(otherGraph: DataflowGraph<Vertex, Edge>, consume = false) {
 		this.dropQualifications();
 		this.incomingIndex = undefined;
+		this.beyondSideEffects.clear();
 		for(const [id, edges] of otherGraph.edgeInformation) {
 			const existing = this.edgeInformation.get(id);
 			if(existing === undefined) {

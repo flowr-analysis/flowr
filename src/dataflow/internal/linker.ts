@@ -664,7 +664,8 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 	const handedBack = !viaAccess && DfgVertex.hasOrigin(vertex, BuiltInProcName.List) ? EdgeType.Returns | EdgeType.Argument : EdgeType.Returns;
 	/* only a call into a body binds parameters, a built-in hands back what it is given in the same context */
 	const returnedTo = DfgVertex.isFunctionCall(vertex) && !vertex.onlyBuiltin ? id : call;
-	for(const [target, e] of graph.edgesFrom(id)) {
+	/* an edge stating only a side effect on a call is neither handed back nor followed */
+	for(const [target, e] of graph.edgesBeyondSideEffects(id)) {
 		if(DfEdge.includesType(e, handedBack)) {
 			hasReturnEdge = true;
 			next(target, nextViaAccess, returnedTo === call ? scopedTo(graph, scopes, call, target) : returnedTo);

@@ -34,7 +34,7 @@ all calls that start with `read_` to the kind `input` but only if they are not l
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (1 ms)\
+Query: **call-context** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
 &nbsp;&nbsp;&nbsp;╰ **visualize** (3 hits):\

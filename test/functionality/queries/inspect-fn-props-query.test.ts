@@ -93,16 +93,16 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	testRoles('a name it cannot follow loses the frame', 'f <- function(x, nm) { e <- environment(); get(nm, envir = e) }', { x: ArgProp.Value, nm: ArgProp.Forced | ArgProp.Value | ArgProp.Injectable });
 
 	/* what the body states about the function itself, not about one of its formals */
-	testProps('a body handing back an invisible result', 'f <- function(x) invisible(x)', [{ props: CallProp.Invisible | CallProp.Strict }]);
-	testProps('through a return', 'f <- function(x) return(invisible(x))', [{ props: CallProp.Invisible | CallProp.Strict }]);
-	testProps('a value of its own is visible', 'f <- function() 1', [{ props: CallProp.Strict }]);
-	testProps('only one branch invisible is not enough', 'f <- function(c) if(c) invisible(1) else 2', [{ props: CallProp.Strict }]);
-	testProps('both branches invisible are', 'f <- function(c) if(c) invisible(1) else invisible(2)', [{ props: CallProp.Invisible | CallProp.Strict }]);
-	testProps('an assignment is invisible and binds a local', 'f <- function() { y <- 1 }', [{ props: CallProp.Invisible | CallProp.Strict }]);
+	testProps('a body handing back an invisible result', 'f <- function(x) invisible(x)', [{ props: CallProp.Pure | CallProp.Invisible | CallProp.Strict }]);
+	testProps('through a return', 'f <- function(x) return(invisible(x))', [{ props: CallProp.Pure | CallProp.Invisible | CallProp.Strict }]);
+	testProps('a value of its own is visible', 'f <- function() 1', [{ props: CallProp.Pure | CallProp.Strict }]);
+	testProps('only one branch invisible is not enough', 'f <- function(c) if(c) invisible(1) else 2', [{ props: CallProp.Pure | CallProp.Strict }]);
+	testProps('both branches invisible are', 'f <- function(c) if(c) invisible(1) else invisible(2)', [{ props: CallProp.Pure | CallProp.Invisible | CallProp.Strict }]);
+	testProps('an assignment is invisible and binds a local', 'f <- function() { y <- 1 }', [{ props: CallProp.Pure | CallProp.Invisible | CallProp.Strict }]);
 	testProps('a super-assignment reaches beyond the frame', 'f <- function() { x <<- 1 }', [{ props: CallProp.Invisible | CallProp.Scope | CallProp.Strict }]);
 	testProps('what its calls do it does too', 'f <- function() runif(1)', [{ props: CallProp.Strict, tags: [SemanticCallTag.Random] }]);
 	testProps('reading a file included', 'f <- function() read.csv("a")', [{ props: CallProp.Strict, tags: [SemanticCallTag.File, SemanticCallTag.Reads] }]);
-	testProps('throwing included', 'f <- function() stop("x")', [{ props: CallProp.Throws | CallProp.Strict }]);
+	testProps('throwing included', 'f <- function() stop("x")', [{ props: CallProp.Pure | CallProp.Throws | CallProp.Strict }]);
 	testProps('a dispatching body is a generic', 'f <- function(x) UseMethod("f")', [{ props: CallProp.Generic | CallProp.Strict }]);
 	testProps('printing hands back invisibly', 'f <- function(x) print(x)', [{ props: CallProp.Invisible | CallProp.Strict, tags: [SemanticCallTag.Prints] }]);
 
@@ -116,8 +116,9 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	testRoles('the callee decides for an argument passed on', 'g <- function(y) y\nf <- function(x) g(x)', { y: ArgProp.Forced | ArgProp.Alias, x: ArgProp.Forced });
 	testRoles('a callee leaving it alone makes it lazy', 'g <- function(y) 1\nf <- function(x) g(x)', { y: ArgProp.Lazy, x: ArgProp.Lazy });
 	testRoles('each parameter is answered on its own', 'f <- function(x, y) x', { x: ArgProp.Forced | ArgProp.Alias, y: ArgProp.Lazy });
-	testProps('a function forcing every parameter is strict', 'f <- function(x) x + 1', [{ props: CallProp.Strict }]);
-	testProps('one leaving a parameter alone is not', 'f <- function(x, y) x', []);
+	testProps('a function forcing every parameter is strict', 'f <- function(x) x + 1', [{ props: CallProp.Pure | CallProp.Strict }]);
+	testProps('calling a formal is not pure, it runs what a caller hands over', 'f <- function(g) g(1)', [{ props: CallProp.Strict }]);
+	testProps('one leaving a parameter alone is not', 'f <- function(x, y) x', [{ props: CallProp.Pure }]);
 
 	/* counterexamples: a replacement call rebinds its target in the frame it runs in, as a plain assignment does */
 	testProps('a part assigned on a local changes no scope', 'f1 <- function(x) { x$a <- 1; x }', [{ props: CallProp.Strict }]);
@@ -147,7 +148,7 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 		assert.isNotEmpty(args.roles);
 		const fn = (await runQuery(parser, 'f <- function(x) invisible(x)', { type: 'inspect-fn-props', only: 'function' })).result;
 		assert.deepStrictEqual(fn.roles, {});
-		assert.deepStrictEqual(Object.values(fn.props).map(stated), [stated({ props: CallProp.Invisible | CallProp.Strict })]);
+		assert.deepStrictEqual(Object.values(fn.props).map(stated), [stated({ props: CallProp.Pure | CallProp.Invisible | CallProp.Strict })]);
 	});
 
 	test(label('a named formal alone', ['name-normal'], ['other']), async() => {
@@ -174,13 +175,13 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 
 	/* what a function calls it does too, however many calls of the program lie in between */
 	testEachProps('throwing carries over a call', 'g <- function(y) stop(y)\nh <- function(z) g(z)', {
-		'function(y) stop(y)': { props: CallProp.Throws | CallProp.Strict },
-		'function(z) g(z)':    { props: CallProp.Throws | CallProp.Strict }
+		'function(y) stop(y)': { props: CallProp.Pure | CallProp.Throws | CallProp.Strict },
+		'function(z) g(z)':    { props: CallProp.Pure | CallProp.Throws | CallProp.Strict }
 	});
 	testEachProps('and over a chain of them', 'g <- function(y) stop(y)\nh <- function(z) g(z)\ni <- function(z) h(z)', {
-		'function(y) stop(y)': { props: CallProp.Throws | CallProp.Strict },
-		'function(z) g(z)':    { props: CallProp.Throws | CallProp.Strict },
-		'function(z) h(z)':    { props: CallProp.Throws | CallProp.Strict }
+		'function(y) stop(y)': { props: CallProp.Pure | CallProp.Throws | CallProp.Strict },
+		'function(z) g(z)':    { props: CallProp.Pure | CallProp.Throws | CallProp.Strict },
+		'function(z) h(z)':    { props: CallProp.Pure | CallProp.Throws | CallProp.Strict }
 	});
 	testEachProps('drawing at random does as well', 'k <- function() runif(1)\nm <- function() k()', {
 		'function() runif(1)': { props: CallProp.Strict, tags: [SemanticCallTag.Random] },
@@ -191,11 +192,11 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 		'function(p) w(p)':                  { props: CallProp.Invisible | CallProp.Strict, tags: [SemanticCallTag.File, SemanticCallTag.Writes] }
 	});
 	testEachProps('a recursive definition states what it reaches', 'rec <- function(n) if(n > 0) rec(n - 1) else stop("d")', {
-		'function(n) if(n > 0) rec(n - 1) else stop("d")': { props: CallProp.Throws | CallProp.Strict }
+		'function(n) if(n > 0) rec(n - 1) else stop("d")': { props: CallProp.Pure | CallProp.Throws | CallProp.Strict }
 	});
-	testEachProps('a call to a definition doing nothing of note adds nothing', 'pl <- function(x) x + 1\npl2 <- function(x) pl(x)', {
-		'function(x) x + 1': { props: CallProp.Strict },
-		'function(x) pl(x)': { props: CallProp.Strict }
+	testEachProps('a call to a definition doing nothing but computing is pure as well', 'pl <- function(x) x + 1\npl2 <- function(x) pl(x)', {
+		'function(x) x + 1': { props: CallProp.Pure | CallProp.Strict },
+		'function(x) pl(x)': { props: CallProp.Pure | CallProp.Strict }
 	});
 
 	/* a query that could only answer with nothing is refused rather than run */

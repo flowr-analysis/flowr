@@ -30,6 +30,15 @@ describe('FlowrAnalyzer.functionInfo', withTreeSitter(parser => {
 		assert.include(info?.tags ?? [], SemanticCallTag.File, 'reading a file is a built-in tag, no signature states it');
 	});
 
+	test('carries everything the built-in states, unless asked to leave it out', async() => {
+		const analyzer = await analyzerFor('setwd("x")\nsuppressMessages(1)\ntrunc(1)');
+		const setwd = analyzer.functionInfo(Identifier.make('setwd'));
+		assert.isNotEmpty(setwd?.ambient, 'what ambient state it touches');
+		assert.isUndefined(analyzer.functionInfo(Identifier.make('setwd'), { omit: ['ambient'] })?.ambient);
+		assert.deepEqual(analyzer.functionInfo(Identifier.make('suppressMessages'))?.muffles, ['message']);
+		assert.include(analyzer.functionInfo(Identifier.make('trunc'))?.contract?.requires, 'is.numeric(x)', 'what a call has to fulfill');
+	});
+
 	test('answers for a package function from the signature database', async() => {
 		const analyzer = await analyzerFor('dplyr::lead(1:3)');
 		const name = Identifier.make('lead', 'dplyr');

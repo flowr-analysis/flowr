@@ -42,6 +42,7 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 .hl .op { color: color-mix(in srgb, var(--muted) 62%, #6f86b3); }
 .hl .role { color: color-mix(in srgb, #3b73c4 72%, var(--fg)); font-weight: 500; }
 .hl .prop { color: color-mix(in srgb, #c27a12 70%, var(--fg)); font-weight: 500; }
+.hl .trait { color: color-mix(in srgb, #2f8f5b 72%, var(--fg)); font-weight: 500; }
 .hl .regex { color: color-mix(in srgb, #8a5cc2 70%, var(--fg)); }
 .hl .bad { color: #c0392b; text-decoration: underline wavy; }
 .search input::-webkit-search-cancel-button { appearance: none; }
@@ -442,6 +443,10 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 		<li><button type="button" class="try" data-q="[pure] *">[pure]</button> a property of the call as a whole. It may come first, last or right after the name, and several add up</li>
 		<li><button type="button" class="try" data-q="[invisible] *([value]?)">[invisible] *([value]?)</button> combines with arguments</li>
 	</ul>
+	<h3>Traits</h3>
+	<ul>
+		<li><button type="button" class="try" data-q="{contract} *">{contract}</button> what the name is, as the filter groups ask it: has a contract, is an S3 method, reads a file, touches the global state. Several add up: <button type="button" class="try" data-q="{contract,throw} read*">{contract,throw} read*</button></li>
+	</ul>
 	<h3>Contracts</h3>
 	<ul>
 		<li><button type="button" class="try" data-q="param:enum">param:enum</button> what a call has to fulfill to return normally, asked as <code>key:value</code>. Several add up, and a name narrows them: <button type="button" class="try" data-q="read* param:file:character">read* param:file:character</button></li>
@@ -453,10 +458,11 @@ footer { margin: 3.5rem auto 1.5rem; max-width: 62rem; width: 100%; flex: none; 
 		<div><h3>Contract keys</h3><dl id="helpcontracts"></dl></div>
 		<div><h3>Kinds of parameters, for <code>param:</code></h3><dl id="helpkinds"></dl></div>
 	</div>
-	<p>Only functions with a flowR signature can answer argument and property questions, and one signature has to satisfy all of it. Typing <code>[</code> lists the words that fit, grayed when nothing would match. The filter groups above ask the same without typing.</p>
+	<p>Only functions with a flowR signature can answer argument and property questions, and one signature has to satisfy all of it. Typing <code>[</code> or <code>{</code> lists the words that fit, grayed when nothing would match. The filter groups above ask the same without typing.</p>
 	<div class="words">
 		<div><h3>Argument roles</h3><dl id="helproles"></dl></div>
 		<div><h3>Function properties</h3><dl id="helpprops"></dl></div>
+		<div><h3>Traits</h3><dl id="helptraits"></dl></div>
 	</div>
 	<form method="dialog"><button>close</button></form>
 </div></dialog>

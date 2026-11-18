@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 13:32:41 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-16, 20:55:37 UTC (v2.17.7), do not edit directly._
 <h2 id="Data Columns Query">Data Columns Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the columns of a data frame that can be written at a position, as an editor offers them to complete.\
@@ -29,7 +29,7 @@ The query asks for the columns at that position:
 
 _Results (prettified and summarized):_
 
-Query: **data-columns** (1 ms)\
+Query: **data-columns** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **2:34** (masked of penguins): species, island, bill_len, bill_dep, flipper_len, body_mass, sex, year
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>

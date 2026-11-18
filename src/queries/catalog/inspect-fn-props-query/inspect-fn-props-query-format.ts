@@ -1,4 +1,5 @@
 import { type BasicQueryData, filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
+import type { SigNativeRoutineInfo } from '../../../project/sigdb/schema';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import Joi from 'joi';
 import { functionBullet, queryHeader } from '../../query-print';
@@ -64,11 +65,11 @@ function keepProps(all: Record<NodeId, StatedProps>, mask: PropMask | undefined)
 export async function executeFnPropsQuery({ analyzer }: BasicQueryData, queries: readonly InspectFnPropsQuery[]): Promise<InspectFnPropsQueryResult> {
 	const start = Date.now();
 	const filterFor = await QueryFunctionFilter.criteria(queries, analyzer);
-	const [{ only, formals, props, maxDepth } = {} as InspectFnPropsQuery] = queries;
+	const [{ only, formals, props, maxDepth, natives } = {} as InspectFnPropsQuery] = queries;
 
 	const ctx = analyzer.inspectContext();
 	const graph = (await analyzer.dataflow()).graph;
-	const inferred = FunctionSemantics.props(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx, maxDepth, only });
+	const inferred = FunctionSemantics.props(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx, maxDepth, only, natives });
 
 	return {
 		...metaSince(start),
@@ -104,6 +105,8 @@ export interface InspectFnPropsQuery extends BaseQueryFormat {
 	readonly formals?:  readonly string[]
 	/** keep only these properties, named as the {@link ArgProp}/{@link CallProp} members they are */
 	readonly props?:    readonly string[]
+	/** the native routines of the analyzed package, which flowR cannot read off its compiled code itself: a call of a pure one has no effect, one starting threads runs concurrently */
+	readonly natives?:  readonly SigNativeRoutineInfo[]
 }
 
 export interface InspectFnPropsQueryResult extends BaseQueryResult {
@@ -134,6 +137,7 @@ export const InspectFnPropsQueryDefinition = {
 	schema:   Joi.object({
 		type:     Joi.string().valid('inspect-fn-props').required().description('The type of the query.'),
 		filter:   FunctionFilterSchema,
+		natives:  Joi.array().items(Joi.object().unknown()).optional().description('The native routines of the analyzed package (as the signature database records them), whose purity and concurrency the calls to them inherit.'),
 		maxDepth: Joi.number().integer().min(1).optional().description(`How far a value is followed back through names and calls when deciding what a formal stands for (default ${DefaultDepth}).`),
 		only:     Joi.string().valid('arguments', 'function').optional().description('Infer only what the formals do, or only what the function itself does; both are inferred when this is left out.'),
 		formals:  Joi.array().items(Joi.string()).min(1).optional().description('Keep only the formals written as one of these names.'),

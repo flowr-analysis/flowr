@@ -39,6 +39,9 @@ import { memoize } from '../../../util/collections/defaultmap';
 import { GuardTerm, RConstantNames, type GuardArgument, type GuardBinding, type GuardCall, type GuardConstant, type GuardOuter } from './guard-term';
 import type { GuardFacts, GuardFactsLookup, RFailure, RRecycling } from '../../environments/guard-facts';
 import { uniqueArray } from '../../../util/collections/arrays';
+import { NativeRoutines } from '../../../project/sigdb/native-routines';
+import type { SigNativeRoutineInfo } from '../../../project/sigdb/schema';
+import { parseGuardTerm } from './guard-term-syntax';
 import { type FormalTerms, asksCallable, callable, composesName, getAsExists, guardFactsOf, ImplicitClasses, messageFor, onlyComputesBy, passes, recyclingConditions, succeeds } from './guard-knowledge';
 import { s3GroupGenericOf } from '../../environments/group-generics';
 import { groupMethodConditions } from './group-method-guards';
@@ -137,7 +140,13 @@ const NoContract: Contract = { clauses: [], required: [], effects: true, opens: 
 /** What to ask for beyond the definitions, see {@link guardsOfFunctions}. */
 export interface FunctionGuardsOptions {
 	/** how to ask what a built-in states, so a configured or overwritten one answers, in the R version analyzed for */
-	readonly ctx?: ReadOnlyFlowrAnalyzerContext
+	readonly ctx?:     ReadOnlyFlowrAnalyzerContext
+	/**
+	 * The native routines of the analyzed package, as a tool read them off its compiled code, which flowR cannot do itself:
+	 * a call to one asks what the routine's {@link SigNativeRoutineInfo.guards} state, and has an effect unless the routine is pure.
+	 * Without them, those the signature database records for the analyzed package (see {@link NativeRoutines.ofProject}).
+	 */
+	readonly natives?: readonly SigNativeRoutineInfo[]
 }
 
 /** What one run shares between the definitions it answers. */
@@ -164,6 +173,8 @@ interface GuardState {
 	paths?:                 BranchPaths
 	/** the origins of each node asked about, see {@link originsOf}: resolving them walks the call targets, and the graph does not change meanwhile */
 	origins?:               (id: NodeId) => Origin[] | undefined
+	/** the native routine each foreign function call runs, see {@link FunctionGuardsOptions.natives} */
+	readonly routineOf:     (vertex: DataflowGraphVertexFunctionCall) => SigNativeRoutineInfo | undefined
 }
 
 /** {@link Dataflow.origin} of the node, worked out once per node and guard state. */
@@ -284,7 +295,7 @@ function onlyComputes(this: void, id: NodeId, vertex: DataflowGraphVertexFunctio
 	if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Assignment)) {
 		return !bindsOutside(vertex, info);
 	}
-	return onlyComputesBy(state.facts(name)) || CallProps.hasAny(info, CallProp.Pure);
+	return onlyComputesBy(state.facts(name)) || CallProps.hasAny(info, CallProp.Pure) || state.routineOf(vertex)?.pure === true;
 }
 
 /** Whether every call within the term is one flowR knows computes nothing but its value, so it may stand in where a variable was read. */
@@ -844,6 +855,26 @@ function builtInRequirements(this: void, name: BrandedIdentifier, vertex: Datafl
 	}
 }
 
+/** What the native routine a foreign function call runs asks of the values handed to it, see {@link FunctionGuardsOptions.natives}. */
+function nativeRequirements(this: void, vertex: DataflowGraphVertexFunctionCall, path: Path, run: Run): void {
+	const { state, scope } = run;
+	const routine = state.routineOf(vertex);
+	const params = routine?.params?.map(p => p.name) ?? [];
+	const condition = routine?.guards?.requires ? parseGuardTerm(routine.guards.requires, params, state.facts) : undefined;
+	if(condition === undefined) {
+		return;
+	}
+	const args = NativeRoutines.argumentsOf(vertex, state.graph.idMap as AstIdMap);
+	const binding = new Map(params.flatMap((param, i) => {
+		const term = args[i] === undefined ? undefined : termOf(args[i], scope, state);
+		return term === undefined ? [] : [[param, term] as const];
+	}));
+	const { requires } = atCall(condition, { binding, dotsUnnamed: false }, undefined, state.facts);
+	if(GuardTerm.formalsOf(requires).size > 0) {
+		addClause(run, path, requires, vertex.id, { kind: 'implicit' });
+	}
+}
+
 /**
  * Where the call masks the variables of the caller, see {@link GuardFacts.masks}: per value handed over, the names an argument before it gives,
  * `undefined` once an unnamed one before it may bring names of its own, as a data frame does.
@@ -1254,7 +1285,7 @@ function returnsValue(this: void, value: GuardTerm | undefined, path: Path, run:
 }
 
 /** What only steers where the body goes on, which does nothing of its own: the effects are what it runs. */
-const Steering: readonly BuiltInProcName[] = [BuiltInProcName.Stop, BuiltInProcName.StopIfNot, BuiltInProcName.Return, BuiltInProcName.IfThenElse, BuiltInProcName.ForLoop,
+export const Steering: readonly BuiltInProcName[] = [BuiltInProcName.Stop, BuiltInProcName.StopIfNot, BuiltInProcName.Return, BuiltInProcName.IfThenElse, BuiltInProcName.ForLoop,
 	BuiltInProcName.WhileLoop, BuiltInProcName.RepeatLoop, BuiltInProcName.ExpressionList, BuiltInProcName.Break, BuiltInProcName.Switch];
 
 /** What may have happened before which node of a body, read off the control flow, see {@link orderOf}. */
@@ -1674,6 +1705,7 @@ function callRequirements(this: void, node: RNodeWithParent, vertex: DataflowGra
 			}
 			operatorMethods(name, vertex, path, run);
 			builtInRequirements(name, vertex, path, run);
+			nativeRequirements(vertex, path, run);
 			if(name === 'get') {
 				getRequirement(node, path, run);
 			} else if(state.facts(name)?.check !== undefined) {
@@ -1796,11 +1828,13 @@ function contractOf(this: void, id: NodeId, state: GuardState, via: readonly Nod
 	return contract;
 }
 
-function stateOf(this: void, graph: DataflowGraph, { ctx }: FunctionGuardsOptions): GuardState {
+function stateOf(this: void, graph: DataflowGraph, { ctx, natives = ctx === undefined ? [] : NativeRoutines.ofProject(ctx) }: FunctionGuardsOptions): GuardState {
 	const bindings = Dataflow.definitionsByName(graph);
+	const info = builtInLookup(ctx);
+	const routineOf = NativeRoutines.lookup(natives, graph, info, ctx);
 	const bindsFunction = memoize((name: BrandedIdentifier) => bindings.get(name).some(id => definitionsBehind(id, graph).size > 0));
 	const methodClasses = memoize((generic: BrandedIdentifier) => [...bindings.keys()].flatMap(fn => fn.startsWith(`${generic}.`) && bindsFunction(fn) ? [fn.slice(generic.length + 1)] : []));
-	return { graph, info: builtInLookup(ctx), facts: guardFactsOf(ctx), contracts: new Map(), terms: new Map(), bindings, bindsFunction, methodClasses, depth: 0, ctx: ctx ?? contextFromInput('') };
+	return { graph, info, facts: guardFactsOf(ctx), contracts: new Map(), terms: new Map(), bindings, bindsFunction, methodClasses, depth: 0, ctx: ctx ?? contextFromInput(''), routineOf };
 }
 
 /** The claims with the cases of each formal. */

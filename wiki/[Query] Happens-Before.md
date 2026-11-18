@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-13, 12:11:51 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-16, 20:55:37 UTC (v2.17.7), do not edit directly._
 <h2 id="Happens-Before Query">Happens-Before Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Check whether one normalized AST node happens before another in the CFG.\
@@ -21,7 +21,7 @@ the following query returns that the first assignment happens always before the 
 
 _Results (prettified and summarized):_
 
-Query: **happens-before** (5 ms)\
+Query: **happens-before** (6 ms)\
 &nbsp;&nbsp;&nbsp;╰ **1@x** happens before **2@y**: always
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>

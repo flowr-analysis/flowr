@@ -582,13 +582,13 @@ function dispatchedS3Methods(call: DataflowGraphVertexFunctionCall, name: Identi
 }
 
 /** The definitions `ingoing` resolves to, without those binding only methods the dispatch reading them rules out. */
-function withoutExcludedMethods(ingoing: IdentifierReference, resolved: readonly IdentifierReference[], graph: DataflowGraph): readonly IdentifierReference[] {
+function withoutExcludedMethods(ingoing: IdentifierReference, resolved: readonly IdentifierReference[], graph: DataflowGraph, methodsOf = (definition: NodeId) => linkedFunctionIds(new Set([definition]), graph)): readonly IdentifierReference[] {
 	const excludes = (graph.getVertex(ingoing.nodeId) as Partial<DataflowGraphVertexFunctionCall> | undefined)?.ruledOut;
 	if(excludes === undefined) {
 		return resolved;
 	}
 	return resolved.filter(d => {
-		const methods = linkedFunctionIds(new Set([d.nodeId]), graph);
+		const methods = methodsOf(d.nodeId);
 		return methods.length === 0 || methods.some(m => !excludes.includes(m));
 	});
 }
@@ -1074,9 +1074,11 @@ function linkLiftedReads(graph: DataflowGraph, lifted: [NodeId, IdentifierRefere
 				graph.addEdge(read.nodeId, write, EdgeType.Reads);
 			}
 		}
+		/* every call sees bindings of the same few functions, and the edges added here leave from the read and the calls, which a walk for the functions a binding holds only passes through to what they return */
+		const methodsOf = memoize((d: NodeId) => linkedFunctionIds(new Set([d]), graph));
 		for(const call of topLevelCallsOf(definition)) {
 			const found = Resolve.byNameAndType(read.name, environmentAt(call), read.type);
-			const resolved = found && withoutExcludedMethods(read, found, graph);
+			const resolved = found && withoutExcludedMethods(read, found, graph, methodsOf);
 			const target = graph.getVertex(holder);
 			if(resolved === undefined && DfgVertex.isFunctionDefinition(target) && !target.subflow.in.some(r => r.nodeId === read.nodeId)) {
 				target.subflow.in = [...target.subflow.in, read];

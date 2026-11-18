@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { once } from 'events';
 import {
-	NativeArgProp, NativeFlag, NativeIfaceNames, NativeLangNames, type SigNative, type SigNativeParam, type SigNativeRoutineInfo,
+	NativeFlag, NativeIfaceNames, NativeLangNames, type SigNative, type SigNativeParam, type SigNativeRoutineInfo,
 	ClassProp, DefaultCranBase, MaxDefaultLength, SigClassSystem, SigClassSystemNames, SigDbExt, SigDbMagic, SigDbSchema,
 	type PkgBlob, type Sig, type SigDb, type SigDbFeatures, type SigDbPkgMeta, type SigDbPkgMetaIndex, type SigDbShard, type SigDbTier,
 	type SigClass, type SigClassInfo, type SigDep, type SigDependencyInfo, type SigFn, type SigFunctionInfo, type SigParamInfo, type SigVersionInfo } from './schema';
@@ -207,15 +207,17 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 		const lang = Math.max(0, NativeLangNames.indexOf(n.lang));
 		const iface = Math.max(0, NativeIfaceNames.indexOf(n.iface));
 		const flags = lang | (iface << 3) | (n.closed ? NativeFlag.Closed : 0) | (n.pure ? NativeFlag.Pure : 0) | (n.undefined ? NativeFlag.Undefined : 0);
-		const params = (n.params ?? []).map((par): SigNativeParam => {
-			const props = (par.read ? NativeArgProp.Read : 0) | (par.written === true ? NativeArgProp.Written : 0)
-				| (par.written === false ? NativeArgProp.NotWritten : 0) | (par.escapes ? NativeArgProp.Escapes : 0);
-			return par.type === undefined ? [strings.str(par.name), props] : [strings.str(par.name), props, strings.str(par.type)];
-		});
+		const params = (n.params ?? []).map(({ name, props = 0, type }): SigNativeParam =>
+			type === undefined ? [strings.str(name), props] : [strings.str(name), props, strings.str(type)]);
 		const sorted = (xs: readonly string[] | undefined) => uniqueSortedNumbers(Array.from(xs ?? [], x => strings.str(x)).sort((a, b) => a - b));
-		const rec: SigNative = [strings.str(n.name), flags, n.symbol !== undefined && n.symbol !== n.name ? strings.str(n.symbol) : -1,
+		const head: SigNative = [strings.str(n.name), flags, n.symbol !== undefined && n.symbol !== n.name ? strings.str(n.symbol) : -1,
 			feats.locations && n.file ? strings.str(n.file) : -1, feats.locations ? n.line ?? -1 : -1, n.arity ?? -1,
 			sorted(n.rNames), params, sorted(n.facts)];
+		const contract = feats.contracts && n.guards !== undefined ? contracts.intern(JSON.stringify(n.guards), n.guards) : -1;
+		const [endLine, column] = feats.locations ? [n.endLine ?? -1, n.column ?? -1] : [-1, -1];
+		/* the trailing fields only as far as one is known, so a record without them stays as short as before */
+		const tail = column >= 0 ? [contract, endLine, column] : endLine >= 0 ? [contract, endLine] : contract >= 0 ? [contract] : [];
+		const rec = [...head, ...tail] as SigNative;
 		return natives.intern(JSON.stringify(rec), rec);
 	}
 

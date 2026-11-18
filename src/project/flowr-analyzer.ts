@@ -27,7 +27,7 @@ import { VertexType } from '../dataflow/graph/vertex';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import type { InvalidationEvent } from './cache/flowr-cache';
 import type { GasOverrides } from '../gas';
-import type { FnInfo } from '../dataflow/environments/query-fn-props';
+import type { FnInfo, FnInfoOptions } from '../dataflow/environments/query-fn-props';
 import type { Identifier } from '../dataflow/environments/identifier';
 
 /** Options for a single analyzer operation, bounding what it may cost. */
@@ -94,9 +94,9 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * A string is read the way R source spells a name, so `'dplyr::lead'` and `'dplyr:::internal'` name the
 	 * package function rather than a symbol with a `::` in it (pass an {@link Identifier} for that one).
 	 * @param name    - The function to ask about, `'dplyr::lead'` or `Identifier.make('lead', 'dplyr')` to pin the package down.
-	 * @param version - The package version to answer for, the one the analysis assumes if omitted.
+	 * @param options - The package version to answer for (the one the analysis assumes if omitted), and the fields to leave out (all are there by default).
 	 */
-	functionInfo(name: Identifier | string, version?: string): FnInfo | undefined
+	functionInfo(name: Identifier | string, options?: FnInfoOptions): FnInfo | undefined
 	/**
 	 * Get the parse output for the request.
 	 *
@@ -257,8 +257,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.ctx.inspect();
 	}
 
-	public functionInfo(name: Identifier | string, version?: string): FnInfo | undefined {
-		return this.ctx.functionInfo(name, version);
+	public functionInfo(name: Identifier | string, options?: FnInfoOptions): FnInfo | undefined {
+		return this.ctx.functionInfo(name, options);
 	}
 
 	public reset() {

@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import { Ambient, AmbientVerb, withImpliedAmbient } from '../../../../src/dataflow/environments/ambient-effect';
 import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
 import type { DecodedFunction } from '../../../../src/project/sigdb/decode';
 import type { PackageSignatureSource } from '../../../../src/project/sigdb/reader';
@@ -35,6 +36,8 @@ import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-bui
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
+import { FnProp } from '../../../../src/project/sigdb/schema';
+import { fakeSigDb } from '../../_helper/sigdb';
 
 /** a handful of definitions to query, so the assertions do not depend on the default configuration */
 const TestDefinitions = [
@@ -270,6 +273,11 @@ describe('Built-in properties', () => {
 						assert.isFalse(FunctionSemantics.call.props.hasAny(info, forbidden), `${who()} states ${FunctionSemantics.call.props.names(prop).join(', ')} together with what it rules out`);
 					}
 				}
+				/* a pure call may read global state to compute its result (`paste` reads `scipen`), never change it */
+				if(FunctionSemantics.call.props.hasAny(info, CallProp.Pure)) {
+					const changes = Ambient.list(withImpliedAmbient(info).ambient).filter(e => e.access !== AmbientVerb.Reads);
+					assert.isEmpty(changes.map(e => `${e.access} ${e.family}`), `${who()} is pure yet changes global state`);
+				}
 				const sig = info.sig ?? [];
 				if(sig.some(([, p]) => (p & ArgProp.Resource) !== 0)) {
 					assert.isTrue(FunctionSemantics.call.props.hasAny(info, uses), `${who()} names a resource but does nothing with it`);
@@ -365,6 +373,26 @@ describe('Built-in properties', () => {
 	});
 
 	describe('Reading a signature-database entry', () => {
+		test(label('a qualified callee carries over as well', ['name-normal'], ['other']), () => {
+			const src = fakeSigDb({ p: [{ name: 'fan', props: FnProp.Exported, params: [], callees: ['future::future'], line: 1 }] });
+			assert.ok((inferFnProps(src, 'p', 'fan')?.props ?? 0) & CallProp.Concurrent, 'future::future runs its expression elsewhere');
+		});
+		test(label('sending work to a cluster runs it in parallel, and so does a function doing so', ['name-normal'], ['other']), () => {
+			const src = fakeSigDb({ p: [
+				{ name: 'fit', props: FnProp.Exported, params: [], callees: ['snow::parLapply'], line: 1 },
+				{ name: 'boot', props: FnProp.Exported, params: [], callees: ['snow::clusterApply'], line: 2 }
+			] });
+			for(const fn of ['fit', 'boot']) {
+				assert.ok((inferFnProps(src, 'p', fn)?.props ?? 0) & CallProp.Concurrent, fn);
+			}
+		});
+		test(label('a pure entry carries over nothing impure of what it calls', ['name-normal'], ['other']), () => {
+			const src = fakeSigDb({ p: [{ name: 'wrap', props: FnProp.Exported | FnProp.Pure, params: [], callees: ['base::.Call', 'base::stop'], line: 1 }] });
+			const props = inferFnProps(src, 'p', 'wrap')?.props ?? 0;
+			assert.ok(props & CallProp.Pure, 'the database vouches for it');
+			assert.notOk(props & CallProp.Ffi, 'the native routine it calls is pure');
+			assert.ok(props & CallProp.Throws, 'it may still fail');
+		});
 		test(label('what a package function calls carries over to it, and forced parameters keep their order', ['name-normal'], ['other']), () => {
 			const info = inferFnProps(TestSignatures, 'base', 'known');
 			/* `system` runs a command, `paste` is pure and hands nothing on */

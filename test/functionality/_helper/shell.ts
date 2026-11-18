@@ -658,8 +658,16 @@ export function assertDiced(
 /** the code the static-slice query of a fresh analyzer reconstructs for `criterion` */
 export async function sliceOf(parser: KnownParser, code: string, criterion: SlicingCriterion): Promise<string> {
 	const analyzer = await analyze(parser, code);
-	const sliced = await analyzer.query([{ type: 'static-slice', criteria: [criterion] }]);
-	return (Object.values(sliced['static-slice'].results)[0] as { reconstruct: { code: string } }).reconstruct.code;
+	return reconstructedSlice(await analyzer.query([{ type: 'static-slice', criteria: [criterion] }]));
+}
+
+/** the code a static-slice query result reconstructs; a failed query throws with its own error */
+export function reconstructedSlice(sliced: { 'static-slice': { results?: Record<string, unknown>, error?: string } }): string {
+	const result = sliced['static-slice'];
+	if(result.results === undefined) {
+		throw new Error(`the static-slice query failed: ${result.error ?? 'no results'}`);
+	}
+	return (Object.values(result.results)[0] as { reconstruct: { code: string } }).reconstruct.code;
 }
 
 /** asserts that the slice for `criterion` keeps each of `has` and none of `lacks` */

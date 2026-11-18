@@ -180,7 +180,10 @@ function withImplicitAccess(config: BuiltInFnInfo): BuiltInFnInfo {
 		...tags?.includes(SemanticCallTag.LoadsPackage) ? [Ambient.libPaths.reads, ...installed] : [],
 		...tags?.includes(SemanticCallTag.Prints) && !printsToMessages ? [Ambient.sink.adds] : []
 	];
-	return implied.length === 0 ? config : { ...config, ambient: [...stated, ...implied] };
+	/* asked again, the effects it implied are there already */
+	const known = new Set(stated.map(e => JSON.stringify(e)));
+	const fresh = implied.filter(e => !known.has(JSON.stringify(e)));
+	return fresh.length === 0 ? config : { ...config, ambient: [...stated, ...fresh] };
 }
 
 /** The configuration with the {@link AmbientEffect}s its tags imply added to the ones it states. */

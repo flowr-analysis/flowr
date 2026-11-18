@@ -3,6 +3,7 @@
  * one line per package, one line per exported name. Shared so the landing page and the full
  * signature browser never disagree about what flowR knows.
  */
+import { contextFromInput } from '../src/project/context/flowr-analyzer-context';
 import zlib from 'zlib';
 import ts from 'typescript';
 import { ExportFlag, PropFlags } from './sigdb-page/export-flags';
@@ -297,7 +298,7 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
  * throw out `NULL`, `TRUE` and the rest of what R documents but no NAMESPACE carries.
  */
 function statedWithRealPackages(baseNames: ReadonlySet<BrandedNamespace>, topics: ReadonlyMap<string, string>, complete: boolean): ReadonlyMap<BrandedIdentifier, StatedSignature[]> {
-	const stated = statedSignatures();
+	const stated = statedByFunctionInfo();
 	if(!complete) {
 		return stated;
 	}
@@ -310,6 +311,12 @@ function statedWithRealPackages(baseNames: ReadonlySet<BrandedNamespace>, topics
 	}
 	return new Map([...stated].map(([name, entries]) =>
 		[name, entries.map(entry => baseNames.has(entry.pkg) ? settled(name, entry) : entry)]));
+}
+
+/** What flowR states about every function it defines, each asked of `functionInfo`, so the page shows what an analysis knows of the call. */
+export function statedByFunctionInfo(): Map<BrandedIdentifier, StatedSignature[]> {
+	const ctx = contextFromInput('');
+	return statedSignatures(DefaultBuiltinConfig, id => ctx.functionInfo(id));
 }
 
 /**
@@ -395,7 +402,7 @@ function baseTopics(packages: readonly BrandedNamespace[]): { topics: ReadonlyMa
  * The two blobs a page searches: `name\tversion\tbase` per package, and `name\towner,owner` per
  * exported name. Plain text beats JSON by about a third here, and a page only has to `split` it.
  */
-export function encode(packages: readonly PackageEntry[], stated: ReadonlyMap<string, unknown> = statedSignatures()): { packages: string, names: string, count: number } {
+export function encode(packages: readonly PackageEntry[], stated: ReadonlyMap<string, unknown> = statedByFunctionInfo()): { packages: string, names: string, count: number } {
 	const owners = new Map<string, string[]>();
 	for(const [index, pkg] of packages.entries()) {
 		for(const [name, entry] of pkg.exports) {

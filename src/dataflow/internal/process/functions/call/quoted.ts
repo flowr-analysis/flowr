@@ -142,7 +142,7 @@ export const Quoted = {
 				const tracked = trackedEnvOf(vertex, evalEnv);
 				/* a tracked `eval.env` that binds every name the promise reads leaves no other binding in play, its writes still reach later reads */
 				const bound = tracked !== undefined && Quoted.evaluateIn(graph, promise, tracked, idMap).length === 0;
-				const candidates = bound ? { definitions: new Map(), uses: promised.uses } : promised;
+				const candidates = bound ? { definitions: new Map(), uses: promised.uses, held: promised.held } : promised;
 				const forces = flow !== undefined && sites?.length && binding !== undefined ? { cfg: flow, sites, binding } : undefined;
 				Deferred.link(graph, promise, candidates, idMap, forces);
 				if(binding !== undefined) {
@@ -229,7 +229,9 @@ function forcesOf(graph: DataflowGraph, parameter: NodeId, cfg: ControlFlowGraph
 		return known.forces;
 	}
 	const sites = Deferred.forcedAt(graph, parameter, cfg);
-	const forces = sites.length > 0 ? { cfg, sites, binding: parameter, reach: reachOf(sites) } : undefined;
+	/* new reads that leave the forces where they were keep them, and with them what was linked with them */
+	const same = known?.forces !== undefined && sites.length === known.forces.sites.length && sites.every((site, i) => site === known.forces?.sites[i]);
+	const forces = same ? known.forces : sites.length > 0 ? { cfg, sites, binding: parameter, reach: reachOf(sites) } : undefined;
 	forcing.set(parameter, { version, reads, forces });
 	return forces;
 }
@@ -361,12 +363,17 @@ function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertex
 	/* a frame of its own (`eval(expr, envir)` runs in the one it is given) says nothing about the bindings here, so every one of them stays possible */
 	const elsewhere = environment === undefined || (RFunctionCall.isNamed(node) && node.arguments.length > 1);
 	const sites = sources.length > 0 ? evaluationSites(graph, id, enclosing) : undefined;
-	const reach = sites === undefined ? {} : reachOf(sites);
+	const reach = reachOf(sites ?? []);
 	for(const { expr, at } of sources) {
 		if(elsewhere) {
-			const forces = cfg === undefined || sites === undefined ? undefined : { cfg, sites, binding: id, reach };
-			Deferred.link(graph, expr, { definitions: bindings, uses: names.uses }, idMap, forces);
-			Deferred.publish(graph, expr, names, idMap, id, sites ?? []);
+			/* every call evaluating the same capture at the same sites links it to the same bindings, so the first one does */
+			const linked = reach.linked ??= new Set();
+			if(!linked.has(expr)) {
+				linked.add(expr);
+				const forces = cfg === undefined || sites === undefined ? undefined : { cfg, sites, binding: id, reach };
+				Deferred.link(graph, expr, { definitions: bindings, uses: names.uses, held: names.held }, idMap, forces);
+				Deferred.publish(graph, expr, names, idMap, id, sites ?? []);
+			}
 		} else {
 			const open = linkExpressionIn(graph, expr, environment, idMap);
 			/* R falls through to the enclosing scope for names the evaluating frame does not bind */

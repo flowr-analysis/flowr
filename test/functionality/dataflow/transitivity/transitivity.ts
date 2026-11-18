@@ -1,7 +1,7 @@
 import { assert, test, type TestContext } from 'vitest';
 import { label } from '../../_helper/label';
 import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
-import { printedByProgram, printedByR } from '../../_helper/shell';
+import { printedByProgram, printedByR, reconstructedSlice } from '../../_helper/shell';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
 import { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
@@ -92,8 +92,7 @@ export function sliceMatchesR(parser: KnownParser, c: TransitivityCase): void {
 		}
 		const slice = await (async() => {
 			const analyzer = await analyzerFor(parser, c.code, c.files);
-			const sliced = await analyzer.query([{ type: 'static-slice', criteria: [c.criterion ?? lastCall(c.code)] }]);
-			return (Object.values(sliced['static-slice'].results)[0] as { reconstruct: { code: string } }).reconstruct.code;
+			return reconstructedSlice(await analyzer.query([{ type: 'static-slice', criteria: [c.criterion ?? lastCall(c.code)] }]));
 		})().finally(() => {
 			if(disabled !== undefined) {
 				process.env.FLOWR_DISABLE_DEFAULT_SIGDB = disabled;

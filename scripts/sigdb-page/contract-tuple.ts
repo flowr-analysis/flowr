@@ -1,5 +1,5 @@
 import type { StatedGuards } from '../../src/dataflow/fn/guards/built-in-guards';
-import { caseConditions, claimConditions, returnConditions } from '../../src/dataflow/fn/guards/guard-claims';
+import { caseConditions, claimConditions, concreteClaim, returnConditions } from '../../src/dataflow/fn/guards/guard-claims';
 import { allOf, mergedRelations, withUnless } from '../../src/dataflow/fn/guards/condition-grouping';
 import { Identifier } from '../../src/dataflow/environments/identifier';
 import { contractTokens } from './contract-search';
@@ -12,7 +12,10 @@ import type { Guards } from './database';
 function conditionalClaims(stated: StatedGuards | undefined): [string, string[]][] {
 	const byFormal = new Map<string, { holds: string, unless: string }[]>();
 	for(const { formal, claim, unless } of (stated?.conditional ?? []).filter(({ formal }) => stated?.formals?.[formal]?.cases === undefined)) {
-		byFormal.set(formal, [...byFormal.get(formal) ?? [], { holds: allOf(claimConditions(formal, claim)), unless }]);
+		const said = claimConditions(formal, concreteClaim(claim));
+		if(said.length > 0) {
+			byFormal.set(formal, [...byFormal.get(formal) ?? [], { holds: allOf(said), unless }]);
+		}
 	}
 	return [...byFormal].map(([formal, claims]) => [formal, mergedRelations(claims).map(({ holds, unless }) => unless === undefined ? holds : withUnless(holds, unless))]);
 }
@@ -20,7 +23,7 @@ function conditionalClaims(stated: StatedGuards | undefined): [string, string[]]
 /** What a page shows of the given guards, as {@link Guards}, `undefined` if they say nothing. */
 export function guardsTuple(stated: StatedGuards | undefined): Guards | undefined {
 	const claims = [
-		...Object.entries(stated?.formals ?? {}).map(([formal, claim]): [string, string[]] => [formal, [...claimConditions(formal, claim), ...caseConditions(formal, claim, (stated?.relations ?? []).map(r => r.holds))]]),
+		...Object.entries(stated?.formals ?? {}).map(([formal, claim]): [string, string[]] => [formal, [...claimConditions(formal, concreteClaim(claim)), ...caseConditions(formal, claim, (stated?.relations ?? []).map(r => r.holds))]]),
 		...conditionalClaims(stated)
 	];
 	const because = (stated?.because ?? []).map(({ requires, kind, fails, via, message, reads, brief, loc }): [string, string, string, string, string, string, string, string] =>

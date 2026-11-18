@@ -8,6 +8,7 @@ import {
 	WordKind,
 	closed,
 	completeAt,
+	defineTraits,
 	explainAt,
 	problemsOf,
 	globOf,
@@ -20,7 +21,7 @@ import {
 } from './query';
 import { type Guards, type Stated, byId, db, Entry } from './database';
 import { Hits } from './render';
-import { ambientFilters, FilterBar, FilterKind, Mix } from './filters';
+import { ambientFilters, FilterBar, FilterKind, Mix, traitsOf } from './filters';
 import { ExportFlag } from './export-flags';
 import { answersAll, ContractKeys, ParamKinds, takeContractSpecs, type ContractSpec } from './contract-search';
 
@@ -39,8 +40,12 @@ const picks = [...document.querySelectorAll<HTMLButtonElement>('.pick')];
 
 /* a chip for every part of the global state some function flowR states accesses, in the order the configuration words them */
 const accessed = new Set([...db.stated.values()].flatMap(entries => entries.flatMap(entry => entry.ambient.map(([family]) => family))));
-const filterBar = new FilterBar(filters, picks, () => void search(), ambientFilters(Object.entries(db.ambientWords.families)
-	.filter(([family]) => accessed.has(family)).map(([family, [label, description]]) => [family, label, description] as const)));
+const parts = ambientFilters(Object.entries(db.ambientWords.families)
+	.filter(([family]) => accessed.has(family)).map(([family, [label, description]]) => [family, label, description] as const));
+const filterBar = new FilterBar(filters, picks, () => void search(), parts);
+/* `{trait}` asks for what a chip filters by */
+const traits = traitsOf(parts);
+defineTraits([...traits].map(([word, [, about]]) => ({ word, about })));
 scope.addEventListener('click', () => {
 	q.value = q.value.trim().replace(/^\?/, '').replace(/^[\w.]+:::?/, '');
 	void search();
@@ -143,7 +148,7 @@ function fitsEntry({ props, args }: Stated, spec: Spec): boolean {
 }
 
 function fits(entry: Entry, spec: Spec, glob: RegExp | undefined): boolean {
-	if(glob?.test(entry.name) === false) {
+	if(glob?.test(entry.name) === false || !spec.traits.every(word => entry.holds(traits.get(word)?.[0] ?? ''))) {
 		return false;
 	}
 	return (spec.args === undefined && spec.props.length === 0) || entry.stated.some(stated => fitsEntry(stated, spec));
@@ -237,7 +242,7 @@ async function search(): Promise<void> {
 		return;
 	}
 	const { spec, inPackage, needle, glob, contract } = parsed(q.value);
-	const constrained = glob !== undefined || spec.args !== undefined || spec.props.length > 0 || contract.length > 0;
+	const constrained = glob !== undefined || spec.args !== undefined || spec.props.length > 0 || spec.traits.length > 0 || contract.length > 0;
 	const run = ++pending;
 	hits.replaceChildren();
 	if(!db.loaded) {
@@ -473,7 +478,7 @@ helpDialog.addEventListener('click', event => {
 		helpDialog.close();
 	}
 });
-for(const [id, kind] of [['helproles', WordKind.Role], ['helpprops', WordKind.Prop]] as const) {
+for(const [id, kind] of [['helproles', WordKind.Role], ['helpprops', WordKind.Prop], ['helptraits', WordKind.Trait]] as const) {
 	byId(id).append(...Vocabulary[kind].flatMap(({ word, about }) => [el('dt', kind, word), el('dd', undefined, about)]));
 }
 byId('helpcontracts').append(...Object.values(ContractKeys).flatMap(([example, about]) => [el('dt', undefined, example), el('dd', undefined, about)]));

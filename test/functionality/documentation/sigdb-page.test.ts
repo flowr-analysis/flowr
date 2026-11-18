@@ -117,6 +117,15 @@ describe('Signature database page', () => {
 		assert.deepStrictEqual(tuple?.[1], [['x', ['typeof(x) in character unless (big.mark != "" || (is.null(dim(d)) && length(d) <= 1))']], ['y', ['!anyNA(y) unless is.null(z)']]]);
 	});
 
+	test('a claim that only rules out what is no data says nothing concrete, so the card leaves it to the detailed conditions', () => {
+		const data = ['NULL', 'logical', 'integer', 'double', 'complex', 'character', 'raw', 'list', 'pairlist', 'other'];
+		const tuple = guardsTuple({
+			requires: '!is.function(m) || is.object(m)',
+			formals:  { m: { unclassedTypes: data }, n: { unclassedTypes: data, bounds: { length: [1, 1] } } }
+		});
+		assert.deepStrictEqual(tuple?.[1], [['m', []], ['n', ['length(n) == 1']]]);
+	});
+
 	test('the formals a contract relates read together, in the order of the signature', () => {
 		assert.deepStrictEqual(linkedGroups(['x', 'm', 'FUN', 'a', 'b'], [['b', 'x'], ['m', 'a'], ['a', 'x']]), [['x', 'm', 'a', 'b'], ['FUN']]);
 	});

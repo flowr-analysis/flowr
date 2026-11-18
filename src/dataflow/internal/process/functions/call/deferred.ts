@@ -6,11 +6,11 @@ import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/no
 import { type BrandedIdentifier, type NodesByName, Identifier } from '../../../../environments/identifier';
 import { EdgeType } from '../../../../graph/edge';
 import type { DataflowGraph } from '../../../../graph/graph';
-import { DfgVertex, VertexType } from '../../../../graph/vertex';
+import { type DataflowGraphVertexFunctionDefinition, DfgVertex, VertexType } from '../../../../graph/vertex';
 import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-graph';
 import { firstOnSomePath, reachableFrom, reachableTo, someAlwaysBefore } from '../../../../../control-flow/happens-before';
 import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { linkCallToDefinitions } from '../../../linker';
+import { getAllLinkedFunctionDefinitions, linkCallToFunctions } from '../../../linker';
 import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { Dataflow } from '../../../../graph/df-helper';
@@ -23,7 +23,11 @@ export interface ForceSites {
 	/** the name the deferred expression is bound to, whose binding its own writes replace */
 	readonly binding: NodeId
 	/** what reaches the sites and what they reach, filled on first use and shared by everyone handed these sites */
-	readonly reach?:  { before?: ReadonlySet<NodeId>, after?: ReadonlySet<NodeId>, always?: Map<NodeId, boolean>, seen?: WeakMap<NodesByName, Map<BrandedIdentifier, readonly NodeId[]>> }
+	readonly reach?:  {
+		before?: ReadonlySet<NodeId>, after?: ReadonlySet<NodeId>, always?: Map<NodeId, boolean>, seen?: WeakMap<NodesByName, Map<BrandedIdentifier, readonly NodeId[]>>,
+		/** the captures evaluated elsewhere that were linked with these sites already, the same for every call handing one on */
+		linked?: Set<NodeId>
+	}
 }
 
 /** Where a name is bound and where it is read, so that a deferred expression can reach either. */
@@ -31,6 +35,8 @@ export
 interface NameIndex {
 	readonly definitions: NodesByName
 	readonly uses:        NodesByName
+	/** the functions each binding may hold, filled on first use by every deferred call meeting it */
+	readonly held?:       Map<NodeId, readonly Required<DataflowGraphVertexFunctionDefinition>[]>
 }
 
 /** The vertices of `type` by their unquoted name. */
@@ -99,7 +105,8 @@ export const Deferred = {
 	indexOf<Info>(this: void, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): NameIndex {
 		return {
 			definitions: verticesByName(graph, VertexType.VariableDefinition, idMap),
-			uses:        verticesByName(graph, VertexType.Use, idMap)
+			uses:        verticesByName(graph, VertexType.Use, idMap),
+			held:        new Map()
 		};
 	},
 
@@ -174,6 +181,8 @@ export const Deferred = {
 			reach.always.set(use, always);
 			return always;
 		}
+		/* the bindings of a name this expression sees, the same for every read of it here */
+		const visible = new Map<BrandedIdentifier, readonly NodeId[]>();
 		/* `delayedAssign` names its variable with a string literal */
 		const bindingName = forces === undefined ? undefined : NodeId.recoverBareName(forces.binding, idMap) ?? '';
 		for(const [node, name, writes] of within) {
@@ -194,18 +203,32 @@ export const Deferred = {
 					}
 				}
 			} else {
-				const seen = inCallerFrame ? (index.definitions.get(name) ?? []).filter(d => seenByAForce(d) && visibleFrom(expr, d, graph, idMap)) : seenByAForceNamed(name);
+				const seen = inCallerFrame ? getOrSet(visible, name, () => (index.definitions.get(name) ?? []).filter(d => seenByAForce(d) && visibleFrom(expr, d, graph, idMap))) : seenByAForceNamed(name);
 				for(const definition of seen) {
 					graph.addEdge(node, definition, EdgeType.Reads);
 				}
-				if(forces !== undefined) {
-					/* a deferred call runs what its name holds at the force, which may be defined after the call was written */
-					linkCallToDefinitions(graph, node, seen, idMap);
+				if(forces !== undefined && seen.length > 0 && DfgVertex.isFunctionCall(graph.getVertex(node))) {
+					/* a deferred call runs what its name holds at the force, which may be defined after the call was written; every call of the name holds the same */
+					linkCallToFunctions(graph, node, functionsHeldBy(seen, graph, index.held), idMap);
 				}
 			}
 		}
 	}
 } as const;
+
+/** The functions any of the bindings may hold, each binding walked once per index: deferred calls of one name in many places meet the same bindings. */
+function functionsHeldBy(bindings: readonly NodeId[], graph: DataflowGraph, held: NameIndex['held']): readonly Required<DataflowGraphVertexFunctionDefinition>[] {
+	if(held === undefined) {
+		return [...getAllLinkedFunctionDefinitions(new Set(bindings), graph)[0]];
+	}
+	const functions = new Set<Required<DataflowGraphVertexFunctionDefinition>>();
+	for(const binding of bindings) {
+		for(const f of getOrSet(held, binding, () => [...getAllLinkedFunctionDefinitions(new Set([binding]), graph)[0]])) {
+			functions.add(f);
+		}
+	}
+	return [...functions];
+}
 
 /** Whether the binding `definition` lives in a frame `expr` sees: not a parameter or a local binding of a function `expr` is not within. */
 function visibleFrom<Info>(expr: NodeId, definition: NodeId, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): boolean {

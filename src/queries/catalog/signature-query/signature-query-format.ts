@@ -132,6 +132,10 @@ export interface SignatureFlowrView {
 	readonly returns?:    BrandedIdentifier;
 	/** flowR's own parameter names, only present when they disagree with the ones the database records */
 	readonly parameters?: readonly BrandedIdentifier[];
+	/** what the call reads or changes of the global state, as `part:access` like `option:reads` */
+	readonly ambient?:    readonly string[];
+	/** the condition classes the call muffles while its code runs, like `message` for `suppressMessages` */
+	readonly muffles?:    readonly string[];
 }
 
 /** one declared dependency of a package */

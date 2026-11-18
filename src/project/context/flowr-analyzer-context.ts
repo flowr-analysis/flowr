@@ -23,7 +23,7 @@ import { type ReadOnlyFlowrAnalyzerIncrementalAnalysisContext, FlowrAnalyzerIncr
 import { type InvalidationEvent, type InvalidationEventReceiver, InvalidationEventType } from '../cache/flowr-cache';
 import { FlowrAnalyzerGasContext, type ReadOnlyFlowrAnalyzerGasContext } from './flowr-analyzer-gas-context';
 import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
-import { type FnInfo, fnInfo } from '../../dataflow/environments/query-fn-props';
+import { type FnInfo, type FnInfoOptions, fnInfo } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { CacheScope, GlobalCaches } from '../../util/global-caches';
 
@@ -48,7 +48,7 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	/** class names of plugins that activated (produced a result) since the last reset; only filled when `config.repl.showPlugins` is set */
 	readonly activatedPlugins: ReadonlySet<string>;
 	/** What flowR knows about the function `name` (a bare or `pkg::` name), from its built-ins and the signature database, see {@link fnInfo}. */
-	functionInfo(name: Identifier | string, version?: string): FnInfo | undefined;
+	functionInfo(name: Identifier | string, options?: FnInfoOptions): FnInfo | undefined;
 	/** The project kind the effective {@link config} is specialized for and the overrides it applies, or `undefined` when no specialization is in effect. */
 	configSpecialization(): { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> } | undefined;
 	/** The R version analysis assumes when resolving versioned (base-R) exports (see `solver.sigdb.assumedRVersion`). */
@@ -303,8 +303,8 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		return this;
 	}
 
-	public functionInfo(name: Identifier | string, version?: string): FnInfo | undefined {
-		return fnInfo(typeof name === 'string' ? Identifier.parse(name) : name, this, version);
+	public functionInfo(name: Identifier | string, options?: FnInfoOptions): FnInfo | undefined {
+		return fnInfo(typeof name === 'string' ? Identifier.parse(name) : name, this, options);
 	}
 
 	/**

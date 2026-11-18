@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 13:32:41 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-16, 20:55:37 UTC (v2.17.7), do not edit directly._
 <h2 id="Ambient Access Query">Ambient Access Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 What code reads and writes of the global state\
@@ -21,7 +21,7 @@ Without criteria, the query answers for every file and for the whole project (`<
 
 _Results (prettified and summarized):_
 
-Query: **ambient-access** (13 ms)\
+Query: **ambient-access** (25 ms)\
 &nbsp;&nbsp;&nbsp;╰ **<file 1>**: reads: #option:*, #option:digits, #options, #sink writes: #env, #env:A, #option:digits, #options, #sink:output\
 &nbsp;&nbsp;&nbsp;╰ **<project>**: reads: #option:*, #option:digits, #options, #sink writes: #env, #env:A, #option:digits, #options, #sink:output
 
@@ -58,7 +58,7 @@ Set `functions` to also learn what calling each function accesses:
 
 _Results (prettified and summarized):_
 
-Query: **ambient-access** (11 ms)\
+Query: **ambient-access** (23 ms)\
 &nbsp;&nbsp;&nbsp;╰ **2^**: reads: #option:*, #option:digits, #options, #sink writes: #option:digits, #options, #sink:output\
 &nbsp;&nbsp;&nbsp;╰ **function 7**: reads: #option:*, #option:digits writes: #option:digits, #options
 

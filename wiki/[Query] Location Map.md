@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-16, 20:55:37 UTC (v2.17.7), do not edit directly._
 <h2 id="Location Map Query">Location Map Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns a simple mapping of ids to their location in the source file\
@@ -25,7 +25,7 @@ The following query then gives you the aforementioned mapping:
 
 _Results (prettified and summarized):_
 
-Query: **location-map** (4 ms)\
+Query: **location-map** (6 ms)\
 &nbsp;&nbsp;&nbsp;╰ File List:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 0: `@inline`\
 &nbsp;&nbsp;&nbsp;╰ Id List: {<span title="['0','1','2','3','4','5','2-arg','5-arg','0-arg','1-arg','3-arg','4-arg']">0, 1, 2, 3, 4, 5, 2-arg, ... (see JSON)</span>}
@@ -52,7 +52,7 @@ The query also accepts a list of slice criteria to filter the results to only in
 
 _Results (prettified and summarized):_
 
-Query: **location-map** (4 ms)\
+Query: **location-map** (3 ms)\
 &nbsp;&nbsp;&nbsp;╰ File List:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 0: `@inline`\
 &nbsp;&nbsp;&nbsp;╰ Id List: {0, 3}

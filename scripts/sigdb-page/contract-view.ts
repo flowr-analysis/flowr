@@ -179,7 +179,10 @@ export function contract(name: string, guards: Guards, formals: readonly string[
 		.map(formal => ({ formal, conditions: [...required.includes(formal) ? ['!missing(' + formal + ')'] : [], ...parts.get(formal) ?? []] }));
 	const jointConditions = relations.map(([holds, unless]) => unless === '' ? holds : `${holds} unless ${unless}`);
 	/* what lets many conditions through is said once, above them, and each keeps only its own ways through; a formal's other conditions stay in a row of their own */
-	const shared = sharedEscapes([...ownConditions.flatMap(r => r.conditions), ...jointConditions].map(c => [c]));
+	const candidate = sharedEscapes([...ownConditions.flatMap(r => r.conditions), ...jointConditions].map(c => [c]));
+	/* said apart only when it lets through the claims of more than one formal, a formal's own claims stay in its row */
+	const sharers = new Set([...ownConditions.filter(r => r.conditions.some(c => hasEscapes([c], candidate))).map(r => r.formal), ...jointConditions.some(c => hasEscapes([c], candidate)) ? [''] : []]);
+	const shared = sharers.size >= 2 ? candidate : [];
 	const inside = (condition: string) => hasEscapes([condition], shared);
 	const ownRow = (formal: string, conditions: readonly string[], within: boolean) => {
 		const said = el('code', 'cond');

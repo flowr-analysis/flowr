@@ -3,6 +3,8 @@
  * wasm files the tree-sitter parser needs. Like the signature browser, the result is a few megabytes
  * and therefore never committed; the documentation job builds it onto the `gh-pages` branch.
  */
+import { bakeRoutine, type BakedRoutine } from './playground/native-links';
+import { Identifier  } from '../src/dataflow/environments/identifier';
 import fs from 'fs';
 import path from 'path';
 import { build, context, type BuildOptions, type Plugin } from 'esbuild';
@@ -15,7 +17,6 @@ import { webRManifest, WebRBase, WebRVersion } from './playground/webr-pin';
 import { arraySum } from '../src/util/collections/arrays';
 import { FlowrConfig } from '../src/config';
 import { DefaultBuiltinConfig } from '../src/dataflow/environments/default-builtin-config';
-import { Identifier } from '../src/dataflow/environments/identifier';
 
 /* flowR's CLI modules read `process` while they are being imported, so one has to exist */
 const ProcessShim = 'globalThis.process ??= { argv: [], argv0: "browser", env: {}, platform: "browser",'
@@ -96,10 +97,10 @@ function topPackages(): string[] {
  * stays unknown. Base R plus the packages flowR carries definitions for is what a script typed into the
  * page actually loads, and their export lists are small enough to ride along.
  */
-async function packageExports(): Promise<string> {
+async function packageExports(): Promise<{ readonly exports: string, readonly natives: string }> {
 	const db = await openDatabase();
 	if(db === undefined) {
-		return '';
+		return { exports: '', natives: '' };
 	}
 	const wanted = new Set(db.packageNames().filter(name => db.isBaseR(name)));
 	/* what a script typed into the page actually loads: base R, what flowR carries definitions for, and
@@ -116,15 +117,21 @@ async function packageExports(): Promise<string> {
 		}
 	}
 	const out: Record<string, readonly string[]> = {};
+	/* the native routines of the same packages, so a `.Call` completes them and a click jumps to their source */
+	const natives: Record<string, readonly BakedRoutine[]> = {};
 	for(const pkg of wanted) {
 		const known = db.lookup(pkg);
 		if(known !== undefined && known.exported.length > 0) {
 			/* the version and its release date first: the exports were read from that release, and saying so
 			   is what keeps a query from reporting the package as one no database knows */
 			out[pkg] = [known.version, db.releaseDate(pkg)?.toISOString().slice(0, 10) ?? '', ...known.exported];
+			const routines = db.nativeRoutines?.(pkg, known.version) ?? [];
+			if(routines.length > 0) {
+				natives[pkg] = routines.map(bakeRoutine);
+			}
 		}
 	}
-	return JSON.stringify(out);
+	return { exports: JSON.stringify(out), natives: JSON.stringify(natives) };
 }
 
 /**
@@ -178,7 +185,7 @@ export function bundlePlayground(outfile?: string) {
 }
 
 /** The playground page with its baked-in data. */
-export function playgroundPage(signatures: string, exports: string, startBytes: number): string {
+export function playgroundPage(signatures: string, exports: string, natives: string, startBytes: number): string {
 	/* the script the page opens with, kept as an R file so the documentation links to the same one */
 	const sample = fs.readFileSync(path.join('scripts', 'playground', 'sample.R'), 'utf8').trim();
 	const examples = (JSON.parse(fs.readFileSync(path.join('scripts', 'playground', 'examples', 'index.json'), 'utf8')) as { label: string, title: string, files: Record<string, string> }[])
@@ -189,6 +196,7 @@ export function playgroundPage(signatures: string, exports: string, startBytes: 
 		.replace('<!--EXAMPLES-->', JSON.stringify(examples).replaceAll('</', '<\\/'))
 		.replace('<!--SIGS-->', signatures)
 		.replace('<!--PKGS-->', exports)
+		.replace('<!--NATIVES-->', natives)
 		.replace('<!--CFGDOCS-->', configDocs())
 		.replace('<!--WEBR-START-BYTES-->', String(startBytes));
 }
@@ -205,19 +213,19 @@ async function main(): Promise<void> {
 	/* the wasm rides along inside the bundle as a data url, so the page has nothing to fetch and works
 	   from a file:// url as well as over GitHub Pages */
 	const signatures = await baseSignatures();
-	const exports = await packageExports();
+	const { exports, natives } = await packageExports();
 	/* what lies outside `vfs/` is what every start of R downloads */
 	const manifest = await webRManifest().catch((e: unknown) => {
 		console.warn(`  could not pin webR, the playground cannot run R: ${e instanceof Error ? e.message : String(e)}`);
 		return undefined;
 	});
 	const startBytes = arraySum(Object.entries(manifest ?? {}).filter(([file]) => !file.startsWith('vfs/')).map(([, pinned]) => pinned.size));
-	const writeIndex = () => writePage(path.join(Target, 'index.html'), playgroundPage(signatures, exports, startBytes));
+	const writeIndex = () => writePage(path.join(Target, 'index.html'), playgroundPage(signatures, exports, natives, startBytes));
 	writeIndex();
 	const size = Object.values(result.metafile.outputs).reduce((sum, o) => sum + o.bytes, 0);
 	console.log(`  wrote ${Target} (${(size / 1024 / 1024).toFixed(1)} MB bundle, `
 		+ `${Math.round(signatures.length / 1024)} kB of base R signatures, `
-		+ `${Math.round(exports.length / 1024)} kB of package exports${committedNote(Target)})`);
+		+ `${Math.round(exports.length / 1024)} kB of package exports, ${Math.round(natives.length / 1024)} kB of native routines${committedNote(Target)})`);
 	/* without the guard the page refuses to run R, it never runs a webR it cannot check */
 	const guard = path.join(Target, 'webr-guard.js');
 	fs.rmSync(guard, { force: true });

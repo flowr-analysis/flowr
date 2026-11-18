@@ -154,7 +154,7 @@ ${
 If you want a simple visitor which traverses the AST, the ${ctx.linkO(RNode, 'visitAst')} function is a good starting point.
 You may specify functions to be called whenever you enter and exit a node during the traversal, and any
 computation is to be done by side effects.
-For example, if you want to collect all the \`id\`s present within a normalized (sub-)AST,
+For example, if you want to collect all ids present within a normalized (sub-)AST,
 as it is done by the ${ctx.linkO(RNode, 'collectAllIds')} (and corresponding ${ctx.linkO(RNode, 'collectAllIdsWithStop')}, ${ctx.linkO(RProject, 'collectAllIds')}, ...) function, you can use the following visitor:
 
 ${codeBlock('ts', `

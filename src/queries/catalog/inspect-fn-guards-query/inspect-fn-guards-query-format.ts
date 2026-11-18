@@ -1,4 +1,5 @@
 import { type BasicQueryData, filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
+import type { SigNativeRoutineInfo } from '../../../project/sigdb/schema';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
 import { functionBullet, queryHeader } from '../../query-print';
@@ -6,7 +7,7 @@ import type { QueryResults, SupportedQuery } from '../../query';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { FunctionFilterSchema } from '../../query-function-property';
-import { type FunctionGuards, type GuardClause, conditionsPerFormal } from '../../../dataflow/fn/guards/function-guards';
+import { type FunctionGuards, type FunctionGuardsOptions, type GuardClause, conditionsPerFormal } from '../../../dataflow/fn/guards/function-guards';
 import type { StatedGuards } from '../../../dataflow/fn/guards/built-in-guards';
 import { claimWords, returnWords, relationsOf } from '../../../dataflow/fn/guards/guard-claims';
 import { metaSince } from '../../query-meta';
@@ -54,7 +55,7 @@ export async function executeFnGuardsQuery({ analyzer }: BasicQueryData, queries
 	const filterFor = await QueryFunctionFilter.criteria(queries, analyzer);
 	const [query = { type: 'inspect-fn-guards' }] = queries;
 	const graph = (await analyzer.dataflow()).graph;
-	const guards = FunctionSemantics.guards(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx: analyzer.inspectContext() });
+	const guards = FunctionSemantics.guards(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx: analyzer.inspectContext(), natives: query.natives });
 	return {
 		...metaSince(start),
 		...(query.builtIns === undefined ? {} : { builtIns: statedFor(query.builtIns, analyzer.inspectContext()) }),
@@ -77,6 +78,8 @@ export interface InspectFnGuardsQuery extends BaseQueryFormat {
 	readonly formals?:  readonly BrandedIdentifier[]
 	/** also state what these functions of R ask for, written `name` or `pkg::name` */
 	readonly builtIns?: readonly string[]
+	/** the native routines of the analyzed package, which flowR cannot read off its compiled code itself, see {@link FunctionGuardsOptions.natives} */
+	readonly natives?:  readonly SigNativeRoutineInfo[]
 }
 
 export interface InspectFnGuardsQueryResult extends BaseQueryResult {
@@ -140,7 +143,8 @@ export const InspectFnGuardsQueryDefinition = {
 		kind:     Joi.string().valid('explicit', 'implicit').optional().description('Keep only the conditions the function checks itself, or only those R checks for it.'),
 		onlyPure: Joi.boolean().optional().description('Keep only the conditions failing before any side effect.'),
 		formals:  Joi.array().items(Joi.string()).min(1).optional().description('Keep only what is said about the formals written as one of these names.'),
-		builtIns: Joi.array().items(Joi.string()).min(1).optional().description('Also state what these functions of R ask for, written `name` or `pkg::name`.')
+		builtIns: Joi.array().items(Joi.string()).min(1).optional().description('Also state what these functions of R ask for, written `name` or `pkg::name`.'),
+		natives:  Joi.array().items(Joi.object().unknown()).optional().description('The native routines of the analyzed package (as the signature database records them), whose contracts the calls to them inherit.')
 	}).description('Returns what function definitions ask of the calls they return from, for all of them or just those matching the filter.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => Object.keys((queryResults as QueryResults<'inspect-fn-guards'>['inspect-fn-guards']).guards)
 } as const satisfies SupportedQuery<'inspect-fn-guards'>;

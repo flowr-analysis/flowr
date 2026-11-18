@@ -179,15 +179,23 @@ function namesStackEnvironment(id: NodeId, graph: DataflowGraph): boolean {
 	return DfgVertex.hasOrigin(graph.getVertex(id), BuiltInProcName.StackEnv) || (name !== undefined && Object.hasOwn(StackEnvBuiltins, Identifier.getName(name)));
 }
 
+/** An argument bound to a parameter, with the calls handing it over. */
+interface BoundArgument {
+	readonly argument: NodeId
+	readonly calls:    readonly NodeId[]
+}
+
 /**
  * The environments the value at `id` may be: the vertices creating them, followed through the parameters of the functions
  * of the program to the arguments of their calls, and these calls, which hand the environment on.
  */
-function environmentsAt(id: NodeId, graph: DataflowGraph, parameters: ReadonlySet<NodeId>, produces: (id: NodeId) => boolean): { producers: ReadonlySet<NodeId>, via: ReadonlySet<NodeId> } {
+function environmentsAt(id: NodeId, graph: DataflowGraph, boundTo: (parameter: NodeId) => readonly BoundArgument[] | undefined, produces: (id: NodeId) => boolean): { producers: ReadonlySet<NodeId>, via: ReadonlySet<NodeId> } {
 	/* sets, as many paths lead to the same producers and calls (each call of a function binds its parameter again), and every pair of them makes an edge */
 	const producers = new Set<NodeId>();
 	const via = new Set<NodeId>();
 	const seen = new Set<NodeId>();
+	/* many values lead to the same parameter, whose arguments are only worth one look */
+	const expanded = new Set<NodeId>();
 	const todo = [id];
 	for(let at = todo.pop(); at !== undefined; at = todo.pop()) {
 		if(seen.has(at)) {
@@ -197,13 +205,10 @@ function environmentsAt(id: NodeId, graph: DataflowGraph, parameters: ReadonlySe
 		for(const source of produces(at) ? [at] : Dataflow.valueSources(at, graph) ?? []) {
 			if(produces(source)) {
 				producers.add(source);
-			} else if(parameters.has(source)) {
-				for(const argument of Dataflow.argumentsBoundTo(graph, source)) {
-					for(const call of Dataflow.sourcesOf(graph, argument, EdgeType.Argument)) {
-						if(DfgVertex.isFunctionCall(graph.getVertex(call))) {
-							via.add(call);
-						}
-					}
+			} else if(!expanded.has(source)) {
+				expanded.add(source);
+				for(const { argument, calls } of boundTo(source) ?? []) {
+					calls.forEach(call => via.add(call));
 					todo.push(argument);
 				}
 			}
@@ -234,6 +239,13 @@ function linkEnvironmentsHandedToUnseenBodies(graph: DataflowGraph, environment:
 	/* both are asked of the same vertices over and over (every value an argument may hold), and the edges added below change neither */
 	const callsUnseen = memoize((id: NodeId) => callsUnseenBody(id, graph));
 	const produces = memoize((id: NodeId) => producesEnvironment(id, graph, callsUnseen));
+	/* every value a parameter may hold leads to its arguments again, and their calls are picked out of all edges into them */
+	const boundTo = memoize((parameter: NodeId): readonly BoundArgument[] | undefined => parameters.has(parameter)
+		? Dataflow.argumentsBoundTo(graph, parameter).map(argument => ({
+			argument,
+			calls: Dataflow.sourcesOf(graph, argument, EdgeType.Argument).filter(call => DfgVertex.isFunctionCall(graph.getVertex(call)))
+		})).toArray()
+		: undefined);
 	/*
 	 * an unknown side effect forgets every value the environment holds, so a writer only needs it once; the effects and edges
 	 * are applied once every call is looked at, as any change to the graph drops what was resolved over it
@@ -249,7 +261,7 @@ function linkEnvironmentsHandedToUnseenBodies(graph: DataflowGraph, environment:
 			if(ref === undefined) {
 				continue;
 			}
-			const { producers, via } = environmentsAt(ref, graph, parameters, produces);
+			const { producers, via } = environmentsAt(ref, graph, boundTo, produces);
 			const writers = [id, ...via];
 			for(const producer of producers) {
 				if(namesStackEnvironment(producer, graph)) {

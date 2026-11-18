@@ -53,7 +53,11 @@ export enum ArgProp {
 
 /** The properties of the behavior of a call, as a bitmask. */
 export enum CallProp {
-	/** computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` (excludes {@link ImpureProps}) */
+	/**
+	 * computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` (excludes {@link ImpureProps}).
+	 * It may still read global state to do so, as `paste` formats numbers by the `scipen` option: what it reads is in its
+	 * `ambient` effects, it changes none of it. {@link CallProp.Ambient} is for a call whose result is that state.
+	 */
 	Pure       = 1 << 0,
 	/** pure on its own, but it runs code it is handed, so whatever that code does happens too. */
 	MayPure    = 1 << 1,
@@ -69,7 +73,7 @@ export enum CallProp {
 	Scope      = 1 << 6,
 	/** the result may differ between two identical calls for a reason neither `Random` nor `Ambient` covers (see {@link SigDbInferable}) */
 	NonDet     = 1 << 7,
-	/** depends on ambient state like the clock, the locale, environment variables, or global options (stated instead of `NonDet`) */
+	/** the result is ambient state like the clock, the locale, environment variables, or global options (stated instead of `NonDet`); a call that only reads some of it on the way says so in its `ambient` effects */
 	Ambient    = 1 << 8,
 	/** sets ambient state later calls read back: the working directory, environment variables, options, the locale, the RNG seed. */
 	Configures = 1 << 9,
@@ -200,7 +204,7 @@ export const InputProps: PropMask = getPropMask([
 ]);
 
 /** The {@link CallProp} bits the signature database states itself, so {@link fnInfoFromSignature} can read them off any package function without anyone writing them down. */
-export const SigDbInferable: CallProps = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic | CallProp.Concurrent;
+export const SigDbInferable: CallProps = CallProp.Pure | CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic | CallProp.Concurrent;
 
 /** The properties that say a call takes its data from a file, as {@link SemanticCallTag.File} alone also covers the calls that only write one. */
 export const FileInputProps: PropMask = getPropMask([SemanticCallTag.File, SemanticCallTag.Reads]);
@@ -214,6 +218,12 @@ export const PropagatedProps: PropMask = getPropMask([
 	SemanticCallTag.Eval, SemanticCallTag.Html, SemanticCallTag.JavaScript, SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage,
 	SemanticCallTag.ChecksPackage, SemanticCallTag.DetachesPackage
 ]);
+
+/** The {@link PropagatedProps} a {@link CallProp.Pure} function still carries over: it vouches that nothing impure it reaches runs. */
+export const PureCarriedProps: PropMask = {
+	props: PropagatedProps.props & ~ImpureProps.props,
+	tags:  new Set([...PropagatedProps.tags].filter(tag => !ImpureProps.tags.has(tag)))
+};
 
 /** Checks whether a {@link PropSelector} is a bitfield of {@link CallProp}s */
 function isCallProp(this: void, selector: PropSelector): selector is CallProp | CallProps {
@@ -565,7 +575,9 @@ const SigDbProps: Readonly<Record<string, CallProp>> = {
 	'can-throw':         CallProp.Throws,
 	'non-deterministic': CallProp.NonDet,
 	's3-method':         CallProp.Method,
-	'generic':           CallProp.Generic
+	'generic':           CallProp.Generic,
+	'concurrent':        CallProp.Concurrent,
+	'pure':              CallProp.Pure
 };
 
 /** the callees that make the calling function itself a generic ({@link CallProp.Generic}) */

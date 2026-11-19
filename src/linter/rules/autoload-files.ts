@@ -6,11 +6,11 @@ import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { requestFromInput } from '../../r-bridge/retriever';
 import { dirname, isAbsolute, join, normalize } from 'path';
 
-export interface AutoloadResult extends LintingResult {
+export interface AutoloadFilesResult extends LintingResult {
 	readonly filePath: string;
 }
 
-export interface AutoloadConfig extends MergeableRecord {
+export interface AutoloadFilesConfig extends MergeableRecord {
 	readonly allowEmptyFiles:     boolean
 	readonly allowInvalidFiles:   boolean
 	readonly allowedFilePatterns: (string | RegExp)[]
@@ -27,7 +27,7 @@ export const AUTOLOAD_FILES = {
 			startupFiles = startupFiles.filter(f => f.content().toString().trim().length > 0);
 		}
 		const foundPaths = new Set<string>(); // for deduplicating results
-		const ret: { results: AutoloadResult[], '.meta': MergeableRecord } = { results: [], '.meta': {} };
+		const ret: { results: AutoloadFilesResult[], '.meta': MergeableRecord } = { results: [], '.meta': {} };
 		if(startupFiles.length <= 0) {
 			return ret;
 		}
@@ -100,4 +100,4 @@ export const AUTOLOAD_FILES = {
 			allowedFilePatterns: []
 		})
 	}
-} as const satisfies LintingRule<AutoloadResult, MergeableRecord, AutoloadConfig, never, never>;
+} as const satisfies LintingRule<AutoloadFilesResult, MergeableRecord, AutoloadFilesConfig, never, never>;

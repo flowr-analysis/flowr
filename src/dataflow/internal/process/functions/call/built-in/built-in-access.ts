@@ -2,9 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall, type ProcessKnownFunctionCallResult } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type {
-	PotentiallyEmptyRArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type PotentiallyEmptyRArgument, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -16,11 +14,10 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { rebindAliases, resolveSymbolToEnvir } from './built-in-envir-utils';
-import { resolveNodeToStackEnv, stackEnvInheritsFields, stackEnvKindOf } from './built-in-stack-env';
+import { isEnclosingFrame, resolveNodeToStackEnv, stackEnvInheritsFields, stackEnvKindOf } from './built-in-stack-env';
 import { accessedFieldName, linkFieldReads } from '../../../../linker';
 import { StackEnvKind } from '../../../../../environments/default-builtin-config';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { resolveConstructorInstanceEnvState } from './built-in-class-generator';
 
 interface TableAssignmentProcessorMarker {
@@ -90,7 +87,8 @@ export function processAccess<OtherInfo>(
 				? (stackEnvInheritsFields(head.value) ? Resolve.byNameAndType(fieldName, envState, ReferenceType.Unknown) : envState.current.memory.get(fieldName))
 				: undefined;
 			linkFieldReads(info.graph, name.info.id, fieldDefs, stackEnvState === undefined);
-			if(fieldName !== undefined && !fieldDefs?.length && stackEnvKindOf(head.value, data) === StackEnvKind.CallerFrame) {
+			/* the frame of the caller or of a function around is linked once it is known, as a free variable is */
+			if(fieldName !== undefined && !fieldDefs?.length && (stackEnvKindOf(head.value, data) === StackEnvKind.CallerFrame || isEnclosingFrame(envState))) {
 				info.in = [...info.in, { name: fieldName, nodeId: name.info.id, type: ReferenceType.Variable, cds: data.cds }];
 			}
 		}
@@ -162,10 +160,7 @@ export function symbolArgumentsToStrings<OtherInfo>(args: readonly PotentiallyEm
 					info:     arg.value.info,
 					lexeme:   arg.value.lexeme,
 					location: arg.value.location,
-					content:  {
-						quotes: 'none',
-						str:    arg.value.lexeme
-					}
+					content:  { quotes: 'none', str: arg.value.lexeme }
 				}
 			};
 		}
@@ -180,11 +175,5 @@ function processStringBasedAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	rootId: NodeId
 ) {
-	return processKnownFunctionCall({
-		name,
-		args:   symbolArgumentsToStrings(args),
-		rootId,
-		data,
-		origin: BuiltInProcName.Access
-	});
+	return processKnownFunctionCall({ name, args: symbolArgumentsToStrings(args), rootId, data, origin: BuiltInProcName.Access });
 }

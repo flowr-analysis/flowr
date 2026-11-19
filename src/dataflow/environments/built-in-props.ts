@@ -1,4 +1,6 @@
-import type { AmbientScope, AmbientStateAccess } from '../internal/process/functions/call/built-in/built-in-ambient-state';
+import type { GuardFacts } from './guard-facts';
+import type { AmbientScope } from '../internal/process/functions/call/built-in/built-in-ambient-state';
+import type { AmbientEffects } from './ambient-effect';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { DecodedFunction } from '../../project/sigdb/decode';
 import { Record } from '../../util/record';
@@ -42,12 +44,20 @@ export enum ArgProp {
 	/** besides its value, the expression as written names a part of the result, like `a` in `data.frame(a)`, which becomes the column `a`; passing `identity(a)` instead changes the name */
 	Deparsed   = 1 << 16,
 	/** a {@link ArgProp.Resource} whose default names none, like `file` in `cat(..., file = "")`, which prints to the console, or in `capture.output(..., file = NULL)`; left out, the call accesses no file through it */
-	Optional   = 1 << 17
+	Optional   = 1 << 17,
+	/** a call leaving it out fails, as the body reads it on every way through; only inferred (see {@link FunctionSemantics.guards}) */
+	Required   = 1 << 18,
+	/** a call fails on some of what it could hold, as there are guards on it; only inferred (see {@link FunctionSemantics.guards}) */
+	Guarded    = 1 << 19
 }
 
 /** The properties of the behavior of a call, as a bitmask. */
 export enum CallProp {
-	/** computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` (excludes {@link ImpureProps}) */
+	/**
+	 * computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` (excludes {@link ImpureProps}).
+	 * It may still read global state to do so, as `paste` formats numbers by the `scipen` option: what it reads is in its
+	 * `ambient` effects, it changes none of it. {@link CallProp.Ambient} is for a call whose result is that state.
+	 */
 	Pure       = 1 << 0,
 	/** pure on its own, but it runs code it is handed, so whatever that code does happens too. */
 	MayPure    = 1 << 1,
@@ -63,7 +73,7 @@ export enum CallProp {
 	Scope      = 1 << 6,
 	/** the result may differ between two identical calls for a reason neither `Random` nor `Ambient` covers (see {@link SigDbInferable}) */
 	NonDet     = 1 << 7,
-	/** depends on ambient state like the clock, the locale, environment variables, or global options (stated instead of `NonDet`) */
+	/** the result is ambient state like the clock, the locale, environment variables, or global options (stated instead of `NonDet`); a call that only reads some of it on the way says so in its `ambient` effects */
 	Ambient    = 1 << 8,
 	/** sets ambient state later calls read back: the working directory, environment variables, options, the locale, the RNG seed. */
 	Configures = 1 << 9,
@@ -92,6 +102,8 @@ export enum SemanticCallTag {
 	Process     = 'process',
 	/** asks the user, like `readline` or a file chooser */
 	User        = 'asks-user',
+	/** only does its job in an interactive session: opens a viewer, an editor, or the debugger (`View`, `edit`, `browser`), which a script run by `Rscript` has none of */
+	Interactive = 'interactive-only',
 	/** hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do */
 	CommandLine = 'command-line',
 	/** yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer */
@@ -173,7 +185,7 @@ export const ProvenanceProps: CallProps = CallProp.Primitive;
 export const ImpureProps: PropMask = getPropMask([
 	CallProp.MayPure | CallProp.Scope | CallProp.NonDet | CallProp.Ambient | CallProp.Configures | CallProp.Ffi | CallProp.Lang,
 	SemanticCallTag.Random, SemanticCallTag.File, SemanticCallTag.TempFile, SemanticCallTag.Network, SemanticCallTag.Process,
-	SemanticCallTag.User, SemanticCallTag.CommandLine, SemanticCallTag.Graphics, SemanticCallTag.Database,
+	SemanticCallTag.User, SemanticCallTag.Interactive, SemanticCallTag.CommandLine, SemanticCallTag.Graphics, SemanticCallTag.Database,
 	SemanticCallTag.Opens, SemanticCallTag.Closes, SemanticCallTag.Reads, SemanticCallTag.Writes, SemanticCallTag.Prints
 ]);
 
@@ -192,7 +204,7 @@ export const InputProps: PropMask = getPropMask([
 ]);
 
 /** The {@link CallProp} bits the signature database states itself, so {@link fnInfoFromSignature} can read them off any package function without anyone writing them down. */
-export const SigDbInferable: CallProps = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic | CallProp.Concurrent;
+export const SigDbInferable: CallProps = CallProp.Pure | CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic | CallProp.Concurrent;
 
 /** The properties that say a call takes its data from a file, as {@link SemanticCallTag.File} alone also covers the calls that only write one. */
 export const FileInputProps: PropMask = getPropMask([SemanticCallTag.File, SemanticCallTag.Reads]);
@@ -201,11 +213,17 @@ export const FileInputProps: PropMask = getPropMask([SemanticCallTag.File, Seman
 export const PropagatedProps: PropMask = getPropMask([
 	CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Ambient | CallProp.Configures | CallProp.Ffi | CallProp.Lang | CallProp.Concurrent,
 	SemanticCallTag.Random, SemanticCallTag.File, SemanticCallTag.TempFile, SemanticCallTag.Network,
-	SemanticCallTag.Process, SemanticCallTag.User, SemanticCallTag.CommandLine, SemanticCallTag.Graphics,
+	SemanticCallTag.Process, SemanticCallTag.User, SemanticCallTag.Interactive, SemanticCallTag.CommandLine, SemanticCallTag.Graphics,
 	SemanticCallTag.Database, SemanticCallTag.Reads, SemanticCallTag.Writes, SemanticCallTag.Prints,
 	SemanticCallTag.Eval, SemanticCallTag.Html, SemanticCallTag.JavaScript, SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage,
 	SemanticCallTag.ChecksPackage, SemanticCallTag.DetachesPackage
 ]);
+
+/** The {@link PropagatedProps} a {@link CallProp.Pure} function still carries over: it vouches that nothing impure it reaches runs. */
+export const PureCarriedProps: PropMask = {
+	props: PropagatedProps.props & ~ImpureProps.props,
+	tags:  new Set([...PropagatedProps.tags].filter(tag => !ImpureProps.tags.has(tag)))
+};
 
 /** Checks whether a {@link PropSelector} is a bitfield of {@link CallProp}s */
 function isCallProp(this: void, selector: PropSelector): selector is CallProp | CallProps {
@@ -302,10 +320,7 @@ export const CallProps = {
 	/** Keep only the properties in the stated properties that are in the property selector. */
 	filter(this: void, stated: StatedProps | undefined, selector: PropSelector): StatedProps {
 		const mask = getPropMask(selector);
-		return {
-			props: (stated?.props ?? 0) & mask.props,
-			tags:  stated?.tags?.filter(prop => mask.tags.has(prop))
-		};
+		return { props: (stated?.props ?? 0) & mask.props, tags: stated?.tags?.filter(prop => mask.tags.has(prop)) };
 	},
 	/** Transforms a property selector into a unique string identifier. */
 	key(this: void, selector: PropSelector): string {
@@ -403,7 +418,9 @@ const ArgPropWords: Readonly<Record<ArgProp, PropWord>> = {
 	[ArgProp.Lazy]:       { word: 'lazy', short: 'L', about: 'never evaluated' },
 	[ArgProp.Injectable]: { word: 'injectable', about: 'open to injection' },
 	[ArgProp.Deparsed]:   { word: 'deparsed', about: 'its expression names part of the result' },
-	[ArgProp.Optional]:   { word: 'optional', about: 'a resource whose default names none' }
+	[ArgProp.Optional]:   { word: 'optional', about: 'a resource whose default names none' },
+	[ArgProp.Required]:   { word: 'required', short: 'req', about: 'a call has to supply it' },
+	[ArgProp.Guarded]:    { word: 'guarded', about: 'a call fails on some values of it' }
 };
 
 /** The bitfield the given {@link ArgProp}/{@link CallProp} member names stand for, unknown ones ignored. */
@@ -415,7 +432,6 @@ function maskOfNames(this: void, of: Record<string, string | number>, names: rea
 	}
 	return mask;
 }
-
 
 /** The words for whichever of `mask`'s bits appear in `entries`, shared by {@link ArgProps.words} and {@link CallProps.words}. */
 function wordsOf(this: void, entries: readonly (readonly [number, string])[], mask: number | undefined): string[] {
@@ -442,19 +458,23 @@ export const ArgProps = {
 
 /** Semantics of a built-in that hold no matter which processor handles the call. */
 export interface BuiltInFnInfo extends StatedProps {
-	/** how the call reads or writes global state like the graphics parameters, the options, or files, see {@link AmbientStateAccess} */
-	readonly ambient?:               AmbientStateAccess | readonly AmbientStateAccess[]
+	/** how the call reads or writes global state like the graphics parameters, the options, or files, see {@link AmbientEffect} */
+	readonly ambient?:               AmbientEffects
 	/** the call changes that state for a scope only, see {@link AmbientScope} */
 	readonly scope?:                 AmbientScope
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>
 	/** The condition classes a call signals when every argument it is handed is a constant, like `simpleError`, `error`, and `condition` for `stop("x")`. */
 	readonly signals?:               readonly string[]
+	/** The condition classes the call muffles while its code runs, like `message` for `suppressMessages(expr)`, which decides where the output of that code goes. */
+	readonly muffles?:               readonly string[]
 	/** the parameters and what each of their arguments is used for */
 	readonly sig?:                   FnSig
 	/** keep the environment on the call vertex, for a later pass to look names up in */
 	readonly keepEnvironment?:       boolean
 	/** What this call lets the function around it reach about its own formals without naming one of them, e.g. `match.call()` ({@link ArgProp.Nse}) or `nargs()` ({@link ArgProp.Presence}); see {@link reflectiveRolesOf}. */
 	readonly frame?:                 ArgProps
+	/** per name this definition states, what it has to do with the guards of the functions calling it, see {@link GuardFacts} */
+	readonly guards?:                Readonly<Record<BrandedIdentifier, GuardFacts>>
 	/** the generics the call may dispatch to on (parts of) its arguments, like `as.character` for `paste` or `format` for the columns `print` shows of a data frame; any method of them may run */
 	readonly dispatches?:            string[]
 }
@@ -555,7 +575,9 @@ const SigDbProps: Readonly<Record<string, CallProp>> = {
 	'can-throw':         CallProp.Throws,
 	'non-deterministic': CallProp.NonDet,
 	's3-method':         CallProp.Method,
-	'generic':           CallProp.Generic
+	'generic':           CallProp.Generic,
+	'concurrent':        CallProp.Concurrent,
+	'pure':              CallProp.Pure
 };
 
 /** the callees that make the calling function itself a generic ({@link CallProp.Generic}) */

@@ -42,7 +42,6 @@ export interface FunctionParameterLocation<T = never> {
 
 /**
  * Escapes a regular expression given as string by escaping all special regular expression characters.
- * @param text        - The text to escape
  * @param allowTokens - Whether to allow and keep unescaped tokens like `\s`, `\t`, or `\n`
  * @returns           The escaped text
  */
@@ -95,7 +94,6 @@ export function filterValidNames(
  * Gets the value of an argument that specified as {@link FunctionParameterLocation}.
  * @param args     - The arguments to get the requested argument from
  * @param argument - The specification of the argument to get the value for
- * @param info     - Argument resolve information
  * @returns        The resolved value of the argument or `undefined`
  */
 export function getArgumentValue<T>(
@@ -162,7 +160,6 @@ export function matchedArguments(
  * Gets an argument specified as {@link FunctionParameterLocation} from a list of arguments.
  * @param args     - The arguments to get the requested argument from
  * @param argument - The specification of the argument to get
- * @param info     - Argument resolve information
  * @returns        An argument matching the specified `argument` or `undefined`
  */
 export function getFunctionArgument(
@@ -256,7 +253,6 @@ export function getUnresolvedSymbolsInExpression(
  * Checks whether a list of arguments contains any critical argument.
  * @param args     - The list of arguments to check
  * @param critical - The critical arguments to search for (as string or {@link FunctionParameterLocation}s)
- * @param info     - Argument resolve information
  * @returns        Whether the arguments contain any critical argument
  */
 export function hasCriticalArgument(
@@ -283,7 +279,6 @@ export function hasCriticalArgument(
 
 /**
  * Checks if a given argument has an inferred data frame shape and therefore represents a data frame
- * @param arg - The argument to check
  * @param ctx - The context of the data frame shape analysis
  * @returns   Whether the argument represents a data frame
  */
@@ -295,9 +290,7 @@ export function isDataFrameArgument(arg: RNode<ParentInformation> | PotentiallyE
 	return !RArgument.isEmpty(arg) && ctx.getAbstractValue(arg) !== undefined;
 }
 
-/**
- * Checks whether a node is `NULL` in R (represents a `NULL` symbol).
- */
+/** Checks whether a node is `NULL` in R (represents a `NULL` symbol). */
 export function isRNull(node: RNode<ParentInformation> | undefined):
 	node is RSymbol<ParentInformation, typeof RNull>;
 export function isRNull(node: PotentiallyEmptyRArgument<ParentInformation> | undefined):
@@ -311,16 +304,12 @@ export function isRNull(node: RNode<ParentInformation> | PotentiallyEmptyRArgume
 	return RSymbol.is(node) && node.content === RNull;
 }
 
-/**
- * Checks whether a string is a valid columns name according to the flag `check.names` in R.
- */
+/** Checks whether a string is a valid columns name according to the flag `check.names` in R. */
 export function isValidColName(colname: string | undefined): boolean {
 	return colname !== undefined && ColNamesRegex.test(colname);
 }
 
-/**
- * Parses a text of file parse request using the provided parser function.
- */
+/** Parses a text of file parse request using the provided parser function. */
 export function parseRequestContent(
 	request: RParseRequest,
 	parser: (line: Buffer | string, lineNumber: number) => void,

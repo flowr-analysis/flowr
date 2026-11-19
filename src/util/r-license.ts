@@ -31,16 +31,12 @@ export interface NoLicenseInfo {
  */
 export type RLicenseElementInfo = RLicenseInfo | RLicenseExceptionInfo | RLicenseCombinationInfo | NoLicenseInfo;
 
-/**
- * Parses an R license string into its structured representation.
- */
+/** Parses an R license string into its structured representation. */
 export function parseRLicense(licenseString: string): RLicenseElementInfo {
 	return parseLicenseInfo(skipWhitespace({ position: 0, remInput: licenseString })).element;
 }
 
-/**
- * Stringifies an R license element back into its string representation.
- */
+/** Stringifies an R license element back into its string representation. */
 export function stringifyRLicense(license: RLicenseElementInfo): string {
 	const t = license.type;
 	switch(t) {
@@ -115,10 +111,7 @@ function consumeLicenseName(info: ParserInfo): ParserResult<string>  {
 		}
 		licenseName += char;
 	}
-	const newInfo = {
-		position: info.position + licenseName.length,
-		remInput: info.remInput.slice(licenseName.length)
-	};
+	const newInfo = { position: info.position + licenseName.length, remInput: info.remInput.slice(licenseName.length) };
 	// file licenses are a special case!
 	if(licenseName && /^file[\s-]+license$/i.test(licenseName.trim())) {
 		return { ...newInfo, element: 'file LICENSE' };
@@ -150,19 +143,11 @@ function parseLicenseElement(info: ParserInfo): ParserResult {
 			info = skipWhitespace(versionStr);
 		}
 	}
-	const licenseInfo: RLicenseInfo = compactRecord({
-		type:    'license',
-		license: licenseName.element,
-		versionConstraint
-	} as const);
+	const licenseInfo: RLicenseInfo = compactRecord({ type: 'license', license: licenseName.element, versionConstraint } as const);
 	return { ...info, element: licenseInfo };
 }
 
-const operators = {
-	'and':  ['and', '+', '&'],
-	'or':   ['or', '|'],
-	'with': ['with']
-} as const;
+const operators = { 'and': ['and', '+', '&'], 'or': ['or', '|'], 'with': ['with'] } as const;
 
 function parseBinaryOperator(info: ParserInfo): ParserResult {
 	const license = parseLicenseElement(info);
@@ -172,13 +157,7 @@ function parseBinaryOperator(info: ParserInfo): ParserResult {
 		info = skipWhitespace(operator);
 		let rightLicense = parseLicenseInfo(info);
 		if(operator.element === 'with' && rightLicense.element.type === 'license') {
-			rightLicense = {
-				...rightLicense,
-				element: {
-					type:      'exception',
-					exception: rightLicense.element.license
-				}
-			};
+			rightLicense = { ...rightLicense, element: { type: 'exception', exception: rightLicense.element.license } };
 		}
 		const combination: RLicenseCombinationInfo = {
 			type:        'combination',
@@ -195,10 +174,7 @@ function tryConsumeOperator(info: ParserInfo): ParserResult<'and' | 'or' | 'with
 	for(const [opName, opSymbols] of Object.entries(operators)) {
 		for(const symbol of opSymbols) {
 			if(info.remInput.toLowerCase().startsWith(symbol)) {
-				const newInfo = {
-					position: info.position + symbol.length,
-					remInput: info.remInput.slice(symbol.length)
-				};
+				const newInfo = { position: info.position + symbol.length, remInput: info.remInput.slice(symbol.length) };
 				return { ...newInfo, element: opName as 'and' | 'or' | 'with' };
 			}
 		}
@@ -209,10 +185,7 @@ function tryConsumeOperator(info: ParserInfo): ParserResult<'and' | 'or' | 'with
 function consumeString(info: ParserInfo, str: string): ParserResult<boolean> {
 	info = skipWhitespace(info);
 	if(info.remInput.startsWith(str)) {
-		const newInfo = {
-			position: info.position + str.length,
-			remInput: info.remInput.slice(str.length)
-		};
+		const newInfo = { position: info.position + str.length, remInput: info.remInput.slice(str.length) };
 		return { ...newInfo, element: true };
 	} else {
 		return { ...info, element: false };
@@ -225,10 +198,7 @@ function consumeUntilString(info: ParserInfo, str: string): ParserResult<string>
 		idx = info.remInput.length;
 	}
 	const consumed = info.remInput.slice(0, idx);
-	const newInfo = {
-		position: info.position + idx,
-		remInput: info.remInput.slice(idx)
-	};
+	const newInfo = { position: info.position + idx, remInput: info.remInput.slice(idx) };
 	return { ...newInfo, element: consumed };
 }
 
@@ -237,10 +207,7 @@ function consumeRegexp(info: ParserInfo, regex: RegExp): ParserResult<string | n
 	const match = info.remInput.match(regex);
 	if(match && match.index === 0) {
 		const matchedStr = match[0];
-		const newInfo = {
-			position: info.position + matchedStr.length,
-			remInput: info.remInput.slice(matchedStr.length)
-		};
+		const newInfo = { position: info.position + matchedStr.length, remInput: info.remInput.slice(matchedStr.length) };
 		return { ...newInfo, element: matchedStr };
 	}
 	return { ...info, element: null };

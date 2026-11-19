@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-16, 20:55:37 UTC (v2.17.7), do not edit directly._
 <h2 id="Input Sources Query">Input Sources Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Classify the input sources of function calls\
@@ -27,7 +27,7 @@ If you are interested in the input-sources of the `print` call, you can use:
 
 _Results (prettified and summarized):_
 
-Query: **input-sources** (17 ms)\
+Query: **input-sources** (41 ms)\
 &nbsp;&nbsp;&nbsp;╰ Input Sources for 3@print\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 3.15 (id: 11), type: ["param","const","dconst"], trace: alias
 
@@ -44,7 +44,7 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 </details>
 
 Some objects are handed to the code by a framework rather than defined in it, like the `input` of a shiny
-server function. The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L1015"><code><span title="Objects provided by a framework rather than by the code itself, like shiny's input.">InputClassifierConfig::<b>linkedObjects</b></span></code></a> configuration lists them, so that reads
+server function. The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L1009"><code><span title="Objects provided by a framework rather than by the code itself, like shiny's input.">InputClassifierConfig::<b>linkedObjects</b></span></code></a> configuration lists them, so that reads
 of such an object (and of its fields) classify as user input instead of stopping at a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/input-types.ts#L27"><code>InputType::<b>Parameter</b></code></a>:
 
 ```r
@@ -61,7 +61,7 @@ server <- function(input, output, session) {
 
 _Results (prettified and summarized):_
 
-Query: **input-sources** (27 ms)\
+Query: **input-sources** (25 ms)\
 &nbsp;&nbsp;&nbsp;╰ Input Sources for 2@system\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 2.16-43 (id: 18), type: ["const","param","dconst"], trace: known
 
@@ -130,6 +130,6 @@ only counts as the namespaced one while that package is attached, exactly as R w
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Input Sources Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/input-sources-query-executor.ts#L23"><code><span title="Execute an input sources query">executeInputSourcesQuery</span></code></a>.
+The Input Sources Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/input-sources-query-executor.ts#L24"><code><span title="Execute an input sources query">executeInputSourcesQuery</span></code></a>.
 
 </details>

@@ -394,5 +394,20 @@ export const Counterexamples: readonly CounterexampleGroup[] = [
 		{ name: 'a variable named like a function is still callable as one', capabilities: ['normal-definition'], code: 'c <- 3\nr <- c(c, 1)\nprint(r)', criterion: '3@r', expected: '[1] 3 1' },
 		{ name: 'a parameter shadows the global', capabilities: ['normal-definition'], code: 'x <- 1\nf <- function(x) { x <- x + 1; x }\nr <- f(10)\nprint(r)', criterion: '4@r', expected: '[1] 11', dropped: ['x <- 1'] },
 		{ name: 'a default argument reads the global at call time', capabilities: ['formals-default', 'normal-definition'], code: 'k <- 2\nf <- function(a = k) a\nk <- 3\nr <- f()\nprint(r)', criterion: '5@r', expected: '[1] 3', dropped: ['k <- 2'] }
-	] }
+	] },
+
+	{ group: 'Dead code', cases: [
+		{ name: 'code after a stop in a default argument that is read later stays live', capabilities: ['formals-default', 'exceptions-and-errors'], code: 'n <- 0\nf <- function(x = stop(\'need x\')) {\n  n <<- n + 1\n  x\n}\ntry(f(), silent = TRUE)\nprint(n)', criterion: '7@print', expected: '[1] 1' },
+		{ name: 'a while condition on an outer variable the body redefines', capabilities: ['while-loop', 'return'], code: 'k <- 0\ng <- function() {\n  while(k < 2) {\n    k <- k + 1\n    if(k > 5) return(1)\n  }\n  "done"\n}\nr <- g()\nprint(r)', criterion: '10@print', expected: '[1] "done"' },
+		{ name: 'a return in evaluated code leaves only the eval', capabilities: ['return', 'built-in-evaluation'], code: 'g <- function() {\n  eval(quote(return(1)))\n  "after"\n}\nr <- g()\nprint(r)', criterion: '6@print', expected: '[1] "after"' },
+		{ name: 'a return in parsed evaluated code leaves only the eval', capabilities: ['return', 'built-in-evaluation'], code: 'g <- function() {\n  eval(parse(text = "return(1)"))\n  "after"\n}\nr <- g()\nprint(r)', criterion: '6@print', expected: '[1] "after"' },
+		{ name: 'a callee that stops only if it is the first definition', capabilities: ['normal-definition', 'exceptions-and-errors'], code: 'g <- function(k) {\n  h <- function() stop("e")\n  if(k) h <- function() 1\n  h()\n  "after"\n}\nr <- g(TRUE)\nprint(r)', criterion: '8@print', expected: '[1] "after"' },
+		{ name: 'else-if chain of returns without a final else', capabilities: ['return', 'if'], code: 'f <- function(x) {\n  if(x > 0) return("pos") else if(x < 0) return("neg")\n  "zero"\n}\nr <- f(0)\nprint(r)', criterion: '6@print', expected: '[1] "zero"' },
+		{ name: 'else-if chain of returns in a loop body', capabilities: ['return', 'for-loop'], code: 'f <- function(v) {\n  for(x in v) {\n    if(x > 5) return("big") else if(x < 0) return("neg")\n  }\n  "none"\n}\nr <- f(1:3)\nprint(r)', criterion: '8@print', expected: '[1] "none"' },
+		{ name: 'a stop in a lazy argument nobody forces', capabilities: ['exceptions-and-errors', 'normal-definition'], code: 'f <- function(a) 1\ng <- function() {\n  f(stop("e"))\n  "after"\n}\nr <- g()\nprint(r)', criterion: '7@print', expected: '[1] "after"' },
+		{ name: 'a break in a nested if inside a repeat', capabilities: ['return'], code: 'i <- 0\nrepeat {\n  i <- i + 1\n  if(i > 1) {\n    if(i == 2) {\n      break\n    }\n  }\n}\nr <- i\nprint(r)', criterion: '11@print', expected: '[1] 2' },
+		{ name: 'a function stopping in all alternatives makes the rest dead', capabilities: ['normal-definition', 'exceptions-and-errors'], code: 'g <- function(k) {\n  h <- function() stop("a")\n  if(k) h <- function() stop("b")\n  r <- tryCatch(h(), error = function(e) "caught")\n  r\n}\nr <- g(TRUE)\nprint(r)', criterion: '8@print', expected: '[1] "caught"' },
+		{ name: 'a stop in a switch default keeps the arms live', capabilities: ['switch', 'exceptions-and-errors'], code: 'f <- function(t) switch(t, a = "A", stop("unknown"))\nr <- f("a")\nprint(r)', criterion: '3@print', expected: '[1] "A"' },
+		{ name: 'a return in a handler leaves only the handler', capabilities: ['return', 'exceptions-and-errors'], code: 'f <- function() {\n  tryCatch(stop("e"), error = function(e) return("h"))\n  "after"\n}\nr <- f()\nprint(r)', criterion: '6@print', expected: '[1] "after"' },
+	] },
 ];

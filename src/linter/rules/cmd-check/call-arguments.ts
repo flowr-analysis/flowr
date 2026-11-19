@@ -7,6 +7,7 @@ import { LintingRuleTag } from '../../linter-tags';
 import { type BrandedIdentifier, Identifier } from '../../../dataflow/environments/identifier';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { CallContracts } from '../../../dataflow/fn/guards/call-contracts';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
 import { fnEntry } from '../../../dataflow/environments/query-fn-props';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -18,7 +19,7 @@ import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
-import { at, boundName, calledDefinitions, isQuoted, type CmdCheckResult, formalNames, packageInfo, printer, projectNodes } from './cmd-check-util';
+import { at, boundName, type CmdCheckResult, formalNames, packageInfo, printer, projectNodes } from './cmd-check-util';
 
 export type CallArgumentsKind =
 	/** a named argument no formal of the called function takes */
@@ -78,7 +79,7 @@ function targetsOf(id: NodeId, name: Identifier, df: DataflowInformation, idMap:
 	/* a built-in also calls the functions it is handed (`lapply(x, f)`), so only the origins tell what is called */
 	const origins = Dataflow.origin(df.graph, id) ?? [];
 	if(!origins.some(o => o.type === OriginType.BuiltInFunctionOrigin)) {
-		const defs = calledDefinitions(df.graph, id, idMap);
+		const defs = Dataflow.calleeDefinitionsOf(df.graph, id);
 		if(defs.length > 0) {
 			const direct = defs.every(d => boundName(d, idMap) === Identifier.getName(name));
 			return !direct && rewritesFormals ? undefined : { formals: defs.map(formalNames), certain: direct };
@@ -91,9 +92,6 @@ function targetsOf(id: NodeId, name: Identifier, df: DataflowInformation, idMap:
 	const known = packageFormals(origins.length === 1 && origins[0].type === OriginType.BuiltInFunctionOrigin ? origins[0].fn.name : name, ctx);
 	return known === undefined ? undefined : { formals: [known], certain: false };
 }
-
-/** the replacement functions that rewrite a function, after which its formals are no longer those of its definition */
-const FormalsRewriters: ReadonlySet<BrandedIdentifier> = new Set(['formals<-', 'body<-', 'args<-']);
 
 interface Mismatch {
 	readonly kind:      CallArgumentsKind
@@ -152,14 +150,8 @@ function mismatchesOf(call: RFunctionCall<ParentInformation>, formals: readonly 
 }
 
 /** the given function definition and all definitions enclosing it */
-function enclosingFunctions(fn: RFunctionDefinition<ParentInformation>, idMap: ReadonlyMap<NodeId, RNode<ParentInformation>>): RFunctionDefinition<ParentInformation>[] {
-	const result = [fn];
-	for(let cur = idMap.get(fn.info.parent ?? ''); cur !== undefined; cur = idMap.get(cur.info.parent ?? '')) {
-		if(RFunctionDefinition.is(cur)) {
-			result.push(cur);
-		}
-	}
-	return result;
+function enclosingFunctions(fn: RFunctionDefinition<ParentInformation>, idMap: AstIdMap): RFunctionDefinition<ParentInformation>[] {
+	return [fn, ...RNode.iterateParents(fn, idMap).filter(RFunctionDefinition.is)];
 }
 
 /**
@@ -180,11 +172,11 @@ export const CALL_ARGUMENTS = {
 		const add = (node: RNode<ParentInformation>, r: Omit<CallArgumentsResult, 'loc' | 'involvedId' | 'certainty'>, certain = true) => results.push({ ...at(node, certain), ...r });
 
 		const calls = [...df.graph.verticesOfType(VertexType.FunctionCall)];
-		const rewritesFormals = calls.some(([, v]) => FormalsRewriters.has(Identifier.getName(v.name)));
+		const rewritesFormals = calls.some(([, v]) => CallContracts.FormalsRewriters.has(Identifier.getName(v.name)));
 		for(const [id, vertex] of calls) {
 			const node = idMap.get(id);
 			/* quoted code is data, as codetools sees it too */
-			if(!RFunctionCall.isNamed(node) || !pkg.isPackageCode(node.info.file) || isQuoted(df.graph, id, idMap)) {
+			if(!RFunctionCall.isNamed(node) || !pkg.isPackageCode(node.info.file) || Dataflow.isWithinQuoted(id, df.graph)) {
 				continue;
 			}
 			const targets = targetsOf(id, vertex.name, df, idMap, ctx, { packages: config.checkPackageFunctions, rewritesFormals });
@@ -219,7 +211,7 @@ export const CALL_ARGUMENTS = {
 			}
 			const parent = idMap.get(node.info.parent ?? '');
 			/* the formal `...` and an argument named `...` (`switch(x, ... = 1)`, `alist(... = )`) use no dots */
-			if(!RSymbol.is(node) || RParameter.is(parent) || (RArgument.is(parent) && parent.name === node) || isQuoted(df.graph, node.info.id, idMap)) {
+			if(!RSymbol.is(node) || RParameter.is(parent) || (RArgument.is(parent) && parent.name === node) || Dataflow.isWithinQuoted(node.info.id, df.graph)) {
 				continue;
 			}
 			const name = Identifier.getName(node.content);
@@ -265,9 +257,6 @@ export const CALL_ARGUMENTS = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds calls with arguments the called function does not take, names that match a formal only partially or match several formals, `...` used in a function without `...`, and local functions defined twice with different formals. Calls are resolved through the dataflow graph.',
-		defaultConfig: () => ({
-			reportPartialMatches:  true,
-			checkPackageFunctions: true
-		})
+		defaultConfig: () => ({ reportPartialMatches: true, checkPackageFunctions: true })
 	}
 } as const satisfies LintingRule<CallArgumentsResult, CallArgumentsMetadata, CallArgumentsConfig>;

@@ -1,13 +1,11 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../../src/r-bridge/retriever';
+import { analyze } from '../../../_helper/analyzer';
 
 /* R binds these by name, as `Rscript -e 'x <- new.env(); assign("f", envir = x, value = 1); get("f", envir = x)'` shows */
 describe('assign binds its arguments as R does', withTreeSitter(ts => {
 	async function sliced(code: string): Promise<string> {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-		analyzer.addRequest(requestFromInput(code));
+		const analyzer = await analyze(ts, code);
 		const { results } = (await analyzer.query([{ type: 'static-slice', criteria: [`${code.split('\n').length}:1`] }]))['static-slice'];
 		return Object.values(results)[0].reconstruct?.code as string;
 	}

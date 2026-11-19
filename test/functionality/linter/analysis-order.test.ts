@@ -2,9 +2,9 @@ import { afterAll, assert, describe, test } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { LintingRules, type LintingRuleNames } from '../../../src/linter/linter-rules';
 import { withTreeSitter } from '../_helper/shell';
+import { analyze } from '../_helper/analyzer';
 
 /** a small package, placed below a `test` folder that must not make all of its files tests */
 const Package: Record<string, string> = {
@@ -25,8 +25,7 @@ describe('Linter results do not depend on what ran before', withTreeSitter(parse
 	afterAll(() => fs.rmSync(base, { recursive: true, force: true }));
 
 	async function lint(before: 'nothing' | 'parse' | 'dataflow') {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest({ request: 'project', content: root });
+		const analyzer = await analyze(parser, { request: 'project', content: root });
 		if(before !== 'nothing') {
 			await analyzer[before]();
 		}

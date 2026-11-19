@@ -15,6 +15,7 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Resolve } from '../environments/resolve-helper';
 import { argumentRolesOfFunctions } from './argument-roles';
+import { ReachSummaries } from '../../util/fixpoint';
 import { ArgProp } from '../environments/built-in-props';
 
 function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
@@ -55,7 +56,7 @@ function readsBuiltInFunction(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlo
 }
 
 /** The definitions the given node can hand over, to tell an argument being the definition under inspection from one holding another. */
-function definitionsBehind(id: NodeId, graph: DataflowGraph): ReadonlySet<NodeId> {
+export function definitionsBehind(id: NodeId, graph: DataflowGraph): ReadonlySet<NodeId> {
 	const found = new Set<NodeId>();
 	const seen = new Set<NodeId>();
 	const workingQueue: NodeId[] = [id];
@@ -70,14 +71,63 @@ function definitionsBehind(id: NodeId, graph: DataflowGraph): ReadonlySet<NodeId
 			continue;
 		}
 		/* what a call reads beyond its arguments (state it depends on, writes it follows) is no value it hands back */
-		const isCall = DfgVertex.isFunctionCall(vertex);
-		for(const [t, e] of graph.edgesFrom(current)) {
-			if(DfEdge.includesType(e, EdgeType.Returns | EdgeType.DefinedBy) || (DfEdge.includesType(e, EdgeType.Reads) && (!isCall || DfEdge.includesType(e, EdgeType.Argument)))) {
-				workingQueue.push(t);
-			}
-		}
+		workingQueue.push(...behindSuccessors(current, graph));
 	}
 	return found;
+}
+
+/** The edges {@link definitionsBehind} follows out of `current`, a vertex that is no function definition. */
+function behindSuccessors(current: NodeId, graph: DataflowGraph): NodeId[] {
+	const isCall = DfgVertex.isFunctionCall(graph.getVertex(current));
+	const out: NodeId[] = [];
+	for(const [t, e] of graph.edgesFrom(current)) {
+		if(DfEdge.includesType(e, EdgeType.Returns | EdgeType.DefinedBy) || (DfEdge.includesType(e, EdgeType.Reads) && (!isCall || DfEdge.includesType(e, EdgeType.Argument)))) {
+			out.push(t);
+		}
+	}
+	return out;
+}
+
+/**
+ * {@link definitionsBehind} for many nodes of one graph that does not change in between: every node's answer
+ * is worked out once, a strongly connected component at a time, so arguments that lead into the same chain of
+ * reads share the walk instead of repeating it. An answer holds at most `cap` definitions, which is enough to
+ * tell none, one and several apart.
+ */
+export class DefinitionsBehind {
+	private readonly summaries: ReachSummaries<NodeId, ReadonlySet<NodeId>>;
+
+	constructor(graph: DataflowGraph, cap = 2) {
+		const none: ReadonlySet<NodeId> = new Set();
+		const leaf = (id: NodeId) => NodeId.isBuiltIn(id) || DfgVertex.isFunctionDefinition(graph.getVertex(id));
+		this.summaries = new ReachSummaries<NodeId, ReadonlySet<NodeId>>(
+			id => leaf(id) ? [] : behindSuccessors(id, graph),
+			id => !NodeId.isBuiltIn(id) && DfgVertex.isFunctionDefinition(graph.getVertex(id)) ? new Set([id]) : undefined,
+			{ empty: none, concat: (a, b) => cappedUnion(a, b, cap) }
+		);
+	}
+
+	/** the definitions `id` can hand over, at most `cap` of them */
+	public of(id: NodeId): ReadonlySet<NodeId> {
+		return this.summaries.of(id);
+	}
+}
+
+/** The union of both sets, but no more than `cap` elements of it; one of them where it already is the answer. */
+function cappedUnion(a: ReadonlySet<NodeId>, b: ReadonlySet<NodeId>, cap: number): ReadonlySet<NodeId> {
+	if(a.size >= cap || b.size === 0 || b.isSubsetOf(a)) {
+		return a;
+	} else if(b.size >= cap || a.size === 0 || a.isSubsetOf(b)) {
+		return b;
+	}
+	const union = new Set(a);
+	for(const x of b) {
+		if(union.size >= cap) {
+			break;
+		}
+		union.add(x);
+	}
+	return union;
 }
 
 /** What an argument is, which no definition it is looked at for changes. */
@@ -87,7 +137,7 @@ export interface ArgumentFacts {
 	carriesFunction?: boolean
 }
 
-function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph, facts?: Map<NodeId, ArgumentFacts>): boolean {
+function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph, facts?: Map<NodeId, ArgumentFacts>, behind?: DefinitionsBehind): boolean {
 	const callSites = invertedGraph?.outgoingEdges(def.id) ?? graph.ingoingEdges(def.id);
 	for(const [callerId, e] of callSites ?? []) {
 		if(!DfEdge.includesType(e, EdgeType.Calls)) {
@@ -104,7 +154,7 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
 			/* an apply-family call carries the callback among its arguments, which says nothing about the callback itself */
 			let known = facts?.get(arg.nodeId);
 			if(known === undefined) {
-				known = { behind: definitionsBehind(arg.nodeId, graph) };
+				known = { behind: behind?.of(arg.nodeId) ?? definitionsBehind(arg.nodeId, graph) };
 				facts?.set(arg.nodeId, known);
 			}
 			if(known.behind.size === 1 && known.behind.has(def.id)) {
@@ -131,11 +181,13 @@ function callsAFormal(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyz
 /** What to ask for beyond the definition itself, see {@link isHigherOrder}. */
 export interface HigherOrderFunctionsOptions {
 	/** how to ask what a built-in states, and to resolve the value an argument carries */
-	readonly ctx:            ReadOnlyFlowrAnalyzerContext
+	readonly ctx:                ReadOnlyFlowrAnalyzerContext
 	/** the graph with edges reversed, to speed up repeat queries over the same call sites */
-	readonly invertedGraph?: DataflowGraph
+	readonly invertedGraph?:     DataflowGraph
 	/** what is known about the arguments, to share between the definitions asked about in one go; a call site reaching several of them resolves its arguments once */
-	readonly argumentFacts?: Map<NodeId, ArgumentFacts>
+	readonly argumentFacts?:     Map<NodeId, ArgumentFacts>
+	/** the definitions behind each argument, worked out once for the whole graph (see {@link DefinitionsBehind}) */
+	readonly definitionsBehind?: DefinitionsBehind
 }
 
 /**
@@ -143,11 +195,11 @@ export interface HigherOrderFunctionsOptions {
  * formals as a function. `function(x) x` alone is not higher-order.
  * @useInstead {@link FunctionSemantics.isHigherOrder}
  */
-export function isHigherOrder(this: void, id: NodeId, graph: DataflowGraph, { ctx, invertedGraph, argumentFacts }: HigherOrderFunctionsOptions): boolean {
+export function isHigherOrder(this: void, id: NodeId, graph: DataflowGraph, { ctx, invertedGraph, argumentFacts, definitionsBehind: behind }: HigherOrderFunctionsOptions): boolean {
 	const vert = graph.getVertex(id);
 	if(!DfgVertex.isFunctionDefinition(vert)) {
 		return false;
 	}
-	return isAnyReturnAFunction(vert, graph) || callsAFormal(id, graph, ctx) || inspectCallSitesArgumentsFns(vert, graph, ctx, invertedGraph, argumentFacts);
+	return isAnyReturnAFunction(vert, graph) || callsAFormal(id, graph, ctx) || inspectCallSitesArgumentsFns(vert, graph, ctx, invertedGraph, argumentFacts, behind);
 }
 

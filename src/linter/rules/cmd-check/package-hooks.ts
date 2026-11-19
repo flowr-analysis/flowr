@@ -13,15 +13,13 @@ import type { DataflowInformation } from '../../../dataflow/info';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RIfThenElse } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
-import { RWhileLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
-import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
-import { RRepeatLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
-import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { RLoopConstructs, RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { isExportedInInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { builtInOf, callsBuiltIn } from '../../linter-util';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { at, printer, calledDefinitions, type CmdCheckResult, formalNames, packageInfo, topLevelDefinitions } from './cmd-check-util';
+import { at, printer, type CmdCheckResult, formalNames, packageInfo, topLevelDefinitions } from './cmd-check-util';
 
 /** what is wrong with a package hook */
 export type PackageHookIssue =
@@ -78,7 +76,7 @@ const BranchingCalls: ReadonlySet<BrandedIdentifier> = new Set(['switch', 'tryCa
 
 /** the constructs whose body may or may not run */
 function isConditional(node: RNode<ParentInformation>, graph: DataflowGraph): boolean {
-	return RIfThenElse.is(node) || RWhileLoop.is(node) || RForLoop.is(node) || RRepeatLoop.is(node) || RFunctionCall.is(node) && callsBuiltIn(graph, node.info.id, BranchingCalls);
+	return RIfThenElse.is(node) || RLoopConstructs.is(node) || RFunctionCall.is(node) && callsBuiltIn(graph, node.info.id, BranchingCalls);
 }
 
 /**
@@ -102,7 +100,7 @@ function reachedCalls(def: RFunctionDefinition<ParentInformation>, df: DataflowI
 				return false;
 			}
 			result.push({ id: node.info.id, name: Identifier.getName(builtInOf(df.graph, node.info.id) ?? vertex.name), via });
-			for(const callee of follow ? calledDefinitions(df.graph, node.info.id, idMap) : []) {
+			for(const callee of follow ? Dataflow.calleeDefinitionsOf(df.graph, node.info.id) : []) {
 				if(!visited.has(callee.info.id)) {
 					visited.add(callee.info.id);
 					work.push({ def: callee, via: via ?? node.info.id });

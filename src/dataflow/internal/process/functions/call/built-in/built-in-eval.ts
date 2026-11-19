@@ -1,12 +1,17 @@
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import type { DataflowProcessorInformation } from '../../../../../processor';
+import { bindsUnknownNames } from './built-in-expression-list';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
-import { DataflowInformation } from '../../../../../info';
+import { DataflowInformation, ExitPointType } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { requestFromInput } from '../../../../../../r-bridge/retriever';
 import { type ParentInformation, sourcedDeterministicCountingIdGenerator } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	type PotentiallyEmptyRArgument,
+	RFunctionCall,
+	EmptyArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -17,19 +22,22 @@ import { isUndefined } from '../../../../../../util/assert';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { cartesianProduct } from '../../../../../../util/collections/arrays';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import type { NamedInGraphIdentifierDefinition, BrandedIdentifier } from '../../../../../environments/identifier';
+import {
+	Identifier,
+	ReferenceType,
+	type NamedInGraphIdentifierDefinition,
+	type BrandedIdentifier
+} from '../../../../../environments/identifier';
 import { DfgVertex } from '../../../../../graph/vertex';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { envirOf, pipedCall, resolveArgToEnvirOrAmbiguous, resolveConstantString, routeWrittenToStackEnv, unknownIfAmbiguous } from './built-in-envir-utils';
-import { evaluateInEnvir } from './built-in-local';
-import { processDataflowFor } from '../../../../../processor';
+import { evaluateInEnvir, exitsPassingReturn } from './built-in-local';
 import { REnvironment } from '../../../../../environments/environment';
 import { CapturingCalls } from '../quoted';
+import { ControlFlow } from '../../../../control-flow';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { evaluatesCapturedCode } from './built-in-ambient-state';
 import { callNamedFunction, resolveFunctionArgument, type ResolvedFunctionArgument } from './built-in-apply';
 import type { FunctionArgument } from '../../../../../graph/graph';
@@ -51,7 +59,7 @@ export function processEvalCall<OtherInfo>(
 	config: {
 		/** should this produce an explicit source function call in the graph? */
 		includeFunctionCall?: boolean
-		/** if selected processes evalText function call, else processes eval*/
+		/** if selected processes evalText function call, else processes eval */
 		supportFunctionCall?: boolean
 		parameterNames?:      readonly string[]
 		parentFrame?:         boolean
@@ -65,7 +73,7 @@ export function processEvalCall<OtherInfo>(
 	if(evalArgument === undefined) {
 		dataflowLogger.warn(`Expected an expression argument for eval, but got ${args.length} argument(s), skipping`);
 		const bail = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
-		handleUnknownSideEffect(bail.graph, bail.environment, rootId);
+		bindsUnknownNames(bail.graph, bail.environment, rootId);
 		return bail;
 	}
 
@@ -83,7 +91,7 @@ export function processEvalCall<OtherInfo>(
 
 	if(!data.ctx.config.solver.evalStrings) {
 		expensiveTrace(dataflowLogger, () => `Skipping eval call ${JSON.stringify(evalArgument)} (disabled in config file)`);
-		handleUnknownSideEffect(information.graph, information.environment, rootId);
+		bindsUnknownNames(information.graph, information.environment, rootId);
 		return information;
 	}
 
@@ -115,10 +123,7 @@ export function processEvalCall<OtherInfo>(
 		}
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId);
 
-		data = {
-			...data,
-			cds: code.length > 1 ? [...(data.cds ?? []), { id: rootId, when: true }] : data.cds
-		};
+		data = { ...data, cds: code.length > 1 ? [...(data.cds ?? []), { id: rootId, when: true }] : data.cds };
 		const originalInfo = { ...information };
 
 		const result: DataflowInformation[] = [];
@@ -131,13 +136,22 @@ export function processEvalCall<OtherInfo>(
 				information.graph.addEdge(rootId, e.nodeId, EdgeType.Returns);
 			}
 		}
-		return mergeSourced({ ...information, entryPoint: rootId }, result);
+		return mergeSourced({ ...information, entryPoint: rootId }, result.map(r => keepReturnsInEval(r, rootId)));
 	}
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(args)} for eval is currently not supported, skipping`);
 	handleUnknownSideEffect(information.graph, information.environment, rootId);
 	/* a captured expression is linked once the graph is complete, but the state its calls access has to show now */
 	return evaluatesCapturedCode(information, rootId, data);
+}
+
+/** `return` only leaves the evaluation `eval` opens (`eval(quote(return(1)))` does not return from the caller), like it does in `local` */
+function keepReturnsInEval(evaluated: DataflowInformation, rootId: NodeId): DataflowInformation {
+	if(!evaluated.exitPoints.some(e => e.type === ExitPointType.Return)) {
+		return evaluated;
+	}
+	ControlFlow.jumpsTo(evaluated.graph, evaluated, ExitPointType.Return, rootId);
+	return { ...evaluated, exitPoints: exitsPassingReturn(evaluated.exitPoints, rootId) };
 }
 
 /** the entry in {@link DataflowProcessorInformation#referenceChain} of evaluating `code`, so code evaluating itself (`q <- quote(eval(q))`) is not unrolled forever */
@@ -210,7 +224,7 @@ function evaluateQuoted<OtherInfo>(
 		environment: results.map(r => r.environment).reduce((acc, e) => REnvironment.append(acc, e)),
 		in:          information.in.concat(results.flatMap(r => r.in), results.flatMap(r => r.unknownReferences)),
 		out:         information.out.concat(results.flatMap(r => r.out)),
-		exitPoints:  information.exitPoints.concat(results.flatMap(r => r.exitPoints)),
+		exitPoints:  information.exitPoints.concat(results.flatMap(r => keepReturnsInEval(r, rootId).exitPoints)),
 		hooks:       information.hooks.concat(results.flatMap(r => r.hooks))
 	};
 	for(const r of results) {
@@ -239,13 +253,7 @@ function escapeWritesToParentFrame<OtherInfo>(
 		if(!RSymbol.is(inner) || !DfgVertex.isVariableDefinition(information.graph.getVertex(inner.info.id))) {
 			return false;
 		}
-		written.push({
-			nodeId:    inner.info.id,
-			name:      inner.content,
-			type:      ReferenceType.Variable,
-			definedAt: rootId,
-			cds:       data.cds
-		});
+		written.push({ nodeId: inner.info.id, name: inner.content, type: ReferenceType.Variable, definedAt: rootId, cds: data.cds });
 		return false;
 	});
 	if(written.length === 0) {

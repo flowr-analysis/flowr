@@ -5,9 +5,7 @@ import { expensiveTrace } from './log';
 import type { ILogObj, Logger } from 'tslog';
 import { FlowrFilter } from '../search/flowr-search-filters';
 
-/**
- * checks if `item` is an object (it may be an array, ...)
- */
+/** checks if `item` is an object (it may be an array, ...) */
 export function isObjectOrArray(item: unknown): boolean {
 	return typeof item === 'object';
 }
@@ -127,6 +125,11 @@ type DefinedRecord<T> = {
 	[K in keyof T as T[K] extends undefined ? never : K]: Defined<T[K]>;
 };
 
+/** The array, `undefined` for an empty one, to leave it out of a {@link compactRecord}. */
+export function nonEmpty<A extends readonly unknown[]>(array: A | undefined): A | undefined {
+	return array === undefined || array.length === 0 ? undefined : array;
+}
+
 export function compactRecord<T extends Record<string, unknown>>(record: T): DefinedRecord<T>;
 export function compactRecord(record: undefined): undefined;
 export function compactRecord<T extends Record<string, unknown>>(record: T | undefined): DefinedRecord<T> | undefined;
@@ -155,10 +158,7 @@ type Primitive =
 	| Date
 	| ((...args: never[]) => unknown);
 
-/**
- * What sits at the given path of `T`, the counterpart of {@link AutocompletablePaths}.
- * `never` whenever the path names nothing.
- */
+/** What sits at the given path of `T`, the counterpart of {@link AutocompletablePaths}. `never` whenever the path names nothing. */
 export type ValueAtPath<T, Path extends string> =
 	Path extends `${infer Key}.${infer Rest}`
 		? Key extends keyof T ? ValueAtPath<NonNullable<T[Key]>, Rest> : never
@@ -186,9 +186,7 @@ export type AutocompletablePaths<T, Depth extends number = 6> =
 					: `${K}.${AutocompletablePaths<NonNullable<T[K]>, OneLess[Depth]> & string}`)
 			}[keyof T & string];
 
-/**
- * This is a version of a deep clone that preserves unclonable values (like functions, symbols, ...) by keeping the same reference to them.
- */
+/** This is a version of a deep clone that preserves unclonable values (like functions, symbols, ...) by keeping the same reference to them. */
 export function deepClonePreserveUnclonable<T>(obj: T): T {
 	if(typeof obj !== 'object' || obj === null) {
 		return obj;
@@ -298,10 +296,15 @@ export function getOnPath(obj: unknown, path: string): unknown {
 /**
  * Writes `value` at the given dot-separated `path` of `obj`, creating the intermediate steps that do not exist yet.
  * An intermediate is created as an array if the segment indexing it is a number, and as an object otherwise.
+ * A path naming the prototype (`__proto__`, `constructor`, `prototype`) is refused.
  * @see {@link getOnPath} for the counterpart that reads such a path
  */
 export function setOnPath(obj: object, path: string, value: unknown): void {
 	const segments = pathSegments(path);
+	/* a segment naming the prototype would write into every object */
+	if(segments.some(s => s === '__proto__' || s === 'constructor' || s === 'prototype')) {
+		throw new Error(`the path '${path}' names the prototype of an object`);
+	}
 	let at = obj as Record<string | number, unknown>;
 	for(let i = 0; i < segments.length - 1; i++) {
 		const segment = segments[i];

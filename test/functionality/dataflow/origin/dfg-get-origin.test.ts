@@ -2,29 +2,29 @@ import { assert, beforeAll, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { type Origin, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
-import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
 import { guard } from '../../../../src/util/assert';
-import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 import { label } from '../../_helper/label';
+import { analyze } from '../../_helper/analyzer';
+import type { DataflowInformation } from '../../../../src/dataflow/info';
+import type { NormalizedAst } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 
 describe('Dataflow', withTreeSitter(ts => {
 	describe('Dataflow.origin', () => {
 		function chk(code: string, expected: Record<SlicingCriterion, readonly Origin[] | undefined>, name = code): void  {
 			describe(name, () => {
-				let analysis: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
+				let analysis: { dataflow: DataflowInformation, normalize: NormalizedAst } | undefined;
 				beforeAll(async() => {
-					analysis = await createDataflowPipeline(ts, {
-						context: contextFromInput(code)
-					}).allRemainingSteps();
+					const analyzer = await analyze(ts, code);
+					analysis = { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() };
 				});
 				test.each(Object.keys(expected) as SlicingCriterion[])('%s', (interest: SlicingCriterion) => {
 					guard(analysis !== undefined);
 					const want = expected[interest];
-					const interestedId = SlicingCriterion.parse(interest, analysis.normalize.idMap);
+					const { idMap } = analysis.normalize;
+					const interestedId = SlicingCriterion.parse(interest, idMap);
 					const origins = Dataflow.origin(analysis.dataflow.graph, interestedId);
 					try {
 						if(want === undefined) {
@@ -35,7 +35,7 @@ describe('Dataflow', withTreeSitter(ts => {
 							const wantMapped = want.map(e => ({
 								...e,
 								/* a built-in id names no source location, so it is no criterion to resolve */
-								id: NodeId.isBuiltIn(e.id) ? e.id : SlicingCriterion.parse(e.id as SlicingCriterion, (analysis as PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>).normalize.idMap)
+								id: NodeId.isBuiltIn(e.id) ? e.id : SlicingCriterion.parse(e.id as SlicingCriterion, idMap)
 							})).sort((a, b) => String(a.id).localeCompare(String(b.id)));
 							assert.deepStrictEqual(origins, wantMapped);
 						}

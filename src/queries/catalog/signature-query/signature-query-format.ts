@@ -10,6 +10,7 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import { parseSpec, problemsOf } from '../../../project/sigdb/spec-query';
 import { executeSignatureQuery, signatureQueryCompleter } from './signature-query-executor';
+import type { StatedGuards } from '../../../dataflow/fn/guards/built-in-guards';
 import { printSignatureHelp, pushFunction, pushPackage, pushMatches, pushPackages, pushSummary } from './signature-query-render';
 import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
 
@@ -72,6 +73,8 @@ export interface SignatureParameterView {
 
 /** the detailed view of a single function within a package */
 export interface SignatureFunctionView {
+	/** what a call of this function of R has to fulfill, see {@link FunctionSemantics.builtInGuards} */
+	readonly guards?:    StatedGuards;
 	readonly name:       BrandedIdentifier;
 	readonly package:    BrandedNamespace;
 	readonly version?:   string;
@@ -129,6 +132,10 @@ export interface SignatureFlowrView {
 	readonly returns?:    BrandedIdentifier;
 	/** flowR's own parameter names, only present when they disagree with the ones the database records */
 	readonly parameters?: readonly BrandedIdentifier[];
+	/** what the call reads or changes of the global state, as `part:access` like `option:reads` */
+	readonly ambient?:    readonly string[];
+	/** the condition classes the call muffles while its code runs, like `message` for `suppressMessages` */
+	readonly muffles?:    readonly string[];
 }
 
 /** one declared dependency of a package */

@@ -25,7 +25,7 @@ import { at, builtInOf } from '../linter-util';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { uniqueArray } from '../../util/collections/arrays';
 import { accessedFieldName } from '../../dataflow/internal/linker';
-import { calledDefinitions, formalNames, isWithin, projectNodes } from './cmd-check/cmd-check-util';
+import { formalNames, isWithin, projectNodes } from './cmd-check/cmd-check-util';
 import { globalAssignment, superAssignmentTarget, targetVariable } from './cmd-check/global-environment-modification';
 
 /** Ways per-session code changes process-wide state: `<<-` and `assign` to globals, `assignInNamespace`, setters like `options`, top-level reactive values, cache keys missing session values, and `addResourcePath` */
@@ -51,7 +51,6 @@ export interface ProcessStateInSessionConfig extends MergeableRecord {
 	readonly sharedState:       readonly BrandedIdentifier[]
 	/** cache constructors */
 	readonly caches:            readonly BrandedIdentifier[]
-	/** memoisers */
 	readonly memoisers:         readonly BrandedIdentifier[]
 }
 
@@ -115,11 +114,11 @@ function readPath(symbol: RSymbol<ParentInformation>, idMap: AstIdMap): string {
 /** session values (parameters, reactive state, globals and settings a session writes) an expression reads, as paths; definitions are followed */
 function sessionDependence(graph: DataflowGraph, idMap: AstIdMap, sessions: readonly NodeId[], stateCreators: ReadonlySet<BrandedIdentifier>, writtenGlobals: ReadonlySet<BrandedIdentifier>, changedSettings: ReadonlySet<BrandedIdentifier>) {
 	const inSession = (id: NodeId) => sessions.some(s => isWithin(id, s, idMap));
-	const isSessionValue = (def: NodeId): boolean => {
+	function isSessionValue(def: NodeId): boolean {
 		const node = idMap.get(def);
 		const param = RParameter.is(node) ? node : node && parentOf(node, idMap);
 		return RParameter.is(param) ? sessions.includes(param.info.parent ?? -1) : inSession(def) && RFunctionCall.isNamed(assigned(def, graph, idMap), stateCreators);
-	};
+	}
 	/* reads without a resolved definition (reactives and function bodies run later) use the definitions in scope */
 	const byName = Dataflow.definitionsByName(graph);
 	const inScope = (symbol: RSymbol<ParentInformation>): NodeId[] => byName.get(Identifier.getName(symbol.content)).filter(d => {
@@ -127,14 +126,14 @@ function sessionDependence(graph: DataflowGraph, idMap: AstIdMap, sessions: read
 		return scope === undefined || isWithin(symbol.info.id, scope, idMap);
 	});
 	const expanded = new Map<NodeId, ReadonlySet<string>>();
-	const ofDefinition = (def: NodeId): ReadonlySet<string> => {
+	function ofDefinition(def: NodeId): ReadonlySet<string> {
 		if(!expanded.has(def)) {
 			expanded.set(def, new Set());
 			expanded.set(def, of(assigned(def, graph, idMap)));
 		}
 		return expanded.get(def) ?? new Set();
-	};
-	const of = (root: Node | undefined): Set<string> => {
+	}
+	function of(root: Node | undefined): Set<string> {
 		const paths = new Set<string>();
 		RNode.visitAst(root, n => {
 			const parent = parentOf(n, idMap);
@@ -152,7 +151,7 @@ function sessionDependence(graph: DataflowGraph, idMap: AstIdMap, sessions: read
 			}
 		});
 		return paths;
-	};
+	}
 	return {
 		inSession,
 		/** session values `value` depends on that `key` misses */
@@ -168,7 +167,7 @@ function sharedCache(arg: Node | undefined, graph: DataflowGraph, idMap: AstIdMa
 	if(arg === undefined || RString.is(arg)) {
 		return arg === undefined ? absent : arg.content.str !== 'session';
 	} else if(RFunctionCall.isNamed(arg)) {
-		return calledDefinitions(graph, arg.info.id, idMap).some(fn => sharedCache(RExpressionList.is(fn.body) ? fn.body.children.at(-1) : fn.body, graph, idMap, inSession, false));
+		return Dataflow.calleeDefinitionsOf(graph, arg.info.id).some(fn => sharedCache(RExpressionList.is(fn.body) ? fn.body.children.at(-1) : fn.body, graph, idMap, inSession, false));
 	}
 	const defs = Dataflow.targetsOf(graph, arg.info.id, EdgeType.Reads);
 	return RSymbol.is(arg) && (defs.length === 0 || defs.some(d => !inSession(d)));

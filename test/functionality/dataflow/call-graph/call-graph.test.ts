@@ -9,8 +9,8 @@ import {
 } from '../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { analyze } from '../../_helper/analyzer';
 
 assumeLoadedPackages('R6');
 
@@ -23,13 +23,10 @@ function fibGraph() {
 		.calls('7@fib', '1@function')
 		.call(32, '{', [argumentInCall(31)], { omitArgs: true, onlyBuiltIn: true })
 		.calls(32, [NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList), 15, 31])
-		.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, cds: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, cds: undefined }], {
-			out:               [],
-			in:                [],
-			unknownReferences: [],
-			entryPoint:        '2@if',
-			graph:             new Set([1, 5, 6, 7, 11, 13, 14, 15, 18, 19, 20, 22, 24, 25, 26, 28, 29, 31, 32]),
-			environment:       defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
+		.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, cds: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, cds: [{ id: 15, when: false }] }], {
+			entryPoint:  '2@if',
+			graph:       new Set([1, 5, 6, 7, 11, 13, 14, 15, 18, 19, 20, 22, 24, 25, 26, 28, 29, 31, 32]),
+			environment: defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
 		}, { readParams: [[1, true]] })
 		.calls('1@function', ['3@return', '5@return', 7, 14, 15, 20, 22, 26, 28, 29, 32])
 		.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
@@ -67,22 +64,16 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.call(11, '{', [argumentInCall('1@10')], { omitArgs: true, onlyBuiltIn: true })
 			.call(28, '{', [argumentInCall('4@27')], { omitArgs: true, onlyBuiltIn: true })
 			.defineFunction('4@function', [{ nodeId: 27, cds: undefined, type: ExitPointType.Return }], {
-				out:               [],
-				in:                [],
-				unknownReferences: [],
-				entryPoint:        '5@return',
-				graph:             new Set([15, 21, 23, 24, 25, 27, 28]),
-				environment:       defaultEnv().pushEnv().defineParameter('y', '4@y', '4@y')
+				entryPoint:  '5@return',
+				graph:       new Set([15, 21, 23, 24, 25, 27, 28]),
+				environment: defaultEnv().pushEnv().defineParameter('y', '4@y', '4@y')
 			}, { readParams: [[15, true]] })
 			.calls('4@function', [28, '5@return', 23, 25])
 			.calls(28, [27, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)])
 			.defineFunction('1@function', [{ nodeId: 10, cds: undefined, type: ExitPointType.Return }], {
-				out:               [],
-				in:                [],
-				unknownReferences: [],
-				entryPoint:        '2@return',
-				graph:             new Set([1, 6, 7, 8, 10, 11]),
-				environment:       defaultEnv().pushEnv().defineParameter('x', '1@x', '1@x')
+				entryPoint:  '2@return',
+				graph:       new Set([1, 6, 7, 8, 10, 11]),
+				environment: defaultEnv().pushEnv().defineParameter('x', '1@x', '1@x')
 			}, { readParams: [[1, true]] })
 			.call('2@return', 'return', [argumentInCall('2@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return] })
 			.calls('2@return', NodeId.mapBuiltInProc(BuiltInProcName.Return)).calls('2@return', '2@+')
@@ -396,8 +387,7 @@ f.numeric <- function(x) {
 		for(let i = 0; i < n; i++) {
 			lines.push(`f${i}(function(g) g, fn = f${(i + 3) % n})`);
 		}
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-		analyzer.addRequest(lines.join('\n'));
+		const analyzer = await analyze(ts, lines.join('\n'));
 		const { idMap } = await analyzer.normalize();
 		const graph = await analyzer.callGraph();
 		const callAt = (line: number) => SlicingCriterion.parse(`${line}@f${line - 5 - n}`, idMap);
@@ -409,8 +399,7 @@ f.numeric <- function(x) {
 	});
 
 	test(decorateLabelContext(label('domains:hof a closure handed to lapply is reachable', ['name-normal', 'function-calls']), ['dataflow']), async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-		analyzer.addRequest('adder <- function(n) function(x) x + n\nadd1 <- adder(1)\nr <- Reduce(`+`, lapply(1:3, add1))\nprint(r)');
+		const analyzer = await analyze(ts, 'adder <- function(n) function(x) x + n\nadd1 <- adder(1)\nr <- Reduce(`+`, lapply(1:3, add1))\nprint(r)');
 		const { idMap } = await analyzer.normalize();
 		const unreachable = new Set((await analyzer.query({ type: 'call-graph', reportUnreachable: true })).unreachable);
 		assert.isFalse(unreachable.has(SlicingCriterion.parse('1:22', idMap)), 'inner function');

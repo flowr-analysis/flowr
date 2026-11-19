@@ -1,8 +1,7 @@
 import { rPath } from '../../../_helper/r-path';
 import { describe, expect, it } from 'vitest';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
-import type { RObjectData } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
-import { CompressionType, RDAParser } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
+import { type RObjectData, CompressionType, RDAParser } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 import fs from 'fs';
 import { FlowrTextFile } from '../../../../../src/project/context/flowr-file';
 import path from 'path';
@@ -82,8 +81,7 @@ describe('rda-files', () => {
 	});
 
 	describe('compression detection', () => {
-		const detect = (bytes: number[], withZlib = false) =>
-			new RDAParser(new FlowrTextFile('unused')).detectCompression(Buffer.from(bytes), withZlib);
+		const detect = (bytes: number[], withZlib = false) => new RDAParser(new FlowrTextFile('unused')).detectCompression(Buffer.from(bytes), withZlib);
 
 		it.each([
 			['gzip',                     [0x1f, 0x8b],                                                               CompressionType.CompGz],

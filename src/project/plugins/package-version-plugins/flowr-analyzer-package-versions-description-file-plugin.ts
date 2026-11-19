@@ -3,7 +3,6 @@ import { DescriptionFile } from '../file-plugins/flowr-analyzer-description-file
 import { SemVer } from 'semver';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 
-
 /**
  * This plugin extracts package versions from R `DESCRIPTION` files.
  * It looks at the `Depends` and `Imports` fields to find package names and their version constraints.

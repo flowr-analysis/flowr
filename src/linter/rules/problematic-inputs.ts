@@ -3,8 +3,11 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
-import type { InputClassifierConfig, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
-import { InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
+import {
+	type InputClassifierConfig,
+	type InputSources,
+	InputType
+} from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
@@ -225,9 +228,6 @@ export const PROBLEMATIC_INPUTS = {
 		description:   'Finds dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with \'|\' indicating a pipe command injection.',
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.Performance],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: ctx => ({
-			consider:             ctx.env.deriveFromIndex(defaultConsider),
-			pipeCommandFunctions: defaultPipeCommandFunctions
-		})
+		defaultConfig: ctx => ({ consider: ctx.env.deriveFromIndex(defaultConsider), pipeCommandFunctions: defaultPipeCommandFunctions })
 	}
 } as const satisfies LintingRule<ProblematicInputsResult, never, ProblematicInputsConfig>;

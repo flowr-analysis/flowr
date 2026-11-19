@@ -1,6 +1,9 @@
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	type PotentiallyEmptyRArgument,
+	EmptyArgument,
+	RFunctionCall
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { signatureFor } from '../../../../../fn/dispatch';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -35,6 +38,11 @@ export function s4ClassName(cls: ClassName): Identifier {
 	return S4ClassMark + cls;
 }
 
+/** Whether the name is one of {@link s4ClassName}, an entry of the class registry rather than a variable. */
+export function isS4ClassName(name: BrandedIdentifier): boolean {
+	return name.startsWith(S4ClassMark);
+}
+
 /** Which arguments of a call name S4 registrations it depends on rather than declares. */
 export interface S4UseConfig {
 	/** the argument naming the S4 generic the call answers or asks about (`f` in `setMethod`) */
@@ -52,7 +60,6 @@ export interface S4UseConfig {
 	/** the call registers its definition as a method of the generic, for the signature the first of its {@link classArgs} states (`setMethod`) */
 	readonly registersMethod?: boolean;
 }
-
 
 /** The names an argument states, looking through the `c(...)`/`signature(...)` wrappers a signature may use. */
 function classNamesOf<O>(node: RNode<O & ParentInformation> | undefined, data: Data<O>): readonly ClassName[] {

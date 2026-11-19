@@ -6,20 +6,21 @@ import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
-import type { InputClassifierConfig, InputClassifierFunctionIdentifiers, InputSources } from './simple-input-classifier';
-import { classifyInput } from './simple-input-classifier';
+import {
+	type InputClassifierConfig,
+	type InputClassifierFunctionIdentifiers,
+	type InputSources,
+	classifyInput
+} from './simple-input-classifier';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import { runSearch } from '../../../search/flowr-search-executor';
 import type { FlowrSearchLike } from '../../../search/flowr-search-builder';
 import { Record } from '../../../util/record';
 import { Identifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { AttachedBasePackages } from '../../../util/r-base-packages';
-import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
-import { REnvironment } from '../../../dataflow/environments/environment';
+import { type REnvironmentInformation, REnvironment } from '../../../dataflow/environments/environment';
 
-/**
- * Execute an input sources query
- */
+/** Execute an input sources query */
 export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, queries: readonly InputSourcesQuery[]): Promise<InputSourcesQueryResult> {
 	const start = Date.now();
 	const results: Record<string, InputSources> = {};
@@ -51,10 +52,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 		}
 	}
 
-	return {
-		...metaSince(start),
-		results
-	};
+	return { ...metaSince(start), results };
 }
 
 /** The default classifier config with the configured entries added, its searches (e.g. linter rules) resolved. */

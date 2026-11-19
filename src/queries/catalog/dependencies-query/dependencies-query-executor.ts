@@ -7,7 +7,7 @@ import type { CallContextQuery, CallContextQueryResult } from '../call-context-q
 import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { Identifier, PkgName, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
-import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { type DataflowGraph, FunctionArgument } from '../../../dataflow/graph/graph';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import type { BasicQueryData } from '../../base-query-format';
@@ -23,7 +23,6 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flow
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { log } from '../../../util/log';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import { FunctionArgument } from '../../../dataflow/graph/graph';
 import { linkPlotsToDevices } from './link-devices';
 import { uniqueArray, uniqueArrayBy } from '../../../util/collections/arrays';
 import { memoize } from '../../../util/collections/defaultmap';
@@ -37,9 +36,7 @@ import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/
 import { AttachedBasePackageSet, attachedBasePackages } from '../../../util/r-base-packages';
 import type { CallContext } from '../../../dataflow/eval/resolve/alias-tracking';
 
-/**
- * Executes a dependencies query.
- */
+/** Executes a dependencies query. */
 export async function executeDependenciesQuery({
 	analyzer,
 }: BasicQueryData, queries: readonly DependenciesQuery[]): Promise<DependenciesQueryResult> {
@@ -53,10 +50,7 @@ export async function executeDependenciesQuery({
 				ignoreDefaultFunctions: query.ignoreDefaultFunctions || q.ignoreDefaultFunctions,
 				assumedPackages:        query.assumedPackages || q.assumedPackages,
 				focus:                  query.focus === undefined && q.focus === undefined ? undefined : [...query.focus ?? [], ...q.focus ?? []],
-				additionalCategories:   {
-					...query.additionalCategories,
-					...q.additionalCategories
-				}
+				additionalCategories:   { ...query.additionalCategories, ...q.additionalCategories }
 			};
 		}
 		log.info('Merged multiple dependencies queries into one:', query);
@@ -120,10 +114,7 @@ export async function executeDependenciesQuery({
 	}
 
 	const focus = query.focus?.length ? await focusOf(data, query.focus) : undefined;
-	return {
-		'.meta': { ...metaSince(now)['.meta'], ...focus === undefined ? {} : { focus } },
-		...results,
-	} as DependenciesQueryResult;
+	return { '.meta': { ...metaSince(now)['.meta'], ...focus === undefined ? {} : { focus } }, ...results } as DependenciesQueryResult;
 }
 
 /** the nodes taking part in what the `criteria` name: the nodes themselves, what they depend on, and what depends on them */
@@ -173,7 +164,9 @@ function callSitesOf(found: readonly DependencyInfo[], graph: DataflowGraph, ast
 			if(!DfgVertex.isFunctionCall(vertex)) {
 				continue;
 			}
-			const context = () => new Map(chain.context).set(definition, call);
+			const context = () => {
+				return new Map(chain.context).set(definition, call);
+			};
 			const asked = ask?.(context());
 			const values = asked?.length ? asked : sole.length === 1 ? sole : [undefined];
 			const sites = uniqueArray(values).filter(v => !known.has(key(call, v)) && !known.has(key(call, v, chain.root))).map((value): DependencyInfo => {
@@ -364,9 +357,10 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 				continue;
 			}
 			const formals = run.formals(vertex, functionName);
-			const argsIn = (callContext?: CallContext) => getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx, formals, callContext, run.opened);
-			const linkedIn = (args: ReturnType<typeof argsIn>, callContext?: CallContext) =>
-				collectValuesFromLinks(args, { dataflow, config, ctx: ictx, formals: run.formals, opened: run.opened }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined, callContext);
+			const argsIn = (callContext?: CallContext) => {
+				return getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx, formals, callContext, run.opened);
+			};
+			const linkedIn = (args: ReturnType<typeof argsIn>, callContext?: CallContext) => collectValuesFromLinks(args, { dataflow, config, ctx: ictx, formals: run.formals, opened: run.opened }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined, callContext);
 			const args = argsIn();
 			const linkedArgs = linkedIn(args);
 			const linked = linkedIds?.map(linkedId => typeof linkedId === 'object' ? linkedId.id : linkedId);
@@ -410,7 +404,9 @@ function getResults(categories: Record<DependencyCategoryName, DependencyCategor
 			} else if(ignoreOnArgVal()) {
 				continue;
 			}
-			const replaced = (value: string | undefined) => value !== undefined && info.stringReplacements && Object.hasOwn(info.stringReplacements, value) ? info.stringReplacements[value] : value;
+			const replaced = (value: string | undefined) => {
+				return value !== undefined && info.stringReplacements && Object.hasOwn(info.stringReplacements, value) ? info.stringReplacements[value] : value;
+			};
 			run.revalue.set(id, callContext => {
 				const args = argsIn(callContext);
 				const found = linkedIn(args, callContext) ?? args;

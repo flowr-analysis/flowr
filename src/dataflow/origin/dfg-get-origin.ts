@@ -1,11 +1,10 @@
 import { isBuiltInProcName } from '../environments/built-in-proc-name';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../graph/graph';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, VertexType } from '../graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, VertexType, DfgVertex } from '../graph/vertex';
 import { type EdgeTypeBits, EdgeType, DfEdge } from '../graph/edge';
 import { isNotUndefined } from '../../util/assert';
 import type { Identifier } from '../environments/identifier';
-import { DfgVertex } from '../graph/vertex';
 import { Dataflow } from '../graph/df-helper';
 
 export const enum OriginType {
@@ -56,9 +55,7 @@ export interface FunctionCallOrigin {
 	readonly id:   NodeId;
 }
 
-/**
- * This is similar to a {@link FunctionCallOrigin}, but used for built-in functions that have no direct correspondence in the dataflow graph.
- */
+/** This is similar to a {@link FunctionCallOrigin}, but used for built-in functions that have no direct correspondence in the dataflow graph. */
 export interface BuiltInFunctionOrigin {
 	readonly type: OriginType.BuiltInFunctionOrigin;
 	/** processor that is used to process the built-in function */
@@ -123,20 +120,9 @@ function getVariableUseOrigin(dfg: DataflowGraph, use: { id: NodeId }): Origin[]
 		const targetVtx = dfg.getVertex(target);
 		if(NodeId.isBuiltIn(target)) {
 			/* a built-in constant such as `pi` carries a value vertex, a built-in function named as a value has none */
-			origins.push(DfgVertex.isValue(targetVtx) ? {
-				type: OriginType.ConstantOrigin,
-				id:   target
-			} : {
-				type: OriginType.BuiltInFunctionOrigin,
-				fn:   { name: NodeId.fromBuiltIn(target) },
-				id:   use.id,
-				proc: target
-			});
+			origins.push(DfgVertex.isValue(targetVtx) ? { type: OriginType.ConstantOrigin, id: target } : { type: OriginType.BuiltInFunctionOrigin, fn: { name: NodeId.fromBuiltIn(target) }, id: use.id, proc: target });
 		} else if(DfgVertex.isVariableDefinition(targetVtx)) {
-			origins.push({
-				type: OriginType.ReadVariableOrigin,
-				id:   target
-			});
+			origins.push({ type: OriginType.ReadVariableOrigin, id: target });
 		}
 	}
 	const onlyNamesItself = origins.length > 0 && origins.every(o => o.type === OriginType.BuiltInFunctionOrigin && o.id === use.id);
@@ -161,10 +147,7 @@ function getVariableDefinitionOrigin(dfg: DataflowGraph, vtx: DataflowGraphVerte
 				continue;
 			}
 			if(DfgVertex.isVariableDefinition(targetVtx)) {
-				pool.push({
-					type: OriginType.ReadVariableOrigin,
-					id:   target
-				});
+				pool.push({ type: OriginType.ReadVariableOrigin, id: target });
 			}
 		}
 	}
@@ -189,12 +172,7 @@ function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall
 	}
 	origins = (origins ?? []).concat([...targets].map(target => {
 		if(NodeId.isBuiltIn(target)) {
-			return {
-				type: OriginType.BuiltInFunctionOrigin,
-				fn:   { name: call.name },
-				id:   call.id,
-				proc: target
-			};
+			return { type: OriginType.BuiltInFunctionOrigin, fn: { name: call.name }, id: call.id, proc: target };
 		}
 		const get = dfg.getVertex(target);
 		if(!DfgVertex.isFunctionDefinition(get) && !DfgVertex.isVariableDefinition(get)) {

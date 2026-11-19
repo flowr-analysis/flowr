@@ -1,16 +1,16 @@
 import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
+import { staticSliceOf, analyze } from '../../../_helper/analyzer';
 import { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
-import { createSlicePipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
-import { deterministicCountingIdGenerator } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type {
+	ParentInformation
+} from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
 import { reconstructToCode } from '../../../../../src/reconstruct/reconstruct';
 import { buildSourceInlineMap } from '../../../../../src/reconstruct/inline/source-inline-map';
 import type { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
-import type { ParentInformation } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
-import { executeStaticSliceQuery } from '../../../../../src/queries/catalog/static-slice-query/static-slice-query-executor';
+import { executeStaticSliceQuery } from '../../../../../src/queries/catalog/static-slice-query/static-slice-query-format';
 import { SliceDirection } from '../../../../../src/util/slice-direction';
 import { RFunctionCall } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
@@ -20,14 +20,7 @@ function selectSourceCalls(node: RNode<ParentInformation>): boolean {
 }
 
 async function run(input: string, files: FlowrInlineTextFile[], criteria: SlicingCriteria) {
-	const parser = new TreeSitterExecutor();
-	const context = contextFromInput(input);
-	context.addFiles(files);
-	const res = await createSlicePipeline(parser, {
-		getId:     deterministicCountingIdGenerator(0),
-		context,
-		criterion: criteria
-	}).allRemainingSteps();
+	const res = await staticSliceOf(new TreeSitterExecutor(), input, criteria, { files });
 	const map = buildSourceInlineMap(res.normalize, res.dataflow.graph);
 	const inlined = reconstructToCode(res.normalize, {
 		nodes:         res.slice.result,
@@ -39,18 +32,7 @@ async function run(input: string, files: FlowrInlineTextFile[], criteria: Slicin
 
 /** run the full slice pipeline with the `inlineSources` input, exercising the reconstruct step's own inlining */
 async function runViaPipeline(input: string, files: FlowrInlineTextFile[], criteria: SlicingCriteria, direction?: SliceDirection) {
-	const parser = new TreeSitterExecutor();
-	const context = contextFromInput(input);
-	context.addFiles(files);
-	const res = await createSlicePipeline(parser, {
-		getId:         deterministicCountingIdGenerator(0),
-		context,
-		criterion:     criteria,
-		direction,
-		inlineSources: true,
-		autoSelectIf:  selectSourceCalls
-	}).allRemainingSteps();
-	return res.reconstruct;
+	return (await staticSliceOf(new TreeSitterExecutor(), input, criteria, { files, direction, inlineSources: true, autoSelectIf: selectSourceCalls })).reconstruct;
 }
 
 describe('inline source()', { concurrent: false }, () => {
@@ -185,8 +167,7 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 
 	test('the static-slice query surfaces inlineSources through its public flag', async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
-		analyzer.addRequest('source("a")\ncat(N)');
+		const analyzer = await analyze(new TreeSitterExecutor(), 'source("a")\ncat(N)');
 		analyzer.addFile(new FlowrInlineTextFile('a', 'N <- 9'));
 		const out = await executeStaticSliceQuery({ analyzer }, [
 			{ type: 'static-slice', criteria: ['2@N'], inlineSources: true }
@@ -210,8 +191,7 @@ describe('inline source()', { concurrent: false }, () => {
 		expect(entry.reconstruct.code).toBe('twice <- function(x) x * 2\nprint(twice(2))');
 	});
 	test('banners mark where a spliced file begins and ends', async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
-		analyzer.addRequest('source("a")\ncat(N)');
+		const analyzer = await analyze(new TreeSitterExecutor(), 'source("a")\ncat(N)');
 		analyzer.addFile(new FlowrInlineTextFile('a', 'N <- 9'));
 		const out = await executeStaticSliceQuery({ analyzer }, [
 			{ type: 'static-slice', criteria: ['2@N'], inlineSources: 'banner' }

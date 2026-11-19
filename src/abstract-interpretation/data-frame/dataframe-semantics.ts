@@ -1,20 +1,30 @@
 import { VariableResolve } from '../../config';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import type { IdentifierString } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type IdentifierString } from '../../dataflow/environments/identifier';
+import { Dataflow } from '../../dataflow/graph/df-helper';
+import { EdgeType } from '../../dataflow/graph/edge';
+import { OriginType } from '../../dataflow/origin/dfg-get-origin';
+import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
+import { datasetShape } from '../../util/r-datasets';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
-import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexUse } from '../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../dataflow/internal/process/functions/call/argument/make-argument';
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RAccess, type RIndexAccess, type RNamedAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
-import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RUnaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
+import { RLogical } from '../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RValueType } from '../../dataflow/environments/guard-facts';
+import { RIfThenElse } from '../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { requestFromInput, type RParseRequest } from '../../r-bridge/retriever';
@@ -29,9 +39,10 @@ import { unescapeSpecialChars } from './resolve-args';
 import { applyDataFrameSemantics, ConstraintType, getConstraintType, JoinType } from './semantics';
 import type { DataFrameOperation, DataFrameOperations } from './shape-inference';
 
-/**
- * Represents the different types of data frames in R
- */
+/** see `scripts/gen-r-datasets.ts`, which keeps at most this many columns of a data set */
+const MaxDatasetColumns = 200;
+
+/** Represents the different types of data frames in R */
 enum DataFrameType {
 	DataFrame = 'data.frame',
 	Tibble = 'tibble',
@@ -41,9 +52,7 @@ enum DataFrameType {
 /** The state abstract domain of the data frame shape analysis */
 type DataFrameStateDomain = StateDomain<DataFrameDomain>;
 
-/**
- * A map storing the abstract data frame operations that the expressions of the analyzed program are mapped to.
- */
+/** A map storing the abstract data frame operations that the expressions of the analyzed program are mapped to. */
 export type DataFrameOperationMap = Map<NodeId, readonly DataFrameOperation[]>;
 
 /**
@@ -211,18 +220,15 @@ const DataFrameSemantics = {
 			separator: { pos: 2, name: 'sep', default: '\\t' }
 		}, DataFrameType.DataFrame, true),
 		'readr::read_table': applyFunctionCall(mapDataFrameRead, {
-			fileName:   { pos: 0, name: 'file' },
-			header:     { pos: 1, name: 'col_names', default: true },
-			separator:  { pos: -1, default: '\\s' },
-			quote:      { pos: -1, default: '"' },
-			skipLines:  { pos: 5, name: 'skip', default: 0 },
-			comment:    { pos: 9, name: 'comment', default: '' },
-			checkNames: { pos: -1, default: false },
-			noDupNames: { pos: -1, default: true },
-			critical:   [
-				{ pos: 6, name: 'n_max', default: Infinity },
-				{ pos: 11, name: 'skip_empty_rows', default: true }
-			],
+			fileName:     { pos: 0, name: 'file' },
+			header:       { pos: 1, name: 'col_names', default: true },
+			separator:    { pos: -1, default: '\\s' },
+			quote:        { pos: -1, default: '"' },
+			skipLines:    { pos: 5, name: 'skip', default: 0 },
+			comment:      { pos: 9, name: 'comment', default: '' },
+			checkNames:   { pos: -1, default: false },
+			noDupNames:   { pos: -1, default: true },
+			critical:     [{ pos: 6, name: 'n_max', default: Infinity }, { pos: 11, name: 'skip_empty_rows', default: true }],
 			noEmptyNames: true
 		}, DataFrameType.Tibble, true),
 		'readr::read_csv': applyFunctionCall(mapDataFrameRead, {
@@ -258,11 +264,13 @@ const DataFrameSemantics = {
 			],
 			noEmptyNames: true
 		}, DataFrameType.Tibble, true),
-		'base::cbind': applyFunctionCall(mapDataFrameColBind, {
-			special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude']
+		'base::cbind': applyFunctionCall(mapDataFrameBind, {
+			special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'],
+			cols:    true
 		}, DataFrameType.DataFrame),
-		'base::rbind': applyFunctionCall(mapDataFrameRowBind, {
-			special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude']
+		'base::rbind': applyFunctionCall(mapDataFrameBind, {
+			special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'],
+			cols:    false
 		}, DataFrameType.DataFrame),
 		'utils::head': applyFunctionCall(mapDataFrameHeadTail, {
 			dataFrame: { pos: 0, name: 'x' },
@@ -313,10 +321,8 @@ const DataFrameSemantics = {
 			dataFrame: { pos: 0, name: '.data' },
 			special:   ['.by', '.groups']
 		}, DataFrameType.DataFrame, true),
-		'dplyr::inner_join': applyFunctionCall(mapDataFrameJoin, {
-			...DplyrJoinParams
-		}, DataFrameType.DataFrame, true),
-		'dplyr::left_join': applyFunctionCall(mapDataFrameJoin, {
+		'dplyr::inner_join': applyFunctionCall(mapDataFrameJoin, { ...DplyrJoinParams }, DataFrameType.DataFrame, true),
+		'dplyr::left_join':  applyFunctionCall(mapDataFrameJoin, {
 			...DplyrJoinParams,
 			joinLeft: { pos: -1, default: true }
 		}, DataFrameType.DataFrame, true),
@@ -335,10 +341,7 @@ const DataFrameSemantics = {
 			joinAll:        { pos: 5, name: 'all', default: false },
 			joinLeft:       { pos: 6, name: 'all.x', default: false },
 			joinRight:      { pos: 7, name: 'all.y', default: false },
-			critical:       [
-				{ pos: 3, name: 'by.x' },
-				{ pos: 4, name: 'by.y' }
-			]
+			critical:       [{ pos: 3, name: 'by.x' }, { pos: 4, name: 'by.y' }]
 		}, DataFrameType.DataFrame, true),
 		'dplyr::relocate': applyFunctionCall(mapDataFrameIdentity, {
 			dataFrame:         { pos: 0, name: '.data' },
@@ -491,9 +494,7 @@ const DataFrameSemantics = {
 /** the functions the shape inference knows to return a data frame, qualified as `pkg::name`, like `utils::read.csv` */
 export const DataFrameFunctions: ReadonlySet<string> = new Set(Object.keys(DataFrameSemantics.functionCalls));
 
-/**
- * The options of the abstract semantics of the data frame shape inference (see {@link DataFrameShapeSemantics}).
- */
+/** The options of the abstract semantics of the data frame shape inference (see {@link DataFrameShapeSemantics}). */
 export interface DataFrameShapeSemanticsOptions {
 	/** Whether the abstract data frame operations the expressions are mapped to should be stored (defaults to `true`) */
 	readonly trackOperations?: boolean;
@@ -534,6 +535,26 @@ export class DataFrameShapeSemantics extends ValueSemantics<DataFrameStateDomain
 	}
 
 	/**
+	 * A symbol without a definition in the program that names a data set R finds as lazy data, such as `penguins`
+	 * (from `datasets`), `starwars` once `dplyr` is loaded, or `dplyr::starwars`, has the shape of that data set.
+	 */
+	public handleVariableUse(state: DataFrameStateDomain, vertex: DataflowGraphVertexUse, ctx: AbsintContext<DataFrameStateDomain>): void {
+		const node = ctx.getAstNode(vertex.id);
+
+		if(!RSymbol.is(node) || node.info.role === RoleInParent.FunctionCallName || Dataflow.origin(ctx.dfg, vertex.id)?.some(origin => origin.type === OriginType.ReadVariableOrigin)) {
+			return;
+		}
+		const loaded = loadedPackages(ctx);
+		const shape = datasetShape(Identifier.getName(node.content), Identifier.getNamespace(node.content), pkg => loaded.has(String(pkg)) || ctx.context.deps.getDependency(pkg) !== undefined);
+
+		if(shape !== undefined) {
+			/* the table keeps at most the first columns of a very wide data set, which then are not all its names */
+			const colnames = shape.columns.length < MaxDatasetColumns ? [...shape.columns] : undefined;
+			applyDataFrameExpression(state, node, [{ operation: 'read', operand: undefined, source: `${shape.pkg}::${shape.name}`, colnames, rows: shape.rows }], ctx, this.operations);
+		}
+	}
+
+	/**
 	 * Applies the abstract semantics defined for the called replacement function, or over-approximates
 	 * the modified data frame operand of any other replacement function by the `unknown` abstract operation.
 	 */
@@ -544,6 +565,33 @@ export class DataFrameShapeSemantics extends ValueSemantics<DataFrameStateDomain
 			applyUnknownAssignment(state, vertex, ctx, this.operations);
 		}
 	}
+}
+
+/** the packages the program names in a `library` call or the like, per dataflow graph */
+const loadedOf = new WeakMap<object, ReadonlySet<string>>();
+
+/** The packages the program loads by name, whose data sets R then finds as well (whether or not flowR knows anything else of them). */
+function loadedPackages(ctx: AbsintContext<DataFrameStateDomain>): ReadonlySet<string> {
+	let loaded = loadedOf.get(ctx.dfg);
+	if(loaded === undefined) {
+		const names = new Set<string>();
+		for(const [, vertex] of ctx.dfg.vertices(true)) {
+			if(DfgVertex.isFunctionCall(vertex) && DfgVertex.hasOrigin(vertex, BuiltInProcName.Library)) {
+				for(const arg of vertex.args) {
+					const value = arg === EmptyArgument ? undefined : ctx.getAstNode(arg.nodeId);
+					const named = RArgument.is(value) ? value.value : value;
+					if(RSymbol.is(named)) {
+						names.add(String(Identifier.getName(named.content)));
+					} else if(RString.is(named)) {
+						names.add(named.content.str);
+					}
+				}
+			}
+		}
+		loaded = names;
+		loadedOf.set(ctx.dfg, loaded);
+	}
+	return loaded;
 }
 
 /**
@@ -674,9 +722,7 @@ function applyUnknownAssignment(state: DataFrameStateDomain, vertex: DataflowGra
 	}], ctx, operations);
 }
 
-/**
- * Creates the resolve information for resolving the arguments of a data frame function call.
- */
+/** Creates the resolve information for resolving the arguments of a data frame function call. */
 function getResolveInfo(ctx: AbsintContext<DataFrameStateDomain>): ResolveInfo {
 	return { graph: ctx.dfg, idMap: ctx.ast.idMap, full: true, resolve: VariableResolve.Alias, ctx: ctx.context };
 }
@@ -715,9 +761,7 @@ function applyDataFrameExpression(state: DataFrameStateDomain, node: RNode<Paren
 	}
 }
 
-/**
- * Maps a data frame creation function, such as `data.frame(id = 1:5, name = c("A", "B"))`, to abstract data frame operations.
- */
+/** Maps a data frame creation function, such as `data.frame(id = 1:5, name = c("A", "B"))`, to abstract data frame operations. */
 function mapDataFrameCreate(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
@@ -746,17 +790,10 @@ function mapDataFrameCreate(
 	} else {
 		colnames = filterValidNames(colnames, checkNames, noDupNames);
 	}
-	return [{
-		operation: 'create',
-		operand:   undefined,
-		colnames,
-		rows
-	}];
+	return [{ operation: 'create', operand: undefined, colnames, rows }];
 }
 
-/**
- * Maps a data frame conversion function, such as `as.data.frame(x)`, to abstract data frame operations.
- */
+/** Maps a data frame conversion function, such as `as.data.frame(x)`, to abstract data frame operations. */
 function mapDataFrameConvert(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation },
@@ -768,10 +805,7 @@ function mapDataFrameConvert(
 	if(RArgument.isEmpty(dataFrame) || !RArgument.isWithValue(dataFrame)) {
 		return [{ operation: 'unknown', operand: undefined }];
 	}
-	return [{
-		operation: 'identity',
-		operand:   dataFrame.value.info.id
-	}];
+	return [{ operation: 'identity', operand: dataFrame.value.info.id }];
 }
 
 /**
@@ -811,13 +845,7 @@ function mapDataFrameRead(
 		typeof skipLines === 'number' && typeof checkNames === 'boolean' && typeof noDupNames === 'boolean';
 
 	if(request === undefined || !info.ctx.config.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles || !validArguments) {
-		return [{
-			operation: 'read',
-			operand:   undefined,
-			source,
-			colnames:  undefined,
-			rows:      undefined
-		}];
+		return [{ operation: 'read', operand: undefined, source, colnames: undefined, rows: undefined }];
 	}
 	const LineCommentRegex = new RegExp(`\\s*[${escapeRegExp(comment, true)}].*`);
 	let firstLine = undefined as (string | undefined)[] | undefined;
@@ -845,21 +873,13 @@ function mapDataFrameRead(
 	} else if(firstLine !== undefined) {
 		colnames = Array(firstLine.length).fill(undefined);
 	}
-	return [{
-		operation: 'read',
-		operand:   undefined,
-		source,
-		colnames,
-		rows:      allLines ? rowCount : [rowCount, Infinity]
-	}];
+	return [{ operation: 'read', operand: undefined, source, colnames, rows: allLines ? rowCount : [rowCount, Infinity] }];
 }
 
-/**
- * Maps a function adding columns to a data frame, such as `cbind(df, id = 1:5)`, to abstract data frame operations.
- */
-function mapDataFrameColBind(
+/** Maps a function adding columns or rows to a data frame, such as `cbind(df, id = 1:5)` or `rbind(df, c(1, "A"))`, to abstract data frame operations. */
+function mapDataFrameBind(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
-	params: { special: string[] },
+	params: { special: string[], cols: boolean },
 	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
@@ -873,91 +893,32 @@ function mapDataFrameColBind(
 	}
 	const result: DataFrameOperations = [];
 	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
-	let colnames: (string | undefined)[] | undefined = [];
+	let added: (string | undefined)[] | undefined = [];
 
 	for(const arg of args) {
 		if(arg !== dataFrame && RArgument.isNotEmpty(arg)) {
 			const otherDataFrame = ctx.getAbstractValue(arg.value);
 
 			if(otherDataFrame !== undefined) {
-				result.push({
-					operation: 'concatCols',
-					operand:   operand?.info.id,
-					other:     otherDataFrame
-				});
+				result.push({ operation: params.cols ? 'concatCols' : 'concatRows', operand: operand?.info.id, other: otherDataFrame });
 				operand = undefined;
-			// added columns are top if argument cannot be resolved to constant (vector-like) value
+			// added columns/rows are top if argument cannot be resolved to constant (vector-like) value
 			} else if(Resolve.argument.value(arg, info) !== undefined) {
-				const colname = Resolve.argument.toName(arg, info);
-				colnames?.push(colname);
+				added?.push(params.cols ? Resolve.argument.toName(arg, info) : undefined);
 			} else {
-				colnames = undefined;
+				added = undefined;
 			}
 		}
 	}
-	if(colnames === undefined || colnames.length > 0) {
-		result.push({
-			operation: 'addCols',
-			operand:   operand?.info.id,
-			colnames
-		});
+	if(added === undefined || added.length > 0) {
+		result.push(params.cols
+			? { operation: 'addCols', operand: operand?.info.id, colnames: added }
+			: { operation: 'addRows', operand: operand?.info.id, rows: added?.length });
 	}
 	return result;
 }
 
-/**
- * Maps a function adding rows to a data frame, such as `rbind(df, c(1, "A"))`, to abstract data frame operations.
- */
-function mapDataFrameRowBind(
-	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
-	params: { special: string[] },
-	ctx: AbsintContext<DataFrameStateDomain>,
-	info: ResolveInfo
-): DataFrameOperations {
-	args = getEffectiveArgs(args, params.special);
-	const dataFrame = args.find(arg => isDataFrameArgument(arg, ctx));
-
-	if(dataFrame === undefined) {
-		return;
-	} else if(args.length === 1) {
-		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
-	}
-	const result: DataFrameOperations = [];
-	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
-	let rows: number | undefined = 0;
-
-	for(const arg of args) {
-		if(arg !== dataFrame && RArgument.isNotEmpty(arg)) {
-			const otherDataFrame = ctx.getAbstractValue(arg.value);
-
-			if(otherDataFrame !== undefined) {
-				result.push({
-					operation: 'concatRows',
-					operand:   operand?.info.id,
-					other:     otherDataFrame
-				});
-				operand = undefined;
-			// number of added rows is top if arguments cannot be resolved to constant (vector-like) value
-			} else if(Resolve.argument.value(arg, info) !== undefined) {
-				rows = rows !== undefined ? rows + 1 : undefined;
-			} else {
-				rows = undefined;
-			}
-		}
-	}
-	if(rows === undefined || rows > 0) {
-		result.push({
-			operation: 'addRows',
-			operand:   operand?.info.id,
-			rows
-		});
-	}
-	return result;
-}
-
-/**
- * Maps a function returning the first or last rows of a data frame, such as `head(df, 3)` or `tail(df, 3)`, to abstract data frame operations.
- */
+/** Maps a function returning the first or last rows of a data frame, such as `head(df, 3)` or `tail(df, 3)`, to abstract data frame operations. */
 function mapDataFrameHeadTail(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation<number>, fromEnd?: boolean },
@@ -1024,9 +985,7 @@ function unnamedColumns(count: number): undefined[] | undefined {
 	return Number.isSafeInteger(count) && count >= 0 && count <= MaxNamedColumns ? Array(count).fill(undefined) : undefined;
 }
 
-/**
- * Maps a function subsetting the rows and columns of a data frame, such as `subset(df, id > 1, select = c(id, name))`, to abstract data frame operations.
- */
+/** Maps a function subsetting the rows and columns of a data frame, such as `subset(df, id > 1, select = c(id, name))`, to abstract data frame operations. */
 function mapDataFrameSubset(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
@@ -1062,36 +1021,20 @@ function mapDataFrameSubset(
 	const duplicateCols = accessedCols.some((col, index, list) => col !== undefined && list.indexOf(col) !== index);
 
 	if(accessedCols.some(isColName)) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedCols.filter(isColName)
-		});
+		result.push({ operation: 'accessCols', operand: operand?.info.id, columns: accessedCols.filter(isColName) });
 	}
 	if(accessedCols.some(isIndex)) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedCols.filter(isIndex).map(Math.abs)
-		});
+		result.push({ operation: 'accessCols', operand: operand?.info.id, columns: accessedCols.filter(isIndex).map(Math.abs) });
 	}
 
 	if(filterArg !== undefined && RArgument.isNotEmpty(filterArg)) {
-		result.push({
-			operation: 'filterRows',
-			operand:   operand?.info.id,
-			condition: condition
-		});
+		result.push({ operation: 'filterRows', operand: operand?.info.id, condition: condition });
 		operand = undefined;
 	}
 
 	if(dropArg === undefined || accessedCols.length > 1) {
 		if(unselectedCols === undefined || unselectedCols.length > 0) {
-			result.push({
-				operation: 'removeCols',
-				operand:   operand?.info.id,
-				colnames:  unselectedCols?.map(toColName)
-			});
+			result.push({ operation: 'removeCols', operand: operand?.info.id, colnames: unselectedCols?.map(toColName), maxIndex: unselectedCols?.every(isIndex) ? maxAbs(unselectedCols) : undefined });
 			operand = undefined;
 		}
 		if(selectedCols === undefined || selectedCols.length > 0) {
@@ -1099,7 +1042,7 @@ function mapDataFrameSubset(
 				operation: 'subsetCols',
 				operand:   operand?.info.id,
 				colnames:  selectedCols?.map(toColName),
-				...(duplicateCols || mixedAccess ? { options: { duplicateCols: true } } : {})
+				...(duplicateCols || mixedAccess || (selectedCols === undefined && mayRepeat(selectArg, info)) ? { options: { duplicateCols: true } } : {})
 			});
 			// eslint-disable-next-line no-useless-assignment -- ends the chain
 			operand = undefined;
@@ -1108,9 +1051,7 @@ function mapDataFrameSubset(
 	return result;
 }
 
-/**
- * Maps a function filtering the rows of a data frame, such as `filter(df, id > 1)`, to abstract data frame operations.
- */
+/** Maps a function filtering the rows of a data frame, such as `filter(df, id > 1)`, to abstract data frame operations. */
 function mapDataFrameFilter(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
@@ -1134,24 +1075,14 @@ function mapDataFrameFilter(
 	const condition = filterValues.every(value => typeof value === 'boolean') ? filterValues.every(Boolean) : undefined;
 
 	if(accessedNames.length > 0) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   accessedNames
-		});
+		result.push({ operation: 'accessCols', operand: dataFrame.value.info.id, columns: accessedNames });
 	}
 
-	result.push({
-		operation: 'filterRows',
-		operand:   dataFrame.value.info.id,
-		condition: condition
-	});
+	result.push({ operation: 'filterRows', operand: dataFrame.value.info.id, condition: condition });
 	return result;
 }
 
-/**
- * Maps a function selecting the columns of a data frame, such as `select(df, id, name)` or `select(df, -id)`, to abstract data frame operations.
- */
+/** Maps a function selecting the columns of a data frame, such as `select(df, id, name)` or `select(df, -id)`, to abstract data frame operations. */
 function mapDataFrameSelect(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
@@ -1183,26 +1114,14 @@ function mapDataFrameSelect(
 	}
 
 	if(accessedCols.some(isColName)) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedCols.filter(isColName)
-		});
+		result.push({ operation: 'accessCols', operand: operand?.info.id, columns: accessedCols.filter(isColName) });
 	}
 	if(accessedCols.some(isIndex)) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedCols.filter(isIndex).map(Math.abs)
-		});
+		result.push({ operation: 'accessCols', operand: operand?.info.id, columns: accessedCols.filter(isIndex).map(Math.abs) });
 	}
 
 	if(unselectedCols === undefined || unselectedCols.length > 0) {
-		result.push({
-			operation: 'removeCols',
-			operand:   operand?.info.id,
-			colnames:  unselectedCols?.map(toColName)
-		});
+		result.push({ operation: 'removeCols', operand: operand?.info.id, colnames: unselectedCols?.map(toColName) });
 		operand = undefined;
 	}
 	if(selectedCols === undefined || selectedCols.length > 0 || unselectedCols?.length === 0) {
@@ -1262,37 +1181,22 @@ function mapDataFrameMutate(
 	mutatedCols = filterValidNames(mutatedCols, params.checkNames, params.noDupNames, undefined, true);
 
 	if(accessedNames.length > 0) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedNames
-		});
+		result.push({ operation: 'accessCols', operand: operand?.info.id, columns: accessedNames });
 	}
 
 	if(mutatedCols === undefined || mutatedCols.length > 0 || deletedCols?.length === 0) {
-		result.push({
-			operation: 'mutateCols',
-			operand:   operand?.info.id,
-			colnames:  mutatedCols
-		});
+		result.push({ operation: 'mutateCols', operand: operand?.info.id, colnames: mutatedCols });
 		operand = undefined;
 	}
 	if(deletedCols === undefined || deletedCols.length > 0) {
-		result.push({
-			operation: 'removeCols',
-			operand:   operand?.info.id,
-			colnames:  deletedCols,
-			options:   { maybe: true }
-		});
+		result.push({ operation: 'removeCols', operand: operand?.info.id, colnames: deletedCols, options: { maybe: true } });
 		// eslint-disable-next-line no-useless-assignment -- ends the chain
 		operand = undefined;
 	}
 	return result;
 }
 
-/**
- * Maps a function grouping the rows of a data frame by columns, such as `group_by(df, id)`, to abstract data frame operations.
- */
+/** Maps a function grouping the rows of a data frame by columns, such as `group_by(df, id)`, to abstract data frame operations. */
 function mapDataFrameGroupBy(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
@@ -1320,11 +1224,7 @@ function mapDataFrameGroupBy(
 	const mutatedCols = byArgs.some(RArgument.isNamed) || byNames.some(isUndefined);
 
 	if(accessedNames.length > 0) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   accessedNames
-		});
+		result.push({ operation: 'accessCols', operand: dataFrame.value.info.id, columns: accessedNames });
 	}
 
 	result.push({
@@ -1336,9 +1236,7 @@ function mapDataFrameGroupBy(
 	return result;
 }
 
-/**
- * Maps a function summarizing the columns of a data frame, such as `summarize(df, mean = mean(score))`, to abstract data frame operations.
- */
+/** Maps a function summarizing the columns of a data frame, such as `summarize(df, mean = mean(score))`, to abstract data frame operations. */
 function mapDataFrameSummarize(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
@@ -1362,24 +1260,14 @@ function mapDataFrameSummarize(
 		.filter(arg => !summarizedCols.includes(arg));
 
 	if(accessedNames.length > 0) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   accessedNames
-		});
+		result.push({ operation: 'accessCols', operand: dataFrame.value.info.id, columns: accessedNames });
 	}
 
-	result.push({
-		operation: 'summarize',
-		operand:   dataFrame.value.info.id,
-		colnames:  summarizedCols
-	});
+	result.push({ operation: 'summarize', operand: dataFrame.value.info.id, colnames: summarizedCols });
 	return result;
 }
 
-/**
- * Maps a function joining two data frames, such as `left_join(df1, df2, by = "id")` or `merge(df1, df2)`, to abstract data frame operations.
- */
+/** Maps a function joining two data frames, such as `left_join(df1, df2, by = "id")` or `merge(df1, df2)`, to abstract data frame operations. */
 function mapDataFrameJoin(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
@@ -1425,19 +1313,17 @@ function mapDataFrameJoin(
 		}
 	}
 
+	/* `by = c(k1 = "k2")` and `join_by(k1 == k2)` pair different columns, of which the result keeps only one of the two */
+	const byNode = byArg === undefined || byArg === EmptyArgument ? undefined : byArg.value;
+	if(RFunctionCall.isNamed(byNode) && (byNode.arguments.some(a => a !== EmptyArgument && a.name !== undefined) || Identifier.getName(byNode.functionName.content) === 'join_by')) {
+		byCols = undefined;
+	}
+
 	if(byCols?.some(isColName)) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   byCols.filter(isColName)
-		});
+		result.push({ operation: 'accessCols', operand: dataFrame.value.info.id, columns: byCols.filter(isColName) });
 	}
 	if(byCols?.some(isIndex)) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   byCols.filter(isIndex)
-		});
+		result.push({ operation: 'accessCols', operand: dataFrame.value.info.id, columns: byCols.filter(isIndex) });
 	}
 
 	result.push({
@@ -1450,9 +1336,7 @@ function mapDataFrameJoin(
 	return result;
 }
 
-/**
- * Maps a function that does not change the shape of a data frame, such as `relocate(df, id)` or `arrange(df, id)`, to abstract data frame operations.
- */
+/** Maps a function that does not change the shape of a data frame, such as `relocate(df, id)` or `arrange(df, id)`, to abstract data frame operations. */
 function mapDataFrameIdentity(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
@@ -1471,15 +1355,10 @@ function mapDataFrameIdentity(
 	} else if(params.disallowNamedArgs && args.some(RArgument.isNamed)) {
 		return [{ operation: 'unknown', operand: dataFrame.value.info.id }];
 	}
-	return [{
-		operation: 'identity',
-		operand:   dataFrame.value.info.id
-	}];
+	return [{ operation: 'identity', operand: dataFrame.value.info.id }];
 }
 
-/**
- * Maps a function that is not explicitly supported but returns or modifies a data frame, such as `na.omit(df)` or `setNames(df, "id")`, to abstract data frame operations.
- */
+/** Maps a function that is not explicitly supported but returns or modifies a data frame, such as `na.omit(df)` or `setNames(df, "id")`, to abstract data frame operations. */
 function mapDataFrameUnknown(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
@@ -1507,9 +1386,7 @@ function mapDataFrameUnknown(
 	}];
 }
 
-/**
- * Maps a data frame access operation, such as `df$id`, `df["id"]`, or `df[1, 2]`, to abstract data frame operations.
- */
+/** Maps a data frame access operation, such as `df$id`, `df["id"]`, or `df[1, 2]`, to abstract data frame operations. */
 function mapDataFrameAccess(
 	access: RAccess<ParentInformation>,
 	ctx: AbsintContext<DataFrameStateDomain>,
@@ -1522,9 +1399,7 @@ function mapDataFrameAccess(
 	}
 }
 
-/**
- * Maps a string-based access of a data frame column, such as `df$id`, to abstract data frame operations.
- */
+/** Maps a string-based access of a data frame column, such as `df$id`, to abstract data frame operations. */
 function mapDataFrameNamedColumnAccess(
 	access: RNamedAccess<ParentInformation>,
 	ctx: AbsintContext<DataFrameStateDomain>,
@@ -1537,11 +1412,7 @@ function mapDataFrameNamedColumnAccess(
 	}
 	const colname = Resolve.argument.symbolName(access.access[0], info);
 
-	return [{
-		operation: 'accessCols',
-		operand:   dataFrame.info.id,
-		columns:   colname ? [colname] : undefined
-	}];
+	return [{ operation: 'accessCols', operand: dataFrame.info.id, columns: colname ? [colname] : undefined }];
 }
 
 /** the largest absolute index of a list, which can hold more entries than a spread could pass as arguments */
@@ -1553,9 +1424,77 @@ function maxAbs(indices: readonly number[]): number {
 	return max;
 }
 
+const LogicalOperators: ReadonlySet<string> = new Set(['<', '>', '<=', '>=', '==', '!=', '&', '|', '&&', '||', '%in%', '!']);
+
+/** the calls yielding indices without repeating one: `sample` without replacement, `which`, and the sequences */
+const DistinctIndices: ReadonlySet<BrandedIdentifier> = new Set(['sample', 'which', 'seq_len', 'seq_along', 'order']);
+
 /**
- * Maps an index-based access of the rows and columns of a data frame, such as `df[1, ]` or `df[["id"]]`, to abstract data frame operations.
+ * Whether an index the semantics cannot resolve may name an entry twice or past the end, as `rep(1, 12)` does, rather than
+ * select among the entries: a condition, a logical vector, a range (`id:name`) or distinct indices do not.
  */
+function mayRepeat(arg: PotentiallyEmptyRArgument<ParentInformation> | undefined, info: ResolveInfo): boolean {
+	const value = arg !== undefined && RArgument.isNotEmpty(arg) ? arg.value : undefined;
+	if(value === undefined || ((RBinaryOp.is(value) || RUnaryOp.is(value)) && LogicalOperators.has(value.operator)) || (RBinaryOp.is(value) && value.operator === ':')) {
+		return false;
+	} else if(RFunctionCall.isNamed(value, DistinctIndices)) {
+		const replace = getArgumentValue(value.arguments, 'replace', info);
+		return replace !== undefined && replace !== false;
+	}
+	const resolved = Resolve.argument.value(arg, info);
+	return !(typeof resolved === 'boolean' || (Array.isArray(resolved) && resolved.every(v => typeof v === 'boolean')));
+}
+
+/**
+ * Whether the value of `node` may be `NULL`, which removes a column it is assigned to. A constant, an operator, a
+ * function and a part of what is not `NULL` are not, an `if` without `else` is, a block is what it ends in, a call of a function of the program what
+ * it returns, and a call of a built-in what its stated return type says, any type if it states none. Anything else may be.
+ */
+function mayBeNull(node: RNode<ParentInformation> | undefined, info: ResolveInfo, seen = new Set<NodeId>()): boolean {
+	if(node === undefined || seen.has(node.info.id)) {
+		return false;
+	}
+	seen.add(node.info.id);
+	const graph = info.graph;
+	if(isRNull(node)) {
+		return true;
+	} else if(RNumber.is(node) || RString.is(node) || RLogical.is(node) || RBinaryOp.is(node) || RUnaryOp.is(node) || RFunctionDefinition.is(node)) {
+		return false;
+	} else if(RIfThenElse.is(node)) {
+		return node.otherwise === undefined || mayBeNull(node.then, info, seen) || mayBeNull(node.otherwise, info, seen);
+	} else if(RExpressionList.is(node)) {
+		return node.children.length === 0 || mayBeNull(node.children.at(-1), info, seen);
+	} else if(RAccess.is(node) && node.operator === '[') {
+		/* a single bracket selects part of what it accesses, `NULL` only if that is */
+		return mayBeNull(node.accessed, info, seen);
+	} else if(RSymbol.is(node)) {
+		const sources = graph === undefined ? undefined : Dataflow.valueSources(node.info.id, graph);
+		return sources === undefined || sources.some(v => v === node.info.id || mayBeNull(info.idMap?.get(v), info, seen));
+	} else if(!RFunctionCall.is(node) || graph === undefined) {
+		return true;
+	}
+	const callees = Dataflow.targetsOf(graph, node.info.id, EdgeType.Calls).map(t => graph.getVertex(t)).filter(v => DfgVertex.isFunctionDefinition(v));
+	if(callees.length > 0) {
+		return callees.some(fn => fn.exitPoints.length === 0 || fn.exitPoints.some(e => mayBeNull(info.idMap?.get(e.nodeId), info, seen)));
+	} else if(!RFunctionCall.isNamed(node)) {
+		return true;
+	} else if(RFunctionCall.isNamed(node, Identifier.make('c'))) {
+		return node.arguments.every(a => a === EmptyArgument || mayBeNull(a.value, info, seen));
+	}
+	const name = node.functionName.content;
+	const returns = info.ctx.env.builtInFunctionOf(name)?.config?.guards?.[Identifier.getName(name)]?.returns;
+	if(returns === 'argument') {
+		return node.arguments.length === 0 || node.arguments[0] === EmptyArgument || mayBeNull(node.arguments[0].value, info, seen);
+	}
+	return typeof returns !== 'object' || returns.dispatchesOn !== undefined || (returns.types & RValueType.Null) !== 0;
+}
+
+/** whether the shape pins the number of columns down to exactly one */
+function isSingleColumn(shape: DataFrameDomain | undefined): boolean {
+	return shape !== undefined && shape.cols.isValue() && shape.cols.lower === 1 && shape.cols.upper === 1;
+}
+
+/** Maps an index-based access of the rows and columns of a data frame, such as `df[1, ]` or `df[["id"]]`, to abstract data frame operations. */
 function mapDataFrameIndexColRowAccess(
 	access: RIndexAccess<ParentInformation>,
 	ctx: AbsintContext<DataFrameStateDomain>,
@@ -1586,11 +1525,7 @@ function mapDataFrameIndexColRowAccess(
 		} else if(Array.isArray(rowValue) && rowValue.every(isIndex)) {
 			rows = rowValue;
 		}
-		result.push({
-			operation: 'accessRows',
-			operand:   dataFrame.info.id,
-			rows:      rows?.map(Math.abs)
-		});
+		result.push({ operation: 'accessRows', operand: dataFrame.info.id, rows: rows?.map(Math.abs) });
 	}
 	if(colArg !== undefined && RArgument.isNotEmpty(colArg)) {
 		const colValue = Resolve.argument.value(colArg, info);
@@ -1610,10 +1545,13 @@ function mapDataFrameIndexColRowAccess(
 			columns:   columns?.every(isIndex) ? columns.map(Math.abs) : columns
 		});
 	}
+	// A selection of rows from a data frame with exactly one column drops it to a vector, as `drop` defaults to `TRUE` there
+	const singleColumn = args.length === 2 && rowArg !== undefined && RArgument.isNotEmpty(rowArg) && (colArg === undefined || RArgument.isEmpty(colArg)) && isSingleColumn(ctx.getAbstractValue(dataFrame));
 	// The data frame extent is dropped if the operator `[[` is used, the argument `drop` is true, or only one column is accessed
 	const dropExtent = access.operator === '[[' ? true :
 		args.length === 2 && typeof drop === 'boolean' ? drop :
-			rowArg !== undefined && columns?.length === 1 && (isColName(columns[0]) || columns[0] > 0);
+			singleColumn || rowArg !== undefined && (columns?.length === 1 ? isColName(columns[0]) || columns[0] > 0
+				: columns === undefined && colArg !== undefined && RArgument.isNotEmpty(colArg));
 
 	if(!dropExtent) {
 		const rowSubset = rows === undefined || rows.every(row => row >= 0);
@@ -1629,7 +1567,8 @@ function mapDataFrameIndexColRowAccess(
 				result.push({
 					operation: 'subsetRows',
 					operand:   operand?.info.id,
-					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length
+					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length,
+					...(rows === undefined && mayRepeat(rowArg, info) ? { options: { repeats: true } } : {})
 				});
 			} else {
 				result.push({
@@ -1648,7 +1587,7 @@ function mapDataFrameIndexColRowAccess(
 					operation: 'subsetCols',
 					operand:   operand?.info.id,
 					colnames:  colZero ? [] : columns?.map(toColName),
-					...(duplicateCols ? { options: { duplicateCols: true } } : {})
+					...(duplicateCols || (columns === undefined && mayRepeat(colArg, info)) ? { options: { duplicateCols: true } } : {})
 				});
 			} else {
 				result.push({
@@ -1665,9 +1604,7 @@ function mapDataFrameIndexColRowAccess(
 	return result;
 }
 
-/**
- * Maps an assignment to a data frame access, such as `df$id <- 1:5`, `df[] <- NULL`, or `df[1, 2] <- 0`, to abstract data frame operations.
- */
+/** Maps an assignment to a data frame access, such as `df$id <- 1:5`, `df[] <- NULL`, or `df[1, 2] <- 0`, to abstract data frame operations. */
 function mapDataFrameAccessAssignment(
 	node: RNode<ParentInformation>,
 	expression: RNode<ParentInformation>,
@@ -1685,9 +1622,7 @@ function mapDataFrameAccessAssignment(
 	}
 }
 
-/**
- * Maps an assignment to the content of a data frame, such as `df[] <- NULL`, to abstract data frame operations.
- */
+/** Maps an assignment to the content of a data frame, such as `df[] <- NULL`, to abstract data frame operations. */
 function mapDataFrameContentAssignment(
 	access: RAccess<ParentInformation>,
 	expression: RNode<ParentInformation>,
@@ -1699,24 +1634,13 @@ function mapDataFrameContentAssignment(
 		return;
 	}
 	if(isRNull(expression)) {
-		return [{
-			operation: 'subsetCols',
-			operand:   dataFrame.info.id,
-			colnames:  [],
-			type:      ConstraintType.OperandModification
-		}];
+		return [{ operation: 'subsetCols', operand: dataFrame.info.id, colnames: [], type: ConstraintType.OperandModification }];
 	} else {
-		return [{
-			operation: 'identity',
-			operand:   dataFrame.info.id,
-			type:      ConstraintType.OperandModification
-		}];
+		return [{ operation: 'identity', operand: dataFrame.info.id, type: ConstraintType.OperandModification }];
 	}
 }
 
-/**
- * Maps an assignment to a string-based access of a data frame column, such as `df$id <- 1:5`, to abstract data frame operations.
- */
+/** Maps an assignment to a string-based access of a data frame column, such as `df$id <- 1:5`, to abstract data frame operations. */
 function mapDataFrameNamedColumnAssignment(
 	access: RNamedAccess<ParentInformation>,
 	expression: RNode<ParentInformation>,
@@ -1739,17 +1663,11 @@ function mapDataFrameNamedColumnAssignment(
 			options:   { maybe: true }
 		}];
 	} else {
-		return [{
-			operation: 'assignCols',
-			operand:   dataFrame.info.id,
-			columns:   colname ? [colname] : undefined
-		}];
+		return [{ operation: 'assignCols', operand: dataFrame.info.id, columns: colname ? [colname] : undefined, ...(mayBeNull(expression, info) ? { options: { maybeNull: true } } : {}) }];
 	}
 }
 
-/**
- * Maps an assignment to an index-based access of the rows and columns of a data frame, such as `df[1, 2] <- 0`, to abstract data frame operations.
- */
+/** Maps an assignment to an index-based access of the rows and columns of a data frame, such as `df[1, 2] <- 0`, to abstract data frame operations. */
 function mapDataFrameIndexColRowAssignment(
 	access: RIndexAccess<ParentInformation>,
 	expression: RNode<ParentInformation>,
@@ -1775,11 +1693,7 @@ function mapDataFrameIndexColRowAssignment(
 		} else if(Array.isArray(rowValue) && rowValue.every(isIndex)) {
 			rows = rowValue;
 		}
-		result.push({
-			operation: 'assignRows',
-			operand:   dataFrame.info.id,
-			rows
-		});
+		result.push({ operation: 'assignRows', operand: dataFrame.info.id, rows });
 	}
 	if(colArg !== undefined && RArgument.isNotEmpty(colArg)) {
 		const colValue = Resolve.argument.value(colArg, info);
@@ -1801,19 +1715,13 @@ function mapDataFrameIndexColRowAssignment(
 				options:   { maybe: true }
 			});
 		} else {
-			result.push({
-				operation: 'assignCols',
-				operand:   dataFrame.info.id,
-				columns
-			});
+			result.push({ operation: 'assignCols', operand: dataFrame.info.id, columns, ...(mayBeNull(expression, info) ? { options: { maybeNull: true } } : {}) });
 		}
 	}
 	return result;
 }
 
-/**
- * Maps an assignment to the column names of a data frame, such as `colnames(df) <- c("id", "name")`, to abstract data frame operations.
- */
+/** Maps an assignment to the column names of a data frame, such as `colnames(df) <- c("id", "name")`, to abstract data frame operations. */
 function mapDataFrameColNamesAssignment(
 	node: RNode<ParentInformation>,
 	expression: RNode<ParentInformation>,
@@ -1838,9 +1746,7 @@ function mapDataFrameColNamesAssignment(
 	}];
 }
 
-/**
- * Maps an assignment to the row names of a data frame, such as `rownames(df) <- c("a", "b")`, to abstract data frame operations.
- */
+/** Maps an assignment to the row names of a data frame, such as `rownames(df) <- c("a", "b")`, to abstract data frame operations. */
 function mapDataFrameRowNamesAssignment(
 	node: RNode<ParentInformation>,
 	_expression: RNode<ParentInformation>,
@@ -1851,16 +1757,10 @@ function mapDataFrameRowNamesAssignment(
 	if(operand === undefined) {
 		return;
 	}
-	return [{
-		operation: 'identity',
-		operand:   operand.value.info.id,
-		type:      ConstraintType.OperandModification
-	}];
+	return [{ operation: 'identity', operand: operand.value.info.id, type: ConstraintType.OperandModification }];
 }
 
-/**
- * Maps an assignment to the dimension names of a data frame, such as `dimnames(df) <- list(NULL, c("id"))`, to abstract data frame operations.
- */
+/** Maps an assignment to the dimension names of a data frame, such as `dimnames(df) <- list(NULL, c("id"))`, to abstract data frame operations. */
 function mapDataFrameDimNamesAssignment(
 	node: RNode<ParentInformation>,
 	_expression: RNode<ParentInformation>,
@@ -1871,11 +1771,7 @@ function mapDataFrameDimNamesAssignment(
 	if(operand === undefined) {
 		return;
 	}
-	return [{
-		operation: 'setColNames',
-		operand:   operand.value.info.id,
-		colnames:  undefined
-	}];
+	return [{ operation: 'setColNames', operand: operand.value.info.id, colnames: undefined }];
 }
 
 /**
@@ -1896,9 +1792,7 @@ function getReplacementOperand(
 	return isDataFrameArgument(operand, ctx) ? operand : undefined;
 }
 
-/**
- * Checks whether a replacement function call is nested in another replacement function call, such as `colnames(df)[1:2] <- ...`.
- */
+/** Checks whether a replacement function call is nested in another replacement function call, such as `colnames(df)[1:2] <- ...`. */
 function hasParentReplacement(
 	node: RNode<ParentInformation>,
 	ctx: AbsintContext<DataFrameStateDomain>
@@ -1908,9 +1802,7 @@ function hasParentReplacement(
 	return DfgVertex.hasOrigin(parentVertex, BuiltInProcName.Replacement);
 }
 
-/**
- * Gets the source and the parse request of the file or text that is read by a data frame read function (see {@link mapDataFrameRead}).
- */
+/** Gets the source and the parse request of the file or text that is read by a data frame read function (see {@link mapDataFrameRead}). */
 function getRequestFromRead(
 	fileNameArg: PotentiallyEmptyRArgument<ParentInformation> | undefined,
 	textArg: PotentiallyEmptyRArgument<ParentInformation> | undefined,
@@ -1951,9 +1843,7 @@ function getRequestFromRead(
 	return { source, request };
 }
 
-/**
- * Gets all entries from a line of a CSV file using a custom separator char, quote char, and comment char
- */
+/** Gets all entries from a line of a CSV file using a custom separator char, quote char, and comment char */
 function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"', comment: string = '', trim: boolean = true): (string | undefined)[] {
 	sep = sep.length > 0 ? sep : '\\s';  // default to whitespace separator
 	sep = escapeRegExp(sep, true);  // only allow tokens like `\s`, `\t`, or `\n` in separator, quote, and comment chars
@@ -1972,14 +1862,11 @@ function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = 
 		.toArray();
 }
 
-/**
- * Resolves all selected columns in a select expression, such as `id`, `"id"`, `1`, `c(id, name)`, `c("id", "name")`, `1:2`, `-id`, `-1`, `-c(id, name)`, `c(-1, -2)`, etc.
- */
+/** Resolves all selected columns in a select expression, such as `id`, `"id"`, `1`, `c(id, name)`, `c("id", "name")`, `1:2`, `-id`, `-1`, `-c(id, name)`, `c(-1, -2)`, etc. */
 function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInformation> | undefined)[], info: ResolveInfo) {
 	let selectedCols: (string | number | undefined)[] | undefined = [];
 	let unselectedCols: (string | number | undefined)[] | undefined = [];
-	const joinColumns = (columns1: (string | number | undefined)[] | undefined, columns2: (string | number | undefined)[] | undefined) =>
-		columns1 !== undefined && columns2 !== undefined ? [...columns1, ...columns2] : undefined;
+	const joinColumns = (columns1: (string | number | undefined)[] | undefined, columns2: (string | number | undefined)[] | undefined) => columns1 !== undefined && columns2 !== undefined ? [...columns1, ...columns2] : undefined;
 
 	for(const arg of args) {
 		if(arg !== undefined && RArgument.isNotEmpty(arg)) {
@@ -2016,9 +1903,7 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 	return { selectedCols, unselectedCols };
 }
 
-/**
- * Gets the type of a join operation based on whether all rows of the left and of the right data frame are kept (see {@link mapDataFrameJoin}).
- */
+/** Gets the type of a join operation based on whether all rows of the left and of the right data frame are kept (see {@link mapDataFrameJoin}). */
 function getJoinType(keepLeft: boolean, keepRight: boolean): JoinType {
 	if(keepLeft) {
 		return keepRight ? JoinType.Full : JoinType.Left;

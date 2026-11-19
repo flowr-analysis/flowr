@@ -29,12 +29,12 @@ export function matchArgumentsToParameters<A extends string, P extends string>(
 	const names: string[] = paramNames.map(p => p ?? '');
 	const dots = names.indexOf(DotsParameterName);
 	const taken = new Set<number>();
-	const take = (arg: number, param: number): void => {
+	function take(arg: number, param: number): void {
 		bound[arg] = param;
 		taken.add(param);
-	};
+	}
 	/** binds each still-free named argument to the formal `pick` names for it, as long as that one is still free too */
-	const byName = (pick: (name: string) => string | undefined): void => {
+	function byName(pick: (name: string) => string | undefined): void {
 		for(let i = 0; i < argNames.length; i++) {
 			const name = argNames[i];
 			if(name === undefined || bound[i] !== undefined) {
@@ -46,7 +46,7 @@ export function matchArgumentsToParameters<A extends string, P extends string>(
 				take(i, param);
 			}
 		}
-	};
+	}
 
 	/** the formals still free, in order, which is what a prefix may be ambiguous against */
 	function *free(): Generator<string> {

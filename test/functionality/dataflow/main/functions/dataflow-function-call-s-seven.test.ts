@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import { applyAssumedPackages, assertDataflow, assumedPackagesOf, assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
+import { analyze } from '../../../_helper/analyzer';
+import { assertDataflow, assumedPackagesOf, assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
-import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
@@ -59,8 +59,7 @@ sample(42)
 			['f <- Negate(is.null)\nf(x)', 'f'],                                           // base factory
 			['g <- Vectorize(paste)\ng(1)', 'g']                                           // base factory
 		] as const) {
-			const analyzer = await applyAssumedPackages(new FlowrAnalyzerBuilder().setParser(ts), assumedPackagesOf(undefined)).build();
-			analyzer.addRequest(code);
+			const analyzer = await analyze(ts, code, { assumeLoaded: assumedPackagesOf(undefined) });
 			const g = (await analyzer.dataflow()).graph;
 			const call = g.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === callName);
 			if(call === undefined) {

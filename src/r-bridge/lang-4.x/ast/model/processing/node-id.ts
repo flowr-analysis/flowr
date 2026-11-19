@@ -13,9 +13,7 @@ import { compareByCodeUnit, splitRQuotes } from '../../../../../util/text/string
  */
 export type NodeId<T extends string | number = string | number> = T & { __brand?: 'node-id' };
 
-/**
- * A variant of {@link NodeId} that represents built-in functions or operators. The string is prefixed with `built-in:` to avoid confusion with other node ids.
- */
+/** A variant of {@link NodeId} that represents built-in functions or operators. The string is prefixed with `built-in:` to avoid confusion with other node ids. */
 export type BuiltIn<T extends string = string> = `built-in:${T}`;
 
 /** whether the id starts as a number does, which `+id` alone does not tell: it turns a blank string into `0` */
@@ -74,9 +72,7 @@ export const NodeId = {
 	isWritten(this: void, id: NodeId): boolean {
 		return typeof NodeId.normalize(id) === 'number';
 	},
-	/**
-	 * The prefix used for built-in function or operator ids.
-	 */
+	/** The prefix used for built-in function or operator ids. */
 	builtInPrefix: 'built-in:',
 	/**
 	 * Checks if a given node id is a built-in function or operator id by checking if it is a string that starts with the built-in prefix.
@@ -150,6 +146,10 @@ export const NodeId = {
 	/** The id of the call the dataflow graph makes up for an anonymous function a call runs (`lapply(x, function(v) v)`, a `tryCatch` handler). */
 	anonymousCall(this: void, functionId: NodeId): NodeId {
 		return AnonymousCallPrefix + String(functionId);
+	},
+	/** Whether `id` is a made-up {@link NodeId.anonymousCall}. */
+	isAnonymousCall(this: void, id: NodeId): boolean {
+		return typeof id === 'string' && id.startsWith(AnonymousCallPrefix);
 	},
 	/** The node `id` belongs to; for a made-up {@link NodeId.anonymousCall} the anonymous function it calls. */
 	nodeOf<Info>(this: void, id: NodeId, idMap: AstIdMap<Info> | undefined): RNode<Info & ParentInformation> | undefined {

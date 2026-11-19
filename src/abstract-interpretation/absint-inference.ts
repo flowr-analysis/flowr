@@ -1,5 +1,5 @@
 import { CfgEdge, CfgVertex, type ControlFlowInformation, NoNeighbors, type ReadOnlyControlFlowGraph } from '../control-flow/control-flow-graph';
-import { FunctionSemantics } from '../dataflow/fn/function-semantics';
+import { UnsupportedFunctions } from './unsupported-functions';
 import { type OnCall, SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { visitCfgInOrder } from '../control-flow/simple-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
@@ -26,15 +26,13 @@ import { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NormalizedAst, ParentInformation, RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
-import type { RNull } from '../r-bridge/lang-4.x/convert-values';
-import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
+import { type RNull, RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { Bottom } from './domains/lattice';
 import { guard, isNotUndefined } from '../util/assert';
 import { Record } from '../util/record';
 import type { AbsintContext, AbstractSemantics } from './abstract-semantics';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
-import type { MultiValueDomain } from './domains/multi-value-state-domain';
-import { MultiValueStateDomain } from './domains/multi-value-state-domain';
+import { type MultiValueDomain, MultiValueStateDomain } from './domains/multi-value-state-domain';
 import type { AbstractProduct, ProductReduction } from './domains/partial-product-domain';
 import type { StateDomain } from './domains/state-domain';
 
@@ -126,34 +124,22 @@ function sameValues(a: readonly (AnyAbstractDomain | undefined)[], b: readonly (
 export class AbstractInterpreter<Domains extends AbstractProduct, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration>
 	extends SemanticCfgGuidedVisitor<NoInfo, ControlFlowInformation, NormalizedAst, DataflowGraph, Config & { defaultVisitingOrder: 'forward' }> {
 
-	/**
-	 * The abstract interpretation analysis performed by the visitor, defining the abstract domains, their abstract semantics, and the reductions between them.
-	 */
+	/** The abstract interpretation analysis performed by the visitor, defining the abstract domains, their abstract semantics, and the reductions between them. */
 	public readonly analysis: Readonly<AbsintAnalysis<Domains>>;
 
-	/**
-	 * The state abstract domain used by the abstract interpretation visitor.
-	 */
+	/** The state abstract domain used by the abstract interpretation visitor. */
 	protected readonly stateDomain: MultiValueStateDomain<Partial<Domains>>;
 
-	/**
-	 * The abstract trace of the abstract interpretation visitor mapping node IDs to the abstract state at the respective node.
-	 */
+	/** The abstract trace of the abstract interpretation visitor mapping node IDs to the abstract state at the respective node. */
 	protected readonly trace: Map<NodeId, MultiValueStateDomain<Partial<Domains>>> = new Map();
 
-	/**
-	 * The current abstract state domain at the currently processed AST node.
-	 */
+	/** The current abstract state domain at the currently processed AST node. */
 	protected currentState: MultiValueStateDomain<Partial<Domains>>;
 
-	/**
-	 * The current worklist stack of next vertex IDs to visit.
-	 */
+	/** The current worklist stack of next vertex IDs to visit. */
 	private stack: NodeId[] = [];
 
-	/**
-	 * The cached abstract interpretation contexts of the abstract domains of the analysis (see {@link getContext}).
-	 */
+	/** The cached abstract interpretation contexts of the abstract domains of the analysis (see {@link getContext}). */
 	private readonly contexts: Map<keyof Domains, AbsintContext<StateDomain<Domains[keyof Domains]>>> = new Map();
 
 	/**
@@ -178,9 +164,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	 */
 	private readonly lastState: Map<NodeId, MultiValueStateDomain<Partial<Domains>>> = new Map();
 
-	/**
-	 * A set of nodes representing variable definitions that have already been visited but whose assignment has not yet been processed.
-	 */
+	/** A set of nodes representing variable definitions that have already been visited but whose assignment has not yet been processed. */
 	private readonly unassigned: Set<NodeId> = new Set();
 
 	/** The call a function body is currently being interpreted for, mapping the body's entry to it. */
@@ -221,7 +205,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	}
 
 	/** Applies a handler to the abstract semantics of every domain of the analysis, together with the state view and context of that domain. */
-	private applySemantics(apply: (semantics: DomainSemantics<Domains>[keyof Domains], state: StateDomain<Domains[keyof Domains]>, ctx: AbsintContext<StateDomain<Domains[keyof Domains]>>) => void, state = this.currentState): void {
+	protected applySemantics(apply: (semantics: DomainSemantics<Domains>[keyof Domains], state: StateDomain<Domains[keyof Domains]>, ctx: AbsintContext<StateDomain<Domains[keyof Domains]>>) => void, state = this.currentState): void {
 		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
 			apply(semantics, this.getState(type, state), this.getContext(type));
 		}
@@ -451,7 +435,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		// retrieve new abstract state by joining states of predecessor nodes
 		const nodeId = CfgVertex.getId(vertex);
 		const predecessors = this.getPredecessors(nodeId);
-		const predecessorStates = predecessors.map(pred => this.getPredecessorState(pred)).filter(isNotUndefined);
+		const predecessorStates = predecessors.map(pred => this.getPredecessorState(pred, nodeId)).filter(isNotUndefined);
 		this.currentState = AbstractDomain.joinAll(predecessorStates, this.currentState.top());
 
 		const oldState = this.lastState.get(nodeId);
@@ -666,7 +650,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		}
 	}
 
-	protected handleConditionBranch(state: MultiValueStateDomain<Partial<Domains>>, conditionVertex: DataflowGraphVertexArgument, branch: typeof RTrue | typeof RFalse): MultiValueStateDomain<Partial<Domains>> {
+	protected handleConditionBranch(state: MultiValueStateDomain<Partial<Domains>>, conditionVertex: DataflowGraphVertexArgument, branch: typeof RTrue | typeof RFalse, target?: NodeId): MultiValueStateDomain<Partial<Domains>> {
 		if(DfgVertex.isFunctionCall(conditionVertex) && conditionVertex.args.every(FunctionArgument.isNotEmpty)) {
 			const name = Identifier.getName(conditionVertex.name);
 			const isNot = Identifier.matches(name, ['base', '!']);
@@ -677,15 +661,15 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 				const childVertex = this.getDataflowGraph(conditionVertex.args[0].nodeId);
 
 				if(childVertex !== undefined) {
-					return this.handleConditionBranch(state, childVertex, branch === RTrue ? RFalse : RTrue);
+					return this.handleConditionBranch(state, childVertex, branch === RTrue ? RFalse : RTrue, target);
 				}
 			} else if((isAnd || isOr) && conditionVertex.args.length === 2) {
 				const leftVertex = this.getDataflowGraph(conditionVertex.args[0].nodeId);
 				const rightVertex = this.getDataflowGraph(conditionVertex.args[1].nodeId);
 
 				if(leftVertex !== undefined && rightVertex !== undefined) {
-					const leftState = this.handleConditionBranch(state, leftVertex, branch);
-					const rightState = this.handleConditionBranch(state, rightVertex, branch);
+					const leftState = this.handleConditionBranch(state, leftVertex, branch, target);
+					const rightState = this.handleConditionBranch(state, rightVertex, branch, target);
 
 					if(branch === RTrue && isAnd || branch === RFalse && isOr) {
 						return leftState.meet(rightState);
@@ -697,7 +681,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		}
 		const newState = state.create(state.value);
 
-		this.applySemantics((semantics, state, ctx) => semantics.handleConditionBranch?.(state, conditionVertex, ctx, branch), newState);
+		this.applySemantics((semantics, state, ctx) => semantics.handleConditionBranch?.(state, conditionVertex, ctx, branch, target), newState);
 		return newState;
 	}
 
@@ -739,9 +723,9 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	 * The abstract state one predecessor contributes, joined into the state at the current vertex.
 	 *
 	 * The condition semantics of the analysis are applied at branches: on the then-branch of `if(u) a else b`
-	 * the predecessor is `u` and `branch.when` is `true`, so `u` held.
+	 * the predecessor is `u` and `branch.when` is `true`, so `u` held. `target` is the vertex the branch enters, which tells the arms of a `switch` apart.
 	 */
-	protected getPredecessorState({ id, branch }: AbsintPredecessor): MultiValueStateDomain<Partial<Domains>> | undefined {
+	protected getPredecessorState({ id, branch }: AbsintPredecessor, target?: NodeId): MultiValueStateDomain<Partial<Domains>> | undefined {
 		const predState = this.trace.get(id);
 
 		if(predState === undefined || branch === undefined) {
@@ -749,7 +733,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		}
 		const conditionVertex = this.getDataflowGraph(branch.id);
 
-		return conditionVertex === undefined ? predState : this.handleConditionBranch(predState, conditionVertex, branch.when ? RTrue : RFalse);
+		return conditionVertex === undefined ? predState : this.handleConditionBranch(predState, conditionVertex, branch.when ? RTrue : RFalse, target);
 	}
 
 	protected override visitFunctionCall(call: DataflowGraphVertexFunctionCall): void {
@@ -1108,7 +1092,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 
 	/** Checks whether a node represents a unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...) */
 	protected isUnsupportedFunctionCall(nodeId: NodeId): boolean {
-		return FunctionSemantics.call.unsupported.isUnsupportedCall(this.getDataflowGraph(nodeId), this.config.dfg);
+		return UnsupportedFunctions.isUnsupportedCall(this.getDataflowGraph(nodeId), this.config.dfg);
 	}
 
 	/**

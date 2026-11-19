@@ -163,7 +163,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				[unused('p', [1, 1, 1, 10])], undefined, { sigDb, whitelist: ['random1'] });
 
 			assertLinter('nothing is reported without a signature database', parser, 'library(ggplot2)', 'unused-import',
-				[], undefined, { noSigDb: true });
+				[], undefined, { sigDb: false });
 
 			assertLinter('requireNamespace is not an import', parser,
 				'if(!requireNamespace("ggplot2", quietly = TRUE)) stop("need it")', 'unused-import',

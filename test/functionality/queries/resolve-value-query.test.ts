@@ -2,11 +2,11 @@ import { assertQuery } from '../_helper/query';
 import type { FlowrCapabilityId } from '../../../src/r-bridge/data/get';
 import { label } from '../_helper/label';
 import { assert, describe } from 'vitest';
-import type {
-	ResolveValueQuery,
-	ResolveValueQueryResult
+import {
+	type ResolveValueQuery,
+	type ResolveValueQueryResult,
+	fingerPrintOfQuery
 } from '../../../src/queries/catalog/resolve-value-query/resolve-value-query-format';
-import { fingerPrintOfQuery } from '../../../src/queries/catalog/resolve-value-query/resolve-value-query-executor';
 import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { setFrom } from '../../../src/dataflow/eval/values/sets/set-constants';
 import { stringFrom } from '../../../src/dataflow/eval/values/string/string-constants';

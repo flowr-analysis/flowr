@@ -295,5 +295,13 @@ product`
 			'r <- exists("x")\nprint(r)',
 			{ expectedOutput: '[1] FALSE', expectedSliceOutput: '[1] FALSE', minRVersion: MIN_VERSION_PIPE }
 		);
+		assertSliced(label('rm reads the binding it removes from an environment', ['functions-with-global-side-effects']),
+			shell, 'e <- new.env()\nassign("x", 1, envir = e)\nrm("x", envir = e)', ['3@rm'],
+			'e <- new.env()\nassign("x", 1, envir = e)\nrm("x", envir = e)'
+		);
+		assertSliced(label('rm reads the field it removes from an environment', ['functions-with-global-side-effects']),
+			shell, 'e <- new.env()\ne$x <- 1\nrm(list = "x", envir = e)', ['3@rm'],
+			'e <- new.env()\ne$x <- 1\nrm(list = "x", envir = e)'
+		);
 	});
 }));

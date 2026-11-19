@@ -46,8 +46,6 @@ export const SOFTWARE_HAS_LICENSE = {
 		description:   'Finds software projects without a license (a LICENSE file or the License field of the DESCRIPTION).',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Documentation, LintingRuleTag.Usability],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: () => ({
-			checkDescriptionFile: true
-		})
+		defaultConfig: () => ({ checkDescriptionFile: true })
 	}
 } as const satisfies LintingRule<SoftwareHasLicenseResult, SoftwareHasLicenseMetadata, SoftwareHasLicenseConfig, never, never>;

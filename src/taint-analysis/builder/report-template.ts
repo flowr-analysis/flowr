@@ -1,8 +1,7 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SourceLocation, Column, Line } from '../../util/range';
-import { SourceLocation as SourceLocationOps } from '../../util/range';
+import { type SourceLocation, type Column, type Line, SourceLocation as SourceLocationOps } from '../../util/range';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /** Per-finding context handed to a {@link ReportTemplate}. */
@@ -29,9 +28,7 @@ export interface FindingContext {
 	readonly functionName?: string;
 }
 
-/**
- * A report message: either a constant string, or a function rendering a message per {@link FindingContext|finding}.
- */
+/** A report message: either a constant string, or a function rendering a message per {@link FindingContext|finding}. */
 export type ReportTemplate = string | ((finding: FindingContext) => string);
 
 /**
@@ -41,9 +38,7 @@ export type ReportTemplate = string | ((finding: FindingContext) => string);
 export const findingToken: (finding: FindingContext) => string | undefined
 	= finding => finding.functionName ?? finding.lexeme;
 
-/**
- * Assembles the {@link FindingContext} for a single finding from its node id and resolved node/location.
- */
+/** Assembles the {@link FindingContext} for a single finding from its node id and resolved node/location. */
 export function buildFindingContext(
 	name: string,
 	nodeId: NodeId,
@@ -64,10 +59,7 @@ export function buildFindingContext(
 	};
 }
 
-/**
- * Renders a {@link ReportTemplate} for a given {@link FindingContext}.
- * Constant strings are returned verbatim.
- */
+/** Renders a {@link ReportTemplate} for a given {@link FindingContext}. Constant strings are returned verbatim. */
 export function renderReport(report: ReportTemplate, ctx: FindingContext): string {
 	return typeof report === 'function' ? report(ctx) : report;
 }

@@ -5,8 +5,7 @@ import { VertexType } from '../../../dataflow/graph/vertex';
 import { dfgToAscii } from '../../../util/simple-df/dfg-ascii';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { isSigDbEnabled } from '../../../config';
-import type { IdentifierReference } from '../../../dataflow/environments/identifier';
-import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
+import { type IdentifierReference, Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
 import type { KillReference } from '../../../dataflow/info';
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SourceLocation } from '../../../util/range';
@@ -68,15 +67,15 @@ function printReferenceSections(output: ReplOutput, sections: readonly Reference
 	const idWidth = width(r => r.id);
 	const nameWidth = width(r => r.name);
 	const typeWidth = width(r => r.type);
-	const line = (l: ReferenceLine) => {
+	function line(l: ReferenceLine) {
 		if(typeof l === 'string') {
 			return l;
 		}
 		const id = output.formatter.format(l.id.padStart(idWidth), { color: Colors.Cyan, effect: ColorEffect.Foreground });
 		const type = output.formatter.format(l.type.padEnd(typeWidth), { color: Colors.Magenta, effect: ColorEffect.Foreground });
 		return `${id}  ${l.name.padEnd(nameWidth)}  ${type}  ${l.detail}`.trimEnd();
-	};
-	const compact = (lines: readonly ReferenceLine[]) => {
+	}
+	function compact(lines: readonly ReferenceLine[]) {
 		const byName = new Map<string, string[]>();
 		for(const l of lines) {
 			const name = typeof l === 'string' ? l : l.name;
@@ -88,7 +87,7 @@ function printReferenceSections(output: ReplOutput, sections: readonly Reference
 		}
 		return Array.from(byName, ([name, ids]) => ids.length === 0 ? name :
 			`${name} (${ids.slice(0, MaxIdsPerName).join(', ')}${ids.length > MaxIdsPerName ? ', ...' : ''})`);
-	};
+	}
 	for(const { title, lines } of sections.filter(s => s.lines.length > 0)) {
 		output.stdout(`${title} (${count(lines.length)}):`);
 		for(const l of lines.slice(0, MaxDetailedReferences)) {
@@ -153,7 +152,6 @@ export const dataflowSilentCommand = codeCommand('Just calculates the DFG, but o
 		{ title: 'Kill', lines: (result.kill ?? []).map(k => killRow(k, idMap)) }
 	]);
 });
-
 
 export const dataflowSimplifiedCommand = mermaidCommand('Get mermaid code for the simplified dataflow graph', ':dataflowsimple', ['ds', 'dfs'], { url: false, simplified: true });
 

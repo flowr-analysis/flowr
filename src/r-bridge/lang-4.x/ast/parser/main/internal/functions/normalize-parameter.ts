@@ -23,7 +23,6 @@ export function tryNormalizeParameter(data: NormalizerData, objs: readonly Named
 		return undefined;
 	}
 
-
 	const symbol = objs[0];
 	if(symbol.name !== RawRType.SymbolFormals) {
 		parseLog.warn(`expected symbol for parameter, yet received ${JSON.stringify(objs)}`);
@@ -47,18 +46,10 @@ export function tryNormalizeParameter(data: NormalizerData, objs: readonly Named
 			/* a parameter written as `` `x` `` binds `x`, the name a read in the body uses */
 			content: Identifier.getName(Identifier.make(content)),
 			lexeme:  content,
-			info:    {
-				fullRange:  location,
-				adToks:     [],
-				fullLexeme: content
-			}
+			info:    { fullRange: location, adToks: [], fullLexeme: content }
 		},
 		defaultValue: delim ? undefined : defaultValue,
-		info:         {
-			fullRange:  location,
-			fullLexeme: content,
-			adToks:     delim ? [defaultValue] : []
-		}
+		info:         { fullRange: location, fullLexeme: content, adToks: delim ? [defaultValue] : [] }
 	};
 }
 

@@ -1,9 +1,8 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
+import { analyze } from '../../_helper/analyzer';
 
 
 describe('is-higher-order-function', withTreeSitter(ts => {
@@ -18,16 +17,12 @@ describe('is-higher-order-function', withTreeSitter(ts => {
 		for(const [exp, crit] of [[true, expect.pos], [false, expect.neg]] as const) {
 			for(const c of crit ?? []) {
 				test(`${label} (expect ${c} to be ${exp ? 'ho' : 'not ho'})`, async() => {
-					const context = contextFromInput(code);
-					const df = await createDataflowPipeline(ts, {
-						context: context
-					}).allRemainingSteps();
-
-					const id = SlicingCriterion.tryParse(c, df.normalize.idMap);
+					const analyzer = await analyze(ts, code);
+					const id = SlicingCriterion.tryParse(c, (await analyzer.normalize()).idMap);
 					// move up the error message :sparkles:
 					assert.isDefined(id, `could not resolve criterion ${c}`);
 
-					assert.strictEqual(FunctionSemantics.isHigherOrder(id, df.dataflow.graph, { ctx: context }), exp);
+					assert.strictEqual(FunctionSemantics.isHigherOrder(id, (await analyzer.dataflow()).graph, { ctx: analyzer.inspectContext() }), exp);
 				});
 			}
 		}

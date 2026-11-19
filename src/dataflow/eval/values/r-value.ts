@@ -129,7 +129,6 @@ function renderString(value: RStringValue): string {
 	return raw ? `r${quote}(${value.str})${quote}` : `${quote}${JSON.stringify(value.str).slice(1, -1)}${quote}`;
 }
 
-
 /** A value as a human-readable string, dispatching on its type and answering for `Top` and `Bottom` as well. */
 export function stringifyValue(value: Lift<Value>): string {
 	return tryStringifyBoTop(value, v => {

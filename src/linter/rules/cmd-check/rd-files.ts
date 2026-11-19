@@ -1,4 +1,5 @@
-import { prettyPrint, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -14,11 +15,10 @@ import { baseRExportOwner, isBaseRPackage } from '../../../util/r-base-packages'
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { type RdMacroUse, type RdNode, type RdScan, parseRdMacros, scanRd } from '../../../project/plugins/file-plugins/files/flowr-rd-file';
-import type { packageInfo } from './cmd-check-util';
-import { DependencyFields, projectNodes } from './cmd-check-util';
+import { type packageInfo, DependencyFields, firstErrorRow, projectNodes } from './cmd-check-util';
 import type { PackageFiles } from './package-files';
 import { rdExamples } from './package-code';
-import { type FileResult, fileFindings, onPackageFiles } from './file-checks';
+import { type FileResult, fileFindings, onPackageFiles, KindInFile } from './file-checks';
 
 /** what is wrong with an Rd page or the manual, named after the part of `R CMD check` that finds it */
 export type RdFilesKind = 'rd-syntax' | 'rd-unknown-macro' | 'rd-structure' | 'rd-empty-section' | 'rd-encoding' | 'rd-markup' | 'rd-lost-braces'
@@ -471,16 +471,18 @@ function lineWidths(p: Page, { config }: Env): Finding[] {
 /** the `\bibcitep`/`\bibcitet` keys a page cites but never shows with `\bibshow` */
 function bibentries(p: Page): Finding[] {
 	const events: { name: string, keys: string[], line: number }[] = [];
-	const visit = (nodes: readonly RdNode[]): void => nodes.forEach(n => {
-		if(n.type === 'group') {
-			visit(n.children);
-		} else if(isMacro(n)) {
-			if(n.name.startsWith('bibci') || n.name === 'bibshow') {
-				events.push({ name: n.name, keys: plain(arg(n, 0)).split(',').map(k => k.trim()).filter(k => k !== ''), line: p.scan.lineOf(n.at) });
+	function visit(nodes: readonly RdNode[]): void {
+		nodes.forEach(n => {
+			if(n.type === 'group') {
+				visit(n.children);
+			} else if(isMacro(n)) {
+				if(n.name.startsWith('bibci') || n.name === 'bibshow') {
+					events.push({ name: n.name, keys: plain(arg(n, 0)).split(',').map(k => k.trim()).filter(k => k !== ''), line: p.scan.lineOf(n.at) });
+				}
+				n.args.forEach(visit);
 			}
-			n.args.forEach(visit);
-		}
-	});
+		});
+	}
 	visit(p.scan.nodes);
 	let [cited, cache, shown, first] = [[] as string[], [] as string[], [] as string[], 0];
 	for(const e of events) {
@@ -499,27 +501,17 @@ function bibentries(p: Page): Finding[] {
 /** the S3 methods a `\usage` calls by their full name rather than with `\method` */
 function s3Names(p: Page, { methods }: Env): Finding[] {
 	const found: Finding[] = [];
-	const visit = (nodes: readonly RdNode[]): void => nodes.forEach(n => {
-		const call = n.type === 'text' ? /^\s*([A-Za-z.][A-Za-z0-9._]*)\s*\(/.exec(n.text)?.[1] : undefined;
-		if(call !== undefined && methods.has(call)) {
-			found.push(['rd-s3-method-name', p.scan.lineOf(n.at), `S3 methods shown with full name in Rd file '${p.base}': '${call}'`]);
-		}
-		visit(n.type === 'group' ? n.children : isMacro(n) && ExampleWrappers.includes(n.name) ? arg(n, 0) : []);
-	});
+	function visit(nodes: readonly RdNode[]): void {
+		nodes.forEach(n => {
+			const call = n.type === 'text' ? /^\s*([A-Za-z.][A-Za-z0-9._]*)\s*\(/.exec(n.text)?.[1] : undefined;
+			if(call !== undefined && methods.has(call)) {
+				found.push(['rd-s3-method-name', p.scan.lineOf(n.at), `S3 methods shown with full name in Rd file '${p.base}': '${call}'`]);
+			}
+			visit(n.type === 'group' ? n.children : isMacro(n) && ExampleWrappers.includes(n.name) ? arg(n, 0) : []);
+		});
+	}
 	visit(section(p, 'usage')?.args[0] ?? []);
 	return found;
-}
-
-/** a tree-sitter error node, searched without recursion deeper than the tree */
-function firstErrorRow(root: { isError: boolean, isMissing: boolean, children: readonly unknown[], startPosition: { row: number } }): number | undefined {
-	const stack = [root];
-	for(let node = stack.pop(); node !== undefined; node = stack.pop()) {
-		if(node.isError || node.isMissing) {
-			return node.startPosition.row;
-		}
-		stack.push(...(node.children as typeof root[]).slice().reverse());
-	}
-	return undefined;
 }
 
 /** the file argument of the functions that write one: its name and its position among the unnamed arguments */
@@ -537,9 +529,11 @@ function examples(p: Page, { data }: Env): Finding[] {
 	if(ex === undefined || !/\S/.test(ex.code) || p.diags.some(d => d.kind === 'rd-syntax')) {
 		return [];
 	}
-	const at = (row: number) => ex.lineOffset + row;
+	const at = (row: number) => {
+		return ex.lineOffset + row;
+	};
 	const tree = data.parseStandalone(ex.code);
-	const errorRow = tree.rootNode.hasError ? firstErrorRow(tree.rootNode) : undefined;
+	const errorRow = firstErrorRow(tree.rootNode);
 	if(errorRow !== undefined) {
 		return [['rd-example-syntax', at(errorRow), `Running examples in '${p.file}' failed: the example code does not parse (unexpected code at line ${at(errorRow)})`]];
 	}
@@ -547,10 +541,10 @@ function examples(p: Page, { data }: Env): Finding[] {
 	const nodes = projectNodes(ast);
 	const found: Finding[] = [];
 	const lineOf = (n: { info: { id: unknown } }) => at((SourceLocation.fromNode(n as never)?.[0] ?? 1) - 1);
-	const assigned = (node: typeof nodes[number]) => {
-		const parent = node.info.parent === undefined ? undefined : ast.idMap.get(node.info.parent);
+	function assigned(node: typeof nodes[number]) {
+		const parent = RNode.directParent(node, ast.idMap);
 		return (RArgument.is(parent) && parent.name === node) || (RBinaryOp.is(parent) && parent.lhs === node && ['<-', '=', '<<-'].includes(parent.operator));
-	};
+	}
 	let [setwds, restores] = [0, false];
 	for(const node of nodes) {
 		const symbol = RSymbol.is(node) ? Identifier.getName(node.content) : undefined;
@@ -596,9 +590,7 @@ type Add = ReturnType<typeof fileFindings<RdFilesKind>>['add'];
 
 /** the pages grouped by `key`, only the groups of more than one */
 function shared<T>(items: readonly T[], key: (t: T) => string): [string, T[]][] {
-	const m = new Map<string, T[]>();
-	items.forEach(i => m.set(key(i), [...m.get(key(i)) ?? [], i]));
-	return [...m].filter(([, g]) => g.length > 1);
+	return [...Map.groupBy(items, key)].filter(([, g]) => g.length > 1);
 }
 
 /** `checking Rd metadata`: names and aliases that more than one page uses, and the package aliases */
@@ -688,11 +680,8 @@ export const RD_FILES = {
 		}
 		return { results, '.meta': { checkedFiles: pages.length } };
 	}),
-	prettyPrint: prettyPrint(
-		result => `${result.kind} in ${result.file} at ${SourceLocation.format(result.loc)}`,
-		result => `${result.message} (at ${SourceLocation.format(result.loc)})`
-	),
-	info: {
+	prettyPrint: KindInFile,
+	info:        {
 		name:          'Rd Files',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,

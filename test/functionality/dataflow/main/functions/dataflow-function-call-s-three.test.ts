@@ -19,11 +19,9 @@ f <- function(x) {
 `, emptyGraph()
 			.calls('6@"f"', '2@function')
 			.defineFunction('2@function', [8], {
-				in:                [],
 				entryPoint:        '2@{',
 				graph:             new Set([]),
 				environment:       REnvironment.pushLocal(defaultEnv()),
-				out:               [],
 				hooks:             [],
 				unknownReferences: []
 			}, { mode: [FunctionDispatch.S3] }),

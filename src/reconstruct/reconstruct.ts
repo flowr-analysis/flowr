@@ -7,11 +7,7 @@ import { expensiveTrace, log, LogLevel } from '../util/log';
 import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { guard } from '../util/assert';
 import type { MergeableRecord } from '../util/objects';
-import type {
-	NormalizedAst,
-	ParentInformation,
-	RNodeWithParent
-} from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation, RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
@@ -141,7 +137,10 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 		return isSelected(config, exprList) ? plain('{}') : [];
 	} else if(subExpressions.length === 1) {
 		if(!isSelected(config, exprList)) {
-			return subExpressions[0];
+			/* a dropped call keeps its arguments as several expressions, which a body only holds within a block */
+			const kept = exprList.children[expressions.findIndex(e => e.length > 0)];
+			const several = exprList.info.parent !== undefined && RFunctionCall.is(kept) && !isSelected(config, kept) && subExpressions[0].length > 1;
+			return several ? [...plain('{'), ...indentBy(subExpressions[0], 1), ...plain('}')] : subExpressions[0];
 		}
 		const [fst] = subExpressions;
 		const g = exprList.grouping;
@@ -226,10 +225,7 @@ function reconstructBodyWithHeader(header: PrettyPrintLine, body: Code, onEmpty:
 			{ line: '}', indent: header.indent }
 		];
 	} else {
-		return [
-			header,
-			...indentBy(body, 1)
-		];
+		return [header, ...indentBy(body, 1)];
 	}
 }
 
@@ -263,7 +259,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		if(isSelected(config, ifThenElse)) {
 			return reconstructBodyWithHeader(
 				{ line: `if(${reconstructableSource(ifThenElse.condition)}) { } else`, indent: 0 },
-				then, '{}'
+				otherwise, '{}'
 			);
 		} else {
 			return otherwise;
@@ -348,6 +344,19 @@ function isHandedToACall(definition: RFunctionDefinition<ParentInformation>): bo
 	return definition.info.role === RoleInParent.FunctionCallArgument || definition.info.role === RoleInParent.ArgumentValue;
 }
 
+/** a definition handed to a call the slice drops is gone with it, even if the call sits in kept code: `tryCatch(return(1), error = function(e) 2)` */
+function handedToUnselectedCall(definition: RFunctionDefinition<ParentInformation>, config: ReconstructionConfiguration): boolean {
+	if(!isHandedToACall(definition)) {
+		return false;
+	}
+	for(const parent of RNode.iterateParents(definition, config.fullAst.idMap)) {
+		if(RFunctionCall.is(parent)) {
+			return !isSelected(config, parent);
+		}
+	}
+	return false;
+}
+
 function reconstructFunctionDefinition(
 	definition: RFunctionDefinition<ParentInformation>,
 	functionParameters: readonly Code[],
@@ -360,7 +369,7 @@ function reconstructFunctionDefinition(
 		const selected = isSelected(config, definition);
 		if(empty && selected) { // give function stub
 			return plain(`${definition.lexeme}(${reconstructParameters(definition.parameters).join(', ')}) { }`);
-		} else if(!selected && !hasSelectedAncestor(definition, config)) {
+		} else if(!selected && (!hasSelectedAncestor(definition, config) || (empty && handedToUnselectedCall(definition, config)))) {
 			return isHandedToACall(definition) ? [] : body;
 		}
 	}
@@ -554,11 +563,8 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
 	foldBinaryOp: reconstructBinaryOp,
 	foldPipe:     reconstructBinaryOp,
 	foldUnaryOp:  reconstructUnaryOp,
-	other:        {
-		foldComment:       reconstructAsLeaf,
-		foldLineDirective: reconstructAsLeaf
-	},
-	loop: {
+	other:        { foldComment: reconstructAsLeaf, foldLineDirective: reconstructAsLeaf },
+	loop:         {
 		foldFor:    reconstructForLoop,
 		foldRepeat: reconstructRepeatLoop,
 		foldWhile:  reconstructWhileLoop,
@@ -630,7 +636,7 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 
 	// we use a wrapper to count the number of lines for which the autoSelectIf predicate triggered
 	const linesWithAutoSelected = new Set<Line>();
-	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
+	function autoSelectIfWrapper(node: RNode<ParentInformation>) {
 		const result = autoSelectIf(node, ast);
 		if(result && node.location) {
 			for(let i = node.location[0]; i <= node.location[2]; i++) {
@@ -638,7 +644,7 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 			}
 		}
 		return result;
-	};
+	}
 
 	// both inlinings splice every resolvable `source()` in place, overriding `reconstructFiles`: `inlineSources`
 	// emits the main file alone, `inlineFull` every file flowR loads, minus the ones already spliced into a call.
@@ -666,11 +672,7 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 				parts.push(selection.inlineFull === 'banner' ? `${fileBanner(ast.ast.files[i].filePath)}\n${code}` : code);
 			}
 		}
-		return {
-			code:                  parts.join('\n'),
-			linesWithAutoSelected: linesWithAutoSelected.size,
-			inlineWarnings:        warnings
-		};
+		return { code: parts.join('\n'), linesWithAutoSelected: linesWithAutoSelected.size, inlineWarnings: warnings };
 	}
 
 	const indices = selection.reconstructFiles === 'all' ? ast.ast.files.map((_, i) => i) : (selection.reconstructFiles ?? [0]);

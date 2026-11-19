@@ -3,7 +3,6 @@ import type { DataflowInformation } from '../../dataflow/info';
 import type { QuadSerializationConfiguration } from '../../util/quads';
 import { df2quads } from '../../dataflow/graph/quads';
 
-
 function mayObjectJson(d: unknown): string {
 	if(typeof d === 'object') {
 		return objectJson(d as object);

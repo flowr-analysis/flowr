@@ -1,8 +1,10 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { noteUnknownMethods } from './built-in-expression-list';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { linkComputedLookup } from './built-in-get';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -175,10 +177,7 @@ export function processApply<OtherInfo>(
 		information.graph.addEdge(functionId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information = {
 			...information,
-			in: [
-				...information.in,
-				{ type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }
-			]
+			in: [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }]
 		};
 		const called = information.graph.getVertex(rootFnId);
 		if(DfgVertex.isFunctionDefinition(called)) {
@@ -251,6 +250,7 @@ export function callNamedFunction<OtherInfo>(
 	const targets = Resolve.byNameAndType(functionName, data.environment, ReferenceType.Function);
 	if(targets?.some(t => t.type === ReferenceType.BuiltInFunction && CallProps.hasAny(t.config, CallProp.Scope) && !CallProps.hasAny(t.config, SemanticCallTag.LoadsPackage))) {
 		information.graph.markIdForUnknownSideEffects(rootId);
+		noteUnknownMethods(information.environment, rootId);
 	}
 	information.graph.updateToFunctionCall({
 		tag:         VertexType.FunctionCall,
@@ -258,7 +258,8 @@ export function callNamedFunction<OtherInfo>(
 		name:        functionName,
 		args:        args as FunctionArgument[],
 		environment: resolveInEnvironment === 'global' ? undefined : data.environment,
-		onlyBuiltin: resolveInEnvironment === 'global',
+		/* a name only built-ins bind (`do.call(format, ...)`) is a call of one, which may dispatch to the methods of the code */
+		onlyBuiltin: resolveInEnvironment === 'global' || (targets !== undefined && targets.length > 0 && targets.every(t => t.type === ReferenceType.BuiltInFunction)),
 		cds:         data.cds,
 		origin:      [BuiltInProcName.Function]
 	});
@@ -270,6 +271,14 @@ export function callNamedFunction<OtherInfo>(
 			if(DfgVertex.isFunctionCall(call)) {
 				call.origin = [...Array.isArray(call.origin) ? call.origin : [], BuiltInProcName.NewEnv];
 			}
+		}
+	}
+	/* `sapply(c("a", "b"), get)` looks up the names it hands on, as a `get(n)` in a function body does */
+	if(targets?.some(t => t.type === ReferenceType.BuiltInFunction && t.processorName === BuiltInProcName.Get)) {
+		const call = information.graph.getVertex(functionId);
+		const name = DfgVertex.isFunctionCall(call) ? call.args[0] : undefined;
+		if(DfgVertex.isFunctionCall(call) && name !== undefined && name !== EmptyArgument) {
+			linkComputedLookup(information.graph, call, information.environment, data.ctx, undefined);
 		}
 	}
 	return [information, functionId];

@@ -1,7 +1,7 @@
 import { hooksUnder } from '../../../../../hooks';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
-import type { ControlDependency, DataflowInformation, KillReference } from '../../../../../info';
+import { type ControlDependency, type DataflowInformation, type KillReference, withCds } from '../../../../../info';
 import { onlyLiterals } from '../../../../../eval/resolve/resolve';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { convertFnArguments, patchFunctionCall } from '../common';
@@ -14,15 +14,13 @@ import { EdgeType } from '../../../../../graph/edge';
 import { ControlFlow } from '../../../../control-flow';
 import { makeAmbientWritesMaybe } from './built-in-ambient-state';
 import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { type REnvironmentInformation, REnvironment } from '../../../../../environments/environment';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
-import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { RLoopConstructs } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { type RNode, RLoopConstructs } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { REnvironment } from '../../../../../environments/environment';
 
 /** `if(<cond>) <then> else <else>` built-in function configuration, make sure to not reuse indices */
 export interface IfThenElseConfig {
@@ -43,12 +41,7 @@ function conditionalArgsOf<OtherInfo>(
 	if(!config?.args) {
 		return args.map(e => RArgument.valueOf(e));
 	}
-	const params = {
-		[config.args.cond]: 'cond',
-		[config.args.yes]:  'yes',
-		[config.args.no]:   'no',
-		'...':              '...'
-	};
+	const params = { [config.args.cond]: 'cond', [config.args.yes]: 'yes', [config.args.no]: 'no', '...': '...' };
 	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
 	return (['cond', 'yes', 'no'] as const).map(k => RArgument.valueOf(RArgument.getWithId(args, argMaps.get(k)?.[0])));
 }
@@ -128,8 +121,7 @@ export function processIfThenElse<OtherInfo>(
 		makeAmbientWritesMaybe(otherwise.environment, cond.environment, finalEnvironment, cdFalse);
 	}
 	/* we assign all branch references with a maybe marker; we do not merge even if they appear in both branches because the maybe links will refer to different ids */
-	const maybe = (refs: readonly IdentifierReference[] | undefined, cds: ControlDependency[], includeDefs = false) =>
-		uncertain ? makeAllMaybe(refs, nextGraph, finalEnvironment, includeDefs, cds) : refs ?? [];
+	const maybe = (refs: readonly IdentifierReference[] | undefined, cds: ControlDependency[], includeDefs = false) => uncertain ? makeAllMaybe(refs, nextGraph, finalEnvironment, includeDefs, cds) : refs ?? [];
 	const ingoing: IdentifierReference[] = cond.in.concat(
 		maybe(then?.in, cdTrue),
 		maybe(otherwise?.in, cdFalse),
@@ -159,8 +151,9 @@ export function processIfThenElse<OtherInfo>(
 	// as an if always evaluates its condition, we add a 'reads'-edge
 	nextGraph.addEdge(rootId, cond.entryPoint, EdgeType.Reads);
 
-	const exitPoints = (then?.exitPoints ?? []).map(e => ({ ...e, cds: uncertain ? [...data.cds ?? [], { id: rootId, when: true }] : e.cds }))
-		.concat((otherwise?.exitPoints ?? []).map(e => ({ ...e, cds: uncertain ? [...data.cds ?? [], { id: rootId, when: false }] : e.cds })));
+	/* a branch's exit keeps the conditions it has within the branch, as the `return` of an `else if` without an `else` (#2810) */
+	const underBranch = (exits: DataflowInformation['exitPoints'] | undefined, when: boolean) => (exits ?? []).map(e => ({ ...e, cds: uncertain ? withCds(e.cds ?? data.cds, [{ id: rootId, when }]) : e.cds }));
+	const exitPoints = underBranch(then?.exitPoints, true).concat(underBranch(otherwise?.exitPoints, false));
 
 	const entryOrJoin = (branch: DataflowInformation | undefined) => branch ? ControlFlow.entryOf(branch) : rootId;
 	const reachesJoin = then === undefined || otherwise === undefined

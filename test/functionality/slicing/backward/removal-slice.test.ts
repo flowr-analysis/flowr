@@ -2,14 +2,13 @@ import { assert, describe, test } from 'vitest';
 import { withShell } from '../../_helper/shell';
 import { decorateLabelContext, label } from '../../_helper/label';
 import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import type { SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import type { RShell } from '../../../../src/r-bridge/shell';
+import { analyze } from '../../_helper/analyzer';
 
 /** the program the removal slice of `criteria` leaves of `code` */
 async function removalOf(shell: RShell, code: string, criteria: SlicingCriteria): Promise<string> {
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
-	analyzer.addRequest(code);
+	const analyzer = await analyze(shell, code);
 	const { 'static-slice': slices } = await analyzer.query([{ type: 'static-slice', criteria, removal: true }]);
 	const left = (Object.values(slices.results)[0] as { reconstruct?: { code: string | string[] } } | undefined)?.reconstruct?.code;
 	return Array.isArray(left) ? left.join('\n') : left ?? '';

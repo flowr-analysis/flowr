@@ -9,14 +9,12 @@ import {
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { reconstructToCode } from '../../reconstruct/reconstruct';
 import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
-import type { MermaidMarkStyle, MermaidGraphPrinterInfo, MermaidMarkdownMark } from './info';
-import { MermaidDefaultMarkStyle } from './info';
+import { type MermaidMarkStyle, type MermaidGraphPrinterInfo, type MermaidMarkdownMark, MermaidDefaultMarkStyle } from './info';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Mermaid } from './mermaid';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RTrue } from '../../r-bridge/lang-4.x/convert-values';
-
 
 export interface MermaidCfgGraphPrinterInfo extends MermaidGraphPrinterInfo {
 	/** The style to apply to mark an entry point marker node */
@@ -129,7 +127,6 @@ function conditionName(cfg: ControlFlowInformation, normalizedAst: NormalizedAst
 	return lexeme ? `${lexeme} (${condition})` : String(condition);
 }
 
-
 function shouldIncludeNode(simplify: boolean, v: CfgVertex, include: ReadonlySet<MermaidMarkdownMark>): boolean {
 	if(simplify) {
 		// Only basic blocks are shown, so include the BB, if at least one child is selected
@@ -172,7 +169,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 	const bodies = cfg.graph.mayHaveBasicBlocks() ? new Map<NodeId, NodeId[]>() : collectBodies(cfg.graph);
 	const partOfBody = new Set<NodeId>(bodies.values().flatMap(body => body));
 
-	const emitBody = (defId: NodeId): void => {
+	function emitBody(defId: NodeId): void {
 		const body = bodies.get(defId)?.filter(v => !includeOnlyIds || includeOnlyIds.has(v));
 		if(body === undefined || body.length === 0) {
 			return;
@@ -191,7 +188,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 			emitBody(vertexId);
 		}
 		output += '    end\n';
-	};
+	}
 
 	for(const [id, vertex] of cfg.graph.vertices(false)) {
 		const normalizedVertex = normalizedAst?.idMap.get(id);
@@ -284,16 +281,12 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 	return output;
 }
 
-/**
- * Use mermaid to visualize the normalized AST.
- */
+/** Use mermaid to visualize the normalized AST. */
 export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, info?: MermaidCfgGraphPrinterInfo): string {
 	return Mermaid.codeToUrl(cfgToMermaid(cfg, normalizedAst, info ?? {}));
 }
 
-/**
- * Limits a string to n chars, after which the remainder will be replaced with ...
- */
+/** Limits a string to n chars, after which the remainder will be replaced with ... */
 function limitTo(str: string, limit: number): string {
 	if(str.length <= limit) {
 		return str;

@@ -5,9 +5,7 @@ import { findNonLocalReads, linkCircularRedefinitionsWithinALoop, produceNameSha
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type {
-	PotentiallyEmptyRArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -23,7 +21,6 @@ import { linkAmbientStateWithinLoop } from './built-in-ambient-state';
  * @param name   - The name of the function being called.
  * @param args   - The arguments passed to the function.
  * @param rootId - The root node ID for the current processing context.
- * @param data   - Additional dataflow processor information.
  * @returns      - The resulting dataflow information after processing the repeat loop.
  */
 export function processRepeatLoop<OtherInfo>(

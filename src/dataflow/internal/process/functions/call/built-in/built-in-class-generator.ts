@@ -1,5 +1,9 @@
-import type { BrandedIdentifier } from '../../../../../environments/identifier';
-import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type BrandedIdentifier, ReferenceType } from '../../../../../environments/identifier';
+import {
+	RFunctionCall,
+	type PotentiallyEmptyRArgument,
+	EmptyArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -11,12 +15,10 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { REnvironment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveListToEnvState } from './built-in-list';
 import { findReturnsEnvState } from './built-in-envir-utils';
-import { ReferenceType } from '../../../../../environments/identifier';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ClassDeclarationConfig } from '../../../../../fn/class-declaration';
 import { attachClassDeclaration } from './built-in-s-seven-new-generic';
 import { linkS4Declaration } from './built-in-s-four';

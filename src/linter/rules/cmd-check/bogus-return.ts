@@ -12,7 +12,7 @@ import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { at, boundName, type CmdCheckResult, isQuoted, packageInfo, printer } from './cmd-check-util';
+import { at, boundName, type CmdCheckResult, packageInfo, printer } from './cmd-check-util';
 
 export interface BogusReturnResult extends CmdCheckResult {
 	/** the name of the function the bare `return` is in, if it is bound to one */
@@ -39,7 +39,7 @@ export const BOGUS_RETURN = {
 			const vertex = graph.getVertex(node.info.id);
 			const loc = SourceLocation.fromNode(node);
 			const targets = DfgVertex.isUse(vertex) ? Dataflow.targetsOf(graph, node.info.id, EdgeType.Reads) : [];
-			if(loc === undefined || targets.length === 0 || !targets.every(t => NodeId.isBuiltIn(t) && NodeId.fromBuiltIn(t) === 'return') || isQuoted(graph, node.info.id, idMap)) {
+			if(loc === undefined || targets.length === 0 || !targets.every(t => NodeId.isBuiltIn(t) && NodeId.fromBuiltIn(t) === 'return') || Dataflow.isWithinQuoted(node.info.id, graph)) {
 				continue;
 			}
 			const fn = idMap.get(RNode.findEnclosing(node.info.id, idMap, RFunctionDefinition.is) ?? '');

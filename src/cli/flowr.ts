@@ -11,22 +11,9 @@ import type { Server } from './repl/server/net';
 import { flowrVersion, printVersionInformation } from '../util/version';
 import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
-import {
-	ansiFormatter,
-	ColorEffect,
-	Colors,
-	FontStyles,
-	formatter,
-	italic,
-	setFormatter,
-	voidFormatter
-} from '../util/text/ansi';
+import { ansiFormatter, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/text/ansi';
 import commandLineArgs from 'command-line-args';
-import {
-	type EngineConfig,
-	FlowrConfig,
-	type KnownEngines,
-} from '../config';
+import { type EngineConfig, FlowrConfig, type KnownEngines } from '../config';
 import { guard } from '../util/assert';
 import { type ScriptInformation, scripts } from './common/scripts-info';
 import { waitOnScript } from './repl/execute';
@@ -89,10 +76,7 @@ export const optionHelp = [
 			`$ ${toolName} {bold slicer} {bold --help}`,
 		]
 	},
-	{
-		header:     'Options',
-		optionList: flowrMainOptionDefinitions
-	}
+	{ header: 'Options', optionList: flowrMainOptionDefinitions }
 ];
 
 const options = commandLineArgs(flowrMainOptionDefinitions) as FlowrCliOptions;
@@ -142,12 +126,11 @@ function createConfig(): FlowrConfig {
 		}
 	}
 
-
 	// for all options that we manually supply that have a config equivalent, set them in the config
 	config = FlowrConfig.amend(config, c => {
 		(c.engines as EngineConfig[]) ??= [];
 
-		const engine = <E extends EngineConfig>(values: E): void => {
+		function engine<E extends EngineConfig>(values: E): void {
 			const engines = c.engines as EngineConfig[];
 			const at = engines.findIndex(e => e.type === values.type);
 			const given = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined));
@@ -156,7 +139,7 @@ function createConfig(): FlowrConfig {
 			} else {
 				engines[at] = { ...engines[at], ...given };
 			}
-		};
+		}
 
 		if(!options['engine.r-shell.disabled']) {
 			engine({
@@ -190,13 +173,13 @@ function createConfig(): FlowrConfig {
 }
 
 function hookSignalHandlers(engines: { engines: KnownEngines; default: keyof KnownEngines }) {
-	const end = () => {
+	function end() {
 		if(options.execute === undefined) {
 			console.log(`\n${italic('Exiting...')}`);
 		}
 		Object.values(engines.engines).forEach(e => e?.close());
 		exitSafe(0);
-	};
+	}
 
 	process.on('SIGINT', end);
 	process.on('SIGTERM', end);
@@ -278,7 +261,6 @@ async function mainServer(useWebSocket: boolean) {
 	const backend: Server = useWebSocket ? new WebSocketServerWrapper(options['ws-allow-origin']) : new NetServer();
 	await new FlowRServer(engines.engines, engines.default, options['r-session-access'], config, backend).start(options.port);
 }
-
 
 async function main() {
 	try {

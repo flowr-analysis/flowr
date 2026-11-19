@@ -4,8 +4,11 @@ import { type DataflowInformation, ControlDependency, happensInEveryBranch } fro
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	type PotentiallyEmptyRArgument,
+	RFunctionCall,
+	EmptyArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RLogical } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -16,13 +19,27 @@ import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import { LazyBindings } from '../../../../../environments/frame-memory';
-import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
-import type { NamedInGraphIdentifierDefinition, BrandedIdentifier, BrandedNamespace, IdentifierDefinition, InGraphIdentifierDefinition, InGraphReferenceType } from '../../../../../environments/identifier';
+import {
+	Identifier,
+	PkgName,
+	ReferenceType,
+	type NamedInGraphIdentifierDefinition,
+	type BrandedIdentifier,
+	type BrandedNamespace,
+	type IdentifierDefinition,
+	type InGraphIdentifierDefinition,
+	type InGraphReferenceType
+} from '../../../../../environments/identifier';
 import type { BuiltInIdentifierDefinition, BuiltInMemory } from '../../../../../environments/built-in';
 import type { BuiltInFnInfo } from '../../../../../environments/built-in-props';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { DefaultAttachPosition, Environment, EnvType, REnvironment } from '../../../../../environments/environment';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
+import {
+	DefaultAttachPosition,
+	Environment,
+	EnvType,
+	REnvironment,
+	type REnvironmentInformation
+} from '../../../../../environments/environment';
 import type { FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { EdgeType } from '../../../../../graph/edge';
 import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
@@ -39,7 +56,9 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { AttachedBasePackages, AttachedBasePackageSet, baseRPackages } from '../../../../../../util/r-base-packages';
 import { resolveAttachPosition } from './built-in-envir-utils';
 import { uniqueArray } from '../../../../../../util/collections/arrays';
+import { datasetShape, datasetsOf } from '../../../../../../util/r-datasets';
 import { sexpTypeToReferenceType } from './built-in-load';
+import { CacheScope, GlobalCaches } from '../../../../../../util/global-caches';
 
 /** Controls how {@link processLibrary} brings a package into scope. */
 export interface LibraryProcessorConfig extends BuiltInFnInfo {
@@ -76,9 +95,7 @@ export interface AttachSpec {
 	readonly pos?:           number;
 }
 
-/**
- * Process a library call like `library` or `require`
- */
+/** Process a library call like `library` or `require` */
 export function processLibrary<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -103,10 +120,10 @@ export function processLibrary<OtherInfo>(
 	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), formals);
 	const charId = uniqueArray(argMaps.get('char') ?? []);
 	/* `library(pkg, include.only = "f")` and `exclude = "f"` attach only part of the exports, as `import::from` does */
-	const namesIn = (key: 'only' | 'except'): string[] | undefined => {
+	function namesIn(key: 'only' | 'except'): string[] | undefined {
 		const value = RArgument.getValue<OtherInfo & ParentInformation>(args, argMaps.get(key)?.[0] ?? '');
 		return value === undefined ? undefined : NodeValue.stringsOf(value.info.id, data);
-	};
+	}
 	const only = config.fromImports ? undefined : namesIn('only');
 	const except = config.fromImports ? undefined : namesIn('except');
 	const spec: AttachSpec = {
@@ -141,22 +158,10 @@ export function processLibrary<OtherInfo>(
 	if(!config.characterOnly && charId.length >= 1) {
 		const values = NodeValue.setOf(charId[0], data);
 		if(values?.type === 'set' && values.elements.length > 0) {
-			let seenTrue = false;
-			let seenFalse = false;
-			let seenMaybe = false;
-			for(const elem of values.elements) {
-				if(elem.type !== 'logical') {
-					continue;
-				} else if(elem.value === true) {
-					seenTrue = true;
-				} else if(elem.value === false) {
-					seenFalse = true;
-				} else {
-					seenMaybe = true;
-				}
-			}
+			const logicals = values.elements.flatMap(e => e.type === 'logical' ? [e.value] : []);
+			const seenTrue = logicals.includes(true);
 			/* mixed true/false, no logical value at all, or an explicit NA are all treated the same: uncertain */
-			isCharacterOnly = seenMaybe || seenTrue === seenFalse ? 'maybe' : seenTrue;
+			isCharacterOnly = logicals.some(v => v !== true && v !== false) || seenTrue === logicals.includes(false) ? 'maybe' : seenTrue;
 		}
 	}
 	const evaluatedNames = isCharacterOnly ? evaluated.map(n => NodeValue.stringsOf(n.info.id, data)) : [];
@@ -208,12 +213,8 @@ function packageNameOf<Info>(node: RNode<Info> | undefined): BrandedNamespace | 
 
 /** The string literals of a `"x"` or `c("x", "y")` node (used for `import::from`'s `.except`). */
 function stringLiterals<Info>(node: RNode<Info>): string[] {
-	if(RString.is(node)) {
-		return [node.content.str];
-	}
-	return RFunctionCall.isNamed(node, 'c')
-		? node.arguments.flatMap(a => a !== EmptyArgument && RString.is(a.value) ? [a.value.content.str] : [])
-		: [];
+	return RString.is(node) ? [node.content.str]
+		: RFunctionCall.isNamed(node, 'c') ? node.arguments.flatMap(a => a !== EmptyArgument && RString.is(a.value) ? [a.value.content.str] : []) : [];
 }
 
 /** Parse `import::from(pkg, a, keep = filter, .all = TRUE, .except = c(...))` into which exports to attach. */
@@ -298,12 +299,9 @@ function parseUseSpec<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): { pack: BrandedNamespace, spec: AttachSpec } | undefined {
 	const bracket = parseBoxSpec(first);
-	if(bracket !== undefined) {
+	const pack = bracket === undefined ? packageNameOf(first) : undefined;
+	if(bracket !== undefined || pack === undefined) {
 		return bracket;
-	}
-	const pack = packageNameOf(first);
-	if(pack === undefined) {
-		return undefined;
 	}
 	// box::use is read as box's namespace-only member access: a box::-qualified call, or box is a loaded dependency
 	if(Identifier.getNamespace(name.content) === PkgName.Box || data.ctx.deps.getDependency(PkgName.Box) !== undefined) {
@@ -388,6 +386,27 @@ export function loadNodesForNamespace(env: REnvironmentInformation, pack?: Brand
 		}
 	}
 	return nodes;
+}
+
+/**
+ * The load calls that attached a package shipping the data set `name` (`starwars` of `dplyr`), which a read of the
+ * name that nothing defines has to keep: R finds the data set as lazy data of the attached package.
+ */
+export function dataLoadNodesForNamespace(env: REnvironmentInformation, name: BrandedIdentifier): NodeId[] {
+	if(env.current.builtInEnv) {
+		return [];
+	}
+	const loads = new Map<BrandedNamespace, NodeId[]>();
+	for(const e of REnvironment.searchPath(env.current)) {
+		if(e.t === undefined) {
+			break;
+		}
+		if(e.n !== undefined && e.d !== undefined) {
+			loads.set(e.n, [...loads.get(e.n) ?? [], e.d]);
+		}
+	}
+	const pkg = loads.size === 0 ? undefined : datasetShape(name, undefined, p => loads.has(p))?.pkg;
+	return pkg === undefined ? [] : loads.get(pkg) ?? [];
 }
 
 /**
@@ -513,6 +532,7 @@ function attachResolved(dependency: Package, envInfo: REnvironmentInformation, c
 		const layerType = spec.namespaceOnly ? EnvType.LoadedNamespace : EnvType.Namespace;
 		const layer = new Environment(envInfo.current).asLibrary(pack, layerType);
 		layer.adoptMap(lazyExports(pack, exports, ctx, definedAt, cds, dependency.namespaceInfo));
+		layer.d = shipsData(pack) ? definedAt : undefined;
 		return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, layer, layer, spec.pos) };
 	}
 	/* as R does: the Depends first (at the default position, whatever `pos` says), then `pack`, then what its `.onAttach` attaches */
@@ -525,8 +545,14 @@ function attachResolved(dependency: Package, envInfo: REnvironmentInformation, c
 	const importsEnv = imports(new Environment(below.current).asLibrary(pack, EnvType.Imports), dependency.namespaceInfo, ctx);
 	const namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace);
 	namespaceEnv.adoptMap(lazyExports(pack, exports, ctx, definedAt, cds, dependency.namespaceInfo));
+	namespaceEnv.d = shipsData(pack) ? definedAt : undefined;
 	const attached = { level: below.level, current: REnvironment.attachAt(below.current, namespaceEnv, importsEnv, withStartupPosition(pack, below, spec).pos) };
 	return alongside(attached, onAttach);
+}
+
+/** whether `pack` ships data sets, which its load binds as lazy data */
+function shipsData(pack: BrandedNamespace): boolean {
+	return datasetsOf(pack).length > 0;
 }
 
 /** `spec` with the position R gives a startup package, unless a position is given, see {@link startupAttachPosition} */
@@ -602,7 +628,7 @@ function attachedInEveryBranch(layer: Environment): boolean {
 }
 
 /** Immutable base-layer chains, shared across analyses (layers clone before mutating); building one is O(N^2) in exports, so cache and reparent. */
-const baseNamespaceLayerCache = new Map<string, REnvironmentInformation['current']>();
+const baseNamespaceLayerCache = GlobalCaches.map<string, REnvironmentInformation['current']>('base-namespace-layers', CacheScope.Process, 8);
 
 function baseNamespaceCacheKey(ctx: FlowrAnalyzerContext, basePackages: readonly BrandedNamespace[]): string {
 	return `${String(ctx.env.getCleanEnvFingerprint())}|${ctx.resolvedRVersion}|${basePackages.join(',')}|${ctx.deps.baseRSourceFingerprint()}`;

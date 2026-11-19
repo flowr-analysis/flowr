@@ -7,8 +7,7 @@ import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../
 import { SigDatabase } from '../../../src/project/sigdb/reader';
 import { SigDbBuilder } from '../../../src/project/sigdb/build';
 import { FnProp, type SigVersionInfo } from '../../../src/project/sigdb/schema';
-import { executeQueries, Query } from '../../../src/queries/query';
-import { asciiSummaryOfQueryResult } from '../../../src/queries/query-print';
+import { executeQueries, Query, asciiSummaryOfQueryResult } from '../../../src/queries/query';
 import { ansiFormatter } from '../../../src/util/text/ansi';
 import type { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import fs from 'fs';

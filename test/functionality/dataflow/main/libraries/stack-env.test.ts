@@ -11,9 +11,9 @@ import { label } from '../../../_helper/label';
 // `get("x", envir=e)` resolve into that environment. Expectations verified against real R.
 describe('Env builtins point into the search-path stack', withTreeSitter(ts => {
 	const opts = { expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;
-	const registerPkgA = (a: FlowrAnalyzer): void => {
+	function registerPkgA(a: FlowrAnalyzer): void {
 		a.context().deps.addDependency(Package.fromConstants('pkgA', 'export(fa)', ['fa']));
-	};
+	}
 	const withPkgA = { ...opts, modifyAnalyzer: registerPkgA } as const;
 
 	assertDataflow(label('globalenv() lets $ resolve into the global env', ['search-path', 'dynamic-environment-resolution']), ts,
@@ -87,12 +87,12 @@ describe('Env builtins point into the search-path stack', withTreeSitter(ts => {
 
 	assertDataflow(label('as.environment("package:pkgA")$fa resolves to the package export', ['search-path', 'dynamic-environment-resolution']), ts,
 		'library(pkgA)\nas.environment("package:pkgA")$fa',
-		emptyGraph().autoPrints([10], true).recordAmbientAccess(3, { reads: ['#lib-paths'], writes: ['#search-path:pkgA', '#search-path'] }).addEdge('2@$', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads),
+		emptyGraph().autoPrints([10], true).recordAmbientAccess(3, { reads: ['#lib-paths', '#installed-packages:pkgA', '#installed-packages:*'], writes: ['#search-path:pkgA', '#search-path'] }).addEdge('2@$', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads),
 		withPkgA);
 
 	assertDataflow(label('parent.env(globalenv())$fa reaches the attached package export', ['search-path', 'dynamic-environment-resolution']), ts,
 		'library(pkgA)\nparent.env(globalenv())$fa',
-		emptyGraph().autoPrints([11], true).recordAmbientAccess(3, { reads: ['#lib-paths'], writes: ['#search-path:pkgA', '#search-path'] }).addEdge('2@$', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads),
+		emptyGraph().autoPrints([11], true).recordAmbientAccess(3, { reads: ['#lib-paths', '#installed-packages:pkgA', '#installed-packages:*'], writes: ['#search-path:pkgA', '#search-path'] }).addEdge('2@$', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads),
 		withPkgA);
 
 	assertDataflow(label('list2env(envir = globalenv()) inside a function reaches the global', ['search-path', 'dynamic-environment-resolution']), ts,

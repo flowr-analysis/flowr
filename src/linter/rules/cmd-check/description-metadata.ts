@@ -88,11 +88,11 @@ function readFields(text: string): Map<string, Field> {
 	const fields = new Map<string, Field>();
 	const lines = (text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text).split(/\r?\n/);
 	let cur: { name: string, parts: string[], start: number } | undefined;
-	const flush = (end: number) => {
+	function flush(end: number) {
 		if(cur) {
 			fields.set(cur.name, { name: cur.name, value: cur.parts.join('\n').trim(), start: cur.start, end });
 		}
-	};
+	}
 	let last = 0;
 	lines.forEach((line, i) => {
 		const m = /^([^\s:][^:]*):(.*)$/.exec(line);
@@ -209,11 +209,11 @@ export const DESCRIPTION_METADATA = {
 		const fields = readFields(text);
 		const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/);
 		const results: DescriptionMetadataResult[] = [];
-		const add = (kind: DescriptionMetadataKind, message: string, field?: string) => {
+		function add(kind: DescriptionMetadataKind, message: string, field?: string) {
 			const f = field === undefined ? undefined : fields.get(field);
 			const loc: SourceLocation = f ? [f.start, 1, f.end, Math.max(1, lines[f.end - 1]?.length ?? 1), descPath] : [1, 1, 1, 1, descPath];
 			results.push({ certainty: LintingResultCertainty.Certain, involvedId: undefined, loc, kind, field, message });
-		};
+		}
 		const val = (name: string) => fields.get(name)?.value;
 		const packageName = val('Package');
 		const isBase = val('Priority') === 'base';
@@ -424,10 +424,6 @@ export const DESCRIPTION_METADATA = {
 		tags:          [LintingRuleTag.CmdCheck],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds problems in the DESCRIPTION: required fields, package name, version, maintainer, dependency fields, license, Authors@R, encoding, and the Title and Description style CRAN asks for.',
-		defaultConfig: () => ({
-			cranIncoming: true,
-			maxDepends:   5,
-			maxImports:   0
-		})
+		defaultConfig: () => ({ cranIncoming: true, maxDepends: 5, maxImports: 0 })
 	}
 } as const satisfies LintingRule<DescriptionMetadataResult, DescriptionMetadataMetadata, DescriptionMetadataConfig>;

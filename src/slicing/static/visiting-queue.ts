@@ -44,7 +44,6 @@ export class VisitingQueue {
 
 	/**
 	 * Adds a node to the queue if it has not been seen before.
-	 * @param target             - the node to add
 	 * @param env                - the environment the node is traversed in
 	 * @param envFingerprint     - the fingerprint of the environment
 	 * @param onlyForSideEffects - whether the node is only used for its side effects
@@ -124,6 +123,11 @@ export class VisitingQueue {
 
 	public hasId(id: NodeId): boolean {
 		return this.idThreshold.has(id);
+	}
+
+	/** Every node added so far, see {@link hasId}. */
+	public visitedIds(): readonly NodeId[] {
+		return [...this.idThreshold.keys()];
 	}
 
 	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result' | 'stoppedEarly' | 'progress'>> {

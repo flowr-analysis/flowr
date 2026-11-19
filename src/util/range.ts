@@ -23,7 +23,6 @@ export type SourcePosition = [/** starts with 1 */
 	column: Column
 ];
 
-
 /**
  * **Please note** that for multi-file projects we also have a {@link SourceLocation|source location} type that includes the file name.
  * Describe the start and end {@link SourcePosition|source position} of an element.
@@ -68,9 +67,7 @@ function raw(of: SourceLocationLike | undefined): SourceLocation | undefined {
  */
 export const SourceRange = {
 	name: 'SourceRange',
-	/**
-	 * Prints a {@link SourceRange|range} as a human-readable string.
-	 */
+	/** Prints a {@link SourceRange|range} as a human-readable string. */
 	format(this: void, range: SourceLocation | undefined): string {
 		if(range === undefined) {
 			return '??-??';
@@ -83,35 +80,21 @@ export const SourceRange = {
 		}
 		return `${range[0]}.${range[1]}-${range[2]}.${range[3]}`;
 	},
-	/**
-	 * Prints a {@link SourcePosition|position} as a human-readable string.
-	 */
+	/** Prints a {@link SourcePosition|position} as a human-readable string. */
 	formatPosition(this: void, pos: SourcePosition | undefined): string {
 		return pos === undefined ? '??.??' : `${pos[0]}.${pos[1]}`;
 	},
-	/**
-	 * Returns the start position of a source range, or `undefined` if there is no range.
-	 */
+	/** Returns the start position of a source range, or `undefined` if there is no range. */
 	getStart:       ((range?: SourceLocation) => range && [range[0], range[1]]) as Accessor<SourceLocation, SourcePosition>,
-	/**
-	 * Returns the start line of a source range, or `undefined` if there is no range.
-	 */
+	/** Returns the start line of a source range, or `undefined` if there is no range. */
 	getStartLine:   ((range?: SourceLocation) => range?.[0]) as Accessor<SourceLocation, Line>,
-	/**
-	 * Returns the start column of a source range, or `undefined` if there is no range.
-	 */
+	/** Returns the start column of a source range, or `undefined` if there is no range. */
 	getStartColumn: ((range?: SourceLocation) => range?.[1]) as Accessor<SourceLocation, Column>,
-	/**
-	 * Returns the end position of a source range, or `undefined` if there is no range.
-	 */
+	/** Returns the end position of a source range, or `undefined` if there is no range. */
 	getEnd:         ((range?: SourceLocation) => range && [range[2], range[3]]) as Accessor<SourceLocation, SourcePosition>,
-	/**
-	 * Returns the end line of a source range, or `undefined` if there is no range.
-	 */
+	/** Returns the end line of a source range, or `undefined` if there is no range. */
 	getEndLine:     ((range?: SourceLocation) => range?.[2]) as Accessor<SourceLocation, Line>,
-	/**
-	 * Returns the end column of a source range, or `undefined` if there is no range.
-	 */
+	/** Returns the end column of a source range, or `undefined` if there is no range. */
 	getEndColumn:   ((range?: SourceLocation) => range?.[3]) as Accessor<SourceLocation, Column>,
 	/**
 	 * Creates a source range from the given line and column numbers.
@@ -123,27 +106,19 @@ export const SourceRange = {
 	from(this: void, sl: Line | string, sc: Column | string, el: Line | string = sl, ec: Column | string = sc): SourceRange {
 		return [Number(sl), Number(sc), Number(el), Number(ec)];
 	},
-	/**
-	 * returns an invalid source range
-	 */
+	/** returns an invalid source range */
 	invalid(this: void): SourceRange {
 		return [-1, -1, -1, -1];
 	},
-	/**
-	 * Whether the range is a real one, i.e., not the {@link SourceRange.invalid|invalid} range and not absent.
-	 */
+	/** Whether the range is a real one, i.e., not the {@link SourceRange.invalid|invalid} range and not absent. */
 	isValid(this: void, range: SourceLocation | undefined): range is SourceLocation {
 		return range !== undefined && range[0] >= 0 && range[1] >= 0 && range[2] >= 0 && range[3] >= 0;
 	},
-	/**
-	 * Whether the range starts and ends on the same line.
-	 */
+	/** Whether the range starts and ends on the same line. */
 	isSingleLine(this: void, range: SourceLocation): boolean {
 		return range[0] === range[2];
 	},
-	/**
-	 * The number of lines the range spans (always at least `1` for a valid range).
-	 */
+	/** The number of lines the range spans (always at least `1` for a valid range). */
 	lineCount(this: void, range: SourceLocation): number {
 		return range[2] - range[0] + 1;
 	},
@@ -171,9 +146,7 @@ export const SourceRange = {
 	overlap(this: void, r1: SourceLocation, r2: SourceLocation): boolean {
 		return !SourceRange.startsCompletelyBefore(r1, r2) && !SourceRange.startsCompletelyBefore(r2, r1);
 	},
-	/**
-	 * Calculates the component-wise sum of two ranges.
-	 */
+	/** Calculates the component-wise sum of two ranges. */
 	add(this: void, [r1sl, r1sc, r1el, r1ec]: SourceLocation, [r2sl, r2sc, r2el, r2ec]: SourceLocation): SourceRange {
 		return [r1sl + r2sl, r1sc + r2sc, r1el + r2el, r1ec + r2ec];
 	},
@@ -188,9 +161,7 @@ export const SourceRange = {
 			return r1sl - r2sl;
 		}
 	},
-	/**
-	 * Checks if two ranges are equal (i.e., they start and end at the same position).
-	 */
+	/** Checks if two ranges are equal (i.e., they start and end at the same position). */
 	equals(this: void, [r1sl, r1sc, r1el, r1ec]: SourceLocation, [r2sl, r2sc, r2el, r2ec]: SourceLocation): boolean {
 		return r1sl === r2sl && r1sc === r2sc && r1el === r2el && r1ec === r2ec;
 	},
@@ -212,15 +183,11 @@ export const SourceRange = {
 		}
 		return true;
 	},
-	/**
-	 * Checks if the first range is a subset of the second range.
-	 */
+	/** Checks if the first range is a subset of the second range. */
 	isSubsetOf(this: void, [r1sl, r1sc, r1el, r1ec]: SourceLocation, [r2sl, r2sc, r2el, r2ec]: SourceLocation): boolean {
 		return (r1sl > r2sl || r1sl === r2sl && r1sc >= r2sc) && (r1el < r2el || r1el === r2el && r1ec <= r2ec);
 	},
-	/**
-	 * Checks if the first range is a strict subset of the second range (i.e., it is a subset but not equal).
-	 */
+	/** Checks if the first range is a strict subset of the second range (i.e., it is a subset but not equal). */
 	isStrictSubsetOf(this: void, r1: SourceLocation, r2: SourceLocation): boolean {
 		return SourceRange.isSubsetOf(r1, r2) && !SourceRange.equals(r1, r2);
 	},
@@ -328,9 +295,7 @@ export const SourceRange = {
  */
 export const SourceLocation = {
 	name: 'SourceLocation',
-	/**
-	 * Formats a {@link SourceLocation|source location} as a human-readable string.
-	 */
+	/** Formats a {@link SourceLocation|source location} as a human-readable string. */
 	format(this: void, location: SourceLocation | undefined): string {
 		if(location === undefined) {
 			return '??:??-??';
@@ -342,9 +307,7 @@ export const SourceLocation = {
 	},
 	/** Returns the {@link SourceRange|source range} part of a {@link SourceLocation|source location}, file excluded. */
 	getRange: ((loc?: SourceLocation) => loc && [loc[0], loc[1], loc[2], loc[3]]) as Accessor<SourceLocation, SourceRange>,
-	/**
-	 * Returns the file part of a {@link SourceLocation|source location}, or `undefined` if no file is set.
-	 */
+	/** Returns the file part of a {@link SourceLocation|source location}, or `undefined` if no file is set. */
 	getFile(this: void, location: SourceLocation | undefined): string | undefined {
 		return location?.[4];
 	},
@@ -366,9 +329,7 @@ export const SourceLocation = {
 	is(this: void, x: unknown): x is SourceLocation {
 		return Array.isArray(x);
 	},
-	/**
-	 * Creates a {@link SourceLocation|source location} from a {@link SourceRange|source range} and a file name.
-	 */
+	/** Creates a {@link SourceLocation|source location} from a {@link SourceRange|source range} and a file name. */
 	from(this: void, range: SourceRange, file?: string): SourceLocation {
 		return file !== undefined ? [...range, file] : [...range];
 	},
@@ -395,9 +356,7 @@ export const SourceLocation = {
 	at<OtherInfo>(this: void, node: RNode<OtherInfo> | undefined): SourceLocationView | undefined {
 		return SourceLocation.view(SourceLocation.fromNode(node));
 	},
-	/**
-	 * Maps the file part of a {@link SourceLocation|source location} using the given mapper function.
-	 */
+	/** Maps the file part of a {@link SourceLocation|source location} using the given mapper function. */
 	mapFile(this: void, loc: SourceLocation, fileMapper: (file: string | undefined) => string): SourceLocation {
 		return SourceLocation.from(SourceLocation.getRange(loc), fileMapper(loc[4]));
 	},
@@ -429,15 +388,11 @@ export const SourceLocation = {
 			return file1 < file2 ? -1 : 1;
 		}
 	},
-	/**
-	 * Checks if two locations are equal, file included.
-	 */
+	/** Checks if two locations are equal, file included. */
 	equals(this: void, loc1: SourceLocation, loc2: SourceLocation): boolean {
 		return loc1[4] === loc2[4] && SourceRange.equals(loc1, loc2);
 	},
-	/**
-	 * Returns an invalid source location (i.e., with an invalid range and no file).
-	 */
+	/** Returns an invalid source location (i.e., with an invalid range and no file). */
 	invalid(this: void): SourceLocation {
 		return SourceRange.invalid();
 	},

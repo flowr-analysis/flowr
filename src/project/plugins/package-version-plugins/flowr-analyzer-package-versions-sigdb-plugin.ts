@@ -17,6 +17,7 @@ import { isSigDbEnabled, resolveAssumedRVersion, VersionSelection, type FlowrCon
 import { RRange, RVersion } from '../../../util/r-version';
 import { baseRPackages } from '../../../util/r-base-packages';
 import { DefaultMap } from '../../../util/collections/defaultmap';
+import { BoundedMap } from '../../../util/collections/bounded-map';
 import { uniqueArray } from '../../../util/collections/arrays';
 import { RReexports } from '../../../data/r-reexports.generated';
 import { SecureMode } from '../../../util/secure-mode';
@@ -31,10 +32,7 @@ const CodecNames: Readonly<Record<string, string>> = { '.zst': 'zstd', '.br': 'b
 
 /** the codec name of a manifest's resolved shard + dict sources, or `mixed` when they do not all agree */
 function manifestFormat(set: SigDatabaseSet): string {
-	const paths = [
-		...set.manifest.shards.map(s => s.path),
-		...(set.manifest.dicts?.map(d => d.path) ?? [])
-	];
+	const paths = [...set.manifest.shards.map(s => s.path), ...(set.manifest.dicts?.map(d => d.path) ?? [])];
 	const codecs = uniqueArray(paths.map(p => CodecNames[compressedExtOf(resolveSource(set.baseDir, p)) ?? ''] ?? 'plain'));
 	return codecs.length === 1 ? codecs[0] : 'mixed';
 }
@@ -71,17 +69,9 @@ function envSources(): string[] {
  */
 export function reconstructS3Generics(exported: readonly BrandedIdentifier[]): Map<BrandedIdentifier, string[]> {
 	const names = new Set(exported);
-	const generics = new Map<BrandedIdentifier, string[]>();
-	for(const name of exported) {
-		const dot = name.indexOf('.');
-		const generic = dot > 0 ? name.slice(0, dot) : undefined;
-		if(generic !== undefined && names.has(generic)) {
-			const classes = generics.get(generic) ?? [];
-			classes.push(name.slice(dot + 1));
-			generics.set(generic, classes);
-		}
-	}
-	return generics;
+	const methods = exported.filter(name => name.indexOf('.') > 0 && names.has(name.slice(0, name.indexOf('.'))));
+	const generics = Map.groupBy(methods, name => name.slice(0, name.indexOf('.')));
+	return new Map(generics.entries().map(([generic, ms]) => [generic, ms.map(name => name.slice(name.indexOf('.') + 1))]));
 }
 
 /**
@@ -89,12 +79,14 @@ export function reconstructS3Generics(exported: readonly BrandedIdentifier[]): M
  * source; this stays proportional to what a run actually asks about rather than scanning all ~1.1M export names up front.
  */
 const exportOwnersBySource = new WeakMap<PackageSignatureSource, DefaultMap<BrandedIdentifier, readonly BrandedNamespace[]>>();
+/** bounds the names {@link exportOwnersBySource} keeps per source, which lives as long as the process */
+const MaxExportOwnersPerSource = 65_536;
 
 /** The packages of `src` exporting `name`, most downloaded first, scanning only the first time a name is asked. */
 function exportOwners(src: PackageSignatureSource, name: BrandedIdentifier): readonly BrandedNamespace[] {
 	let byName = exportOwnersBySource.get(src);
 	if(byName === undefined) {
-		byName = new DefaultMap(n => src.packagesExporting(n));
+		byName = new DefaultMap(n => src.packagesExporting(n), new BoundedMap(MaxExportOwnersPerSource));
 		exportOwnersBySource.set(src, byName);
 	}
 	return byName.get(name);
@@ -468,23 +460,15 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		if(range === undefined) {
 			return undefined;
 		}
-		const satisfying = this.availableVersions(src, name).findLast(version => RRange.satisfies(version, range));
+		const satisfying = availableVersionEntries(src, name).findLast(e => RRange.satisfies(e.version, range))?.version;
 		return satisfying === undefined ? undefined : src.lookup(name, satisfying);
 	}
 
 	/** Lowest stored version satisfying the constraint (using the store's actual R-form version strings). */
 	private oldestSatisfying(src: PackageSignatureSource, name: BrandedNamespace, range: Range | undefined): LibraryExports | undefined {
 		// versions are ascending, so the first satisfying one is the oldest
-		const satisfying = this.availableVersions(src, name).find(version => range === undefined || RRange.satisfies(version, range));
+		const satisfying = availableVersionEntries(src, name).find(e => range === undefined || RRange.satisfies(e.version, range))?.version;
 		return satisfying === undefined ? undefined : src.lookup(name, satisfying);
-	}
-
-	/**
-	 * The versions the source can answer for a package (dated releases, base-R core releases, and the latest),
-	 * ascending. Versions that differ in writing but not in order (`1.2` and `1.2.0`) are settled by release date.
-	 */
-	private availableVersions(src: PackageSignatureSource, pkg: BrandedNamespace): string[] {
-		return availableVersionEntries(src, pkg).map(e => e.version);
 	}
 
 	/** build the resolved {@link Package} (namespace + version) from a source's export view */
@@ -526,14 +510,5 @@ function knownReexports(pkg: BrandedNamespace): ReadonlyMap<BrandedIdentifier, B
 
 /** the `importFrom(origin, names)` directives behind a source's re-exports, grouped by origin */
 function reexportImports(reexports: ReadonlyMap<BrandedIdentifier, BrandedNamespace> | undefined): Map<BrandedNamespace, BrandedIdentifier[]> {
-	const imports = new Map<BrandedNamespace, BrandedIdentifier[]>();
-	for(const [fn, origin] of reexports ?? []) {
-		const names = imports.get(origin);
-		if(names === undefined) {
-			imports.set(origin, [fn]);
-		} else {
-			names.push(fn);
-		}
-	}
-	return imports;
+	return new Map(Map.groupBy(reexports ?? [], ([, origin]) => origin).entries().map(([origin, fns]) => [origin, fns.map(([fn]) => fn)]));
 }

@@ -1,9 +1,8 @@
 import { assert, describe, test } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { CloneAlgorithm } from '../../../src/clones/clone-detector';
 import { withTreeSitter } from '../_helper/shell';
 import { assertLintedLines } from '../_helper/linter';
+import { analyze } from '../_helper/analyzer';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('Code Clones', () => {
@@ -23,8 +22,7 @@ scale_it <- function(values) {
 }`;
 		assertLintedLines('renamed copy of a function', parser, clone, 'code-clones', [1]);
 		test('configured algorithms replace the default one', async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(requestFromInput(clone));
+			const analyzer = await analyze(parser, clone);
 			const linted = await analyzer.query({ type: 'linter', rules: [{ name: 'code-clones', config: { algorithms: [CloneAlgorithm.Winnowing] } } as never] });
 			const results = (linted.results['code-clones'] as { results: { algorithm: CloneAlgorithm }[] }).results;
 			assert.isNotEmpty(results);

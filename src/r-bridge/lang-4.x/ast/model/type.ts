@@ -203,14 +203,9 @@ export enum RType {
 	/* ------ special types ------ */
 	/** {@link RProject} */
 	Project = 'RProject',
-	/**
-	 * {@link RDelimiter}.
-	 * Is not part of the normalized AST but can be found in
-	 * {@link Source#adToks}.
-	 */
+	/** {@link RDelimiter}. Is not part of the normalized AST but can be found in {@link Source#adToks}. */
 	Delimiter = 'RDelimiter',
 }
-
 
 export const ValidRTypes: Set<string> = new Set(Object.values(RType));
 export const ValidRTypesReverse = Object.fromEntries(Object.entries(RType).map(([k, v]) => [v, k]));

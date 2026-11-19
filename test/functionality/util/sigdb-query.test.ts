@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'vitest';
-import { argsOf, closed, completeAt, problemsOf, explainAt, isIncomplete, globOf, highlight, matchArgs, parseSpec } from '../../../scripts/sigdb-page/query';
+import { argsOf, closed, completeAt, defineTraits, problemsOf, explainAt, isIncomplete, globOf, highlight, matchArgs, parseSpec } from '../../../scripts/sigdb-page/query';
 
 describe('sigdb page query', () => {
 	describe('plain names stay names', () => {
 		test.each(['*', '+', '[', '[[', '[[<-', '(', '{', '%*%', '%in%', '[.data.frame', 'dplyr::filter', 'read.csv'])('%s', name => {
-			expect(parseSpec(name)).toEqual({ rest: name, props: [] });
+			expect(parseSpec(name)).toEqual({ rest: name, props: [], traits: [] });
 		});
 		test('backticks and an empty call are dropped', () => {
 			expect(parseSpec('`+`').rest).toBe('+');
@@ -15,10 +15,21 @@ describe('sigdb page query', () => {
 	describe('parseSpec', () => {
 		test('wildcard name with argument and function constraints', () => {
 			expect(parseSpec('*([alias],*) [pure]')).toEqual({
-				rest:  '',
-				args:  [{ name: '', roles: ['alias'] }, { repeat: '*', name: '', roles: [] }],
-				props: ['pure']
+				rest:   '',
+				args:   [{ name: '', roles: ['alias'] }, { repeat: '*', name: '', roles: [] }],
+				props:  ['pure'],
+				traits: []
 			});
+		});
+		test('traits in braces, wherever they sit, and `{` alone stays a name', () => {
+			defineTraits([{ word: 'contract', about: 'has a contract' }, { word: 'throw', about: 'may throw' }]);
+			expect(parseSpec('{contract} read*')).toEqual({ rest: 'read*', props: [], traits: ['contract'] });
+			expect(parseSpec('read* {contract,throw} [pure]')).toEqual({ rest: 'read*', props: ['pure'], traits: ['contract', 'throw'] });
+			expect(parseSpec('{').traits).toEqual([]);
+			expect(isIncomplete('* {contr')).toBe(true);
+			expect(problemsOf('{contrct} *')).toEqual(['`contrct` is no known trait, did you mean `contract`?']);
+			expect(completeAt('* {con', 6)?.options).toEqual(['contract']);
+			expect(highlight('{throw} *').find(([, kind]) => kind === 'trait')?.[0]).toBe('throw');
 		});
 		test('named formal with several roles, commas inside brackets do not split', () => {
 			expect(parseSpec('f(x[alias,forced], y)').args).toEqual([
@@ -39,11 +50,11 @@ describe('sigdb page query', () => {
 			expect(parseSpec('*[pure]([alias]*)')).toEqual(parseSpec('*([alias]*) [pure]'));
 		});
 		test('brackets that lead a name stay a name', () => {
-			expect(parseSpec('[ x')).toEqual({ rest: '[ x', props: [] });
-			expect(parseSpec('[[ x')).toEqual({ rest: '[[ x', props: [] });
+			expect(parseSpec('[ x')).toEqual({ rest: '[ x', props: [], traits: [] });
+			expect(parseSpec('[[ x')).toEqual({ rest: '[[ x', props: [], traits: [] });
 		});
 		test('empty brackets are no constraint', () => {
-			expect(parseSpec('[]')).toEqual({ rest: '[]', props: [] });
+			expect(parseSpec('[]')).toEqual({ rest: '[]', props: [], traits: [] });
 		});
 	});
 
@@ -139,7 +150,7 @@ describe('sigdb page patterns', () => {
 	});
 	test('/ and unfinished or broken patterns stay names', () => {
 		for(const text of ['/', '//', '/abc', '/[/', '/(/']) {
-			expect(parseSpec(text)).toEqual({ rest: text, nameRegex: undefined, props: [] });
+			expect(parseSpec(text)).toEqual({ rest: text, nameRegex: undefined, props: [], traits: [] });
 		}
 	});
 	test('patterns are colored whole', () => {

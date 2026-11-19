@@ -36,7 +36,7 @@ export function makeFlowMemo(): FlowMemo {
 }
 
 /** the roles of an argument that carries no data into the result, whatever else the call does with it */
-const CarriesNoData = ArgProp.Resource | ArgProp.Flag | ArgProp.Nse | ArgProp.Callee | ArgProp.Presence | ArgProp.Handle | ArgProp.Written | ArgProp.Lazy;
+const CarriesNoData = ArgProp.Resource | ArgProp.Flag | ArgProp.Nse | ArgProp.Callee | ArgProp.Presence | ArgProp.Handle | ArgProp.Lazy;
 
 function carriesData(roles: number): boolean {
 	return (roles & CarriesNoData) === 0;
@@ -104,7 +104,8 @@ function variablesOf(dataflow: DataflowInformation, ast: NormalizedAst, id: Node
 	seen.add(id);
 	const into = new Set<BrandedIdentifier>();
 	const vertex = dataflow.graph.getVertex(id);
-	if(DfgVertex.isUse(vertex)) {
+	/* the target of an in-place setter (`setDT(dt)`) is defined by reading what it held */
+	if(DfgVertex.isUse(vertex) || (DfgVertex.isVariableDefinition(vertex) && Dataflow.targetsOf(dataflow.graph, id, EdgeType.Reads).length > 0)) {
 		const name = nameOf(ast, id);
 		if(name !== undefined && !namesFunction(dataflow, id)) {
 			into.add(name);
@@ -173,12 +174,12 @@ export function handedOn(dataflow: DataflowInformation, ast: NormalizedAst, call
 export function assignmentOf(dataflow: DataflowInformation, ast: NormalizedAst, id: NodeId, memo?: FlowMemo): AssignmentTarget | undefined {
 	/* every value along the way is assigned to what the start is, so a later ask from any of them is answered at once */
 	const path: NodeId[] = [];
-	const settle = (target: AssignmentTarget | undefined) => {
+	function settle(target: AssignmentTarget | undefined) {
 		for(const at of path) {
 			memo?.assignments.set(at, target);
 		}
 		return target;
-	};
+	}
 	const seen = new Set<NodeId>();
 	for(let current = id; !seen.has(current);) {
 		if(memo?.assignments.has(current)) {

@@ -1,7 +1,7 @@
 import { assert, test, type TestContext } from 'vitest';
 import { label } from '../../_helper/label';
 import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
-import { printedByProgram, printedByR } from '../../_helper/shell';
+import { printedByProgram, printedByR, reconstructedSlice } from '../../_helper/shell';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
 import { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
@@ -24,6 +24,8 @@ import type { BrandedIdentifier } from '../../../../src/dataflow/environments/id
 export interface Verdict {
 	readonly red?:       string
 	readonly imprecise?: string
+	/** the analysis runs long enough to hold up the tests running next to it in the same worker, so it runs on its own */
+	readonly alone?:     boolean
 }
 
 /** One program with what is asked of it, the last line prints the value to check. */
@@ -62,7 +64,8 @@ export function testing(capabilities: readonly FlowrCapabilityId[], define: () =
 }
 
 function caseTest(verdict: Verdict) {
-	const run = verdict.red === undefined ? test : test.fails;
+	const base = verdict.alone ? test.sequential : test;
+	const run = verdict.red === undefined ? base : base.fails;
 	return (name: string, fn: (context: TestContext) => Promise<void>) => run(label(name, tested, ['dataflow']), fn);
 }
 
@@ -89,8 +92,7 @@ export function sliceMatchesR(parser: KnownParser, c: TransitivityCase): void {
 		}
 		const slice = await (async() => {
 			const analyzer = await analyzerFor(parser, c.code, c.files);
-			const sliced = await analyzer.query([{ type: 'static-slice', criteria: [c.criterion ?? lastCall(c.code)] }]);
-			return (Object.values(sliced['static-slice'].results)[0] as { reconstruct: { code: string } }).reconstruct.code;
+			return reconstructedSlice(await analyzer.query([{ type: 'static-slice', criteria: [c.criterion ?? lastCall(c.code)] }]));
 		})().finally(() => {
 			if(disabled !== undefined) {
 				process.env.FLOWR_DISABLE_DEFAULT_SIGDB = disabled;

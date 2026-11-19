@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-11-08, 17:31:23 UTC (v2.17.4, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-11-15, 17:22:57 UTC (v2.17.7, R v4.5.0), do not edit directly._
 
 Is your question not answered below? Please [ask it as an issue](https://github.com/flowr-analysis/flowr/issues/new?template=question.yaml) and we will answer it.
 Answers regularly end up on this page, so asking helps everyone who wonders the same thing later.
@@ -84,11 +84,11 @@ To enter the development repl, execute `npm run main-dev` in contrast to `npm ru
 <details><summary>How to get flowR to <b>talk</b>?</summary>
 
 When using flowR from the CLI, you can use the <span title="Description (Command Line Argument): Run with verbose logging (will be passed to the corresponding script)">`--verbose`</span> option to get more information about what flowR is doing.
-While coding, however, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/log.ts#L9"><code><span title="Update the minimum level of all flowr loggers.">setMinLevelOfAllLogs</span></code></a> function to set the minimum level of logs to be displayed (this works with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L22"><code>FlowrLogger</code></a> abstraction).
-In general, you can configure the levels of individual logs, such as the general `log` (obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L94"><code>getActiveLog</code></a>) or the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/parser/json/parser.ts#L14"><code>parseLog</code></a>.
+While coding, however, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/log.ts#L9"><code><span title="Update the minimum level of all flowr loggers.">setMinLevelOfAllLogs</span></code></a> function to set the minimum level of logs to be displayed (this works with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L23"><code>FlowrLogger</code></a> abstraction).
+In general, you can configure the levels of individual logs, such as the general `log` (obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L91"><code>getActiveLog</code></a>) or the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/parser/json/parser.ts#L14"><code>parseLog</code></a>.
 Please note that flowR makes no guarantees that log outputs are persistent across versions, and it is up to the implementors to provide sensible logging.
 If you are an implementor and want to add logging, please make sure there are no larger runtime implications when logging is disabled.
-Have a look at the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L6"><code>expensiveTrace</code></a> function for example, which uses a function to generate the log message only when the log level is reached.
+Have a look at the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L7"><code><span title="Logs the supplied message on trace level, only computing it if that level is enabled.">expensiveTrace</span></code></a> function for example, which uses a function to generate the log message only when the log level is reached.
 
 </details>
 
@@ -207,8 +207,8 @@ Anything you configure directly wins over the value the project kind defaults to
 <details><summary>Where do I find <b>all the helper objects</b>?</summary>
 
 flowR stores its data as plain values and puts the behavior beside it in a helper object named after the
-thing it is about (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L329"><code><span title="Utility functions for source locations . As every SourceRange is a location without a file, the readers of SourceRange apply to locations as well; the ones re-exported here save you the detour via SourceLocation.getRange .">SourceLocation</span></code></a>,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L212"><code><span title="The one helper to ask a vertex what it is.">DfgVertex</span></code></a>,
+thing it is about (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L296"><code><span title="Utility functions for source locations . As every SourceRange is a location without a file, the readers of SourceRange apply to locations as well; the ones re-exported here save you the detour via SourceLocation.getRange .">SourceLocation</span></code></a>,
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L208"><code><span title="The one helper to ask a vertex what it is.">DfgVertex</span></code></a>,
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L31"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a>, ...).
 The [Helper Objects](https://github.com/flowr-analysis/flowr/wiki/Helper-Objects) wiki page lists every one of them, grouped by what
 it is about, so you can find the one that answers your question without knowing where it lives.

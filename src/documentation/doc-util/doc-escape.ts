@@ -7,13 +7,7 @@ export function escapeHTML(str: string | undefined): string | undefined {
 	return str?.replace(
 		/[&<>"']/g,
 		(tag) =>
-			({
-				'&': '&amp;',
-				'<': '&lt;',
-				'>': '&gt;',
-				'"': '&quot;',
-				"'": '&#39;',
-			}[tag] ?? tag)
+			({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[tag] ?? tag)
 	);
 }
 

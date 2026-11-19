@@ -50,7 +50,6 @@ export function shardHash(blobs: readonly PkgBlob[], pkgs: Record<string, number
 	return hashOf((function*() {
 		for(const b of blobs) {
 			yield JSON.stringify(blobTuple(b));
-		}
-		yield JSON.stringify(pkgs);
+		} yield JSON.stringify(pkgs);
 	})());
 }

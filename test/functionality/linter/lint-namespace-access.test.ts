@@ -62,7 +62,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				'namespace-access', [], undefined, { sigDb: controlledSigDb('stats', ['median']) });
 
 			assertLinter('no signature database mounted', parser, 'stats:::median',
-				'namespace-access', [], undefined, { noSigDb: true });
+				'namespace-access', [], undefined, { sigDb: false });
 		});
 	});
 }));

@@ -7,9 +7,7 @@ class ValueConversionError extends Error {
 	}
 }
 
-/**
- * transforms a value to something R can understand (e.g., booleans to TRUE/FALSE)
- */
+/** transforms a value to something R can understand (e.g., booleans to TRUE/FALSE) */
 export function ts2r<T>(value: T): string {
 	if(typeof value === 'string') {
 		return JSON.stringify(value);
@@ -43,16 +41,12 @@ export const RTrue = 'TRUE';
 /** The R literal for the logical false */
 export const RFalse = 'FALSE';
 
-/**
- * Checks whether the given string is an R boolean (logical) literal.
- */
+/** Checks whether the given string is an R boolean (logical) literal. */
 export function isBoolean(value: string): boolean {
 	return value === RTrue || value === RFalse;
 }
 
-/**
- * Converts an R boolean (logical) literal to a TypeScript boolean.
- */
+/** Converts an R boolean (logical) literal to a TypeScript boolean. */
 export function boolean2ts(value: string): boolean {
 	if(value === RTrue) {
 		return true;
@@ -72,11 +66,7 @@ export const RImaginaryMarker = 'i';
 export const RIntegerMarker = 'L';
 export const RInf = 'Inf';
 
-/**
- * Represents a numeric value in R.
- * If you need to create one from a ts numeric,
- * please use {@link getScalarFromInteger}.
- */
+/** Represents a numeric value in R. If you need to create one from a ts numeric, please use {@link getScalarFromInteger}. */
 export interface RNumberValue {
 	num:           number
 	/** see {@link RIntegerMarker}, still, R treats 1.1L as numeric and not especially integer */
@@ -105,28 +95,16 @@ export const RNumberValue = {
 		}
 
 		if(value === RInf) {
-			return {
-				num: Infinity,
-				complexNumber,
-				markedAsInt
-			};
+			return { num: Infinity, complexNumber, markedAsInt };
 		}
 
 		if(value === RNa) {
-			return {
-				num: NaN,
-				complexNumber,
-				markedAsInt
-			};
+			return { num: NaN, complexNumber, markedAsInt };
 		}
 
 		const floatHex = lcValue.match(RNumHexFloatRegex);
 		if(floatHex == null) {
-			return {
-				num: Number(lcValue),
-				complexNumber,
-				markedAsInt
-			};
+			return { num: Number(lcValue), complexNumber, markedAsInt };
 		} else {
 			const {
 				intPart,
@@ -136,18 +114,12 @@ export const RNumberValue = {
 			const base = intPart === undefined ? 0 : parseInt(`${intPart}`, 16);
 			const floatSuffix = floatPart === undefined ? 0 : getDecimalPlacesWithRadix(floatPart, 16);
 			const exponent = parseInt(exp, 10);
-			return {
-				num: (base + floatSuffix) * Math.pow(2, exponent),
-				complexNumber,
-				markedAsInt
-			};
+			return { num: (base + floatSuffix) * Math.pow(2, exponent), complexNumber, markedAsInt };
 		}
 	}
 } as const;
 
-/**
- * Represents a string value in R, including the type of quotes used and whether it is a raw string.
- */
+/** Represents a string value in R, including the type of quotes used and whether it is a raw string. */
 export interface RStringValue {
 	str:    string
 	/** from the R-language definition a string is either delimited by a pair of single or double quotes, 'none' strings are syntactically unquoted but treated as strings  */
@@ -172,18 +144,11 @@ export const RStringValue = {
 		}
 		const init = value[0];
 		if(init === '"' || init === '\'') {
-			return {
-				str:    value.slice(1, -1),
-				quotes: init
-			};
+			return { str: value.slice(1, -1), quotes: init };
 		} else if((init === 'r' || init === 'R') && value.length >= 3) {
 			const flags = value[1];
 			if(flags === '"' || flags === '\'') {
-				return {
-					str:    dropRawStringSurround(value.slice(2, -1)),
-					quotes: flags,
-					flag:   'raw'
-				};
+				return { str: dropRawStringSurround(value.slice(2, -1)), quotes: flags, flag: 'raw' };
 			} else {
 				throw new ValueConversionError(`expected string to start with a known quote (' or "), or raw, yet received ${value}`);
 			}
@@ -196,10 +161,7 @@ export const RStringValue = {
 export const RNa = 'NA';
 export const RNull = 'NULL';
 
-
-/**
- * Checks whether the given string is the R NA literal (untyped).
- */
+/** Checks whether the given string is the R NA literal (untyped). */
 export function isNA(value: string): value is (typeof RNa) {
 	return value === RNa;
 }

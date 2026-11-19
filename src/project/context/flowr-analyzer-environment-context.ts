@@ -1,28 +1,24 @@
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
-import type { IEnvironment, REnvironmentInformation } from '../../dataflow/environments/environment';
-import { Environment, REnvironment } from '../../dataflow/environments/environment';
+import { type IEnvironment, type REnvironmentInformation, Environment, REnvironment } from '../../dataflow/environments/environment';
 import type { DeepReadonly } from 'ts-essentials';
-import type { BuiltInDefinitions } from '../../dataflow/environments/built-in-config';
-import { getBuiltInDefinitions } from '../../dataflow/environments/built-in-config';
+import { type BuiltInDefinitions, getBuiltInDefinitions } from '../../dataflow/environments/built-in-config';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
-import type { BrandedIdentifier, BrandedNamespace, IdentifierDefinition } from '../../dataflow/environments/identifier';
-import { Identifier, ReferenceType } from '../../dataflow/environments/identifier';
+import {
+	type BrandedIdentifier,
+	type BrandedNamespace,
+	type IdentifierDefinition,
+	Identifier,
+	ReferenceType
+} from '../../dataflow/environments/identifier';
 import type { BuiltInIdentifierDefinition, BuiltInMemory, BuiltIns } from '../../dataflow/environments/built-in';
-import type { Fingerprint } from '../../slicing/static/fingerprint';
-import { envFingerprint } from '../../slicing/static/fingerprint';
+import { type Fingerprint, envFingerprint } from '../../slicing/static/fingerprint';
 
-/**
- * Read-only interface to the {@link FlowrAnalyzerEnvironmentContext}.
- */
+/** Read-only interface to the {@link FlowrAnalyzerEnvironmentContext}. */
 export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
-	/**
-	 * Get the built-in environment used during analysis.
-	 */
+	/** Get the built-in environment used during analysis. */
 	get builtInEnvironment(): DeepReadonly<IEnvironment>;
 
-	/**
-	 * Every built-in definition flowR carries for `name`: what its namespace states when it names one, else matched by its plain name.
-	 */
+	/** Every built-in definition flowR carries for `name`: what its namespace states when it names one, else matched by its plain name. */
 	builtInDefinitionsOf(name: Identifier): readonly IdentifierDefinition[];
 
 	/**
@@ -38,10 +34,7 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	 */
 	knowsPackage(pkg: string): boolean;
 
-	/**
-	 * Get the empty built-in environment used during analysis.
-	 * The empty built-in environment only contains primitive definitions.
-	 */
+	/** Get the empty built-in environment used during analysis. The empty built-in environment only contains primitive definitions. */
 	get emptyBuiltInEnvironment(): DeepReadonly<IEnvironment>;
 
 	/**
@@ -56,19 +49,13 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	 */
 	readonly cleanEnv: () => REnvironmentInformation;
 
-	/**
-	 * Get the fingerprint of the clean environment with the configured built-in environment as base.
-	 */
+	/** Get the fingerprint of the clean environment with the configured built-in environment as base. */
 	getCleanEnvFingerprint(): Fingerprint;
 
-	/**
-	 * Create a new {@link REnvironmentInformation|environment} with an empty built-in environment as base.
-	 */
+	/** Create a new {@link REnvironmentInformation|environment} with an empty built-in environment as base. */
 	makeCleanEnvWithEmptyBuiltIns(): REnvironmentInformation;
 
-	/**
-	 * A completely empty {@link REnvironmentInformation|environment}.
-	 */
+	/** A completely empty {@link REnvironmentInformation|environment}. */
 	makeEmptyEnv(): REnvironmentInformation;
 
 	/** What the configuration states about `pkg`'s exports, `undefined` when it states nothing (these are not in the built-in environment: attaching the package brings them into scope). */
@@ -93,9 +80,7 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	deriveFromDefinitions<T>(compute: (definitions: BuiltInDefinitions) => T): T;
 }
 
-/**
- * Provides the built-in environment, created from the {@link FlowrAnalyzerContext} configuration.
- */
+/** Provides the built-in environment, created from the {@link FlowrAnalyzerContext} configuration. */
 export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnvironmentContext {
 	public readonly name = 'flowr-analyzer-environment-context';
 	public readonly builtIns:           BuiltIns;
@@ -216,10 +201,7 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 	public readonly cleanEnv = (): REnvironmentInformation => this.makeCleanEnv();
 
 	public makeCleanEnv(): REnvironmentInformation {
-		return {
-			current: new Environment(this.builtInEnv).asGlobal(),
-			level:   0
-		};
+		return { current: new Environment(this.builtInEnv).asGlobal(), level: 0 };
 	}
 
 	public getCleanEnvFingerprint(): Fingerprint {
@@ -230,16 +212,10 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 	}
 
 	public makeCleanEnvWithEmptyBuiltIns(): REnvironmentInformation {
-		return {
-			current: new Environment(this.emptyBuiltInEnv).asGlobal(),
-			level:   0
-		};
+		return { current: new Environment(this.emptyBuiltInEnv).asGlobal(), level: 0 };
 	}
 
 	public makeEmptyEnv(): REnvironmentInformation {
-		return {
-			current: Environment.root(),
-			level:   0
-		};
+		return { current: Environment.root(), level: 0 };
 	}
 }

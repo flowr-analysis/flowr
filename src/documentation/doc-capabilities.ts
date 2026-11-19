@@ -163,7 +163,7 @@ const { capabilityNames, capabilityOfCode }: {
 } = (() => {
 	const names = new Map<string, string>();
 	const codes = new Map<string, string>();
-	const walk = (capabilities: readonly FlowrCapability[]): void => {
+	function walk(capabilities: readonly FlowrCapability[]): void {
 		for(const capability of capabilities) {
 			names.set(capability.id, capability.name);
 			for(const code of capability.code ?? []) {
@@ -177,7 +177,7 @@ const { capabilityNames, capabilityOfCode }: {
 				walk(capability.capabilities);
 			}
 		}
-	};
+	}
 	walk(flowrCapabilities.capabilities);
 	return { capabilityNames: names, capabilityOfCode: codes };
 })();

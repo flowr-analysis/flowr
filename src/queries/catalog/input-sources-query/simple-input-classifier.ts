@@ -1,23 +1,23 @@
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { InputTraceType, InputType } from './input-types';
 export { InputTraceType, InputType } from './input-types';
-import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { FunctionArgument, UnknownSideEffect } from '../../../dataflow/graph/graph';
-import type { MergeableRecord } from '../../../util/objects';
-import { compactRecord } from '../../../util/objects';
-import type {
-	DataflowGraphVertexInfo,
-	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexVariableDefinition, DataflowGraphVertexArgument
+import { type DataflowGraph, FunctionArgument, UnknownSideEffect } from '../../../dataflow/graph/graph';
+import { type MergeableRecord, compactRecord } from '../../../util/objects';
+import {
+	type DataflowGraphVertexInfo,
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexVariableDefinition,
+	type DataflowGraphVertexArgument,
+	DfgVertex,
+	VertexType
 } from '../../../dataflow/graph/vertex';
-import { DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { RParameter } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RComment } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
-import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
+import { RRole } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { isNotUndefined } from '../../../util/assert';
 import { uniqueArray } from '../../../util/collections/arrays';
 import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
@@ -716,7 +716,7 @@ class InputClassifier {
 	}
 
 	private parameterType(id: NodeId): InputType | undefined {
-		if(this.dfg.idMap?.get(id)?.info.role !== RoleInParent.ParameterName) {
+		if(!RRole.isParameterName(id, this.dfg.idMap)) {
 			return undefined;
 		}
 		return this.matchWholeLinkedObject(id)?.type ?? (this.isPlumberEndpointParameter(id) ? InputType.User : InputType.Parameter);
@@ -975,9 +975,7 @@ export interface InputSource extends MergeableRecord {
 	declaredAt?: NodeId[]
 }
 
-/**
- * The input sources of a criterion, each classified with an {@link InputSource} object.
- */
+/** The input sources of a criterion, each classified with an {@link InputSource} object. */
 export type InputSources = InputSource[];
 
 /**
@@ -1000,13 +998,9 @@ function callMeans(called: Identifier, id: Identifier, packages?: ReadonlySet<Br
 		&& (namespace === undefined || packages === undefined || packages.has(namespace));
 }
 
-/**
- * For the specifications of `pure` etc. please have a look at {@link InputClassifierFunctionIdentifiers}.
- */
+/** For the specifications of `pure` etc. please have a look at {@link InputClassifierFunctionIdentifiers}. */
 export interface InputClassifierConfig<Functions extends InputClassifierFunctionIdentifiers | FlowrSearchLike = readonly Identifier[] | FlowrSearchLike> extends Partial<Record<InputType, Functions>> {
-	/**
-	 * Functions which are considered to be pure (i.e., deterministic, trusted, safe, idempotent on the lub of the input types)
-	 */
+	/** Functions which are considered to be pure (i.e., deterministic, trusted, safe, idempotent on the lub of the input types) */
 	[InputTraceType.Pure]?: Functions
 	/**
 	 * Objects provided by a framework rather than by the code itself, like shiny's `input`.

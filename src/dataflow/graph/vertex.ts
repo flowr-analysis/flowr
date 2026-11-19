@@ -50,7 +50,7 @@ export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
 /** Arguments required to construct a vertex which represents the usage of a variable in the {@link DataflowGraph|dataflow graph}. */
 export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Use
-	/** Does not require an environment to be attached. If we promote the use to a function call, we attach the environment later.  */
+	/** Does not require an environment to be attached. If we promote the use to a function call, we attach the environment later. */
 	readonly environment?: undefined
 	constantFallback?:     true
 }
@@ -149,11 +149,7 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 }
 
 /** The object system whose dispatch a function definition (potentially) takes part in. */
-export const FunctionDispatch = {
-	S3: 's3',
-	S4: 's4',
-	S7: 's7'
-} as const;
+export const FunctionDispatch = { S3: 's3', S4: 's4', S7: 's7' } as const;
 export type FunctionDispatch = typeof FunctionDispatch[keyof typeof FunctionDispatch];
 
 /** What a call does to the variable it names in an environment. */

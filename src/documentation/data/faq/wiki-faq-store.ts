@@ -13,9 +13,7 @@ const FlowrFaqTopics = {
 const FlowrFaqMainTitle = '💮 <i>flowR</i> FAQ';
 
 type Topic = keyof typeof FlowrFaqTopics;
-/**
- * Manage all questions and answers by topic.
- */
+/** Manage all questions and answers by topic. */
 export class FaqStore {
 	private faqs:      DefaultMap<Topic, [question: string, answer: string][]> = new DefaultMap(() => []);
 	private currTopic: Topic | undefined = undefined;
@@ -59,16 +57,9 @@ export class FaqStore {
 	toMarkdown(): string {
 		return `
 ${collapsibleToc({
-	[FlowrFaqMainTitle]: {
-		[FlowrFaqTopics['flowr.development']]: {},
-		[FlowrFaqTopics['flowr.use']]:         {}
-	},
-	['🇷 R FAQ']: {
-		[FlowrFaqTopics['r.packages']]: {}
-	},
-	['💻 Editor FAQ']: {
-		[FlowrFaqTopics['editor.configs']]: {}
-	}
+	[FlowrFaqMainTitle]: { [FlowrFaqTopics['flowr.development']]: {}, [FlowrFaqTopics['flowr.use']]: {} },
+	['🇷 R FAQ']:         { [FlowrFaqTopics['r.packages']]: {} },
+	['💻 Editor FAQ']:    { [FlowrFaqTopics['editor.configs']]: {} }
 })}
 
 ${section(FlowrFaqMainTitle, 2)}

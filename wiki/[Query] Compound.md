@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 08:41:45 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-16, 20:55:37 UTC (v2.17.7), do not edit directly._
 <h2 id="Compound Query">Compound Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Combines multiple queries of the same type into one, specifying common arguments.\
@@ -97,6 +97,6 @@ Now, the results no longer contain calls to `plot` that are not defined locally.
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Compound Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/virtual-query/compound-query.ts#L35"><code><span title="Execute a single, virtual compound query in terms of unfolding the contained queries.">executeCompoundQueries</span></code></a>.
+The Compound Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/virtual-query/compound-query.ts#L30"><code><span title="Execute a single, virtual compound query in terms of unfolding the contained queries.">executeCompoundQueries</span></code></a>.
 
 </details>

@@ -6,9 +6,7 @@ import { FlowrJupyterFile } from '../files/flowr-jupyter-file';
 
 const IpynbPattern = /\.ipynb$/i;
 
-/**
- * The plugin provides support for Jupyter (`.ipynb`) files
- */
+/** The plugin provides support for Jupyter (`.ipynb`) files */
 export class FlowrAnalyzerJupyterFilePlugin extends FlowrAnalyzerPatternFilePlugin {
 	public readonly name =    'ipynb-file-plugin';
 	public readonly description = 'Parses Jupyter files';

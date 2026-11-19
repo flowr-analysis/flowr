@@ -1,11 +1,10 @@
 import { type DataflowGraph, FunctionArgument } from '../../graph/graph';
-import { RValue } from '../values/r-value';
-import type { DataflowGraphVertexFunctionCall } from '../../graph/vertex';
+import { RValue, isValue, type Value } from '../values/r-value';
+import { type DataflowGraphVertexFunctionCall, DfgVertex } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { MatchArgs } from '../../graph/match-args';
 import { isNotUndefined } from '../../../util/assert';
-import { DfgVertex } from '../../graph/vertex';
 import { EdgeType } from '../../graph/edge';
 import { Dataflow } from '../../graph/df-helper';
 import { callFnProps } from '../../environments/query-fn-props';
@@ -15,7 +14,6 @@ import { type BrandedIdentifier, Identifier } from '../../environments/identifie
 import { Constant, Unknown } from '../../../queries/catalog/dependencies-query/dependency-values';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { valueSetGuard } from '../values/general';
-import { isValue, type Value } from '../values/r-value';
 import { RFalse, RTrue } from '../../../r-bridge/lang-4.x/convert-values';
 import { collectStrings } from '../values/string/string-constants';
 import type { VariableResolve } from '../../../config';
@@ -55,7 +53,7 @@ export function boundArgumentIndex<Idx extends ArgumentPosition>(graph: Dataflow
 /** The resource each argument reads from, see {@link openedResourceOf}, which does not depend on the call context. */
 export type OpenedResources = Map<NodeId, BrandedIdentifier[] | undefined>;
 
-/** Get the values of all arguments matching the criteria, keyed by the id of the argument. */
+/** Get the values of all arguments matching the criteria, keyed by the id of the argument; `opening` are the calls whose resource is being resolved already, see {@link openedResourceOf}. */
 export function getArgumentStringValue(
 	variableResolve: VariableResolve,
 	graph: DataflowGraph,
@@ -66,24 +64,8 @@ export function getArgumentStringValue(
 	ctx: ReadOnlyFlowrAnalyzerContext,
 	formals?: readonly BrandedIdentifier[],
 	callContext?: CallContext,
-	opened?: OpenedResources
-): Map<NodeId, Set<string | undefined>> | undefined {
-	return argumentStringValues(variableResolve, graph, vertex, argumentIndex, argumentName, resolveValue, ctx, formals, callContext, new Set(), opened);
-}
-
-/** {@link getArgumentStringValue}, where `opening` are the calls whose resource is being resolved already, see {@link openedResourceOf} */
-function argumentStringValues(
-	variableResolve: VariableResolve,
-	graph: DataflowGraph,
-	vertex: DataflowGraphVertexFunctionCall,
-	argumentIndex: ArgumentPosition,
-	argumentName: BrandedIdentifier | undefined,
-	resolveValue: ResolveMode | undefined,
-	ctx: ReadOnlyFlowrAnalyzerContext,
-	formals: readonly BrandedIdentifier[] | undefined,
-	callContext: CallContext | undefined,
-	opening: ReadonlySet<NodeId>,
-	opened?: OpenedResources
+	opened?: OpenedResources,
+	opening: ReadonlySet<NodeId> = new Set()
 ): Map<NodeId, Set<string | undefined>> | undefined {
 	vertex = appliedArguments(graph, vertex);
 	if(argumentName && argumentIndex !== 'unnamed') {
@@ -153,7 +135,7 @@ function resourceOpenedBy(variableResolve: VariableResolve, graph: DataflowGraph
 			/* a handle on data in memory (`textConnection(x)`) names no resource at all */
 			return [Constant];
 		}
-		const values = argumentStringValues(variableResolve, graph, vertex as DataflowGraphVertexFunctionCall, resource, info?.sig?.[resource][0], true, ctx, undefined, undefined, new Set([...opening, id]));
+		const values = getArgumentStringValue(variableResolve, graph, vertex as DataflowGraphVertexFunctionCall, resource, info?.sig?.[resource][0], true, ctx, undefined, undefined, undefined, new Set([...opening, id]));
 		return values === undefined ? undefined : [...values.values()].flatMap(v => [...v]).filter(isNotUndefined);
 	}
 	return undefined;

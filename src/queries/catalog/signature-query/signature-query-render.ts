@@ -1,18 +1,21 @@
-import type { OutputFormatter } from '../../../util/text/ansi';
+import { type OutputFormatter, bold, italic, faint, color, Colors, FontStyles } from '../../../util/text/ansi';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
-import { bold, italic, faint, color, Colors, FontStyles } from '../../../util/text/ansi';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { cranPageUrl } from './signature-query-executor';
 import { baseRPackages } from '../../../util/r-base-packages';
+import { claimWords, returnWords } from '../../../dataflow/fn/guards/guard-claims';
+import { mergedRelations } from '../../../dataflow/fn/guards/condition-grouping';
 import type { SignatureFunctionView, SignaturePackageView, SignatureQueryResult } from './signature-query-format';
 import { arraysGroupBy } from '../../../util/collections/arrays';
 import { ArgProp } from '../../../dataflow/environments/built-in-props';
-import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 
 /** print an in-repl usage guide for the signature query */
 export function printSignatureHelp(output: ReplOutput): void {
 	const f = output.formatter;
-	const ex = (cmd: string, desc: string): void => output.stdout(`  ${bold(cmd, f)}\n      ${italic(desc, f)}`);
+	function ex(cmd: string, desc: string): void {
+		output.stdout(`  ${bold(cmd, f)}\n      ${italic(desc, f)}`);
+	}
 	output.stdout(bold('Signature Database Query', f) + italic('  (inspects the databases that resolve library()/`::` calls)', f));
 	output.stdout('');
 	output.stdout(`${bold('Usage', f)}  :query @signature [<package>[@<version>][::<function>] [<function>]] [--param <name>]... [--required <n>] [<name>(<arg>, [<role>], *) [<prop>]] [--cg] [--cg-max <n>]`);
@@ -88,6 +91,26 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	if(roles.length > 0) {
 		result.push(`      ╰ ${italic('roles', f)}   ${roles.join(', ')}`);
 	}
+	const origin = fn.guards?.origin;
+	if(origin !== undefined && origin.source !== 'builtin' && origin.r !== fn.version) {
+		result.push(`      ╰ ${italic(`contracts of R ${origin.r}${origin.date === undefined ? '' : `, updated ${origin.date}`}`, f)}`);
+	}
+	for(const [formal, claim] of Object.entries(fn.guards?.formals ?? {})) {
+		result.push(`      ╰ ${italic('guard', f)}   ${formal}: ${claimWords(claim).join(', ')}`);
+	}
+	if(fn.guards?.requires) {
+		result.push(`      ╰ ${italic('requires', f)} ${fn.guards.requires}`);
+	}
+	for(const { holds, unless } of mergedRelations(fn.guards?.relations ?? [])) {
+		result.push(`      ╰ ${italic('relation', f)} ${holds}${unless === undefined ? '' : ` unless ${unless}`}`);
+	}
+	if(fn.guards?.returns !== undefined || fn.guards?.passes !== undefined) {
+		result.push(`      ╰ ${italic('returns', f)}  ${returnWords(fn.guards.returns, fn.guards.passes).join(', ')}`);
+	}
+	for(const { requires, kind, fails, via } of fn.guards?.because ?? []) {
+		const where = `${kind === 'explicit' ? 'checked by' : 'R fails in'} ${fails}${via === undefined ? '' : `, reached through ${via.map(v => Identifier.toPreludeString(Identifier.parse(v))).join(', ')}`}`;
+		result.push(`      ╰ ${italic('because', f)}  ${requires}: ${where}`);
+	}
 	if(fn.flowrOnly) {
 		// nothing below comes from the database, so say so instead of rendering its empty fields as facts
 		const silent = fn.flowr ? '' : ', and flowR states nothing about it beyond defining it';
@@ -132,13 +155,13 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 			result.push(`      ╰ ${italic('flowR', f)}   ${italic('reads it as', f)} ${bold(fn.name, f)}(${fn.flowr.parameters.join(', ')})`);
 		}
 	}
-	const listLine = (label: string, items: readonly BrandedIdentifier[], max: number): void => {
+	function listLine(label: string, items: readonly BrandedIdentifier[], max: number): void {
 		if(!items.length) {
 			return;
 		}
 		const more = items.length > max ? italic(` (+${items.length - max} more)`, f) : '';
 		result.push(`      ╰ ${italic(label, f)} (${items.length}): ${items.slice(0, max).join(', ')}${more}`);
-	};
+	}
 	listLine('dispatches to', fn.s3methods ?? [], MaxList);
 	listLine('calls', fn.callees, MaxList);
 	if(fn.callGraph) {

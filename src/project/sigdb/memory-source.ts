@@ -1,11 +1,10 @@
 import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
-import type { PackageSignatureSource } from './reader';
+import { type PackageSignatureSource, classOwnerIndexFor } from './reader';
 import { compareByCodeUnit } from '../../util/text/strings';
 import type { VersionRelease } from './sigdb-version';
 import type { LibraryExports } from './schema';
 import type { DecodedFunction, ResolvedDependency } from './decode';
 import { RVersion } from '../../util/r-version';
-import { classOwnerIndexFor } from './reader';
 import { baseRPackages } from '../../util/r-base-packages';
 
 /**

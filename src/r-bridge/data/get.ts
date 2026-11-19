@@ -1,7 +1,6 @@
 import type { FlowrCapability } from './types';
 import { flowrCapabilities } from './data';
 
-
 type CapabilityIdFilter<T extends FlowrCapability, Filter> = T extends Filter ? T['id'] : never;
 
 type ExtractAllIds<T extends FlowrCapability, Filter = FlowrCapability> =
@@ -21,9 +20,7 @@ export interface FlowrCapabilityWithPath extends FlowrCapability {
 	path: PathToCapability
 }
 
-/**
- * Get all capabilities with their paths.
- */
+/** Get all capabilities with their paths. */
 export function getAllCapabilities(): readonly FlowrCapabilityWithPath[] {
 	const result: FlowrCapabilityWithPath[] = [];
 	function traverse(capabilities: readonly FlowrCapability[], currentPath: PathToCapability = []) {

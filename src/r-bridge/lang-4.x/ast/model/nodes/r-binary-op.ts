@@ -1,11 +1,8 @@
-import type { RAstNodeBase, Location, NoInfo } from '../model';
-import { RNode } from '../model';
+import { type RAstNodeBase, type Location, type NoInfo, RNode } from '../model';
 import { RType } from '../type';
 import { BuiltInOperators, type OperatorFacts } from '../../../../../dataflow/environments/default-builtin-config/base-operators';
 
-/**
- * Operators like `+`, `==`, `&&`, etc.
- */
+/** Operators like `+`, `==`, `&&`, etc. */
 export interface RBinaryOp<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	readonly type: RType.BinaryOp;
 	operator:      string;
@@ -27,9 +24,7 @@ export const RBinaryOp = {
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RBinaryOp<Info> {
 		return node?.type === RType.BinaryOp;
 	},
-	/**
-	 * Get the operator information for a binary operator node.
-	 */
+	/** Get the operator information for a binary operator node. */
 	getOperatorInfo<Info = NoInfo>(node: RBinaryOp<Info>): OperatorFacts | undefined {
 		return BuiltInOperators.byName[node.operator];
 	}

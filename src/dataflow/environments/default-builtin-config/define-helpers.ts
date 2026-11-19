@@ -18,9 +18,13 @@ export function pkg(namespace: PkgName | BrandedNamespace, ...names: BrandedIden
 	return names.map(n => [n, namespace as BrandedNamespace]);
 }
 
+/** Marks the given names as exported by the `base` package. */
 export const base = (...names: BrandedIdentifier[]): Identifier[] => pkg('base', ...names);
+/** Marks the given names as exported by the `utils` package. */
 export const utils = (...names: BrandedIdentifier[]): Identifier[] => pkg('utils', ...names);
+/** Marks the given names as exported by the `stats` package. */
 export const stats = (...names: BrandedIdentifier[]): Identifier[] => pkg('stats', ...names);
+/** Marks the given names as exported by the `methods` package. */
 export const methods = (...names: BrandedIdentifier[]): Identifier[] => pkg('methods', ...names);
 
 /** A built-in function: its names, the processor handling its calls and that processor's configuration (a function without `sig` reads plain values). */

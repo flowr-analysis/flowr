@@ -1,8 +1,7 @@
 import { ansiFormatter, FontStyles } from '../../util/text/ansi';
+import { fileProtocol } from '../../r-bridge/retriever';
 
-/**
- * Completion suggestions for a specific REPL command
- */
+/** Completion suggestions for a specific REPL command */
 export interface CommandCompletions {
 	/** The possible completions for the current argument */
 	readonly completions:   string[];
@@ -25,4 +24,33 @@ export interface CommandCompletions {
 /** Labels a completion with what it does, see {@link CommandCompletions#labels|labels}. */
 export function describeCompletion(insert: string, describe: string): string {
 	return `${insert}  ${ansiFormatter.format(describe, { style: FontStyles.Faint })}`;
+}
+
+/**
+ * Completes the comma-separated list `typed` of names out of `all`: the names not given yet while the last one is unfinished,
+ * a comma once it is complete, and a space once all names are given.
+ */
+export function completeCommaList(typed: string, all: readonly string[]): CommandCompletions {
+	const used = typed.split(',').map(r => r.trim());
+	const unused = all.filter(r => !used.includes(r));
+	const last = used[used.length - 1];
+	if(!all.includes(last)) {
+		return { completions: unused, argumentPart: last };
+	}
+	return { completions: [unused.length > 0 ? ',' : ' '], argumentPart: '' };
+}
+
+/**
+ * Completes a query line of the form `<prefix><names> <code>`: first the `prefix`, then the comma-separated names out of `all`
+ * (see {@link completeCommaList}), and finally the {@link fileProtocol} for the code.
+ */
+export function completePrefixedList(line: readonly string[], startingNewArg: boolean, prefix: string, all: readonly string[]): CommandCompletions {
+	if(line.length === 0 || (line.length === 1 && line[0].length < prefix.length)) {
+		return { completions: [prefix] };
+	} else if((line.length === 1 && startingNewArg) || line.length === 2) {
+		return { completions: [fileProtocol] };
+	} else if(line.length === 1 && line[0].startsWith(prefix)) {
+		return completeCommaList(line[0].slice(prefix.length), all);
+	}
+	return { completions: [] };
 }

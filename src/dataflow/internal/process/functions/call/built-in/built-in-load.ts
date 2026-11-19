@@ -1,25 +1,34 @@
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { ControlFlow } from '../../../../control-flow';
+import { noteOwnMethod, bindsUnknownNames } from './built-in-expression-list';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { AmbientStateName } from '../../../../../environments/ambient-state-name';
-import { happensInEveryBranch } from '../../../../../info';
-import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { happensInEveryBranch, type ControlDependency, type DataflowInformation } from '../../../../../info';
+import {
+	RFunctionCall,
+	EmptyArgument,
+	type PotentiallyEmptyRArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { ControlDependency, DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import type { NamedInGraphIdentifierDefinition, BrandedIdentifier, InGraphReferenceType } from '../../../../../environments/identifier';
-import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
-import type { RObjectData } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
-import { FlowrRDAFile, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
+import {
+	type NamedInGraphIdentifierDefinition,
+	type BrandedIdentifier,
+	type InGraphReferenceType,
+	Identifier,
+	PkgName,
+	ReferenceType
+} from '../../../../../environments/identifier';
+import { type RObjectData, FlowrRDAFile, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { findSource } from './built-in-source';
 import { VertexType } from '../../../../../graph/vertex';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { dataflowLogger } from '../../../../../logger';
-import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
@@ -29,9 +38,6 @@ import { SourceRange } from '../../../../../../util/range';
 import type { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import type {
-	PotentiallyEmptyRArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, signatureParamNames, type EnvirResolution } from './built-in-envir-utils';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
@@ -50,7 +56,7 @@ export function processLoadCall<OtherInfo>(
 
 	if(!fileArg) {
 		const fn = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' });
-		handleUnknownSideEffect(fn.information.graph, fn.information.environment, rootId);
+		bindsUnknownNames(fn.information.graph, fn.information.environment, rootId);
 		return fn.information;
 	}
 
@@ -58,7 +64,7 @@ export function processLoadCall<OtherInfo>(
 
 	if(data.ctx.config.ignoreLoadCalls) {
 		dataflowLogger.warn(`Skipping load call ${JSON.stringify(fileArg)} (disabled in config file)`);
-		handleUnknownSideEffect(fn.information.graph, fn.information.environment, rootId);
+		bindsUnknownNames(fn.information.graph, fn.information.environment, rootId);
 		return fn.information;
 	}
 
@@ -67,15 +73,9 @@ export function processLoadCall<OtherInfo>(
 		fn.information.graph.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
 	}
 
-	let sourceFile: string[] | undefined;
-
-	if(RString.is(fileArg)) {
-		sourceFile = [RString.unquote(fileArg.lexeme)];
-	} else {
-		const resolved = NodeValue.setOf(fileArg.info.id, data, { environment: envirResolution?.envirData.environment ?? data.environment });
-		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
-	}
-
+	const sourceFile = RString.is(fileArg) ? [RString.unquote(fileArg.lexeme)]
+		: NodeValue.setOf(fileArg.info.id, data, { environment: envirResolution?.envirData.environment ?? data.environment })?.elements
+			.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	if(sourceFile) {
 		for(const candidate of sourceFile) {
 			const path = RString.unquote(candidate);
@@ -116,13 +116,13 @@ export function processLoadCall<OtherInfo>(
 		if(saved !== undefined) {
 			const loaded = withLoaded(saved.names.map(n => ({ name: n })), rootId, fn, [...(data.cds ?? []), { id: rootId, when: true }], data, envirResolution);
 			if(!saved.complete) {
-				handleUnknownSideEffect(loaded.graph, loaded.environment, rootId);
+				bindsUnknownNames(loaded.graph, loaded.environment, rootId);
 			}
 			return loaded;
 		}
 	}
 
-	handleUnknownSideEffect(fn.information.graph, fn.information.environment, rootId);
+	bindsUnknownNames(fn.information.graph, fn.information.environment, rootId);
 	return fn.information;
 }
 
@@ -195,12 +195,21 @@ function withLoaded<OtherInfo>(
 	const location = data.completeAst.idMap.get(rootId)?.location ?? SourceRange.invalid();
 	let environment = fn.information.environment;
 	const out = [...fn.information.out];
+	/* the restored names are bound once the call completes, one after the other, and the program goes on from the last */
+	let flow: DataflowInformation = fn.information;
 	for(const variable of variables) {
 		const [next, defined] = defineLoadedVariable(variable, rootId, fn, environment, location, loadCds, data);
 		environment = next;
+		noteOwnMethod(variable.name, environment, data.ctx);
 		out.push(defined);
+		for(const id of [`${defined.nodeId}:fdef`, defined.nodeId]) {
+			if(fn.information.graph.hasVertex(id)) {
+				ControlFlow.continuesWith(fn.information.graph, flow, id);
+				flow = { ...flow, cfgExit: id };
+			}
+		}
 	}
-	const result = { ...fn.information, environment, out };
+	const result = { ...fn.information, environment, out, cfgExit: flow.cfgExit };
 	return envir === undefined ? result : routeWrittenToEnvir(result, envir, rootId, data.environment, rootId);
 }
 
@@ -209,154 +218,45 @@ function defineLoadedVariable<OtherInfo>(
 	rootId: NodeId,
 	fn: { information: DataflowInformation },
 	envir: REnvironmentInformation,
-	loadLocation: SourceRange,
-	loadCds: ControlDependency[],
+	location: SourceRange,
+	cds: ControlDependency[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): [REnvironmentInformation, NamedInGraphIdentifierDefinition<BrandedIdentifier>] {
 	const syntheticId = `${rootId}:loaded:${variable.name}`;
-	const isClosure = variable.type === SexpType.CloSxp;
 	const rootInfo = data.completeAst.idMap.get(rootId)?.info;
-
-	data.completeAst.idMap.set(syntheticId, {
-		type:      RType.Symbol,
-		content:   variable.name,
-		lexeme:    String(variable.name),
-		location:  loadLocation,
-		namespace: undefined,
-		info:      {
-			...rootInfo,
-			id:     syntheticId,
-			parent: rootId,
-			role:   RoleInParent.ExpressionListChild,
-		} as OtherInfo & ParentInformation
-	});
-
-	if(isClosure) {
-		defineLoadedClosure(syntheticId, variable, fn, envir, loadLocation, loadCds, data, rootInfo);
+	const info = (id: NodeId, parent: NodeId, role: RoleInParent) => ({ ...rootInfo, id, parent, role }) as OtherInfo & ParentInformation;
+	const { idMap } = data.completeAst;
+	idMap.set(syntheticId, { type: RType.Symbol, content: variable.name, lexeme: String(variable.name), location, namespace: undefined, info: info(syntheticId, rootId, RoleInParent.ExpressionListChild) });
+	if(variable.type === SexpType.CloSxp) {
+		const fdefId = `${syntheticId}:fdef`;
+		const cleanEnv = data.ctx.env.makeCleanEnv();
+		const body: RExpressionList<OtherInfo & ParentInformation> = { type: RType.ExpressionList, lexeme: undefined, grouping: undefined, children: [], location, info: info(`${fdefId}:body`, fdefId, RoleInParent.FunctionDefinitionBody) };
+		idMap.set(body.info.id, body);
+		idMap.set(fdefId, { type: RType.FunctionDefinition, parameters: [], lexeme: String(variable.name), location, body, info: info(fdefId, syntheticId, RoleInParent.ExpressionListChild) });
+		const subflow: DataflowFunctionFlowInformation = { entryPoint: fdefId, graph: new Set(), out: [], in: [], unknownReferences: [], hooks: [], environment: cleanEnv };
+		fn.information.graph.addVertex({ tag: VertexType.FunctionDefinition, id: fdefId, cds, environment: cleanEnv, subflow, exitPoints: [], params: {} }, cleanEnv);
+		fn.information.graph.addVertex({ tag: VertexType.VariableDefinition, id: syntheticId, cds }, envir).addEdge(syntheticId, fdefId, EdgeType.DefinedBy);
 	} else {
-		fn.information.graph.addVertex({
-			tag: VertexType.VariableDefinition,
-			id:  syntheticId,
-			cds: loadCds,
-		}, envir);
+		fn.information.graph.addVertex({ tag: VertexType.VariableDefinition, id: syntheticId, cds }, envir);
 	}
-
-	const nodeToDefine = {
-		nodeId:    syntheticId,
-		name:      variable.name,
-		type:      sexpTypeToReferenceType(variable.type) as InGraphReferenceType,
-		definedAt: rootId,
-		cds:       loadCds,
-	};
+	const nodeToDefine = { nodeId: syntheticId, name: variable.name, type: sexpTypeToReferenceType(variable.type) as InGraphReferenceType, definedAt: rootId, cds };
 	return [{ ...envir, current: envir.current.define(nodeToDefine) }, nodeToDefine];
 }
 
-function defineLoadedClosure<OtherInfo>(
-	syntheticId: NodeId,
-	variable: RObjectData & { name: BrandedIdentifier },
-	fn: { information: DataflowInformation },
-	envir: REnvironmentInformation,
-	loadLocation: SourceRange,
-	loadCds: ControlDependency[],
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	rootInfo: (OtherInfo & ParentInformation) | undefined,
-): void {
-	const fdefId = `${syntheticId}:fdef`;
-	const cleanEnv = data.ctx.env.makeCleanEnv();
-	const bodyId = `${fdefId}:body`;
-
-	const body: RExpressionList<OtherInfo & ParentInformation> = {
-		type:     RType.ExpressionList,
-		lexeme:   undefined,
-		grouping: undefined,
-		children: [],
-		location: loadLocation,
-		info:     {
-			...rootInfo,
-			id:     bodyId,
-			parent: fdefId,
-			role:   RoleInParent.FunctionDefinitionBody,
-		} as OtherInfo & ParentInformation
-	};
-
-	data.completeAst.idMap.set(bodyId, body);
-
-	data.completeAst.idMap.set(fdefId, {
-		type:       RType.FunctionDefinition,
-		parameters: [],
-		lexeme:     String(variable.name),
-		location:   loadLocation,
-		body,
-		info:       {
-			...rootInfo,
-			id:     fdefId,
-			parent: syntheticId,
-			role:   RoleInParent.ExpressionListChild,
-		} as OtherInfo & ParentInformation
-	});
-
-	const flow: DataflowFunctionFlowInformation = {
-		entryPoint:        fdefId,
-		graph:             new Set(),
-		out:               [],
-		in:                [],
-		unknownReferences: [],
-		hooks:             [],
-		environment:       cleanEnv
-	};
-
-	fn.information.graph.addVertex({
-		tag:         VertexType.FunctionDefinition,
-		id:          fdefId,
-		cds:         loadCds,
-		environment: cleanEnv,
-		subflow:     flow,
-		exitPoints:  [],
-		params:      {},
-	}, cleanEnv);
-
-	fn.information.graph.addVertex({
-		tag: VertexType.VariableDefinition,
-		id:  syntheticId,
-		cds: loadCds,
-	}, envir);
-
-	fn.information.graph.addEdge(syntheticId, fdefId, EdgeType.DefinedBy);
-}
+/** the serialized types that stand for a variable */
+const VariableSexpTypes: ReadonlySet<SexpType> = new Set([
+	SexpType.SymSxp, SexpType.CharSxp, SexpType.LglSxp, SexpType.IntSxp, SexpType.RealSxp, SexpType.CplxSxp, SexpType.StrSxp, SexpType.RawSxp,
+	SexpType.ListSxp, SexpType.EnvSxp, SexpType.PromSxp, SexpType.LangSxp, SexpType.DotSxp, SexpType.VecSxp, SexpType.ExprSxp, SexpType.ObjSxp
+]);
 
 /** The kind of reference a serialized R object stands for, from the {@link SexpType} it was stored as. */
 export function sexpTypeToReferenceType(type?: SexpType): ReferenceType {
-	if(type === undefined) {
-		return ReferenceType.Unknown;
+	if(type === SexpType.CloSxp) {
+		return ReferenceType.Function;
+	} else if(type === SexpType.SpecialSxp || type === SexpType.BuiltInSxp) {
+		return ReferenceType.BuiltInFunction;
 	}
-	switch(type) {
-		case SexpType.NilSxp:
-			return ReferenceType.Unknown;
-		case SexpType.SymSxp:
-		case SexpType.CharSxp:
-		case SexpType.LglSxp:
-		case SexpType.IntSxp:
-		case SexpType.RealSxp:
-		case SexpType.CplxSxp:
-		case SexpType.StrSxp:
-		case SexpType.RawSxp:
-		case SexpType.ListSxp:
-		case SexpType.EnvSxp:
-		case SexpType.PromSxp:
-		case SexpType.LangSxp:
-		case SexpType.DotSxp:
-		case SexpType.VecSxp:
-		case SexpType.ExprSxp:
-		case SexpType.ObjSxp:
-			return ReferenceType.Variable;
-		case SexpType.CloSxp:
-			return ReferenceType.Function;
-		case SexpType.SpecialSxp:
-		case SexpType.BuiltInSxp:
-			return ReferenceType.BuiltInFunction;
-		default:
-			return ReferenceType.Unknown;
-	}
+	return type !== undefined && VariableSexpTypes.has(type) ? ReferenceType.Variable : ReferenceType.Unknown;
 }
 
 function loadArgsOf<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
@@ -364,12 +264,5 @@ function loadArgsOf<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInf
 	const loadParams = signatureParamNames(data, Identifier.make('load', PkgName.Base), ['file', 'envir', 'verbose']);
 	const bound = FunctionSemantics.call.match.toNames(args, loadParams);
 
-	const fileArgBound = bound.get('file');
-	const envirArg = bound.get('envir');
-	const verboseArgBound = bound.get('verbose');
-
-	const fileArg = fileArgBound ? RArgument.valueOf(fileArgBound) : undefined;
-	const verboseArg = verboseArgBound ? RArgument.valueOf(verboseArgBound) : undefined;
-
-	return { fileArg, envirArg, verboseArg };
+	return { fileArg: RArgument.valueOf(bound.get('file')), envirArg: bound.get('envir') };
 }

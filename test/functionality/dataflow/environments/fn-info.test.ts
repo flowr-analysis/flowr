@@ -1,8 +1,8 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { Identifier, PkgName } from '../../../../src/dataflow/environments/identifier';
 import { CallProp, SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
+import { analyze } from '../../_helper/analyzer';
 
 /**
  * `functionInfo` is the one access point for what flowR knows about a function, whichever of its sources knows
@@ -10,8 +10,7 @@ import { CallProp, SemanticCallTag } from '../../../../src/dataflow/environments
  */
 describe('FlowrAnalyzer.functionInfo', withTreeSitter(parser => {
 	async function analyzerFor(code: string) {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest(code);
+		const analyzer = await analyze(parser, code);
 		await analyzer.dataflow();
 		return analyzer;
 	}
@@ -29,6 +28,15 @@ describe('FlowrAnalyzer.functionInfo', withTreeSitter(parser => {
 		const analyzer = await analyzerFor('read.csv("x.csv")');
 		const info = analyzer.functionInfo(Identifier.make('read.csv'));
 		assert.include(info?.tags ?? [], SemanticCallTag.File, 'reading a file is a built-in tag, no signature states it');
+	});
+
+	test('carries everything the built-in states, unless asked to leave it out', async() => {
+		const analyzer = await analyzerFor('setwd("x")\nsuppressMessages(1)\ntrunc(1)');
+		const setwd = analyzer.functionInfo(Identifier.make('setwd'));
+		assert.isNotEmpty(setwd?.ambient, 'what ambient state it touches');
+		assert.isUndefined(analyzer.functionInfo(Identifier.make('setwd'), { omit: ['ambient'] })?.ambient);
+		assert.deepEqual(analyzer.functionInfo(Identifier.make('suppressMessages'))?.muffles, ['message']);
+		assert.include(analyzer.functionInfo(Identifier.make('trunc'))?.contract?.requires, 'is.numeric(x)', 'what a call has to fulfill');
 	});
 
 	test('answers for a package function from the signature database', async() => {

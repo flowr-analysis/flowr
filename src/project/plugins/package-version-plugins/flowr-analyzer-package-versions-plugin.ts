@@ -69,9 +69,7 @@ export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPl
 	}
 }
 
-/**
- * This is the default no-op implementation of the {@link FlowrAnalyzerPackageVersionsPlugin}.
- */
+/** This is the default no-op implementation of the {@link FlowrAnalyzerPackageVersionsPlugin}. */
 class DefaultFlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name = 'default-package-versions-plugin';
 	public readonly description = 'Does nothing, the default package versions plugin.';

@@ -19,7 +19,6 @@ import type { RFunctionDefinition } from '../../../../model/nodes/r-function-def
 import type { BrandedIdentifier } from '../../../../../../../dataflow/environments/identifier';
 import { BuiltInOperators } from '../../../../../../../dataflow/environments/default-builtin-config/base-operators';
 
-
 /**
  * Parsing binary operations includes the pipe, even though the produced PIPE construct is not a binary operation,
  * to ensure it is handled separately from the others (especially in the combination of a pipe bind)
@@ -62,30 +61,10 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 			infixSpecial: true,
 			lexeme:       data.currentLexeme ?? content,
 			location,
-			functionName: {
-				type:   RType.Symbol,
-				location,
-				lexeme: content,
-				content,
-				info:   {}
-			},
-			arguments: [
-				{
-					type:     RType.Argument,
-					location: lhsLoc,
-					value:    parsedLhs,
-					name:     undefined,
-					lexeme:   parsedLhs.lexeme ?? '',
-					info:     {}
-				},
-				{
-					type:     RType.Argument,
-					location: rhsLoc,
-					value:    parsedRhs,
-					name:     undefined,
-					lexeme:   parsedRhs.lexeme ?? '',
-					info:     {}
-				}
+			functionName: { type: RType.Symbol, location, lexeme: content, content, info: {} },
+			arguments:    [
+				{ type: RType.Argument, location: lhsLoc, value: parsedLhs, name: undefined, lexeme: parsedLhs.lexeme ?? '', info: {} },
+				{ type: RType.Argument, location: rhsLoc, value: parsedRhs, name: undefined, lexeme: parsedRhs.lexeme ?? '', info: {} }
 			],
 			info: {}
 		};

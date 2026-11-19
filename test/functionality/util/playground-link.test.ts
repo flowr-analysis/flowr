@@ -8,11 +8,10 @@ import { unpackFromUrl } from '../../../src/util/text/url-encoding';
 describe('Playground links', () => {
 	const code = ['sum <- 0', 'w <- 7', 'cat("Sum:", sum, "\\n")'].join('\n');
 	/** the fields of a link, as the page splits them apart again */
-	const fields = (url: string): Record<string, string> =>
-		Object.fromEntries(url.split('#')[1]?.split('&').map(field => {
-			const at = field.indexOf('=');
-			return [field.slice(0, at), decodeURIComponent(field.slice(at + 1))];
-		}) ?? []);
+	const fields = (url: string): Record<string, string> => Object.fromEntries(url.split('#')[1]?.split('&').map(field => {
+		const at = field.indexOf('=');
+		return [field.slice(0, at), decodeURIComponent(field.slice(at + 1))];
+	}) ?? []);
 
 	test(label('the script comes back out of the link', ['name-normal'], ['other']), () => {
 		assert.strictEqual(unpackFromUrl(fields(Playground.link({ code })).c), code);

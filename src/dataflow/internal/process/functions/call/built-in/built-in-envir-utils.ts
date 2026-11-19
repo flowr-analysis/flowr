@@ -3,14 +3,29 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { RValue } from '../../../../../eval/values/r-value';
 import type { DataflowInformation } from '../../../../../info';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { type EnvHolderDefinition, type BrandedIdentifier, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { hasEnvState, ReferenceType } from '../../../../../environments/identifier';
-import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
-import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
+import {
+	type PotentiallyEmptyRArgument,
+	RFunctionCall,
+	EmptyArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	type EnvHolderDefinition,
+	type BrandedIdentifier,
+	Identifier,
+	type IdentifierDefinition,
+	type InGraphIdentifierDefinition,
+	type NamedInGraphIdentifierDefinition,
+	hasEnvState,
+	ReferenceType
+} from '../../../../../environments/identifier';
+import {
+	type Environment,
+	type REnvironmentInformation,
+	DefaultAttachPosition,
+	REnvironment
+} from '../../../../../environments/environment';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
-import { resolveNodeToStackEnv } from './built-in-stack-env';
+import { isEnclosingFrame, resolveNodeToStackEnv } from './built-in-stack-env';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { dataflowLogger } from '../../../../../logger';
@@ -29,13 +44,15 @@ import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effec
 import { MatchArgs } from '../../../../../graph/match-args';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { FnSig } from '../../../../../environments/built-in-props';
+import { noteUnknownMethods } from './built-in-expression-list';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 function stackKindOf(envState: REnvironmentInformation): StackEnv | undefined {
-	return envState.current.globalEnv === true ? 'global' : envState.current.builtInEnv === true ? 'base' : undefined;
+	return envState.current.globalEnv === true ? 'global' : envState.current.builtInEnv === true ? 'base' : isEnclosingFrame(envState) ? 'enclosing' : undefined;
 }
 
-/** The real stack environments a resolution can name, as opposed to a tracked custom env. */
-export type StackEnv = 'global' | 'base';
+/** The real stack environments a resolution can name, as opposed to a tracked custom env: `'enclosing'` is the frame of a function around the current one, see {@link isEnclosingFrame}. */
+export type StackEnv = 'global' | 'base' | 'enclosing';
 
 /** Result type for a successful envir-argument resolution. */
 export interface EnvirResolution<OtherInfo> {
@@ -45,17 +62,13 @@ export interface EnvirResolution<OtherInfo> {
 	readonly envDef:      EnvHolderDefinition;
 	/** Node ID of the USE of the envir variable (e.g. the `e` in `envir=e`). */
 	readonly envirNodeId: NodeId;
-	/** which real stack env this resolves to, absent for a tracked custom env; only `'global'` reaches the real frame chain */
+	/** which real stack env this resolves to, absent for a tracked custom env; `'global'` and `'enclosing'` reach the real frame chain */
 	readonly stack?:      StackEnv;
 }
 
-
 function resolveDefsToEnvirResolution<OtherInfo>(defs: readonly IdentifierDefinition[] | undefined, nodeId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirArgRouting<OtherInfo> {
-	if(!defs || defs.length === 0) {
-		return undefined;
-	}
-	const inDefs = defs as readonly InGraphIdentifierDefinition[];
-	if(!inDefs.every(hasEnvState)) {
+	const inDefs = defs as readonly (InGraphIdentifierDefinition & { envState: REnvironmentInformation })[] | undefined;
+	if(!inDefs?.length || !inDefs.every(hasEnvState)) {
 		return undefined;
 	}
 	const stack = stackKindOf(inDefs[0].envState);
@@ -146,6 +159,11 @@ export function closureFrameResolution<OtherInfo>(node: RNode<OtherInfo & Parent
 	if(def?.name === undefined || NodeId.isBuiltIn(def.definedAt)) {
 		return undefined;
 	}
+	/* a closure written out at the top holds the global frame, which `h <- function() NULL` binds it in */
+	const global = REnvironment.findGlobal(data.environment.current);
+	if(def.value !== undefined && def.value.length > 0 && def.value.every(v => RFunctionDefinition.is(data.completeAst.idMap.get(v))) && global.memory.get(Identifier.getName(def.name))?.some(d => d.nodeId === def.nodeId)) {
+		return stackEnvirResolution({ current: global, level: 0 }, node.info.id, node.lexeme ?? '', data);
+	}
 	const envDef = { ...def, envState: def.envState ?? REnvironment.pushLocal(data.environment), envId: def.envId ?? def.nodeId, closureFrame: true } as const;
 	return { envirData: { ...data, environment: envDef.envState }, envDef, envirNodeId: node.info.id };
 }
@@ -168,7 +186,8 @@ export function linkClosureFrameReads(call: NodeId, called: DataflowGraphVertexF
 	const idMap = graph.idMap;
 	for(const id of body) {
 		const read = idMap?.get(id);
-		if(!DfgVertex.isUse(graph.getVertex(id)) || !RSymbol.is(read) || Dataflow.targetsOf(graph, id, EdgeType.Reads).some(t => body.has(t))) {
+		/* what the body binds by `<<-` is the frame, which the write into it may replace, so only a local binding hides the frame */
+		if(!DfgVertex.isUse(graph.getVertex(id)) || !RSymbol.is(read) || Dataflow.targetsOf(graph, id, EdgeType.Reads).some(t => body.has(t) && !Dataflow.definedBySuperAssignment(graph, t))) {
 			continue;
 		}
 		const written = ClosureFrames.writesOf(name, environment, Identifier.getName(read.content), called.id, graph);
@@ -190,22 +209,14 @@ function freeEnvirResolution<OtherInfo>(name: Identifier, nodeId: NodeId, data: 
 function stackEnvirResolution<OtherInfo>(envState: REnvironmentInformation, nodeId: NodeId, lexeme: string, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> {
 	// no holder variable: envDef is only a carrier for envState/nodeId
 	const envDef = { name: lexeme, nodeId, type: ReferenceType.Variable, definedAt: nodeId, envState } as EnvHolderDefinition;
-	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, stack: envState.current.globalEnv === true ? 'global' : 'base' };
+	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, stack: stackKindOf(envState) ?? 'base' };
 }
 
 /** The slots `envir` falls back to (`envir = as.environment(pos)`), so an environment handed to one of them is the target as well. */
 export const EnvirPositionFormals: readonly BrandedIdentifier[] = ['pos', 'where'];
 
 function envirArgOf<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], bound: BoundFormals<OtherInfo> | undefined, formal: BrandedIdentifier): PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined {
-	if(bound !== undefined) {
-		return bound.get(formal);
-	}
-	for(const arg of args) {
-		if(arg !== EmptyArgument && arg.name !== undefined && findByPrefixIfUnique(arg.name.content, [formal]) === formal) {
-			return arg;
-		}
-	}
-	return undefined;
+	return bound !== undefined ? bound.get(formal) : args.find(arg => arg !== EmptyArgument && arg.name !== undefined && findByPrefixIfUnique(arg.name.content, [formal]) === formal);
 }
 
 type BoundFormals<OtherInfo> = ReadonlyMap<BrandedIdentifier, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>>;
@@ -245,10 +256,7 @@ export function resolveFirstEnvirArg<OtherInfo>(args: readonly PotentiallyEmptyR
 	const bound = bindFormals(args, sig);
 	for(const formal of formals) {
 		const arg = envirArgOf(args, bound, formal);
-		if(arg === undefined) {
-			continue;
-		}
-		const resolution = resolveEnvirOrPosition(arg, formal, data);
+		const resolution = arg === undefined ? undefined : resolveEnvirOrPosition(arg, formal, data);
 		if(resolution !== undefined) {
 			return resolution;
 		}
@@ -256,26 +264,29 @@ export function resolveFirstEnvirArg<OtherInfo>(args: readonly PotentiallyEmptyR
 	return undefined;
 }
 
-/** Marks `result` as an unknown side effect when the envir argument names a value that cannot be pinned down (e.g. a parameter), so routing the writes anywhere would be a guess; reports whether it did. */
+/** Marks `result` as an unknown side effect when the envir argument names a value that cannot be pinned down (e.g. a parameter), so routing the writes anywhere would be a guess (and what they bind may be any method); reports whether it did. */
 export function unknownIfAmbiguous<OtherInfo>(routing: EnvirArgRouting<OtherInfo>, result: DataflowInformation, rootId: NodeId): boolean {
 	if(routing !== 'ambiguous') {
 		return false;
 	}
 	handleUnknownSideEffect(result.graph, result.environment, rootId);
+	noteUnknownMethods(result.environment, rootId);
 	return true;
 }
 
 /** Resolves a symbol by name to an {@link EnvirResolution} when it holds a tracked environment. */
 export function resolveSymbolToEnvir<OtherInfo>(symbolName: Identifier, nodeId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): EnvirResolution<OtherInfo> | undefined {
-	return envirOf(resolveDefsToEnvirResolution(Resolve.byNameAndType(symbolName, data.environment, ReferenceType.Variable), nodeId, data));
+	return envirOf(resolveDefsToEnvirResolution(Resolve.byNameAndType(symbolName, data.environment, ReferenceType.Variable) ?? enclosingFrameHolders(symbolName, data.environment), nodeId, data));
+}
+
+/** The definitions of the free variable `name` of a body holding the frame of a function around (`e <- parent.env(environment())` in it): the body sees the frames around it emptied, which stand in for them (see {@link Environment#superMemory}). */
+function enclosingFrameHolders(name: Identifier, environment: REnvironmentInformation): readonly IdentifierDefinition[] | undefined {
+	const defs = environment.level > 0 ? environment.current.lookupLexically(Identifier.getName(name)) : undefined;
+	return defs?.length && defs.every(d => hasEnvState(d) && isEnclosingFrame(d.envState)) ? defs : undefined;
 }
 
 function writtenDefinitionsOf(result: DataflowInformation, definedAt?: NodeId): readonly NamedInGraphIdentifierDefinition[] {
-	return result.out.filter(
-		(d): d is NamedInGraphIdentifierDefinition =>
-			d.name !== undefined && 'definedAt' in d &&
-			(definedAt === undefined || d.definedAt === definedAt)
-	);
+	return result.out.filter((d): d is NamedInGraphIdentifierDefinition => d.name !== undefined && 'definedAt' in d && (definedAt === undefined || d.definedAt === definedAt));
 }
 
 function holdersOf(environment: REnvironmentInformation, envDef: EnvHolderDefinition): readonly (EnvHolderDefinition)[] {
@@ -295,14 +306,14 @@ function holdersOf(environment: REnvironmentInformation, envDef: EnvHolderDefini
 
 function routeWrittenToCustomEnv(result: DataflowInformation, envDef: EnvHolderDefinition, newDefAt: NodeId, callerEnvironment: REnvironmentInformation, definedAt?: NodeId): DataflowInformation {
 	const written = writtenDefinitionsOf(result, definedAt);
-
 	let newEnvState = envDef.envState;
+	/* the frame of the function itself (`e <- environment()`) is where the write binds anyway */
+	const ownFrame = envDef.envState.current.closure !== undefined && envDef.envState.current.closure === callerEnvironment.current.closure;
 	/* only a binding the write made here moves into the environment, `local(y <- 2, envir = e)` leaves the caller's `y` alone */
-	const namesToRemove = written.filter(w => result.environment.current.lookup(Identifier.getName(w.name))?.some(d => d.nodeId === w.nodeId)).map(w => ({ name: w.name }));
+	const namesToRemove = ownFrame ? [] : written.filter(w => result.environment.current.lookup(Identifier.getName(w.name))?.some(d => d.nodeId === w.nodeId)).map(w => ({ name: w.name }));
 	for(const w of written) {
 		newEnvState = REnvironment.define(w, false, newEnvState);
 	}
-
 	const current = result.environment.current.removeAll(namesToRemove);
 	/* what the caller bound before stays bound, `v <- 3; assign("v", 4, envir = e)` keeps `v` at 3 */
 	for(const { name } of namesToRemove) {
@@ -311,8 +322,7 @@ function routeWrittenToCustomEnv(result: DataflowInformation, envDef: EnvHolderD
 			current.writableMemory.set(Identifier.getName(name), before);
 		}
 	}
-	const stripped = { current, level: result.environment.level };
-	return { ...result, environment: rebindHolders(stripped, envDef, newEnvState, newDefAt) };
+	return { ...result, environment: rebindHolders({ current, level: result.environment.level }, envDef, newEnvState, newDefAt) };
 }
 
 /** The calls that look up bindings in an environment they are given, or write into it, see {@link readEnvironmentContents}. */
@@ -411,9 +421,8 @@ export function addEnvironmentWrites(writes: readonly IdentifierDefinition[], ca
 
 /** Routes writes into a real stack env's frame chain, the same way `<<-` reaches an outer scope. */
 export function routeWrittenToStackEnv(result: DataflowInformation, into: REnvironmentInformation, rootId: NodeId, definedAt?: NodeId): DataflowInformation {
-	const written = writtenDefinitionsOf(result, definedAt);
 	let environment = into;
-	for(const w of written) {
+	for(const w of writtenDefinitionsOf(result, definedAt)) {
 		environment = REnvironment.define(w, true, environment);
 		result.graph.addEdge(w.nodeId, rootId, EdgeType.Reads);
 	}
@@ -422,12 +431,8 @@ export function routeWrittenToStackEnv(result: DataflowInformation, into: REnvir
 
 /** Routes writes under a resolved `envir=` to the real stack frame or a tracked custom env, and adds the `Reads` edge from `rootId` to the envir argument. */
 export function routeWrittenToEnvir<OtherInfo>(result: DataflowInformation, resolution: EnvirResolution<OtherInfo>, rootId: NodeId, callerEnvironment: REnvironmentInformation, definedAt?: NodeId): DataflowInformation {
-	let routed: DataflowInformation;
-	if(resolution.stack !== undefined) {
-		routed = resolution.stack === 'global' ? routeWrittenToStackEnv(result, callerEnvironment, rootId, definedAt) : result;
-	} else {
-		routed = routeWrittenToCustomEnv(result, resolution.envDef, rootId, callerEnvironment, definedAt);
-	}
+	const routed = resolution.stack === undefined ? routeWrittenToCustomEnv(result, resolution.envDef, rootId, callerEnvironment, definedAt)
+		: resolution.stack === 'base' ? result : routeWrittenToStackEnv(result, callerEnvironment, rootId, definedAt);
 	routed.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
 	return routed;
 }

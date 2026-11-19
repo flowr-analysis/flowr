@@ -1,8 +1,7 @@
 import { type IPipelineStep, PipelineStepStage, requires } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import { normalizeTreeSitter } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser';
-import type { NormalizeRequiredInput } from './10-normalize';
-import { NormalizePrinters } from './10-normalize';
+import { type NormalizeRequiredInput, NormalizePrinters } from './10-normalize';
 import type { ParseStepOutput } from '../../../../r-bridge/parser';
 import type { Tree } from 'web-tree-sitter';
 import type { FlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';

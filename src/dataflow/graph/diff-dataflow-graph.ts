@@ -9,8 +9,7 @@ import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/collections/arrays';
 import { ControlFlowEdgeTypes, DfEdge } from './edge';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
-import { Identifier } from '../environments/identifier';
+import { type IdentifierDefinition, type IdentifierReference, Identifier } from '../environments/identifier';
 import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { diffControlDependencies } from '../info';
@@ -18,7 +17,6 @@ import type { GraphDifferenceReport, GraphDiffContext } from '../../util/diff-gr
 import type { HookInformation } from '../hooks';
 import { DfgVertex } from './vertex';
 import { AmbientAccess } from './ambient-access';
-
 
 /** This is the underlying function to calculate the difference based on a given context. Use {@link Dataflow.diffGraphs} to calculate the diff of two graphs. */
 export function diffDataflowGraph(ctx: GraphDiffContext): void {

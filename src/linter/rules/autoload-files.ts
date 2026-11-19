@@ -1,5 +1,4 @@
-import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty  } from '../linter-format';
 import { FileRole } from '../../project/context/flowr-file';
 import { LintingRuleTag } from '../linter-tags';
 import type { MergeableRecord } from '../../util/objects';

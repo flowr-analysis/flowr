@@ -2,8 +2,7 @@ import { internalPrinter, StepOutputFormat } from '../../../print/print';
 import { type IPipelineStep, PipelineStepStage, requires } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { DataflowInformation } from '../../../../dataflow/info';
-import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
-import { SlicingCriterion } from '../../../../slicing/criterion/parse';
+import { type SlicingCriteria, SlicingCriterion } from '../../../../slicing/criterion/parse';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { staticSlice } from '../../../../slicing/static/static-slicer';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
@@ -38,9 +37,7 @@ export const STATIC_SLICE = {
 	description:       'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
 	processor,
 	executed:          PipelineStepStage.OncePerRequest,
-	printer:           {
-		[StepOutputFormat.Internal]: internalPrinter
-	},
-	dependencies:  ['dataflow'],
-	requiredInput: requires<SliceRequiredInput>()
+	printer:           { [StepOutputFormat.Internal]: internalPrinter },
+	dependencies:      ['dataflow'],
+	requiredInput:     requires<SliceRequiredInput>()
 } as const satisfies DeepReadonly<IPipelineStep<'slice', typeof processor>>;

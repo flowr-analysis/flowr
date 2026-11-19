@@ -231,7 +231,6 @@ export class LazyBindings implements MemoryView {
 	private readonly built = new Map<BrandedIdentifier, IdentifierDefinition[]>();
 
 	/**
-	 * @param names  - the names this binds
 	 * @param bind   - builds the definitions of one name
 	 * @param origin - what, besides the names, decides what `bind` returns, so the bindings can be told apart without building them
 	 */

@@ -4,12 +4,12 @@ import { label } from '../../../_helper/label';
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { assert, describe, test } from 'vitest';
 import fs from 'fs';
-import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { staticSlice } from '../../../../../src/slicing/static/static-slicer';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { collectAllSlicingCriteria } from '../../../../../src/slicing/criterion/collect-all';
 import { DefaultAllVariablesFilter } from '../../../../../src/slicing/criterion/filters/all-variables';
 import { equidistantSampling } from '../../../../../src/util/collections/arrays';
+import { analyze } from '../../../_helper/analyzer';
 
 /**
  * Slicing tests for the R files added to the artificial performance suite
@@ -103,8 +103,7 @@ describe('Artificial performance suite', { concurrent: false }, withShell(shell 
 			if(!await rReadsSyntaxOf(code)) {
 				ctx.skip();
 			}
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
-			analyzer.addRequest(code.concat('\n').repeat(22));
+			const analyzer = await analyze(shell, code.concat('\n').repeat(22));
 			const [ast, info] = [await analyzer.normalize(), await analyzer.dataflow()];
 			for(const criteria of equidistantSampling([...collectAllSlicingCriteria(ast.ast, DefaultAllVariablesFilter)], 50)) {
 				const { timesHitThreshold } = staticSlice({ ctx: analyzer.context(), info, ast, ids: SlicingCriterion.convertAll(criteria, ast.idMap) });

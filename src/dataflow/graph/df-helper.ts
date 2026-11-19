@@ -24,6 +24,27 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import { metaPackageCore } from '../../project/attached-packages';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+
+/** Copies the unknown side effects and ambient accesses of the selected ids of `graph` to `df`. */
+function copySelectedMarks(graph: DataflowGraph, df: DataflowGraph, select: ReadonlySet<NodeId>): DataflowGraph {
+	for(const u of graph.unknownSideEffects) {
+		const id = UnknownSideEffect.id(u);
+		if(select.has(id)) {
+			df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
+		}
+	}
+	for(const id of graph.ambientAccessIds()) {
+		if(select.has(id)) {
+			df.recordAmbientAccess(id, AmbientAccess.names(graph.ambientAccessOf(id) as AmbientAccess));
+		}
+	}
+	return df;
+}
+
+/** The edges a provenance follows by default, see {@link Dataflow.provenance}. */
+export const ProvenanceEdges = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
@@ -64,13 +85,7 @@ export const Dataflow = {
 	},
 	/** Whether the call's result is passed on -- assigned, handed to another call, returned -- rather than left for R to auto-print. */
 	valueIsUsed(this: void, id: NodeId, graph: DataflowGraph): boolean {
-		const consuming = EdgeType.Argument | EdgeType.Returns | EdgeType.DefinedBy;
-		for(const [, edge] of graph.edgesTo(id)) {
-			if(DfEdge.includesType(edge, consuming)) {
-				return true;
-			}
-		}
-		return false;
+		return graph.edgesTo(id).values().some(edge => DfEdge.includesType(edge, EdgeType.Argument | EdgeType.Returns | EdgeType.DefinedBy));
 	},
 	/** Whether any argument of the call carries a value the program worked out, rather than only literals the author typed: `cat("starting\n")` is a log line, `cat("n =", length(m))` is a finding. */
 	hasComputedArguments(this: void, id: NodeId, graph: DataflowGraph): boolean {
@@ -109,6 +124,10 @@ export const Dataflow = {
 	/** The ids of the function definitions a call is linked to by a {@link EdgeType.Calls} edge (empty if none, e.g. for built-ins). */
 	calleeIdsOf(this: void, graph: DataflowGraph, call: NodeId): NodeId[] {
 		return Dataflow.targetsOf(graph, call, EdgeType.Calls).filter(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)));
+	},
+	/** The function definitions (as nodes of the normalized AST) a call is linked to by a {@link EdgeType.Calls} edge, see {@link Dataflow.calleeIdsOf}. */
+	calleeDefinitionsOf(this: void, graph: DataflowGraph, call: NodeId): RFunctionDefinition<ParentInformation>[] {
+		return Dataflow.calleeIdsOf(graph, call).map(id => graph.idMap?.get(id)).filter(RFunctionDefinition.is);
 	},
 	/** All known targets of a call, as well as the name sources which define them (empty if there are none). */
 	callTargetsOf(this: void, call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation, resolver?: LinkedFunctionResolver): NodeId[] {
@@ -240,18 +259,7 @@ export const Dataflow = {
 				df.addEdge(from, tar, types);
 			}
 		}
-		for(const u of graph.unknownSideEffects) {
-			const id = UnknownSideEffect.id(u);
-			if(select.has(id)) {
-				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
-			}
-		}
-		for(const id of graph.ambientAccessIds()) {
-			if(select.has(id)) {
-				df.recordAmbientAccess(id, AmbientAccess.names(graph.ambientAccessOf(id) as AmbientAccess));
-			}
-		}
-		return df as G;
+		return copySelectedMarks(graph, df, select) as G;
 	},
 
 	/** Equivalent to {@link Dataflow.reduceGraph|`reduceGraph`} followed by {@link Dataflow.invertGraph|`invertGraph`} but in a single pass over the graph, allocating only one intermediate object instead of two. */
@@ -273,27 +281,26 @@ export const Dataflow = {
 				df.addEdge(to, from, types);
 			}
 		}
-		for(const u of graph.unknownSideEffects) {
-			const id = UnknownSideEffect.id(u);
-			if(select.has(id)) {
-				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
-			}
-		}
-		for(const id of graph.ambientAccessIds()) {
-			if(select.has(id)) {
-				df.recordAmbientAccess(id, AmbientAccess.names(graph.ambientAccessOf(id) as AmbientAccess));
-			}
-		}
-		return df as G;
+		return copySelectedMarks(graph, df, select) as G;
 	},
 
 	/** See {@link DataflowGraph#isQuoted}, which this answers for `graph`. */
 	isQuoted(this: void, id: NodeId, graph: DataflowGraph, withOutgoing = false): boolean {
 		return graph.isQuoted(id, withOutgoing);
 	},
+	/** Whether the node or one of its AST ancestors is quoted or evaluated elsewhere (`quote(...)`, a data mask), see {@link DataflowGraph#isQuoted}. */
+	isWithinQuoted(this: void, id: NodeId, graph: DataflowGraph): boolean {
+		const idMap = graph.idMap;
+		for(let cur = idMap?.get(id); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap?.get(cur.info.parent)) {
+			if(graph.isQuoted(cur.info.id)) {
+				return true;
+			}
+		}
+		return false;
+	},
 
 	/** Given the id of a vertex (usually a variable use), this returns a reachable provenance set by calculating a non-interprocedural and non-context sensitive backward slice, but stopping at the given ids! */
-	provenance(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>, followEdges: number | undefined = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.DefinedByOnCall): Set<NodeId> {
+	provenance(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>, followEdges: number | undefined = ProvenanceEdges): Set<NodeId> {
 		return Dataflow.reachable(graph, id, { follow: followEdges, consider, cds: true });
 	},
 	/** A simple visitor akin to {@link RNode.visitAst} to traverse the dataflow graph starting from the start id and only respecting edge direction. */

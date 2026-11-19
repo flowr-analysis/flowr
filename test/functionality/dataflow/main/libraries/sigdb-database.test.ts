@@ -7,6 +7,7 @@ import { SigDbBuilder, writeSignatureDb, writeShardedDatabase, type ShardSpec } 
 import { writeManifest, SigDbManifestMagic, SigDbManifestSchema, type SigDbManifest } from '../../../../../src/project/sigdb/manifest';
 import { readSigDbIndex, encodeIndex } from '../../../../../src/project/sigdb/index-format';
 import { deriveLibraryExports } from '../../../../../src/project/sigdb/decode';
+import { newestVersion } from '../../../../../src/project/sigdb/sigdb-version';
 import { FnProp, DepType, SigDbMagic, SigDbSchema, SigDbExt, MaxDefaultLength, DefaultCranBase } from '../../../../../src/project/sigdb/schema';
 import { zstdSupported } from '../../../../../src/project/sigdb/codec';
 import { ArgProp } from '../../../../../src/dataflow/environments/built-in-props';
@@ -108,6 +109,20 @@ describe(`sigdb database (schema ${SigDbSchema})`, () => {
 		const info = deriveLibraryExports(SigDict.of(db.strings), db.blobs[db.pkgs['p']], db.meta['p'], 'p');
 		expect(info?.version).toBe('0.10.0');
 		expect(info?.exported).toEqual(['new']);
+	});
+
+	test('the latest version is the recorded one, not the most recently dated or the highest', () => {
+		const b = new SigDbBuilder();
+		// a GitHub build of the next version, dated after the CRAN release; and an older release without a date
+		b.addPackage('p', { latest: '1.2.1' });
+		b.addVersion('p', '1.2.0', { cran: true, functions: [], date: Date.UTC(2025, 0, 1) });
+		b.addVersion('p', '1.2.1', { cran: true, functions: [] });
+		b.addVersion('p', '1.2.1.9000', { cran: false, functions: [], date: Date.UTC(2026, 2, 1) });
+		const db = b.build(meta);
+		expect(newestVersion(db.blobs[db.pkgs['p']], db.meta['p'][0])).toBe('1.2.1');
+		// without a recorded latest the dates decide, and without dates R's version order
+		expect(newestVersion(db.blobs[db.pkgs['p']], '9.9')).toBe('1.2.1.9000');
+		expect(newestVersion({ ...db.blobs[db.pkgs['p']], dates: {} }, '9.9')).toBe('1.2.1.9000');
 	});
 
 	test('sharing: identical functions across versions pool once; identical packages share a blob', () => {
@@ -715,7 +730,7 @@ describe('sigdb dependencies and feature selection', () => {
 		], dependencies: [{ name: 'R6', type: DepType.Imports }] });
 		const db = b.build({ ...meta, features: { signatures: false, callGraphs: false, locations: false } });
 		const blob = db.blobs[db.pkgs['p']];
-		expect(db.content.features).toEqual({ signatures: false, callGraphs: false, locations: false, dependencies: true, classes: true });
+		expect(db.content.features).toEqual({ signatures: false, callGraphs: false, locations: false, dependencies: true, classes: true, contracts: true, natives: true });
 		expect(blob.sigs.length).toBe(0);   // no signatures stored
 		expect(blob.cgs.length).toBe(0);    // no call graphs stored
 		const [, sigIdx, cgIdx, bits, fileIdx] = blob.fns[0];

@@ -21,19 +21,19 @@ import { executeDependenciesQuery } from './dependencies-query-executor';
 import type { FunctionInfo } from './function-info/function-info';
 import { LibraryFunctions } from './function-info/library-functions';
 import { SourceFunctions } from './function-info/source-functions';
-import { RemoteFunctions, remoteTarget } from './function-info/remote-functions';
+import { computeRemoteFunctions, installsRemotely, remoteTarget } from './function-info/remote-functions';
 import { computeReadFunctions } from './function-info/read-functions';
 import { writeFunctionsOf } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
 import { transformFunctions } from './function-info/transform-functions';
-import { statisticsFunctions } from './function-info/statistics-functions';
+import { functionsTagged } from './function-info/tagged-functions';
+import { SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
 import type { AsyncOrSync, MarkOptional } from 'ts-essentials';
 import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { TestFunctions } from './function-info/test-functions';
-import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier } from '../../../dataflow/environments/identifier';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { compactRecord } from '../../../util/objects';
@@ -58,7 +58,6 @@ export interface DependencyCategorySettings {
 	/**
 	 * An optional additional analysis step that is executed after the main function-based analysis has been performed.
 	 * To add or modify dependency info entries, simply modify the `result` array.
-	 * @param data          - The basic query data.
 	 * @param ignoreDefault - Whether the default functions were ignored.
 	 * @param functions     - The functions used for this category.
 	 * @param queryResults  - The results of the call context query.
@@ -68,7 +67,7 @@ export interface DependencyCategorySettings {
 }
 
 /** the built-in categories; what each searches for is derived per configuration, see {@link defaultDependencyCategories} */
-export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'transform', 'test', 'statistics'] as const;
+export const DefaultDependencyCategoryNames = ['library', 'remote', 'source', 'read', 'write', 'visualize', 'transform', 'test', 'statistics', 'interactive'] as const;
 export type DefaultDependencyCategoryName = typeof DefaultDependencyCategoryNames[number];
 
 /** a definition or call reached again while working it out makes nothing new */
@@ -189,29 +188,17 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 	},
 	'remote': {
 		queryDisplayName:   'Remote Installs',
-		functions:          RemoteFunctions,
+		functions:          env.deriveFromDefinitions(computeRemoteFunctions),
 		defaultValue:       Unknown,
-		/* the value is the reference as written, which names the package only implicitly */
+		/* the value is the reference as written, which names the package only implicitly; a plain name comes from a configured repository */
 		additionalAnalysis: (_data, _ignoreDefault, _functions, _queryResults, result) => {
-			for(const [at, info] of result.entries()) {
-				const target = remoteTarget(info.value);
-				if(target !== undefined) {
-					result[at] = { ...info, ...target };
-				}
-			}
+			const remote = result.filter(info => installsRemotely(info.value)).map(info => ({ ...info, ...remoteTarget(info.value) }));
+			result.splice(0, result.length, ...remote);
 		}
 	},
-	'source': {
-		queryDisplayName: 'Sourced Files',
-		functions:        SourceFunctions,
-		defaultValue:     Unknown
-	},
-	'read': {
-		queryDisplayName: 'Read Data',
-		functions:        env.deriveFromDefinitions(computeReadFunctions),
-		defaultValue:     Unknown
-	},
-	'write': {
+	'source': { queryDisplayName: 'Sourced Files', functions: SourceFunctions, defaultValue: Unknown },
+	'read':   { queryDisplayName: 'Read Data', functions: env.deriveFromDefinitions(computeReadFunctions), defaultValue: Unknown },
+	'write':  {
 		queryDisplayName:   'Outputs',
 		functions:          env.derive(writeFunctionsOf),
 		defaultValue:       StdOut,
@@ -228,10 +215,7 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 			collectImplicitEchoes(ast, dataflow, accountedFor, invisible, result);
 		}
 	},
-	'visualize': {
-		queryDisplayName: 'Visualizations',
-		functions:        VisualizeFunctions
-	},
+	'visualize': { queryDisplayName: 'Visualizations', functions: VisualizeFunctions },
 	'transform': {
 		queryDisplayName:   'Data Transformations',
 		functions:          transformFunctions(env.builtInIndex),
@@ -241,14 +225,9 @@ const dependencyCategoriesOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): R
 			}
 		}
 	},
-	'test': {
-		queryDisplayName: 'Tests',
-		functions:        TestFunctions
-	},
-	'statistics': {
-		queryDisplayName: 'Statistics',
-		functions:        statisticsFunctions(env.builtInIndex)
-	}
+	'test':        { queryDisplayName: 'Tests', functions: TestFunctions },
+	'statistics':  { queryDisplayName: 'Statistics', functions: functionsTagged(env.builtInIndex, SemanticCallTag.Statistics) },
+	'interactive': { queryDisplayName: 'Interactive Use', functions: functionsTagged(env.builtInIndex, SemanticCallTag.Interactive) }
 });
 export type DependencyCategoryName = DefaultDependencyCategoryName | string;
 
@@ -278,7 +257,6 @@ export interface DependenciesQueryMeta extends BaseQueryMeta {
 }
 
 export type DependenciesQueryResult = { readonly '.meta': DependenciesQueryMeta } & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] };
-
 
 export interface DependencyInfo extends Record<string, unknown> {
 	nodeId?:             NodeId

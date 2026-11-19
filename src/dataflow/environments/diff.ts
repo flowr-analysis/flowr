@@ -1,13 +1,14 @@
 import { type GenericDifferenceInformation, type WriteableDifferenceReport, setDifference } from '../../util/diff';
 import { type IEnvironment, type REnvironmentInformation, builtInEnvJsonReplacer } from './environment';
 import { jsonReplacer } from '../../util/json';
-import type { IdentifierReference } from './identifier';
-import { Identifier } from './identifier';
+import { type IdentifierReference, Identifier } from './identifier';
 import { diffControlDependencies } from '../info';
 
-/**
- * Compares two identifier references and reports differences.
- */
+function sameName(a: Identifier | undefined, b: Identifier | undefined): boolean {
+	return a === undefined || b === undefined ? a === b : Identifier.view(a)?.equals(b) === true;
+}
+
+/** Compares two identifier references and reports differences. */
 export function diffIdentifierReferences<Report extends WriteableDifferenceReport>(a: IdentifierReference | undefined, b: IdentifierReference | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
@@ -15,7 +16,7 @@ export function diffIdentifierReferences<Report extends WriteableDifferenceRepor
 		}
 		return;
 	}
-	if(a.name !== b.name) {
+	if(!sameName(a.name, b.name)) {
 		info.report.addComment(`${info.position}Different identifier names: ${info.leftname}: ${a.name ? Identifier.toString(a.name) : 'undefined'} vs. ${info.rightname}: ${b.name ? Identifier.toString(b.name) : 'undefined'}`);
 	}
 	if(a.nodeId !== b.nodeId) {
@@ -39,7 +40,7 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 		for(let i = 0; i < value.length; ++i) {
 			const aVal = sorted[i];
 			const bVal = sorted2[i];
-			if(aVal.name !== bVal.name) {
+			if(!sameName(aVal.name, bVal.name)) {
 				info.report.addComment(`${info.position}Different names for ${key}. ${info.leftname}: ${aVal.name ? Identifier.toString(aVal.name) : 'undefined'} vs. ${info.rightname}: ${bVal.name ? Identifier.toString(bVal.name) : undefined}`);
 			}
 			if(aVal.nodeId !== bVal.nodeId) {
@@ -56,9 +57,7 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 	}
 }
 
-/**
- * Compares two environments and reports differences.
- */
+/** Compares two environments and reports differences. */
 export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEnvironment | undefined, b: IEnvironment | undefined, info: GenericDifferenceInformation<Report>, depth: number): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
@@ -80,9 +79,7 @@ export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEn
 	diffEnvironment(a.parent, b.parent, { ...info, position: `${info.position}Parents of ${a.id} & ${b.id}. ` }, depth - 1);
 }
 
-/**
- * Compares two REnvironmentInformation objects and reports differences.
- */
+/** Compares two REnvironmentInformation objects and reports differences. */
 export function diffEnvironmentInformation<Report extends WriteableDifferenceReport>(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {

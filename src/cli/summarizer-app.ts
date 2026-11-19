@@ -19,10 +19,7 @@ export interface SummarizerCliOptions {
 
 const options = processCommandLineArgs<SummarizerCliOptions>('summarizer', ['input'], {
 	subtitle: 'Summarize and explain the results of the benchmark tool. Summarizes in two stages: first per-request, and then overall',
-	examples: [
-		'{italic benchmark.json}',
-		'{bold --help}'
-	]
+	examples: ['{italic benchmark.json}', '{bold --help}']
 });
 
 void flowrScriptSummarizer(options);

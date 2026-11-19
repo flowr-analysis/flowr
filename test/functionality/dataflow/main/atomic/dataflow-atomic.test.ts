@@ -18,14 +18,13 @@ import {
 } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
 import { ReferenceType, type BrandedIdentifier } from '../../../../../src/dataflow/environments/identifier';
 import { assert, describe, test } from 'vitest';
-import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import { RSymbol } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RString } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { BuiltInOperators } from '../../../../../src/dataflow/environments/default-builtin-config/base-operators';
+import { analyze } from '../../../_helper/analyzer';
 
 function getSuperAssignOrigin(op: BrandedIdentifier): { origin: BuiltInProcName[] } | object {
 	return op === '<<-' || op === '->>' ? { origin: [BuiltInProcName.SuperAssignment] } : {};
@@ -75,52 +74,34 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			assertDataflow(label('single constant', ['name-normal', 'numbers', 'single-bracket-access']),
 				shell, 'a[2]',  emptyGraph().autoPrints([3], true)
 					.use(0, 'a', { cds: [] })
-					.argument(3, 0)
 					.call(3, '[', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [0, 1, NodeId.toBuiltIn('[')], onlyBuiltIn: true })
-					.calls(3, NodeId.toBuiltIn('['))
-					.argument(3, 1)
 					.constant(1)
 			);
 			assertDataflow(label('double constant', ['name-normal', 'numbers', 'double-bracket-access']),
 				shell, 'a[[2]]',  emptyGraph().autoPrints([3], true)
 					.use(0, 'a', { cds: [] })
-					.argument(3, 0)
-					.argument(3, 1)
 					.constant(1)
 					.call(3, '[[', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [0, 1, NodeId.toBuiltIn('[[')], onlyBuiltIn: true })
-					.calls(3, NodeId.toBuiltIn('[['))
 			);
 			assertDataflow(label('dollar constant', ['name-normal', 'dollar-access']),
 				shell, 'a$b',  emptyGraph().autoPrints([3], true)
 					.use(0, 'a', { cds: [] })
-					.argument(3, 0)
-					.argument(3, 1)
 					.reads(3, 1)
 					.call(3, '$', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [0, NodeId.toBuiltIn('$')], onlyBuiltIn: true })
-					.calls(3, NodeId.toBuiltIn('$'))
 					.constant(1)
 			);
 			assertDataflow(label('at constant', ['name-normal', 'slot-access']),
 				shell, 'a@b', emptyGraph().autoPrints([3], true)
 					.use(0, 'a', { cds: [] })
-					.argument(3, 0)
 					.call(3, '@', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [0, NodeId.toBuiltIn('@')], onlyBuiltIn: true })
-					.calls(3, NodeId.toBuiltIn('@'))
-					.argument(3, 1)
 					.reads(3, 1)
 					.constant(1)
 			);
 			assertDataflow(label('chained constant', ['name-normal', 'numbers', 'single-bracket-access']), shell,
 				'a[2][3]', emptyGraph().autoPrints([6], true)
 					.use(0, 'a', { cds: [] })
-					.argument(3, 0)
 					.call(3, '[', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [NodeId.toBuiltIn('['), 0, 1], onlyBuiltIn: true, cds: [] })
-					.calls(3, NodeId.toBuiltIn('['))
-					.argument(3, 1)
-					.argument(6, 3)
 					.call(6, '[', [argumentInCall(3), argumentInCall(4)], { returns: [3], reads: [3, 4, NodeId.toBuiltIn('[')], onlyBuiltIn: true })
-					.calls(6, NodeId.toBuiltIn('['))
-					.argument(6, 4)
 					.constant(1)
 					.constant(4)
 
@@ -128,28 +109,16 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			assertDataflow(label('chained dollar', ['name-normal', 'numbers', 'single-bracket-access']), shell,
 				'a$b$c', emptyGraph().autoPrints([6], true)
 					.use(0, 'a', { cds: [] })
-					.argument(3, 0)
 					.call(3, '$', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [NodeId.toBuiltIn('$'), 0, 1], onlyBuiltIn: true, cds: [] })
-					.calls(3, NodeId.toBuiltIn('$'))
-					.argument(3, 1)
-					.argument(6, 3)
 					.call(6, '$', [argumentInCall(3), argumentInCall(4)], { returns: [3], reads: [3, 4, NodeId.toBuiltIn('$')], onlyBuiltIn: true })
-					.calls(6, NodeId.toBuiltIn('$'))
-					.argument(6, 4)
 					.constant(1)
 					.constant(4)
 			);
 			assertDataflow(label('chained mixed constant', ['dollar-access', 'single-bracket-access', 'name-normal', 'numbers']), shell,
 				'a[2]$a', emptyGraph().autoPrints([6], true)
 					.use(0, 'a', { cds: [] })
-					.argument(3, 0)
 					.call(3, '[', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [NodeId.toBuiltIn('['), 0, 1], onlyBuiltIn: true, cds: [] })
-					.calls(3, NodeId.toBuiltIn('['))
-					.argument(3, 1)
-					.argument(6, 3)
 					.call(6, '$', [argumentInCall(3), argumentInCall(4)], { returns: [3], reads: [3, NodeId.toBuiltIn('$')], onlyBuiltIn: true })
-					.calls(6, NodeId.toBuiltIn('$'))
-					.argument(6, 4)
 					.reads(6, 4)
 					.constant(1)
 					.constant(4)
@@ -160,12 +129,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				.use(0, 'a', { cds: [] })
 				.use(1, 'x')
 				.use(4, 'y')
-				.argument(3, [0, 1])
 				.call(3, '[', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [NodeId.toBuiltIn('['), 0, 1], onlyBuiltIn: true, cds: [] })
-				.calls(3, NodeId.toBuiltIn('['))
-				.argument(6, [3, 4])
 				.call(6, '[', [argumentInCall(3), argumentInCall(4)], { returns: [3], reads: [3, 4, NodeId.toBuiltIn('[')], onlyBuiltIn: true })
-				.calls(6, NodeId.toBuiltIn('['))
 		);
 		assertDataflow(label('assign on access', ['name-normal', 'single-bracket-access', ...BuiltInOperators.byName['<-'].capabilities, 'replacement-functions']), shell,
 			'a[x] <- 5',  emptyGraph()
@@ -173,14 +138,13 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				.call(3, '[<-', [argumentInCall(0), argumentInCall(1), argumentInCall(4)], { returns: [0], reads: [1, NodeId.toBuiltIn('[<-')], onlyBuiltIn: true, link: { origin: [5] } })
 				.reads(3, 4)
 				.reads(0, 3)
-				.calls(3, NodeId.toBuiltIn('[<-'))
 				.constant(4)
 				.defineVariable(0, 'a', { definedBy: [4, 3] })
 		);
 		assertDataflow(label('nested assign', ['name-normal', 'dollar-access', ...BuiltInOperators.byName['<-'].capabilities, 'replacement-functions']), shell,
 			'a$b$c <- 5',  emptyGraph()
-				.call(3, '$<-', [argumentInCall(0), argumentInCall(1), argumentInCall(7)], { returns: [0], reads: [1, 6, NodeId.toBuiltIn('$<-'), NodeId.toBuiltIn('$')], onlyBuiltIn: true, link: { origin: [6] } })
-				.calls(3, NodeId.toBuiltIn('$<-'))
+				.call(3, '$<-', [argumentInCall(0), argumentInCall(1), argumentInCall(7)], { returns: [0], reads: [1, 6, NodeId.toBuiltIn('$<-')], onlyBuiltIn: true, link: { origin: [6] } })
+				.reads(3, NodeId.toBuiltIn('$'))
 				.reads(3, 7)
 				.definedBy(3, 6)
 				.call(6, '$<-', [argumentInCall(3), argumentInCall(4), argumentInCall(7)], { returns: [], reads: [4], onlyBuiltIn: true, link: { origin: [8] } })
@@ -227,7 +191,6 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 							.use(0, 'x')
 							.use(1, 'y', { cds: [{ id: 2, when: op === '&&' }] })
 							.call(2, op, [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn(op)] })
-							.calls(2, NodeId.toBuiltIn(op))
 							.reads(2, 0)
 					);
 
@@ -237,17 +200,14 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 							.use(0, 'x')
 							.use(1, 'x', { cds: [{ id: 2, when: op === '&&' }] })
 							.call(2, op, [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn(op)] })
-							.calls(2, NodeId.toBuiltIn(op))
 							.reads(2, 0)
 					);
 				} else {
 					const graphDifferent = emptyGraph().autoPrints([2], true)
 						.call(2, op, [argumentInCall(0), argumentInCall(1)], { reads: [NodeId.toBuiltIn(op)] })
-						.calls(2, NodeId.toBuiltIn(op))
 						.use(0, 'x').use(1, 'y').reads(2, [0, 1]);
 					const graphSame = emptyGraph().autoPrints([2], true)
 						.call(2, op, [argumentInCall(0), argumentInCall(1)], { reads: [NodeId.toBuiltIn(op)] })
-						.calls(2, NodeId.toBuiltIn(op))
 						.use(0, 'x').use(1, 'x')
 						.reads(2, [0, 1]);
 					if(op === '~') {   // the formula operator evaluates its operands non-standardly
@@ -277,8 +237,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				assertDataflow(label(`${constantAssignment} (constant assignment)`, ['name-normal', ...BuiltInOperators.byName[op].capabilities, 'numbers']),
 					shell, constantAssignment,
 					ofLibrary(emptyGraph())
-						.call(2, op, args, { reads: [NodeId.toBuiltIn(op)], returns: [`${variableId}`], ...getSuperAssignOrigin(op) })
-						.calls(2, NodeId.toBuiltIn(op))
+						.call(2, op, args, { reads: [NodeId.toBuiltIn(op)], returns: [variableId], ...getSuperAssignOrigin(op) })
 						.defineVariable(variableId, 'x', { definedBy: [constantId, 2] })
 						.reads(2, constantId)
 						.constant(constantId),
@@ -287,7 +246,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 
 				const variableAssignment = `x ${op} y`;
 				const dataflowGraph = ofLibrary(emptyGraph())
-					.call(2, op, args, { reads: [NodeId.toBuiltIn(op)], returns: [`${variableId}`], ...getSuperAssignOrigin(op) })
+					.call(2, op, args, { reads: [NodeId.toBuiltIn(op)], returns: [variableId], ...getSuperAssignOrigin(op) })
 					.calls(2, NodeId.toBuiltIn(op));
 
 				if(swapSourceAndTarget) {
@@ -311,7 +270,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				const circularAssignment = `x ${op} x`;
 
 				const circularGraph = ofLibrary(emptyGraph())
-					.call(2, op, args, { reads: [NodeId.toBuiltIn(op)], returns: [`${variableId}`], ...getSuperAssignOrigin(op) })
+					.call(2, op, args, { reads: [NodeId.toBuiltIn(op)], returns: [variableId], ...getSuperAssignOrigin(op) })
 					.calls(2, NodeId.toBuiltIn(op));
 
 				if(swapSourceAndTarget) {
@@ -337,14 +296,9 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			assertDataflow(label('"x <- y <- 1"', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'x <- y <- 1', emptyGraph()
 					.call(3, '<-', [argumentInCall(1), argumentInCall(2)], { returns: [1], reads: [NodeId.toBuiltIn('<-')] })
-					.calls(3, NodeId.toBuiltIn('<-'))
-					.argument(3, [2, 1])
-					.argument(4, 3)
 					.call(4, '<-', [argumentInCall(0), argumentInCall(3)], { returns: [0], reads: [NodeId.toBuiltIn('<-')] })
-					.calls(4, NodeId.toBuiltIn('<-'))
 					.reads(3, 2)
 					.reads(4, 3)
-					.argument(4, 0)
 					.constant(2)
 					.defineVariable(1, 'y', { definedBy: [2, 3] })
 					.defineVariable(0, 'x', { definedBy: [3, 4] })
@@ -352,14 +306,9 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			assertDataflow(label('"1 -> x -> y"', ['name-normal', 'numbers', ...BuiltInOperators.byName['->'].capabilities, 'return-value-of-assignments']),
 				shell, '1 -> x -> y', emptyGraph()
 					.call(2, '->', [argumentInCall(0), argumentInCall(1)], { returns: [1], reads: [NodeId.toBuiltIn('->')] })
-					.calls(2, NodeId.toBuiltIn('->'))
-					.argument(2, [0, 1])
-					.argument(4, 2)
 					.call(4, '->', [argumentInCall(2), argumentInCall(3)], { returns: [3], reads: [NodeId.toBuiltIn('->')] })
-					.calls(4, NodeId.toBuiltIn('->'))
 					.reads(2, 0)
 					.reads(4, 2)
-					.argument(4, 3)
 					.constant(0)
 					.defineVariable(1, 'x', { definedBy: [0, 2] })
 					.defineVariable(3, 'y', { definedBy: [2, 4] })
@@ -367,14 +316,9 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			assertDataflow(label('"x <- 1 -> y"', ['name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, ...BuiltInOperators.byName['->'].capabilities, 'return-value-of-assignments']),
 				shell, 'x <- 1 -> y', emptyGraph()
 					.call(3, '->', [argumentInCall(1), argumentInCall(2)], { returns: [2], reads: [NodeId.toBuiltIn('->')] })
-					.calls(3, NodeId.toBuiltIn('->'))
-					.argument(3, [1, 2])
-					.argument(4, 3)
 					.call(4, '<-', [argumentInCall(0), argumentInCall(3)], { returns: [0], reads: [NodeId.toBuiltIn('<-')] })
-					.calls(4, NodeId.toBuiltIn('<-'))
 					.reads(3, 1)
 					.reads(4, 3)
-					.argument(4, 0)
 					.constant(1)
 					.defineVariable(2, 'y', { definedBy: [1, 3] })
 					.defineVariable(0, 'x', { definedBy: [3, 4] })
@@ -382,50 +326,29 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			assertDataflow(label('"x <- y <- z"', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'x <- y <- z', emptyGraph()
 					.use(2, 'z')
-					.argument(3, 2)
 					.call(3, '<-', [argumentInCall(1), argumentInCall(2)], { returns: [1], reads: [NodeId.toBuiltIn('<-')] })
-					.calls(3, NodeId.toBuiltIn('<-'))
 					.reads(3, 2)
-					.argument(3, 1)
-					.argument(4, 3)
 					.call(4, '<-', [argumentInCall(0), argumentInCall(3)], { returns: [0], reads: [NodeId.toBuiltIn('<-')] })
 					.reads(4, 3)
-					.calls(4, NodeId.toBuiltIn('<-'))
-					.argument(4, 0)
 					.defineVariable(1, 'y', { definedBy: [2, 3] })
 					.defineVariable(0, 'x', { definedBy: [3, 4] })
 			);
 			assertDataflow(label('Nested Global Assignments', ['name-normal', ...BuiltInOperators.byName['<<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'x <<- y <<- z', emptyGraph()
 					.use(2, 'z')
-					.argument(3, 2)
 					.call(3, '<<-', [argumentInCall(1), argumentInCall(2)], { returns: [1], reads: [NodeId.toBuiltIn('<<-')], ...getSuperAssignOrigin('<<-') })
 					.reads(3, 2)
-					.calls(3, NodeId.toBuiltIn('<<-'))
-					.argument(3, 1)
-					.argument(4, 3)
 					.call(4, '<<-', [argumentInCall(0), argumentInCall(3)], { returns: [0], reads: [NodeId.toBuiltIn('<<-')], ...getSuperAssignOrigin('<<-') })
 					.reads(4, 3)
-					.calls(4, NodeId.toBuiltIn('<<-'))
-					.argument(4, 0)
 					.defineVariable(1, 'y', { definedBy: [2, 3] })
 					.defineVariable(0, 'x', { definedBy: [3, 4] })
 			);
 			assertDataflow(label('Nested Global Mixed with Local Assignments', ['name-normal', ...BuiltInOperators.byName['<<-'].capabilities, ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'x <<- y <- y2 <<- z', emptyGraph()
 					.use(3, 'z')
-					.argument(4, 3)
 					.call(4, '<<-', [argumentInCall(2), argumentInCall(3)], { returns: [2], reads: [NodeId.toBuiltIn('<<-'), 3], onlyBuiltIn: true, ...getSuperAssignOrigin('<<-') })
-					.calls(4, NodeId.toBuiltIn('<<-'))
-					.argument(4, 2)
-					.argument(5, 4)
 					.call(5, '<-', [argumentInCall(1), argumentInCall(4)], { returns: [1], reads: [NodeId.toBuiltIn('<-'), 4], onlyBuiltIn: true })
-					.calls(5, NodeId.toBuiltIn('<-'))
-					.argument(5, 1)
-					.argument(6, 5)
 					.call(6, '<<-', [argumentInCall(0), argumentInCall(5)], { returns: [0], reads: [NodeId.toBuiltIn('<<-'), 5], onlyBuiltIn: true, ...getSuperAssignOrigin('<<-') })
-					.calls(6, NodeId.toBuiltIn('<<-'))
-					.argument(6, 0)
 					.defineVariable(2, 'y2', { definedBy: [3, 4] })
 					.defineVariable(1, 'y', { definedBy: [4, 5] })
 					.defineVariable(0, 'x', { definedBy: [5, 6] })
@@ -435,13 +358,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(1, 'x')
 					.reads(1, 4)
 					.call(6, '<-', [argumentInCall(4), argumentInCall(5)], { returns: [4], reads: [NodeId.toBuiltIn('<-'), 5], onlyBuiltIn: true })
-					.calls(6, NodeId.toBuiltIn('<-'))
-					.argument(6, [5, 4])
-					.argument(3, 1)
-					.argument(3, 6)
 					.call(3, '[<-', [argumentInCall(0), argumentInCall(1), argumentInCall(6)], { returns: [0], reads: [1, NodeId.toBuiltIn('[<-'), 6], onlyBuiltIn: true, link: { origin: [7] } })
-					.calls(3, NodeId.toBuiltIn('[<-'))
-					.argument(3, 0)
 					.reads(0, 3)
 					.constant(5)
 					.defineVariable(4, 'x', { definedBy: [5, 6] })
@@ -452,13 +369,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(4, 'x')
 					.reads(4, 1)
 					.call(2, '->', [argumentInCall(0), argumentInCall(1)], { returns: [1], reads: [NodeId.toBuiltIn('->'), 0], onlyBuiltIn: true })
-					.calls(2, NodeId.toBuiltIn('->'))
-					.argument(2, [0, 1])
-					.argument(6, 4)
-					.argument(6, 2)
 					.call(6, '[<-', [argumentInCall(3), argumentInCall(4), argumentInCall(2)], { returns: [3], reads: [4, NodeId.toBuiltIn('[<-'), 2], onlyBuiltIn: true, link: { origin: [7] } })
-					.calls(6, NodeId.toBuiltIn('[<-'))
-					.argument(6, 3)
 					.constant(0)
 					.defineVariable(1, 'x', { definedBy: [0, 2] })
 					.defineVariable(3, 'a', { definedBy: [2, 6] })
@@ -498,17 +409,13 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.constant('1:6')
 					.defineVariable('1@x', 'x', { definedBy: ['1:6', '1@<-'] })
 					.call('1@<-', '<-', [argumentInCall('1@x'), argumentInCall('1:6')], { returns: ['1@x'], reads: [NodeId.toBuiltIn('<-'), '1:6'], onlyBuiltIn: true })
-					.calls('1@<-', NodeId.toBuiltIn('<-'))
 					.constant('2:6')
 					.defineVariable('2@x', 'x', { definedBy: ['2:6', '2@<-'] })
 					.call('2@<-', '<-', [argumentInCall('2@x'), argumentInCall('2:6')], { returns: ['2@x'], reads: [NodeId.toBuiltIn('<-'), '2:6'], onlyBuiltIn: true })
-					.calls('2@<-', NodeId.toBuiltIn('<-'))
 					.use('3@x')
 					.reads('3@x', '2@x')
 					.call('3@print', 'print', [argumentInCall('3@x')], { reads: [NodeId.toBuiltIn('print')], returns: ['3@x'] })
-					.calls('3@print', NodeId.toBuiltIn('print'))
-					.reads('3@print', '3@x')
-					.markIdForUnknownSideEffects('3@print'),
+					.reads('3@print', '3@x'),
 				{
 					resolveIdsAsCriterion: true
 				}
@@ -520,29 +427,18 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					assertDataflow(label('Repeat', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments', 'repeat-loop']),
 						shell, 'x <- repeat x', emptyGraph()
 							.use(1, 'x', { cds: [{ id: 3 }] })
-							.argument(3, 1)
 							.call(3, 'repeat', [argumentInCall(1, { cds: [{ id: 3, when: true }] })], { returns: [], reads: [NodeId.toBuiltIn('repeat')] })
-							.calls(3, NodeId.toBuiltIn('repeat'))
 							.nse(3, 1)
-							.argument(4, 3)
 							.call(4, '<-', [argumentInCall(0), argumentInCall(3, { cds: [{ id: 3, when: true }] })], { returns: [0], reads: [NodeId.toBuiltIn('<-'), 3], onlyBuiltIn: true })
-							.calls(4, NodeId.toBuiltIn('<-'))
-							.argument(4, 0)
 							.defineVariable(0, 'x', { definedBy: [3, 4] })
 					);
 
 					assertDataflow(label('While', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments', 'while-loop', 'numbers']),
 						shell, 'x <- while (x) 3', emptyGraph()
 							.use(1, 'x')
-							.argument(4, 1)
 							.call(4, 'while', [argumentInCall(1), argumentInCall(2)], { returns: [], reads: [NodeId.toBuiltIn('while'), 1], onlyBuiltIn: true })
-							.calls(4, NodeId.toBuiltIn('while'))
-							.argument(4, 2)
 							.nse(4, 2)
-							.argument(5, 4)
 							.call(5, '<-', [argumentInCall(0), argumentInCall(4)], { returns: [0], reads: [NodeId.toBuiltIn('<-'), 4], onlyBuiltIn: true })
-							.calls(5, NodeId.toBuiltIn('<-'))
-							.argument(5, 0)
 							.constant(2)
 							.defineVariable(0, 'x', { definedBy: [4, 5] })
 					);
@@ -550,12 +446,9 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					assertDataflow(label('For', ['name-normal', ...BuiltInOperators.byName['<-'].capabilities, 'return-value-of-assignments', 'for-loop', 'numbers']),
 						shell, 'x <- for (i in 1:4) 3',  emptyGraph()
 							.call(4, ':', [argumentInCall(2), argumentInCall(3)], { returns: [], reads: [NodeId.toBuiltIn(':'), 2, 3], onlyBuiltIn: true })
-							.calls(4, NodeId.toBuiltIn(':'))
 							.call(7, 'for', [argumentInCall(1), argumentInCall(4), argumentInCall(5, { cds: [{ id: 7, when: true }] })], { returns: [], reads: [NodeId.toBuiltIn('for'), 4], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', 1, 7) })
-							.calls(7, NodeId.toBuiltIn('for'))
 							.nse(7, 5)
 							.call(8, '<-', [argumentInCall(0), argumentInCall(7)], { returns: [0], reads: [NodeId.toBuiltIn('<-'), 7], onlyBuiltIn: true })
-							.calls(8, NodeId.toBuiltIn('<-'))
 							.defineVariable(1, 'i', { definedBy: [4] })
 							.constant(2)
 							.constant(3)
@@ -572,12 +465,9 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(5, 'y', { cds: [{ id: 9, when: true, byPromise: true }] })
 					.use(7, 'z', { cds: [{ id: 9, when: true, byPromise: true }] })
 					.call(9, 'foo', [argumentInCall(4, { name: 'x', cds: [{ id: 9, when: true, byPromise: true }] }), argumentInCall(5), argumentInCall(7)], { returns: [], reads: [] })
-					.argument(10, 9)
 					.reads(9, 5)
 					.reads(9, 7)
 					.call(10, '<-', [argumentInCall(0), argumentInCall(9)], { returns: [0], reads: [NodeId.toBuiltIn('<-'), 9], onlyBuiltIn: true })
-					.calls(10, NodeId.toBuiltIn('<-'))
-					.argument(10, 0)
 					.constant(3, { cds: [{ id: 9, when: true, byPromise: true }] })
 					.defineVariable(0, 'a', { definedBy: [9, 10] })
 			);
@@ -586,20 +476,13 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.constant('1:18')
 					.constant('1:20')
 					.call('1:19', ':', [argumentInCall('1:18'), argumentInCall('1:20')], { returns: [], reads: ['1:18', '1:20', NodeId.toBuiltIn(':')], onlyBuiltIn: true })
-					.argument('1:19', ['1:18', '1:20'])
-					.calls('1:19', NodeId.toBuiltIn(':'))
 					.call('1@data.frame', 'data.frame', [argumentInCall('1:19')], { returns: [], reads: ['1:19', NodeId.toBuiltIn('data.frame')], onlyBuiltIn: true })
-					.argument('1@data.frame', '1:19')
-					.calls('1@data.frame', NodeId.toBuiltIn('data.frame'))
 					.call('1:4', '<-', [argumentInCall('1@df'), argumentInCall('1@data.frame')], { returns: ['1@df'], reads: ['1@data.frame', NodeId.toBuiltIn('<-')], onlyBuiltIn: true })
-					.argument('1:4', ['1@df', '1@data.frame'])
-					.calls('1:4', NodeId.toBuiltIn('<-'))
 					.defineVariable('1@df', 'df', { definedBy: ['1:4', '1@data.frame'] })
 					.use('2@df', 'df')
 					.reads('2@df', '1@df')
 					.constant('2:14')
 					.call('2@setNames', 'setNames', [argumentInCall('2@df'), argumentInCall('2:14')], { returns: [], reads: ['2@df', '2:14', NodeId.toBuiltIn('setNames')], onlyBuiltIn: true })
-					.argument('2@setNames', ['2@df', '2:14'])
 					.calls('2@setNames', NodeId.toBuiltIn('setNames')),
 				{ resolveIdsAsCriterion: true }
 			);
@@ -607,7 +490,6 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				shell, 'v <- 1\ng(v, k = 2) <- 3', emptyGraph()
 					.constant('1:6')
 					.call('1:3', '<-', [argumentInCall('1@v'), argumentInCall('1:6')], { returns: ['1@v'], reads: [NodeId.toBuiltIn('<-'), '1:6'], onlyBuiltIn: true })
-					.calls('1:3', NodeId.toBuiltIn('<-'))
 					.defineVariable('1@v', 'v', { definedBy: ['1:6', '1:3'] })
 					.constant('2:10')
 					/* the named argument's own vertex, which no criterion names: it shares its position with the name */
@@ -616,7 +498,6 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.constant('2:16')
 					.call('2@g', 'g<-', [argumentInCall('2@v'), argumentInCall(8), argumentInCall('2:16')],
 						{ returns: ['2@v'], reads: ['2:16', '2:10', NodeId.toBuiltIn('g<-')], origin: [BuiltInProcName.Replacement], link: { origin: ['2:13'] } })
-					.calls('2@g', NodeId.toBuiltIn('g<-'))
 					.defineVariable('2@v', 'v', { definedBy: ['2:16', '2@g'] })
 					.reads('2@v', ['2@g', '1@v']),
 				{ resolveIdsAsCriterion: true }
@@ -631,8 +512,6 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(0, 'x')
 					.argument(3, 0).reads(3, 0)
 					.call(3, 'f', [argumentInCall(0)], { returns: [], reads: [] })
-					.argument(4, 0)
-					.argument(4, 3)
 					.returns(4, 3)
 					.call(4, '|>', [argumentInCall(0), argumentInCall(3)], { returns: [], reads: [NodeId.toBuiltIn('|>')] })
 					.calls(4, NodeId.toBuiltIn('|>')),
@@ -643,15 +522,10 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(0, 'x')
 					.argument(3, 0).reads(3, 0)
 					.call(3, 'f', [argumentInCall(0)], { returns: [], reads: [] })
-					.argument(4, 0)
-					.argument(4, 3)
 					.returns(4, 3)
 					.call(4, '|>', [argumentInCall(0), argumentInCall(3)], { returns: [], reads: [NodeId.toBuiltIn('|>')] })
-					.calls(4, NodeId.toBuiltIn('|>'))
 					.argument(7, 4).reads(7, 4)
 					.call(7, 'g', [argumentInCall(4)], { returns: [], reads: [] })
-					.argument(8, 4)
-					.argument(8, 7)
 					.returns(8, 7)
 					.call(8, '|>', [argumentInCall(4), argumentInCall(7)], { returns: [], reads: [NodeId.toBuiltIn('|>')] })
 					.calls(8, NodeId.toBuiltIn('|>')),
@@ -663,13 +537,9 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(3, 'y', { cds: [{ id: 7, when: true, byPromise: true }] })
 					.use(5, 'z', { cds: [{ id: 7, when: true, byPromise: true }] })
 					.argument(7, 0).reads(7, 0)
-					.argument(7, 3)
-					.argument(7, 5)
 					.reads(7, 3)
 					.reads(7, 5)
 					.call(7, 'f', [argumentInCall(0), argumentInCall(3), argumentInCall(5)], { returns: [], reads: [] })
-					.argument(8, 0)
-					.argument(8, 7)
 					.returns(8, 7)
 					.call(8, '|>', [argumentInCall(0), argumentInCall(7)], { returns: [], reads: [NodeId.toBuiltIn('|>')] })
 					.calls(8, NodeId.toBuiltIn('|>')),
@@ -685,7 +555,6 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				shell, 'if (TRUE) 1',
 				emptyGraph().autoPrints([3], true)
 					.call(3, 'if', [argumentInCall(0), argumentInCall(1), EmptyArgument], { returns: [1], reads: [0, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
-					.calls(3, NodeId.toBuiltIn('if'))
 					.constant(0)
 					.constant(1)
 			);
@@ -693,10 +562,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				shell, 'if (x > 5) 1',  emptyGraph().autoPrints([5], true)
 					.use(0, 'x')
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('>')] })
-					.calls(2, NodeId.toBuiltIn('>'))
 					.reads(2, [0, 1])
 					.call(5, 'if', [argumentInCall(2), argumentInCall(3), EmptyArgument], { returns: [3], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
-					.calls(5, NodeId.toBuiltIn('if'))
 					.constant(1)
 					.constant(3, { cds: [{ id: 5, when: true }] })
 			);
@@ -704,12 +571,9 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				shell, 'if (x > 5) y',  emptyGraph().autoPrints([5], true)
 					.use(0, 'x')
 					.use(3, 'y', { cds: [{ id: 5, when: true }] })
-					.argument(2, 0)
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('>')] })
-					.calls(2, NodeId.toBuiltIn('>'))
 					.reads(2, [0, 1])
 					.call(5, 'if', [argumentInCall(2), argumentInCall(3), EmptyArgument], { returns: [3], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
-					.calls(5, NodeId.toBuiltIn('if'))
 					.constant(1)
 			);
 			assertDataflow(label('all variables', ['if', 'logical', 'name-normal', ...BuiltInOperators.byName['>'].capabilities]),
@@ -718,10 +582,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(1, 'y')
 					.use(3, 'z', { cds: [{ id: 5, when: true }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('>')] })
-					.calls(2, NodeId.toBuiltIn('>'))
 					.reads(2, [0, 1])
 					.call(5, 'if', [argumentInCall(2), argumentInCall(3), EmptyArgument], { returns: [3], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
-					.calls(5, NodeId.toBuiltIn('if'))
 			);
 			assertDataflow(label('all variables, some same', ['if', 'logical', 'name-normal', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (x > y) x', emptyGraph().autoPrints([5], true)
@@ -729,10 +591,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(1, 'y')
 					.use(3, 'x', { cds: [{ id: 5, when: true }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('>')] })
-					.calls(2, NodeId.toBuiltIn('>'))
 					.reads(2, [0, 1])
 					.call(5, 'if', [argumentInCall(2), argumentInCall(3), EmptyArgument], { returns: [3], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
-					.calls(5, NodeId.toBuiltIn('if'))
 			);
 			assertDataflow(label('all same variables', ['if', 'logical', 'name-normal', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (x > x) x', emptyGraph().autoPrints([5], true)
@@ -740,19 +600,15 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(1, 'x')
 					.use(3, 'x', { cds: [{ id: 5, when: true }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('>')] })
-					.calls(2, NodeId.toBuiltIn('>'))
 					.reads(2, [0, 1])
 					.call(5, 'if', [argumentInCall(2), argumentInCall(3), EmptyArgument], { returns: [3], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
-					.calls(5, NodeId.toBuiltIn('if'))
 			);
 			assertDataflow(label('definition in if', ['if', 'logical', 'name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities]),
 				shell, 'if (x <- 3) x', emptyGraph().autoPrints([5], true)
 					.use(3, 'x', { cds: [{ id: 5, when: true }] })
 					.reads(3, 0)
 					.call(2, '<-', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
-					.calls(2, NodeId.toBuiltIn('<-'))
 					.call(5, 'if', [argumentInCall(2), argumentInCall(3), EmptyArgument], { returns: [3], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', 0, 2) })
-					.calls(5, NodeId.toBuiltIn('if'))
 					.constant(1)
 					.defineVariable(0, 'x', { definedBy: [1, 2] })
 			);
@@ -763,11 +619,7 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				shell, 'if (TRUE) { 1 } else { 2 }',
 				emptyGraph().autoPrints([9], true)
 					.call(4, '{', [argumentInCall(3)], { returns: [3], reads: [NodeId.toBuiltIn('{')] })
-					.calls(4, NodeId.toBuiltIn('{'))
-					.argument(4, 3)
 					.call(9, 'if', [argumentInCall(0), argumentInCall(4), EmptyArgument], { returns: [4], reads: [NodeId.toBuiltIn('if')] })
-					.calls(9, NodeId.toBuiltIn('if'))
-					.argument(9, [4, 0])
 					.reads(9, 0)
 					.constant(0)
 					.constant(3)
@@ -777,14 +629,10 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				emptyGraph().autoPrints([11], true)
 					.use(0, 'x')
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('>')] })
-					.calls(2, NodeId.toBuiltIn('>'))
 					.reads(2, [0, 1])
 					.call(6, '{', [argumentInCall(5)], { returns: [5], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 11, when: true }] })
-					.calls(6, NodeId.toBuiltIn('{'))
 					.call(10, '{', [argumentInCall(9)], { returns: [9], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 11, when: false }] })
-					.calls(10, NodeId.toBuiltIn('{'))
 					.call(11, 'if', [argumentInCall(2), argumentInCall(6), argumentInCall(10)], { returns: [6, 10], reads: [NodeId.toBuiltIn('if')] })
-					.calls(11, NodeId.toBuiltIn('if'))
 					.reads(11, 2)
 					.constant(1)
 					.constant(5, { cds: [{ id: 11, when: true }] })
@@ -796,18 +644,10 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(0, 'x')
 					.use(5, 'y', { cds: [{ id: 11, when: true }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('>')] })
-					.calls(2, NodeId.toBuiltIn('>'))
 					.reads(2, [0, 1])
-					.argument(2, [1])
 					.call(6, '{', [argumentInCall(5)], { returns: [5], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 11, when: true }] })
-					.calls(6, NodeId.toBuiltIn('{'))
-					.argument(6, 5)
 					.call(10, '{', [argumentInCall(9)], { returns: [9], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 11, when: false }] })
-					.calls(10, NodeId.toBuiltIn('{'))
-					.argument(10, 9)
 					.call(11, 'if', [argumentInCall(2), argumentInCall(6), argumentInCall(10)], { returns: [6, 10], reads: [NodeId.toBuiltIn('if')] })
-					.calls(11, NodeId.toBuiltIn('if'))
-					.argument(11, [6, 10, 2])
 					.reads(11, 2)
 					.constant(1)
 					.constant(9, { cds: [{ id: 11, when: false }] })
@@ -818,14 +658,10 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(5, 'y', { cds: [{ id: 11, when: true }] })
 					.use(9, 'z', { cds: [{ id: 11, when: false }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('>')] })
-					.calls(2, NodeId.toBuiltIn('>'))
 					.reads(2, [0, 1])
 					.call(6, '{', [argumentInCall(5)], { returns: [5], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 11, when: true }] })
-					.calls(6, NodeId.toBuiltIn('{'))
 					.call(10, '{', [argumentInCall(9)], { returns: [9], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 11, when: false }] })
-					.calls(10, NodeId.toBuiltIn('{'))
 					.call(11, 'if', [argumentInCall(2), argumentInCall(6), argumentInCall(10)], { returns: [6, 10], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
-					.calls(11, NodeId.toBuiltIn('if'))
 					.constant(1)
 			);
 			assertDataflow(label('all variables', ['if', 'logical', 'name-normal', 'grouping', ...BuiltInOperators.byName['>'].capabilities]),
@@ -835,14 +671,10 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(5, 'z', { cds: [{ id: 11, when: true }] })
 					.use(9, 'a', { cds: [{ id: 11, when: false }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('>')] })
-					.calls(2, NodeId.toBuiltIn('>'))
 					.reads(2, [0, 1])
 					.call(6, '{', [argumentInCall(5)], { returns: [5], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 11, when: true }] })
-					.calls(6, NodeId.toBuiltIn('{'))
 					.call(10, '{', [argumentInCall(9)], { returns: [9], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 11, when: false }] })
-					.calls(10, NodeId.toBuiltIn('{'))
 					.call(11, 'if', [argumentInCall(2), argumentInCall(6), argumentInCall(10)], { returns: [6, 10], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
-					.calls(11, NodeId.toBuiltIn('if'))
 			);
 			assertDataflow(label('all variables, some same', ['if', 'logical', 'name-normal', 'grouping', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (y > x) { x } else { y }', emptyGraph().autoPrints([11], true)
@@ -851,14 +683,10 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(5, 'x', { cds: [{ id: 11, when: true }] })
 					.use(9, 'y', { cds: [{ id: 11, when: false }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('>')] })
-					.calls(2, NodeId.toBuiltIn('>'))
 					.reads(2, [0, 1])
 					.call(6, '{', [argumentInCall(5)], { returns: [5], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 11, when: true }] })
-					.calls(6, NodeId.toBuiltIn('{'))
 					.call(10, '{', [argumentInCall(9)], { returns: [9], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 11, when: false }] })
-					.calls(10, NodeId.toBuiltIn('{'))
 					.call(11, 'if', [argumentInCall(2), argumentInCall(6), argumentInCall(10)], { returns: [6, 10], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
-					.calls(11, NodeId.toBuiltIn('if'))
 			);
 			assertDataflow(label('all same variables', ['if', 'logical', 'name-normal', 'grouping', ...BuiltInOperators.byName['>'].capabilities]),
 				shell, 'if (x > x) { x } else { x }',  emptyGraph().autoPrints([11], true)
@@ -867,14 +695,10 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(5, 'x', { cds: [{ id: 11, when: true }] })
 					.use(9, 'x', { cds: [{ id: 11, when: false }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('>')] })
-					.calls(2, NodeId.toBuiltIn('>'))
 					.reads(2, [0, 1])
 					.call(6, '{', [argumentInCall(5)], { returns: [5], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 11, when: true }] })
-					.calls(6, NodeId.toBuiltIn('{'))
 					.call(10, '{', [argumentInCall(9)], { returns: [9], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 11, when: false }] })
-					.calls(10, NodeId.toBuiltIn('{'))
 					.call(11, 'if', [argumentInCall(2), argumentInCall(6), argumentInCall(10)], { returns: [6, 10], reads: [2, NodeId.toBuiltIn('if')], onlyBuiltIn: true })
-					.calls(11, NodeId.toBuiltIn('if'))
 			);
 		});
 	});
@@ -886,18 +710,12 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				.use(11, 'y')
 				.reads(11, [0, 6])
 				.call(2, '<-', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
-				.calls(2, NodeId.toBuiltIn('<-'))
-				.argument(2, [1, 0])
 				.call(8, '<-', [argumentInCall(6), argumentInCall(7)], { returns: [6], reads: [NodeId.toBuiltIn('<-'), 7], onlyBuiltIn: true, cds: [{ id: 10, when: true }], environment: defaultEnv().defineVariable('y', 0, 2) })
-				.calls(8, NodeId.toBuiltIn('<-'))
-				.argument(8, [7, 6])
 				.call(9, '(', [argumentInCall(8)], { returns: [8], reads: [NodeId.toBuiltIn('(')], cds: [{ id: 10, when: true }], environment: defaultEnv().defineVariable('y', 0, 2).defineVariable('y', 6, 8, [{ id: 10, when: true }]) })
 				.calls(9, NodeId.toBuiltIn('('))
 				.reads(9, 8)
 				.call(10, '&&', [argumentInCall(3), argumentInCall(9)], { returns: [], reads: [NodeId.toBuiltIn('&&')], environment: defaultEnv().defineVariable('y', 0, 2).defineVariable('y', 6, 8, [{ id: 10, when: true }]) })
-				.calls(10, NodeId.toBuiltIn('&&'))
 				.reads(10, 3)
-				.argument(10, [3, 9])
 				.constant(1)
 				.defineVariable(0, 'y', { definedBy: [1, 2] })
 				.constant(7, { cds: [{ id: 10, when: true }] })
@@ -910,11 +728,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			assertDataflow(label('simple constant for-loop', ['for-loop', 'numbers', 'name-normal', 'grouping']),
 				shell, 'for(i in 1:10) { 1 }', emptyGraph()
 					.call(3, ':', [argumentInCall(1), argumentInCall(2)], { returns: [], reads: [1, 2, NodeId.toBuiltIn(':')], onlyBuiltIn: true })
-					.calls(3, NodeId.toBuiltIn(':'))
 					.call(7, '{', [argumentInCall(6, { cds: [{ id: 8, when: true }] })], { returns: [6], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 8, when: true }] })
-					.calls(7, NodeId.toBuiltIn('{'))
 					.call(8, 'for', [argumentInCall(0), argumentInCall(3), argumentInCall(7, { cds: [{ id: 8, when: true }] })], { returns: [], reads: [3, NodeId.toBuiltIn('for')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', 0, 8) })
-					.calls(8, NodeId.toBuiltIn('for'))
 					.nse(8, 7)
 					.defineVariable(0, 'i', { definedBy: [3] })
 					.constant(1)
@@ -926,11 +741,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 					.use(6, 'i', { cds: [{ id: 8, when: true }] })
 					.reads(6, 0)
 					.call(3, ':', [argumentInCall(1), argumentInCall(2)], { returns: [], reads: [1, 2, NodeId.toBuiltIn(':')], onlyBuiltIn: true })
-					.calls(3, NodeId.toBuiltIn(':'))
 					.call(7, '{', [argumentInCall(6, { cds: [{ id: 8, when: true }] })], { returns: [6], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 8, when: true }] })
-					.calls(7, NodeId.toBuiltIn('{'))
 					.call(8, 'for', [argumentInCall(0), argumentInCall(3), argumentInCall(7, { cds: [{ id: 8, when: true }] })], { returns: [], reads: [3, NodeId.toBuiltIn('for')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', 0, 8) })
-					.calls(8, NodeId.toBuiltIn('for'))
 					.nse(8, 7)
 					.defineVariable(0, 'i', { definedBy: [3] })
 					.constant(1)
@@ -942,7 +754,6 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			assertDataflow(label('simple constant repeat', ['repeat-loop', 'numbers']),
 				shell, 'repeat 2',  emptyGraph()
 					.call(2, 'repeat', [argumentInCall(0, { cds: [{ id: 2 }] })], { returns: [], reads: [NodeId.toBuiltIn('repeat')] })
-					.calls(2, NodeId.toBuiltIn('repeat'))
 					.nse(2, 0)
 					.constant(0, { cds: [{ id: 2 }] })
 			);
@@ -950,17 +761,13 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				shell, 'repeat x',  emptyGraph()
 					.use(0, 'x', { cds: [{ id: 2 }] })
 					.call(2, 'repeat', [argumentInCall(0, { cds: [{ id: 2 }] })], { returns: [], reads: [NodeId.toBuiltIn('repeat')] })
-					.calls(2, NodeId.toBuiltIn('repeat'))
 					.nse(2, 0)
 			);
 			assertDataflow(label('using loop variable in repeat body', ['repeat-loop', 'name-normal', 'numbers', ...BuiltInOperators.byName['<-'].capabilities, 'grouping']),
 				shell,  'repeat { x <- 1 }',  emptyGraph()
 					.call(4, '<-', [argumentInCall(2, { cds: [{ id: 6 }] }), argumentInCall(3, { cds: [{ id: 6, when: true }] })], { returns: [2], reads: [NodeId.toBuiltIn('<-'), 3], onlyBuiltIn: true, cds: [{ id: 6 }] })
-					.calls(4, NodeId.toBuiltIn('<-'))
 					.call(5, '{', [argumentInCall(4, { cds: [{ id: 6 }] })], { returns: [4], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 6 }] })
-					.calls(5, NodeId.toBuiltIn('{'))
 					.call(6, 'repeat', [argumentInCall(5)], { returns: [], reads: [NodeId.toBuiltIn('repeat')] })
-					.calls(6, NodeId.toBuiltIn('repeat'))
 					.nse(6, 5)
 					.constant(3, { cds: [{ id: 6 }] })
 					.defineVariable(2, 'x', { definedBy: [3, 4], cds: [{ id: 6 }] })
@@ -969,11 +776,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				shell, 'repeat { x <- y }',  emptyGraph()
 					.use(3, 'y', { cds: [{ id: 6 }] })
 					.call(4, '<-', [argumentInCall(2, { cds: [{ id: 6 }] }), argumentInCall(3, { cds: [{ id: 6 }] })], { returns: [2], reads: [NodeId.toBuiltIn('<-'), 3], onlyBuiltIn: true, cds: [{ id: 6 }] })
-					.calls(4, NodeId.toBuiltIn('<-'))
 					.call(5, '{', [argumentInCall(4, { cds: [{ id: 6 }] })], { returns: [4], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 6 }] })
-					.calls(5, NodeId.toBuiltIn('{'))
 					.call(6, 'repeat', [argumentInCall(5, { cds: [{ id: 6 }] })], { returns: [], reads: [NodeId.toBuiltIn('repeat')] })
-					.calls(6, NodeId.toBuiltIn('repeat'))
 					.nse(6, 5)
 					.defineVariable(2, 'x', { definedBy: [3, 4], cds: [{ id: 6 }] })
 			);
@@ -986,13 +790,11 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				.calls(9, 5)
 				.defineVariable(1, '"a"', { definedBy: [7, 5] })
 				.call(7, 'assign', [argumentInCall(1), argumentInCall(5)], { returns: [1], onlyBuiltIn: true, reads: [NodeId.toBuiltIn('assign'), 5] })
-				.calls(7, NodeId.toBuiltIn('assign'))
 				.defineFunction(5, [3], {
 					entryPoint:        5,
 					environment:       defaultEnv().pushEnv(),
 					graph:             new Set([3]),
 					in:                [{ nodeId: 3, name: undefined, cds: [], type: ReferenceType.Constant }],
-					out:               [],
 					unknownReferences: []
 				})
 				.constant(3, undefined, false)
@@ -1001,16 +803,13 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			shell, 'a <- function() 1\nget("a")()', emptyGraph().autoPrints([9], true)
 				.call(9, `${UnnamedFunctionCallPrefix}9`, [], { returns: [1], reads: [8], environment: defaultEnv().defineFunction('a', 0, 4) })
 				.call(4, '<-', [argumentInCall(0), argumentInCall(3)], { returns: [0], reads: [NodeId.toBuiltIn('<-'), 3], onlyBuiltIn: true })
-				.calls(4, NodeId.toBuiltIn('<-'))
 				.calls(9, 3)
 				.call(8, 'get', [argumentInCall('8-get-name')], { returns: ['8-get-name'], reads: ['8-get-name', NodeId.toBuiltIn('get')], onlyBuiltIn: true, keepsEnvironment: true, environment: defaultEnv().defineFunction('a', 0, 4) })
-				.calls(8, NodeId.toBuiltIn('get'))
 				.defineFunction(3, [1], {
 					entryPoint:        0,
 					environment:       defaultEnv().pushEnv(),
 					graph:             new Set([1]),
 					in:                [{ nodeId: 1, name: undefined, cds: [], type: ReferenceType.Argument }],
-					out:               [],
 					unknownReferences: []
 				})
 				.use('8-get-name', '"a"')
@@ -1020,7 +819,9 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 		);
 
 		test('get() synthesizes a symbol id distinct from the string literal it reads', async() => {
-			const { normalize } = await createDataflowPipeline(shell, { context: contextFromInput('get("a")') }).allRemainingSteps();
+			const analyzer = await analyze(shell, 'get("a")');
+			await analyzer.dataflow();
+			const normalize = await analyzer.normalize();
 			const stringId = [...normalize.idMap.keys()].find(id => NodeId.recoverName(id, normalize.idMap) === '"a"');
 			assert.isDefined(stringId, 'the "a" string literal has to be part of the ast');
 			const synthId = `${SlicingCriterion.parse('1@get', normalize.idMap)}-get-name`;
@@ -1048,13 +849,11 @@ a()`, emptyGraph().autoPrints([9], true)
 							reads:       [NodeId.toBuiltIn(fn), 5],
 							origin:      [BuiltInProcName.Assignment]
 						})
-						.calls(7, NodeId.toBuiltIn(fn))
 						.defineFunction(5, [3], {
 							entryPoint:        5,
 							environment:       defaultEnv().pushEnv(),
 							graph:             new Set([3]),
 							in:                [{ nodeId: 3, name: undefined, cds: [], type: ReferenceType.Constant }],
-							out:               [],
 							unknownReferences: []
 						})
 						.constant(3, undefined, false)

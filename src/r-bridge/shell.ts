@@ -15,21 +15,16 @@ import { type AsyncParser, type RShellInformation, ParserName } from './parser';
 import { type RParseRequest, retrieveParseDataFromRCode } from './retriever';
 import { SecureMode } from '../util/secure-mode';
 
-
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
 export interface CollectorTimeout extends MergeableRecord {
-	/**
-	 * number of milliseconds to wait for the collection to finish
-	 */
+	/** number of milliseconds to wait for the collection to finish */
 	ms:             number
 	/*
 	 * if true, the timeout will reset whenever we receive new data
 	 */
 	resetOnNewData: boolean
-	/**
-	 * invoked when the timeout is reached. If not set, the promise will be rejected with an error.
-	 */
+	/** invoked when the timeout is reached. If not set, the promise will be rejected with an error. */
 	onTimeout?:     (resolve: (value: AsyncOrSync<string[]>) => void, reject: (value: AsyncOrSync<string[]>) => void, partialResult: string[]) => void
 }
 
@@ -59,12 +54,9 @@ export interface OutputCollectorConfiguration extends MergeableRecord {
 }
 
 export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguration = {
-	from:      'stdout',
-	postamble: `🐧${'-'.repeat(5)}🐧`,
-	timeout:   {
-		ms:             750_000,
-		resetOnNewData: true
-	},
+	from:                    'stdout',
+	postamble:               `🐧${'-'.repeat(5)}🐧`,
+	timeout:                 { ms: 750_000, resetOnNewData: true },
 	keepPostamble:           false,
 	automaticallyTrimOutput: true,
 	errorStopsWaiting:       true
@@ -100,10 +92,7 @@ export interface RShellSessionOptions extends RShellExecutionOptions {
 	readonly onRevive: (code: number, signal: string | null) => void
 }
 
-/**
- * Configuration of an {@link RShell} instance.
- * See {@link getDefaultRShellOptions} for the default values used by {@link RShell}.
- */
+/** Configuration of an {@link RShell} instance. See {@link getDefaultRShellOptions} for the default values used by {@link RShell}. */
 export interface RShellOptions extends RShellSessionOptions {
 	readonly sessionName: string
 }
@@ -206,10 +195,7 @@ export class RShell implements AsyncParser<string> {
 		});
 	}
 
-	/**
-	 * sends the given command directly to the current R session
-	 * will not do anything to alter input markers!
-	 */
+	/** sends the given command directly to the current R session will not do anything to alter input markers! */
 	public sendCommand(command: string): void {
 		if(this.log.settings.minLevel <= LogLevel.Trace) {
 			this.log.trace(`> ${JSON.stringify(command)}`);
@@ -276,16 +262,13 @@ export class RShell implements AsyncParser<string> {
 		return versions;
 	}
 
-	/**
-	 * checks if a given package is already installed on the system!
-	 */
+	/** checks if a given package is already installed on the system! */
 	public async isPackageInstalled(packageName: string): Promise<boolean> {
 		this.log.debug(`checking if package "${packageName}" is installed`);
 		const result = await this.sendCommandWithOutput(
 			`cat(system.file(package="${packageName}")!="","${this.options.eol}")`);
 		return result.length === 1 && result[0] === 'TRUE';
 	}
-
 
 	/**
 	 * Send a command and collect the output
@@ -323,19 +306,14 @@ export class RShell implements AsyncParser<string> {
 		}
 	}
 
-	/**
-	 * clears the R environment using the `rm` command.
-	 */
+	/** clears the R environment using the `rm` command. */
 	public clearEnvironment(): void {
 		this.log.debug('clearing environment');
 		// run rm(list=ls()) but ignore 'flowr_get_ast', which is the compile command installed
 		this._sendCommand('rm(list=setdiff(ls(), "flowr_get_ast"))');
 	}
 
-	/**
-	 * Obtain the temporary directory used by R.
-	 * Additionally, this marks the directory for removal when the shell exits.
-	 */
+	/** Obtain the temporary directory used by R. Additionally, this marks the directory for removal when the shell exits. */
 	public async obtainTmpDir(): Promise<string> {
 		this.sendCommand('temp<-tempdir()');
 		const [tempdir] = await this.sendCommandWithOutput(`cat(temp,${ts2r(this.options.eol)})`);
@@ -360,9 +338,7 @@ export class RShell implements AsyncParser<string> {
 	}
 }
 
-/**
- * Used to deal with the underlying input-output streams of the R process
- */
+/** Used to deal with the underlying input-output streams of the R process */
 class RShellSession {
 	private readonly bareSession:   ChildProcessWithoutNullStreams;
 	private readonly sessionStdOut: readline.Interface;
@@ -370,6 +346,8 @@ class RShellSession {
 	private readonly options:       DeepReadonly<RShellSessionOptions>;
 	private collectionTimeout:      NodeJS.Timeout | undefined;
 	private requestQueue:           Promise<unknown> = Promise.resolve();
+	/** the last 20 lines R wrote to stderr */
+	private readonly stderrTail:    string[] = [];
 
 	public constructor(options: DeepReadonly<RShellSessionOptions>, log: Logger<ILogObj>) {
 		SecureMode.guard('starting R', options.pathToRExecutable);
@@ -378,14 +356,8 @@ class RShellSession {
 			cwd:         options.cwd,
 			windowsHide: true
 		});
-		this.sessionStdOut = readline.createInterface({
-			input:    this.bareSession.stdout,
-			terminal: false
-		});
-		this.sessionStdErr = readline.createInterface({
-			input:    this.bareSession.stderr,
-			terminal: false
-		});
+		this.sessionStdOut = readline.createInterface({ input: this.bareSession.stdout, terminal: false });
+		this.sessionStdErr = readline.createInterface({ input: this.bareSession.stderr, terminal: false });
 		this.onExit(() => {
 			this.end();
 		});
@@ -396,7 +368,8 @@ class RShellSession {
 		});
 		this.options = options;
 		// initialize the session
-		this.writeLine(initCommand(options.eol, options.pipeBind));
+		/* since R 4.4 an error in a command no longer ends the session, older versions ignore the option */
+		this.writeLine('options(catch.script.errors=TRUE);' + initCommand(options.eol, options.pipeBind));
 
 		if(log.settings.minLevel <= LogLevel.Trace) {
 			this.bareSession.stdout.on('data', (data: Buffer) => {
@@ -409,6 +382,8 @@ class RShellSession {
 
 		this.bareSession.stderr.on('data', (data: string) => {
 			log.warn(`< ${data}`);
+			this.stderrTail.push(...String(data).split(/\r?\n/).filter(l => l.length > 0));
+			this.stderrTail.splice(0, this.stderrTail.length - 20);
 		});
 	}
 
@@ -460,7 +435,7 @@ class RShellSession {
 
 		return new Promise<string[]>((resolve, reject) => {
 			if(this.bareSession.exitCode !== null || this.bareSession.signalCode !== null) {
-				reject(new Error(`the R session has exited (${this.bareSession.exitCode ?? this.bareSession.signalCode}), it cannot answer anymore`));
+				reject(new Error(`the R session has exited (${this.bareSession.exitCode ?? this.bareSession.signalCode}), it cannot answer anymore${this.stderrTail.length > 0 ? `, stderr:\n${this.stderrTail.join('\n')}` : ''}`));
 				drained = true;
 				onDrained();
 				return;

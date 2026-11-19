@@ -2,7 +2,8 @@ import { fn, pkg, Primitive, Overrides, Deprecated } from './define-helpers';
 import { Identifier, PkgName } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { NseArguments } from '../../internal/process/functions/call/nse-kind';
-import { Unquote, AmbientStateAccessType } from '../built-in-kinds';
+import { Unquote } from '../built-in-kinds';
+import { Ambient } from '../ambient-effect';
 import { KeyedState } from '../ambient-state-name';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
 import { SigDataDots, sig, Forced } from './shared-signatures';
@@ -13,7 +14,7 @@ import type { AnyBuiltInDefinition } from '../built-in-config';
 export const TidyverseDefinitions = [
 	/* slice_sample draws rows at random; registered after the block above, so this definition is the one that sticks */
 	fn(pkg(PkgName.Dplyr, 'slice_sample'), BuiltInProcName.Default,
-		{ markArgsAsMasked: NseArguments.AllButFirst, ambient: { type: AmbientStateAccessType.DrawRng }, tags: [SemanticCallTag.Random, SemanticCallTag.Transforms] }, Overrides),
+		{ markArgsAsMasked: NseArguments.AllButFirst, ambient: Ambient.rng.adds, tags: [SemanticCallTag.Random, SemanticCallTag.Transforms] }, Overrides),
 	fn(pkg(PkgName.Dplyr, 'copy_to'), BuiltInProcName.Default,
 		{ libFn: true, tags: [SemanticCallTag.Database, SemanticCallTag.Writes], sig: sig({ dest: Forced.Handle, df: Forced.Value, name: Forced.Resource, '...': Forced.Value }) }),
 	fn(pkg(PkgName.Rlang, 'with_options'), BuiltInProcName.Default, { libFn: true, props: CallProp.Configures, scope: { state: KeyedState.Option, params: ['.expr', '...'], code: '.expr' } }),
@@ -161,5 +162,5 @@ export const TidyverseDefinitions = [
 	fn([...pkg(PkgName.Dplyr, 'top_n', 'sample_n', 'recode', 'group_nest', 'do', 'all_vars', 'vars'), ...pkg(PkgName.Purrr, 'transpose', 'as_vector', 'map_dfr', 'flatten'),
 		...pkg(PkgName.Tibble, 'repair_names', 'set_tidy_names', 'tidy_names'), ...pkg(PkgName.TidyR, 'nest_legacy')], BuiltInProcName.DefaultReadAllArgs, {}),
 	fn(pkg(PkgName.Purrr, 'rbernoulli', 'rdunif'), BuiltInProcName.DefaultReadAllArgs,
-		{ ambient: { type: AmbientStateAccessType.DrawRng }, tags: [SemanticCallTag.Random, SemanticCallTag.Deprecated] }, Overrides),
+		{ ambient: Ambient.rng.adds, tags: [SemanticCallTag.Random, SemanticCallTag.Deprecated] }, Overrides),
 ] as const satisfies AnyBuiltInDefinition[];

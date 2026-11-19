@@ -2,12 +2,12 @@ import { assertQuery } from '../_helper/query';
 import { label } from '../_helper/label';
 import { describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import type {
-	CallsConstraint,
-	DoesCallQuery,
-	DoesCallQueryResult
+import {
+	type CallsConstraint,
+	type DoesCallQuery,
+	type DoesCallQueryResult,
+	DoesCallQueryDefinition
 } from '../../../src/queries/catalog/does-call-query/does-call-query-format';
-import { DoesCallQueryDefinition } from '../../../src/queries/catalog/does-call-query/does-call-query-format';
 import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import type { DeepWritable } from 'ts-essentials';
 

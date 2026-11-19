@@ -1,6 +1,6 @@
 import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
@@ -22,7 +22,7 @@ import { packageCode } from './package-code';
 import { RLogical } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 export type DependencyDeclarationKind =
@@ -191,17 +191,10 @@ export const DEPENDENCY_DECLARATION = {
 		const declared = new Set<BrandedNamespace>([...dependsSuggests, ...imports]);
 		const used = new Set<BrandedNamespace>();
 		const ignoreWithin = new Set(config.ignoreWithin);
-		const ignored = (id: NodeId): boolean => {
-			for(let cur = idMap.get(id); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap.get(cur.info.parent)) {
-				if(RFunctionCall.isNamed(cur, ignoreWithin)) {
-					return true;
-				}
-			}
-			return false;
-		};
-		const add = (id: NodeId, kind: DependencyDeclarationKind, name: BrandedNamespace, message: string, certain = true) => {
+		const ignored = (id: NodeId): boolean => RNode.findEnclosing(id, idMap, n => RFunctionCall.isNamed(n, ignoreWithin)) !== undefined;
+		function add(id: NodeId, kind: DependencyDeclarationKind, name: BrandedNamespace, message: string, certain = true) {
 			results.push({ ...at(idMap.get(id), certain), involvedId: id, kind, package: name, message });
-		};
+		}
 
 		/* library(), require(), requireNamespace(), ... as the dependencies query resolves them, a package name in a variable included */
 		const loads = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'].library;

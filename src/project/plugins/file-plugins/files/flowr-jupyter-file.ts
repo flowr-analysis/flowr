@@ -1,6 +1,5 @@
 import type { ICodeCell, INotebookContent, IOutput } from '@jupyterlab/nbformat';
-import type { FlowrFileProvider } from '../../../context/flowr-file';
-import { FileRole, FlowrFile } from '../../../context/flowr-file';
+import { type FlowrFileProvider, FileRole, FlowrFile } from '../../../context/flowr-file';
 import type { RecordedRun, RecordsRuns } from './recorded-runs';
 
 /**
@@ -15,7 +14,6 @@ export class FlowrJupyterFile extends FlowrFile implements RecordsRuns {
 	constructor(private readonly wrapped: FlowrFileProvider<string>) {
 		super(wrapped.path(), wrapped.roles ? [...wrapped.roles, FileRole.Source] : [FileRole.Source]);
 	}
-
 
 	/** The text of the document itself, as its content is only the code it holds. */
 	public rawText(): string {

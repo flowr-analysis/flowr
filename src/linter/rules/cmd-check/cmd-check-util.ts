@@ -1,4 +1,5 @@
 import path from 'path';
+import type { SyntaxNode } from 'web-tree-sitter';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
@@ -7,10 +8,9 @@ import { FileRole } from '../../../project/context/flowr-file';
 import { rootDescriptionFile } from './package-files';
 import { FlowrDescriptionFile } from '../../../project/plugins/file-plugins/files/flowr-description-file';
 import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
-import type { ParentInformation, AstIdMap, NormalizedAst  } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation, AstIdMap, NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { isBaseRPackage } from '../../../util/r-base-packages';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
@@ -71,14 +71,9 @@ export function packageInfo(ctx: ReadOnlyFlowrAnalyzerContext): PackageInfo {
 	};
 }
 
-/** All packages the DESCRIPTION declares in any dependency field. */
-export function allDeclared(info: PackageInfo): Set<BrandedNamespace> {
-	return new Set([...info.declared.values()].flat());
-}
-
 /** The name a function definition is bound to by a plain assignment (`f <- function() ...`). */
 export function boundName(def: RNode<ParentInformation>, idMap: AstIdMap): string | undefined {
-	const parent = def.info.parent === undefined ? undefined : idMap.get(def.info.parent);
+	const parent = RNode.directParent(def, idMap);
 	if(!RBinaryOp.is(parent) || parent.rhs !== def || !['<-', '=', '<<-'].includes(parent.operator) || !RSymbol.is(parent.lhs) && !RString.is(parent.lhs)) {
 		return undefined;
 	}
@@ -117,39 +112,27 @@ export function formalNames(def: RFunctionDefinition<ParentInformation>): Brande
 
 /** Whether the node with the given id is (nested) within the given definition. */
 export function isWithin(id: NodeId, def: NodeId, idMap: AstIdMap): boolean {
-	for(let cur = idMap.get(id); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap.get(cur.info.parent)) {
-		if(cur.info.id === def) {
-			return true;
-		}
-	}
-	return false;
-}
-
-/** The function definitions a call reaches by its `Calls` edges. */
-export function calledDefinitions(graph: DataflowGraph, call: NodeId, idMap: AstIdMap): RFunctionDefinition<ParentInformation>[] {
-	const defs: RFunctionDefinition<ParentInformation>[] = [];
-	for(const [target, edge] of graph.edgesFrom(call)) {
-		const def = DfEdge.includesType(edge, EdgeType.Calls) ? idMap.get(target) : undefined;
-		if(RFunctionDefinition.is(def)) {
-			defs.push(def);
-		}
-	}
-	return defs;
-}
-
-/** Whether the node or an ancestor is quoted or otherwise evaluated elsewhere (`quote(...)`, a data mask). */
-export function isQuoted(graph: DataflowGraph, id: NodeId, idMap: AstIdMap): boolean {
-	for(let cur = idMap.get(id); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap.get(cur.info.parent)) {
-		if(graph.edgesTo(cur.info.id).values().some(e => DfEdge.includesType(e, EdgeType.NonStandardEvaluation))) {
-			return true;
-		}
-	}
-	return false;
+	return RNode.findEnclosing(id, idMap, n => n.info.id === def) !== undefined;
 }
 
 /** The packages `R CMD check` takes as declared without a DESCRIPTION entry: the base packages but `methods` and `stats4`. */
 export function isStandardPackage(pkg: BrandedNamespace): boolean {
 	return isBaseRPackage(pkg) && pkg !== 'methods' && pkg !== 'stats4';
+}
+
+/** The row of the first error node of a tree-sitter tree, `undefined` if it parsed or no node is to blame. */
+export function firstErrorRow(root: SyntaxNode): number | undefined {
+	if(!root.hasError) {
+		return undefined;
+	}
+	const stack = [root];
+	for(let node = stack.pop(); node !== undefined; node = stack.pop()) {
+		if(node.isError || node.isMissing) {
+			return node.startPosition.row;
+		}
+		stack.push(...node.children.toReversed());
+	}
+	return undefined;
 }
 
 /** The pretty printers of a rule: `query` describes a result, the full one is its message and location. */

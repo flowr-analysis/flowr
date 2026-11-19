@@ -5,24 +5,16 @@ import { DataflowGraph } from '../../graph/graph';
 import { VertexType } from '../../graph/vertex';
 import { ReferenceType } from '../../environments/identifier';
 
-
-/**
- * Processes a value node in the AST for dataflow analysis.
- * For example, literals like numbers.
- */
+/** Processes a value node in the AST for dataflow analysis. For example, literals like numbers. */
 export function processValue<OtherInfo>({ info: { id } }: RNodeWithParent, { cds, completeAst: { idMap }, environment }: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	return {
 		unknownReferences: [],
 		in:                [{ nodeId: id, name: undefined, cds, type: ReferenceType.Constant }],
 		out:               [],
 		environment,
-		graph:             new DataflowGraph(idMap).addVertex({
-			tag: VertexType.Value,
-			id,
-			cds
-		}, undefined),
-		exitPoints: [{ nodeId: id, type: ExitPointType.Default, cds }],
-		entryPoint: id,
-		hooks:      []
+		graph:             new DataflowGraph(idMap).addVertex({ tag: VertexType.Value, id, cds }, undefined),
+		exitPoints:        [{ nodeId: id, type: ExitPointType.Default, cds }],
+		entryPoint:        id,
+		hooks:             []
 	};
 }

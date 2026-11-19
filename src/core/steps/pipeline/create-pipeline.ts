@@ -4,9 +4,7 @@ import type { Pipeline } from './pipeline';
 import { jsonReplacer } from '../../../util/json';
 import { partitionArray } from '../../../util/collections/arrays';
 
-/**
- * Given a set of {@link IPipelineStep|steps} with their dependencies, this function verifies all requirements of {@link createPipeline}.
- */
+/** Given a set of {@link IPipelineStep|steps} with their dependencies, this function verifies all requirements of {@link createPipeline}. */
 export function verifyAndBuildPipeline(steps: readonly IPipelineStep[]): Pipeline {
 	if(steps.length === 0) {
 		throw new InvalidPipelineError('0) Pipeline is empty');
@@ -36,11 +34,7 @@ export function verifyAndBuildPipeline(steps: readonly IPipelineStep[]): Pipelin
 	const sorted = sortedPerFile.concat(sortedPerRequest);
 	validateStepOutput(sorted, perRequestStepMap, steps);
 
-	return {
-		steps:               perRequestStepMap,
-		order:               sorted,
-		firstStepPerRequest: sortedPerFile.length
-	};
+	return { steps: perRequestStepMap, order: sorted, firstStepPerRequest: sortedPerFile.length };
 }
 
 function validateStepOutput(sorted: readonly PipelineStepName[], stepMap: Map<PipelineStepName, IPipelineStep>, steps: readonly IPipelineStep[]) {

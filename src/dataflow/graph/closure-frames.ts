@@ -236,7 +236,7 @@ function boundAround(closure: NodeId, graph: DataflowGraph, environment: REnviro
 		let frame = made.subflow.environment.current.parent;
 		for(let level = made.subflow.environment.level - 1; level > 0 && frame !== undefined; level--, frame = frame.parent) {
 			/* the body of a function sees the frames around it emptied, standing in for what they bound */
-			const bound = frame.lookup(name) ?? frame.superMemory?.get(name);
+			const bound = frame.boundForSuper(name);
 			if(bound !== undefined) {
 				return bound;
 			}

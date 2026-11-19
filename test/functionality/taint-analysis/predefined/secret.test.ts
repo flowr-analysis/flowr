@@ -27,10 +27,9 @@ describe('Secret Taint Analysis', () => {
 	});
 
 	describe('File trust', () => {
-		const withTrust = (name: string, code: string, options: Parameters<typeof createSecretAnalysis>[0], expectation: TaintAnalysisExpectation) =>
-			test(decorateLabelContext(label(name), ['taint']), async() => {
-				await testTaintAnalysis(code, createSecretAnalysis(options), expectation);
-			});
+		const withTrust = (name: string, code: string, options: Parameters<typeof createSecretAnalysis>[0], expectation: TaintAnalysisExpectation) => test(decorateLabelContext(label(name), ['taint']), async() => {
+			await testTaintAnalysis(code, createSecretAnalysis(options), expectation);
+		});
 		withTrust('only credential files', 'x <- readLines("data.txt")\ny <- readLines(".netrc")', { fileTrust: FileTrust.CredentialFiles }, { '1@x': Top, '2@y': Secret });
 		withTrust('trusted files', 'x <- read.csv("data/a.csv")\ny <- read.csv("conf/a.csv")', { trustedFiles: /^data\// }, { '1@x': Top, '2@y': FileContent });
 		withTrust('secret files', 'x <- jsonlite::read_json("secrets/db.json")', { fileTrust: FileTrust.CredentialFiles, secretFiles: /^secrets\// }, { '1@x': Secret });

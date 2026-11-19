@@ -3,9 +3,9 @@ import { fn, pkg, base, readsFile } from './define-helpers';
 import { PkgName } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
-import { AmbientStateAccessType } from '../built-in-kinds';
-import { KeyedState } from '../ambient-state-name';
-import { CopiesFiles, Downloads, LoaderSearchPath, ImportSearchPath } from './shared-configs';
+import { KeyedState, UnknownKey } from '../ambient-state-name';
+import { Ambient, AmbientVerb } from '../ambient-effect';
+import { CopiesFiles, Downloads, LoaderSearchPath, LoaderInstalls, ReadsInstalled, ImportSearchPath, SetsEntry, SetsEntryNamedBy } from './shared-configs';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 
 /** The built-in definitions of package management, project tooling, documents, and foreign languages. */
@@ -33,31 +33,35 @@ export const ToolingDefinitions = [
 		{ libFn: true, readAllArguments: true, hasUnknownSideEffects: true, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: sig({ file: Forced.Resource, '...': Forced.Value }) }),
 	fn(pkg(PkgName.Reticulate, 'py_run_string'), BuiltInProcName.Default, { libFn: true, hasUnknownSideEffects: true, sig: sig({ code: Forced.Value, '...': Forced.Value }) }),
 	/* restoring or loading a project changes the library and the search path, a snapshot writes the lockfile */
-	fn(pkg(PkgName.Renv, 'restore', 'init', 'activate', 'rebuild', 'load', 'install', 'update'), BuiltInProcName.Default,
-		{ libFn: true, hasUnknownSideEffects: true, props: CallProp.Configures, sig: sig({ project: Forced.Value, '...': Forced.Value }) }),
+	fn(pkg(PkgName.Renv, 'restore', 'init', 'activate', 'rebuild', 'load', 'update'), BuiltInProcName.Default,
+		{ libFn: true, hasUnknownSideEffects: true, ambient: { ...Ambient.installed.adds, member: { from: 'constant', keys: [UnknownKey] } }, props: CallProp.Configures, sig: sig({ project: Forced.Value, '...': Forced.Value }) }),
 	fn(pkg(PkgName.Renv, 'snapshot'), BuiltInProcName.DefaultReadAllArgs,
 		{ libFn: true, props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ project: Forced.Value, '...': Forced.Value, library: Forced.Value, lockfile: Forced.Resource }) }),
 	/* loaders taking several packages at once, each attached as by `library` */
 	/* a preference puts the preferred function on top of the search path */
 	fn(pkg(PkgName.Conflicted, 'conflict_prefer', 'conflicts_prefer'), BuiltInProcName.Prefer,
-		{ libFn: true, ambient: { type: AmbientStateAccessType.SetKeyed, state: KeyedState.SearchPath, keys: { from: 'constant', key: '.conflicts' } }, props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.AttachesPackage], sig: sig({ '...': ArgProp.NoDefault }) }),
+		{ libFn: true, ambient: SetsEntry(KeyedState.SearchPath, '.conflicts'), props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.AttachesPackage], sig: sig({ '...': ArgProp.NoDefault }) }),
 	fn(pkg(PkgName.Conflicted, 'conflict_prefer_all', 'conflict_prefer_matching'), BuiltInProcName.Default,
 		{ libFn: true, hasUnknownSideEffects: true, props: CallProp.Invisible | CallProp.Configures, sig: sig({ '...': Forced.Value }) }),
 	fn(pkg(PkgName.Needs, 'needs', 'prioritize'), BuiltInProcName.Library,
-		{ libFn: true, packagesInDots: true, namesInDots: true, ambient: LoaderSearchPath(true), props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }),
+		{ libFn: true, packagesInDots: true, namesInDots: true, ambient: LoaderInstalls(true), props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }),
 	fn(pkg(PkgName.Groundhog, 'groundhog.library'), BuiltInProcName.Library,
-		{ libFn: true, formals: ['pkg', 'date'], ambient: LoaderSearchPath(true), props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }),
+		{ libFn: true, formals: ['pkg', 'date'], ambient: [SetsEntryNamedBy(KeyedState.SearchPath, ['pkg', 'date'], 'pkg', { quoted: true }), { ...SetsEntryNamedBy(KeyedState.InstalledPackages, ['pkg', 'date'], 'pkg', { quoted: true }), access: AmbientVerb.Adds }], props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }),
 	fn(pkg(PkgName.Pacman, 'p_load'), BuiltInProcName.Library,
-		{ packagesInDots: true, evaluatedIn: 'char', ambient: LoaderSearchPath(true), props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }),
+		{ packagesInDots: true, evaluatedIn: 'char', ambient: LoaderInstalls(true), props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }),
+	fn(pkg(PkgName.Pacman, 'p_load_gh', 'p_load_current_gh'), BuiltInProcName.Library,
+		{ packagesInDots: true, stripRepo: true, ambient: LoaderInstalls(true), props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage, SemanticCallTag.Network] }),
+	fn(pkg(PkgName.Pacman, 'p_install', 'p_install_gh', 'p_install_version'), BuiltInProcName.Default,
+		{ libFn: true, ambient: [{ ...Ambient.installed.writes, member: { from: 'unnamed', quoted: true } }, Ambient.libPaths.reads], props: CallProp.Invisible, tags: [SemanticCallTag.Network, SemanticCallTag.File, SemanticCallTag.Writes] }),
 	fn(pkg(PkgName.Librarian, 'shelf'), BuiltInProcName.Library,
-		{ packagesInDots: true, stripRepo: true, ambient: LoaderSearchPath(true), props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }),
+		{ packagesInDots: true, stripRepo: true, ambient: LoaderInstalls(true), props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage, SemanticCallTag.Network] }),
 	fn(pkg(PkgName.Xfun, 'pkg_attach', 'pkg_attach2'), BuiltInProcName.Library,
-		{ packagesInDots: true, characterOnly: true, ambient: LoaderSearchPath(false), props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }),
+		{ packagesInDots: true, characterOnly: true, ambient: LoaderInstalls(false), props: CallProp.Invisible | CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }),
 	fn(pkg(PkgName.EasyPackages, 'libraries'), BuiltInProcName.Library,
 		{ packagesInDots: true, characterOnly: true, ambient: LoaderSearchPath(false), props: CallProp.Scope, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }),
 	/* `import::from` attaches what it imports as `imports`, or the name `.into` gives, and `.into = ""` imports into the calling frame */
 	fn(pkg(PkgName.Import, 'from'), BuiltInProcName.Library,
-		{ fromImports: true, ambient: ImportSearchPath, props: CallProp.Scope | CallProp.Invisible, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }),
+		{ fromImports: true, ambient: [ImportSearchPath, ReadsInstalled('.from', true)], props: CallProp.Scope | CallProp.Invisible, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage] }),
 	fn([...pkg(PkgName.Box, 'use'), ...base('use')], BuiltInProcName.Library,
 		{ boxUse: true, props: CallProp.Scope | CallProp.Invisible, tags: [SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage], sig: sig({ package: ArgProp.NoDefault, 'include.only': ArgProp.NoDefault }) }),
 	fn(pkg(PkgName.Cli, 'cli_text', 'cli_alert', 'cli_alert_info', 'cli_alert_success', 'cli_alert_warning', 'cli_alert_danger', 'cli_h1', 'cli_h2', 'cli_h3', 'cli_li', 'cli_bullets',

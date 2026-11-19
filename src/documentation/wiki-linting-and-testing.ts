@@ -13,8 +13,7 @@ import { getCliLongOptionOf } from './doc-util/doc-cli-option';
 import { DfEdge } from '../dataflow/graph/edge';
 import { Resolve } from '../dataflow/environments/resolve-helper';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import { ChainedWith, MutationCategory, MutationPasses } from '../../test/functionality/_helper/r-mutations';
 import { linkToQueryOfName } from './doc-util/doc-query';
 
@@ -26,10 +25,7 @@ function mutationCategories(): string {
 		MutationPasses.filter(p => p.category === category).map(p => `- \`${p.name}\`: ${p.description}`).join('\n'))).join('\n');
 }
 
-
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing */
 export class WikiLintingAndTesting extends DocMaker<'wiki/Linting and Testing.md'> {
 	constructor() {
 		super('wiki/Linting and Testing.md', module.filename, 'linting and testing definitions');
@@ -125,9 +121,7 @@ This folder contains three special and important elements:
 - \`_helper/\` folder which contains helper functions to be used by other tests.
 - \`test-summary.ts\` which may produce a summary of the covered capabilities.
 
-${block({
-	type:    'WARNING',
-	content: `
+${block('WARNING', `
 We name all test files using the \`.test.ts\` suffix and try to run them in parallel.
 Whenever this is impossible (e.g., when using ${ctx.link('withShell')}), pass \`{ concurrent: false }\` to the
 \`describe\` to disable parallel execution for the respective test (otherwise, such tests are flaky):
@@ -135,8 +129,7 @@ Whenever this is impossible (e.g., when using ${ctx.link('withShell')}), pass \`
 ${codeBlock('typescript', 'describe(\'my suite\', { concurrent: false }, withShell(shell => { /* ... */ }));')}
 
 Vitest deprecated the \`describe.sequential\` form in favour of that option, so please do not reintroduce it.
-`
-})}
+`)}
 
 <a id='test-labels'></a>
 #### 🏷️ Test Labels
@@ -163,7 +156,7 @@ These can be found in [the \`_helper\` subdirectory](${RemoteFlowrFilePathBaseRe
 For example, an [existing test](${RemoteFlowrFilePathBaseRef}test/functionality/dataflow/main/atomic/dataflow-atomic.test.ts) that tests the dataflow graph of a simple variable looks like this:
 ${codeBlock('typescript', `
 assertDataflow(label('simple variable', ['name-normal']), shell,
-	'x', emptyGraph().use('0', 'x')
+	'x', emptyGraph().use(0, 'x')
 );
 `)}
 Have a look at ${ctx.link('assertDataflow')}, ${ctx.link('label')}, and ${ctx.link('emptyGraph')} for more information.

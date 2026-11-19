@@ -37,13 +37,7 @@ export const SOFTWARE_HAS_TESTS = {
 			loc:        SourceLocation.invalid(),
 			message:    'No tests found in the project'
 		}];
-		return {
-			results,
-			'.meta': {
-				testFilesFound: testFiles.length,
-				testCallsFound: testCalls
-			}
-		};
+		return { results, '.meta': { testFilesFound: testFiles.length, testCallsFound: testCalls } };
 	},
 	prettyPrint: prettyPrint(
 		(result: SoftwareHasTestsResult) => result.message
@@ -53,8 +47,6 @@ export const SOFTWARE_HAS_TESTS = {
 		description:   'Finds software projects without tests (test files in a test directory or test function calls in R code).',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: () => ({
-			additionalTestFunctions: []
-		})
+		defaultConfig: () => ({ additionalTestFunctions: [] })
 	}
 } as const satisfies LintingRule<SoftwareHasTestsResult, SoftwareHasTestsMetadata, SoftwareHasTestsConfig>;

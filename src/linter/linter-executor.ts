@@ -36,9 +36,7 @@ function locatedIn<Result extends LintingResult>(found: Result, idMap: AstIdMap)
 	return file === found.loc[4] ? found : { ...found, loc: [found.loc[0], found.loc[1], found.loc[2], found.loc[3], file] };
 }
 
-/**
- * Executes a specific linting rule on the given analysis provider input.
- */
+/** Executes a specific linting rule on the given analysis provider input. */
 export async function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: ReadonlyFlowrAnalysisProvider, lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>): Promise<LintingResults<Name>> {
 	try {
 		const rule = getLintingRule(ruleName);
@@ -58,19 +56,13 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 		return {
 			...result,
 			results: result.results.map(found => locatedIn(found, idMap)),
-			'.meta': {
-				...(result['.meta'] as LintingRuleMetadata<Name> ?? {}),
-				searchTimeMs:  searchTime,
-				processTimeMs: processTime
-			}
+			'.meta': { ...(result['.meta'] as LintingRuleMetadata<Name> ?? {}), searchTimeMs: searchTime, processTimeMs: processTime }
 		};
 	} catch(e) {
 		/* a project without any code (e.g. a package of data only) has nothing to lint, which is no error of the rule */
 		if(!input.inspectContext().files.hasRequests()) {
 			return { results: [], '.meta': { searchTimeMs: 0, processTimeMs: 0 } } as unknown as LintingResults<Name>;
 		}
-		return {
-			error: e
-		};
+		return { error: e };
 	}
 }

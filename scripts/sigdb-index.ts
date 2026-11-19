@@ -3,13 +3,16 @@
  * one line per package, one line per exported name. Shared so the landing page and the full
  * signature browser never disagree about what flowR knows.
  */
+import { contextFromInput } from '../src/project/context/flowr-analyzer-context';
 import zlib from 'zlib';
+import ts from 'typescript';
 import { ExportFlag, PropFlags } from './sigdb-page/export-flags';
 import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { MergedSignatureSource, SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../src/project/sigdb/reader';
 import { defaultSigDbPaths } from '../src/project/sigdb/manifest';
+import { FnPropNames } from '../src/project/sigdb/schema';
 /* the plain function lists rather than the query module, which would pull in half the analyzer */
 import { LibraryFunctions } from '../src/queries/catalog/dependencies-query/function-info/library-functions';
 import { SourceFunctions } from '../src/queries/catalog/dependencies-query/function-info/source-functions';
@@ -18,12 +21,17 @@ import { computeWriteFunctions } from '../src/queries/catalog/dependencies-query
 import { BuiltInIndex } from '../src/dataflow/environments/query-fn-props';
 import { VisualizeFunctions } from '../src/queries/catalog/dependencies-query/function-info/visualize-functions';
 import { TestFunctions } from '../src/queries/catalog/dependencies-query/function-info/test-functions';
-import { statisticsFunctions } from '../src/queries/catalog/dependencies-query/function-info/statistics-functions';
+import { functionsTagged } from '../src/queries/catalog/dependencies-query/function-info/tagged-functions';
+import { SemanticCallTag } from '../src/dataflow/environments/built-in-props';
 import { BasePrimitiveTopics, DefaultBuiltinConfig, statedSignatures, type StatedSignature } from '../src/dataflow/environments/default-builtin-config';
 import { type BrandedIdentifier, type BrandedNamespace, Identifier, PkgName } from '../src/dataflow/environments/identifier';
-import { baseRExportOwner } from '../src/util/r-base-packages';
+import { AttachedBasePackageSet, baseRExportOwner } from '../src/util/r-base-packages';
 import { RGroupGenerics, S4GroupOfMember } from '../src/dataflow/environments/group-generics';
 import { RBasePackageStore } from '../src/data/r-base-packages.generated';
+import { builtInGuards, namesWithGuards } from '../src/dataflow/fn/guards/built-in-guards';
+import type { AmbientWordsOnPage, Guards } from './sigdb-page/database';
+import { AmbientFamilyInfo, AmbientVerbInfo } from '../src/dataflow/environments/ambient-effect';
+import { guardsTuple } from './sigdb-page/contract-tuple';
 
 export interface PackageEntry {
 	readonly name:      BrandedNamespace;
@@ -69,6 +77,68 @@ export interface SigIndex {
 	readonly topicsComplete: boolean;
 	/** the S4 group generic a name belongs to (`sin` to `Math`), see {@link S4GroupOfMember} */
 	readonly groups:         ReadonlyMap<BrandedIdentifier, string>;
+}
+
+/** What the page shows of the guards of the base packages, as `pkg::name ->` {@link Guards}. */
+export function guardsForPage(): Record<string, Guards> {
+	return Object.fromEntries(namesWithGuards().flatMap(([pkg, name]) => {
+		const shown = guardsTuple(builtInGuards(name, pkg));
+		return shown === undefined ? [] : [[`${pkg}::${name}`, shown]];
+	}));
+}
+
+/**
+ * What the words of a signature mean that the vocabulary of {@link CallProps} and {@link ArgProps} does not word itself: the
+ * semantic tags (`draws-graphics`) and the properties the database records (`can-throw`), read off their documentation in the code,
+ * which is the one place they are explained.
+ */
+export function wordDocsForPage(): Record<string, string> {
+	const docs: Record<string, string> = {};
+	function read(file: string, enumName: string, keyOf: (member: ts.EnumMember) => string | undefined) {
+		const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+		source.forEachChild(node => {
+			if(!ts.isEnumDeclaration(node) || node.name.text !== enumName) {
+				return;
+			}
+			for(const member of node.members) {
+				const key = keyOf(member);
+				const doc = ts.getJSDocCommentsAndTags(member).map(d => ts.getTextOfJSDocComment((d as ts.JSDoc).comment) ?? '').join(' ');
+				if(key !== undefined && doc !== '') {
+					docs[key] = doc.replace(/\s*\(see [^)]*\)/g, '').replace(/\{@link\s+(?:[^}|]*\|)?([^}]*)\}/g, (_, shown: string) => shown.split('.').at(-1) ?? shown).replace(/\s+/g, ' ').trim();
+				}
+			}
+		});
+	}
+	read(path.join('src', 'dataflow', 'environments', 'built-in-props.ts'), 'SemanticCallTag', member => member.initializer && ts.isStringLiteral(member.initializer) ? member.initializer.text : undefined);
+	const names = new Set(Object.values(FnPropNames));
+	read(path.join('src', 'project', 'sigdb', 'schema.ts'), 'FnProp', member => {
+		const kebab = member.name.getText().replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+		return names.has(kebab) ? kebab : undefined;
+	});
+	return docs;
+}
+
+/** The words a page needs to speak of the parts of the global state and the accesses to them, see {@link AmbientFamilyInfo}. */
+export function ambientWordsForPage(): AmbientWordsOnPage {
+	return {
+		families: Object.fromEntries(Object.entries(AmbientFamilyInfo).map(([family, { label, description, of }]) => [family, [label, description, of ?? '']])),
+		verbs:    Object.fromEntries(Object.entries(AmbientVerbInfo).map(([verb, { label, description }]) => [verb, [label, description]]))
+	};
+}
+
+/**
+ * What flowR answers about each function as it returns it, which a page shows on demand: the `builtIns` entry of the
+ * `inspect-fn-guards` query per `pkg::name` with a contract, and the ambient summary of `:signature` per `pkg::name` that
+ * touches the global state. Gzipped and base64-encoded, as only a reader opening one of them needs it.
+ */
+export function rawForPage(stated: ReadonlyMap<string, readonly StatedSignature[]>): string {
+	const contracts = Object.fromEntries(namesWithGuards().flatMap(([pkg, name]) => {
+		const guards = builtInGuards(name, pkg);
+		return guards === undefined ? [] : [[`${pkg}::${name}`, guards]];
+	}));
+	const ambient = Object.fromEntries([...stated].flatMap(([name, entries]) =>
+		entries.flatMap(({ pkg, ambient }) => ambient === undefined ? [] : [[`${pkg}::${name}`, ambient]])));
+	return zlib.gzipSync(Buffer.from(JSON.stringify({ contracts, ambient })), { level: 9 }).toString('base64');
 }
 
 /** one exported name, as much of it as fits in a page */
@@ -228,34 +298,41 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
  * throw out `NULL`, `TRUE` and the rest of what R documents but no NAMESPACE carries.
  */
 function statedWithRealPackages(baseNames: ReadonlySet<BrandedNamespace>, topics: ReadonlyMap<string, string>, complete: boolean): ReadonlyMap<BrandedIdentifier, StatedSignature[]> {
-	const stated = statedSignatures();
+	const stated = statedByFunctionInfo();
 	if(!complete) {
 		return stated;
 	}
-	const settled = (name: BrandedIdentifier, entry: StatedSignature): StatedSignature => {
+	function settled(name: BrandedIdentifier, entry: StatedSignature): StatedSignature {
 		const owner = baseRExportOwner(name);
 		if(owner !== undefined) {
 			return owner === entry.pkg ? entry : { ...entry, pkg: owner };
 		}
 		return topics.has(entry.pkg + '::' + name) ? entry : { ...entry, pkg: '' };
-	};
+	}
 	return new Map([...stated].map(([name, entries]) =>
 		[name, entries.map(entry => baseNames.has(entry.pkg) ? settled(name, entry) : entry)]));
+}
+
+/** What flowR states about every function it defines, each asked of `functionInfo`, so the page shows what an analysis knows of the call. */
+export function statedByFunctionInfo(): Map<BrandedIdentifier, StatedSignature[]> {
+	const ctx = contextFromInput('');
+	return statedSignatures(DefaultBuiltinConfig, id => ctx.functionInfo(id));
 }
 
 /**
  * What flowR's own dependency query says a name does. A few hundred entries, and the only part of this
  * index that comes from flowR's configuration rather than from the database.
  */
-function builtInKinds(): Map<string, string[]> {
-	const categories: Record<string, readonly { name: string }[]> = {
-		library:    LibraryFunctions,
-		source:     SourceFunctions,
-		read:       computeReadFunctions(DefaultBuiltinConfig),
-		write:      computeWriteFunctions(DefaultBuiltinConfig),
-		visualize:  VisualizeFunctions,
-		test:       TestFunctions,
-		statistics: statisticsFunctions(BuiltInIndex.default())
+export function builtInKinds(): Map<string, string[]> {
+	const categories: Record<string, readonly { name: string, package?: string }[]> = {
+		library:     LibraryFunctions,
+		source:      SourceFunctions,
+		read:        computeReadFunctions(DefaultBuiltinConfig),
+		write:       computeWriteFunctions(DefaultBuiltinConfig),
+		visualize:   VisualizeFunctions,
+		test:        TestFunctions,
+		statistics:  functionsTagged(BuiltInIndex.default(), SemanticCallTag.Statistics),
+		interactive: functionsTagged(BuiltInIndex.default(), SemanticCallTag.Interactive)
 	};
 	const kinds = new Map<string, string[]>();
 	/* flowR's own built-in definitions: `:`, `<-`, `TRUE` and the rest of what it understands without
@@ -272,8 +349,10 @@ function builtInKinds(): Map<string, string[]> {
 			   built-in definition: `read_csv` is readr's, and flowR still recognizes the call */
 			const known = kinds.get(fn.name) ?? ['builtin'];
 			kinds.set(fn.name, known);
-			if(!known.includes(kind)) {
-				known.push(kind);
+			/* a kind of one package's definition only (`map` draws in maps, not in purrr) says so, as `visualize@maps` */
+			const tag = fn.package === undefined ? kind : `${kind}@${fn.package}`;
+			if(!known.includes(kind) && !known.includes(tag)) {
+				known.push(tag);
 			}
 		}
 	}
@@ -323,7 +402,7 @@ function baseTopics(packages: readonly BrandedNamespace[]): { topics: ReadonlyMa
  * The two blobs a page searches: `name\tversion\tbase` per package, and `name\towner,owner` per
  * exported name. Plain text beats JSON by about a third here, and a page only has to `split` it.
  */
-export function encode(packages: readonly PackageEntry[], stated: ReadonlyMap<string, unknown> = statedSignatures()): { packages: string, names: string, count: number } {
+export function encode(packages: readonly PackageEntry[], stated: ReadonlyMap<string, unknown> = statedByFunctionInfo()): { packages: string, names: string, count: number } {
 	const owners = new Map<string, string[]>();
 	for(const [index, pkg] of packages.entries()) {
 		for(const [name, entry] of pkg.exports) {
@@ -355,7 +434,7 @@ export function encode(packages: readonly PackageEntry[], stated: ReadonlyMap<st
 	}
 	owners.delete('');   // an empty name would split the blob apart when the page reads it back
 	return {
-		packages: packages.map(p => [p.name, p.version, p.base ? '1' : '0', p.downloads, p.exports.size,
+		packages: packages.map(p => [p.name, p.version, p.base ? (AttachedBasePackageSet.has(p.name) ? '2' : '1') : '0', p.downloads, p.exports.size,
 			p.releases, p.since, p.archived ? '1' : '0', p.files.join('|'), p.source ?? ''].join('\t')).join('\n'),
 		/* alphabetical, which is what lets gzip fold the shared prefixes; a page ranks its own hits */
 		names: [...owners.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))

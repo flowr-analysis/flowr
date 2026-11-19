@@ -1,33 +1,43 @@
 import type { ParameterOfArgument } from '../graph/match-args';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
-import { DefaultMap } from '../../util/collections/defaultmap';
+import { DefaultMap, getOrSet } from '../../util/collections/defaultmap';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { FunctionSemantics } from '../fn/function-semantics';
 import { RLoopConstructs, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace } from '../../util/log';
-import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type BrandedIdentifier, type InGraphIdentifierDefinition, hasEnvState, Identifier, type IdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
 import type { DataflowFunctionFlowInformation, DataflowGraph } from '../graph/graph';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
 import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../graph/edge';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, type DeferredEnvOp, EnvOpKind, VertexType, FunctionDispatch } from '../graph/vertex';
+import {
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexFunctionDefinition,
+	type DataflowGraphVertexInfo,
+	type DeferredEnvOp,
+	EnvOpKind,
+	VertexType,
+	FunctionDispatch,
+	DfgVertex
+} from '../graph/vertex';
 import { type Environment, REnvironment, type REnvironmentInformation } from '../environments/environment';
-import type { ExitPoint } from '../info';
-import { ControlDependency, negateControlDependency, doesExitPointPropagateCalls } from '../info';
+import { type ExitPoint, ControlDependency, negateControlDependency, doesExitPointPropagateCalls, withCds } from '../info';
 import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';
 import { readEnvironmentContents } from './process/functions/call/built-in/built-in-envir-utils';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
-import { DfgVertex } from '../graph/vertex';
 import { Resolve } from '../environments/resolve-helper';
 import { scopeOf } from '../environments/resolve-by-name';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RIfThenElse } from '../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import { RWhileLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
+import { RForLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { BuiltInLookup } from '../fn/frame-reflection';
@@ -35,7 +45,9 @@ import { Dataflow } from '../graph/df-helper';
 import { ClosureFrames } from '../graph/closure-frames';
 import { AmbientStateName } from '../environments/ambient-state-name';
 import { instanceBindingsOfMethod } from '../fn/class-declaration';
-import { ReachSummaries, unionOfSets } from '../../util/fixpoint';
+import { ReachSummaries } from '../../util/fixpoint';
+import { Monoid } from '../../util/monoid';
+import { dataLoadNodesForNamespace } from './process/functions/call/built-in/built-in-library';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 
@@ -205,6 +217,12 @@ function linkFreeReads(graph: DataflowGraph, fnSubflow: DataflowGraphVertexFunct
 			if(ingoing.type === ReferenceType.S3MethodPrefix && inCallee === undefined) {
 				defs = uniqueArrayMerge(defs, Resolve.byNameAndType(name, environment, ingoing.type) ?? []);
 			}
+			/* a data set nothing defines is the lazy data of a package attached by the time of the call, as for a read outside of a function */
+			if(defs.length === 0 && ingoing.type !== ReferenceType.Function && ingoing.type !== ReferenceType.BuiltInFunction) {
+				for(const load of dataLoadNodesForNamespace(environment, Identifier.getName(name))) {
+					graph.addEdge(ingoing.nodeId, load, EdgeType.Reads);
+				}
+			}
 			for(const def of defs as readonly InGraphIdentifierDefinition[]) {
 				const { nodeId, type, value, definedAt, envState } = def;
 				/* the state an earlier run of the function left behind is what its next run reads */
@@ -329,6 +347,46 @@ function linkFieldWritesOnCall(graph: DataflowGraph, id: NodeId, fnId: NodeId, s
 	}
 }
 
+/** Whether an error raised by the call `from` still leaves the expression it is written in (the whole program for `undefined`): redoes what a `stop` written at that spot would have done, since we only learn a callee always throws after linking it here. */
+export function errorEscapes(from: NodeId, expression: NodeId | undefined, idMap: AstIdMap, graph: DataflowGraph): boolean {
+	for(let node = raisedAt(from, idMap, graph); node !== undefined && node.info.id !== expression;) {
+		const parent = RNode.directParent(node, idMap);
+		if(parent === undefined) {
+			return true;
+		}
+		if(!errorPassesThrough(parent, node.info.id, graph)) {
+			return false;
+		}
+		node = parent;
+	}
+	return true;
+}
+
+/** Where what the call `from` raises surfaces: an anonymous function an apply runs raises where it is written, a handler (whose call an argument makes) where the construct running it is. */
+function raisedAt(from: NodeId, idMap: AstIdMap, graph: DataflowGraph): RNode<ParentInformation> | undefined {
+	if(!NodeId.isAnonymousCall(from)) {
+		return idMap.get(from);
+	}
+	const handler = Dataflow.sourcesOf(graph, from, EdgeType.Calls).map(c => idMap.get(c)).find(RArgument.is);
+	return handler === undefined ? NodeId.nodeOf(from, idMap) : RNode.directParent(handler, idMap);
+}
+
+/** Whether an error raised within the child `child` of `parent` is sure to be raised by `parent` as well. */
+function errorPassesThrough(parent: RNode<ParentInformation>, child: NodeId, graph: DataflowGraph): boolean {
+	if(RArgument.is(parent) || RExpressionList.is(parent)) {
+		return true;
+	} else if(RFunctionCall.is(parent)) {
+		/* a handler catches the error instead of passing it on */
+		return !DfgVertex.hasOrigin(graph.getVertex(parent.info.id), BuiltInProcName.Try);
+	} else if(RIfThenElse.is(parent) || RWhileLoop.is(parent)) {
+		/* only the condition is guaranteed to be evaluated */
+		return parent.condition.info.id === child;
+	} else if(RForLoop.is(parent)) {
+		return parent.vector.info.id === child;
+	}
+	return false;
+}
+
 /** What {@link linkFunctionCalls} reports for a call it linked. */
 export type CalledFunctions = {
 	functionCall:        NodeId,
@@ -343,12 +401,70 @@ export type CalledFunctions = {
 function mayBeFunctionSource(graph: DataflowGraph, info: DataflowGraphVertexFunctionCall, target: NodeId, e: DfEdge, unbound = false): boolean {
 	if(DfEdge.includesType(e, EdgeType.Calls | EdgeType.DefinedByOnCall)) {
 		return true;
-	} else if(isWithinArgumentOf(graph, info.id, target)) {
+	} else if(DfEdge.includesType(e, EdgeType.Returns) || isWithinArgumentOf(graph, info.id, target)) {
+		/* what a call returns (a method a built-in runs, `message(cnd)` going on with `conditionMessage`) is its value, not its function */
 		return false;
 	}
 	const vertex = graph.getVertex(target);
-	return DfgVertex.hasOrigin(info, BuiltInProcName.Unnamed) || !DfgVertex.isFunctionCall(vertex)
-		|| (!unbound && (vertex.origin === 'unnamed' || vertex.origin.some(o => o !== BuiltInProcName.Default)));
+	if(DfgVertex.hasOrigin(info, BuiltInProcName.Unnamed)) {
+		return true;
+	} else if(info.environment === undefined) {
+		/*
+		 * a call that only reached built-ins when it was processed keeps no environment, so its name is bound by a definition or a built-in call of its scope binding names (`library(dplyr)`);
+		 * a use, a call of the code (what it lets escape is read at its definition) or a call elsewhere is what it waits for (an earlier call that may raise, a site signaling to a handler that leads to it),
+		 * and a definition of another name is what it hands on (the parameters `NextMethod` passes to the next method)
+		 */
+		if(DfgVertex.isVariableDefinition(vertex)) {
+			const defined = graph.idMap === undefined ? undefined : NodeId.recoverBareName(target, graph.idMap);
+			return defined === undefined || info.name === undefined || defined === Identifier.getName(info.name);
+		}
+		return (!DfgVertex.isUse(vertex) || isWithinCall(graph, info.id, target)) && (!DfgVertex.isFunctionCall(vertex)
+			|| (vertex.origin !== 'unnamed' && vertex.origin.some(o => o !== BuiltInProcName.Default) && !DfgVertex.hasOrigin(vertex, BuiltInProcName.Function) && isInScopeOf(graph, info.id, target)));
+	}
+	/* a use outside the call is one it waits for (an earlier one forcing a promise that may raise), not one naming its function */
+	return (!DfgVertex.isUse(vertex) || isWithinCall(graph, info.id, target)) && (!DfgVertex.isFunctionCall(vertex) || (!unbound && (vertex.origin === 'unnamed' || vertex.origin.some(o => o !== BuiltInProcName.Default))));
+}
+
+/** Whether `target` is part of `call` (true without the AST to tell). */
+function isWithinCall(graph: DataflowGraph, call: NodeId, target: NodeId): boolean {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return true;
+	}
+	for(let node = idMap.get(target); node !== undefined; node = RNode.directParent(node, idMap)) {
+		if(node.info.id === call) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/** Whether `target` lies in the body of a function enclosing `call` (or at the top level), where a call may bind a name `call` sees. */
+function isInScopeOf(graph: DataflowGraph, call: NodeId, target: NodeId): boolean {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return true;
+	}
+	const own = enclosingFunctionOf(target, idMap);
+	if(own === undefined) {
+		return true;
+	}
+	for(let fn = enclosingFunctionOf(call, idMap); fn !== undefined; fn = enclosingFunctionOf(fn, idMap)) {
+		if(fn === own) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/** The nearest function definition `id` lies in, none at the top level. */
+function enclosingFunctionOf(id: NodeId, idMap: AstIdMap): NodeId | undefined {
+	for(let node = idMap.get(id), parent = node && RNode.directParent(node, idMap); parent !== undefined; parent = RNode.directParent(parent, idMap)) {
+		if(RFunctionDefinition.is(parent)) {
+			return parent.info.id;
+		}
+	}
+	return undefined;
 }
 
 /** Whether `target` lies within an argument of `call`, which the call reads when it forces that argument, not to find its function. */
@@ -377,7 +493,13 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 	for(const def of functionDefs) {
 		/* we can skip this if we already linked it */
 		if(!Dataflow.hasEdge(graph, id, def.id, EdgeType.Calls)) {
-			propagateExitPoints.push(...linkFunctionCallWithSingleTarget(graph, def, info, idMap));
+			const exits = linkFunctionCallWithSingleTarget(graph, def, info, idMap);
+			if(exits.length > 0 && escapesAnonymousFunction(graph, id, def.id, idMap)) {
+				/* it is the call that raises what its callee raises, so what runs after it only runs if the call returns;
+				   with several possible callees, an exit only some of them take is not certain */
+				const certain = (e: ExitPoint) => functionDefs.size <= 1 || [...functionDefs].every(d => d.exitPoints.some(o => o.type === e.type));
+				propagateExitPoints.push(...exits.map(e => ({ ...e, cds: withCds(e.cds, [certain(e) ? { id } : { id, when: true }]) })));
+			}
 		}
 	}
 	if(!isRoot || (functionDefs.size === 0 && builtIns.size === 0)) {
@@ -386,6 +508,16 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 	/* a built-in reached through a variable (`p <- par; p(...)`) was not processed as that built-in */
 	const calledBuiltIns = builtIns.size > 0 ? [...builtIns] : undefined;
 	return { functionCall: id, called: [...functionDefs], propagateExitPoints, calledBuiltIns };
+}
+
+/** An anonymous function the call `id` runs calls the free function `fnId` it reads: whether what `fnId` raises leaves the anonymous function, which a handler around the call within it prevents. */
+function escapesAnonymousFunction(graph: DataflowGraph, id: NodeId, fnId: NodeId, idMap: AstIdMap): boolean {
+	const anonymous = NodeId.isAnonymousCall(id) ? NodeId.nodeOf(id, idMap) : undefined;
+	if(!RFunctionDefinition.is(anonymous) || anonymous.info.id === fnId) {
+		return true;
+	}
+	const within = Dataflow.sourcesOf(graph, fnId, EdgeType.Calls).filter(c => RNode.findEnclosing(c, idMap, RFunctionDefinition.is) === anonymous.info.id);
+	return within.length === 0 || within.some(c => errorEscapes(c, anonymous.body.info.id, idMap, graph));
 }
 
 /** Returns the called functions within `graph` (ideally a superset of `thisGraph`, the graph searched for calls), which can be used to merge the environments with the call; also links the corresponding arguments. */
@@ -447,6 +579,14 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 	return [...all];
 }
 
+/**
+ * The steps a walk for the function definitions reads evaluate to takes with the calls it is in before it forgets them: the
+ * walk keeps apart what a parameter holds in each call of a function, so a program whose functions call each other a lot
+ * (thousands of calls, as in a package) has it visit every vertex once per call. Without the calls, a visit covers them all,
+ * which reaches the same functions and maybe more, so the walk stays sound and ends after visiting each vertex about once.
+ */
+const MaxContextSensitiveSteps = 20_000;
+
 /** Finds all linked function definitions starting from the given read ids; expects the caller to already have resolved the accessed objects (first layer of reads/returns/calls/...). */
 export function getAllLinkedFunctionDefinitions(
 	functionDefinitionReadIds: ReadonlySet<NodeId>,
@@ -458,13 +598,16 @@ export function getAllLinkedFunctionDefinitions(
 	/* the calls each vertex was expanded under, by whether an access led to it */
 	const expanded = [new Map<NodeId, Set<NodeId | undefined>>(), new Map<NodeId, Set<NodeId | undefined>>()] as const;
 	const scopes: CallScopes = new Map();
-	const next = (id: NodeId, viaAccess: boolean, call: NodeId | undefined) => {
-		if(expanded[viaAccess ? 1 : 0].get(id)?.has(call) !== true) {
-			potential.push([id, viaAccess, call]);
+	let steps = 0;
+	function next(id: NodeId, viaAccess: boolean, call: NodeId | undefined) {
+		/* past the budget, the walk forgets the calls it is in, which only lets it reach more (see `MaxContextSensitiveSteps`) */
+		const kept = steps < MaxContextSensitiveSteps ? call : undefined;
+		if(expanded[viaAccess ? 1 : 0].get(id)?.has(kept) !== true) {
+			potential.push([id, viaAccess, kept]);
 		}
-	};
+	}
 
-	for(let item = potential.pop(); item !== undefined; item = potential.pop()) {
+	for(let item = potential.pop(); item !== undefined; item = potential.pop(), steps++) {
 		const [cid, viaAccess, call] = item;
 		const done = expanded[viaAccess ? 1 : 0];
 		const calls = done.get(cid);
@@ -488,8 +631,15 @@ export function getAllLinkedFunctionDefinitions(
 	return [result, builtIns];
 }
 
-/** One step of the walk for the function definitions that reads may evaluate to: hands each state the walk goes on to from `id` to `next`, or returns `id` if the walk ends at it, being a built-in or a function definition. */
-function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: boolean, call: NodeId | undefined, scopes: CallScopes, next: (id: NodeId, viaAccess: boolean, call: NodeId | undefined) => void): NodeId | undefined {
+function subsets(node: RNode<ParentInformation> | undefined): boolean {
+	return RAccess.is(node) && node.operator === '[';
+}
+
+/**
+ * One step of the walk for the function definitions that reads may evaluate to: hands each state the walk goes on to from `id` to `next`, or returns `id` if the walk ends at it, being a built-in or a function definition.
+ * With `bindsLater`, the step leaves the parameters the call may bind to it: it gets the arguments a parameter at `id` may hold, whose states (without a call) the walk goes on to, and the call keeps just those it passes, if it passes any.
+ */
+function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: boolean, call: NodeId | undefined, scopes: CallScopes, next: (id: NodeId, viaAccess: boolean, call: NodeId | undefined) => void, bindsLater?: (arguments_: readonly NodeId[], viaAccess: boolean) => void): NodeId | undefined {
 	if(NodeId.isBuiltIn(id)) {
 		return id;
 	}
@@ -503,7 +653,8 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 			next(named, false, undefined);
 		}
 	}
-	const nextViaAccess = viaAccess || DfgVertex.hasOrigin(vertex, BuiltInProcName.Access);
+	/* a subset (`fs[1]`) holds entries as the list does, an element access (`fs[[1]]`, `fs$f`) the entry it names */
+	const nextViaAccess = viaAccess || (DfgVertex.hasOrigin(vertex, BuiltInProcName.Access) && !subsets(graph.idMap?.get(id)));
 	const isSkipType = DfgVertex.isFunctionCall(vertex);
 	/* a replacement keeps its target what it was (`environment(f) <- e` leaves `f` the same function), unless the call is to what it put into a part of it, so the walk goes on to the binding it replaces only */
 	const replaces = DfgVertex.isVariableDefinition(vertex) && vertex.par && !nextViaAccess;
@@ -513,7 +664,8 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 	const handedBack = !viaAccess && DfgVertex.hasOrigin(vertex, BuiltInProcName.List) ? EdgeType.Returns | EdgeType.Argument : EdgeType.Returns;
 	/* only a call into a body binds parameters, a built-in hands back what it is given in the same context */
 	const returnedTo = DfgVertex.isFunctionCall(vertex) && !vertex.onlyBuiltin ? id : call;
-	for(const [target, e] of graph.edgesFrom(id)) {
+	/* an edge stating only a side effect on a call is neither handed back nor followed */
+	for(const [target, e] of graph.edgesBeyondSideEffects(id)) {
 		if(DfEdge.includesType(e, handedBack)) {
 			hasReturnEdge = true;
 			next(target, nextViaAccess, returnedTo === call ? scopedTo(graph, scopes, call, target) : returnedTo);
@@ -522,6 +674,18 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 		}
 	}
 	if(!hasReturnEdge && followTargets) {
+		if(bindsLater !== undefined && call !== undefined) {
+			const bindable = followTargets.filter(([, onCall]) => onCall).map(([target]) => target);
+			if(bindable.length > 0) {
+				bindsLater(bindable, nextViaAccess);
+			}
+			for(const [target, onCall] of followTargets) {
+				if(!onCall) {
+					next(target, nextViaAccess, scopedTo(graph, scopes, call, target));
+				}
+			}
+			return undefined;
+		}
 		/* a parameter the call binds holds only what that call passes, the walk then goes on in the caller */
 		const passed = call === undefined ? undefined : new Set(Dataflow.targetsOf(graph, call, EdgeType.Argument));
 		const bound = followTargets.some(([target, onCall]) => onCall && passed?.has(target));
@@ -532,6 +696,13 @@ function walkLinkedDefinitions(graph: DataflowGraph, id: NodeId, viaAccess: bool
 		}
 	}
 	return undefined;
+}
+
+/** The arguments a parameter may hold that `call` binds it to: those it passes, all of them if it passes none (see {@link walkLinkedDefinitions}). */
+function boundBy(graph: DataflowGraph, call: NodeId, arguments_: readonly NodeId[], passedBy: Map<NodeId, ReadonlySet<NodeId>>): readonly NodeId[] {
+	const passed = getOrSet(passedBy, call, () => new Set(Dataflow.targetsOf(graph, call, EdgeType.Argument)));
+	const bound = arguments_.filter(a => passed.has(a));
+	return bound.length > 0 ? bound : arguments_;
 }
 
 /** A string where a function is wanted names the function (`match.fun`, `do.call` and the apply family look it up), which is resolved where the string is written, by the environment of the call it is passed to. */
@@ -559,11 +730,7 @@ function scopedTo(graph: DataflowGraph, scopes: CallScopes, call: NodeId | undef
 	if(call === undefined || idMap === undefined) {
 		return call;
 	}
-	let bodies = scopes.get(call);
-	if(bodies === undefined) {
-		bodies = new Set(Dataflow.targetsOf(graph, call, EdgeType.Calls | EdgeType.Returns).map(t => RNode.findEnclosing(t, idMap, RFunctionDefinition.is)).filter(isNotUndefined));
-		scopes.set(call, bodies);
-	}
+	const bodies = bodiesRunBy(graph, scopes, call);
 	for(let node = idMap.get(target); node !== undefined; node = RNode.directParent(node, idMap)) {
 		if(bodies.has(node.info.id)) {
 			return call;
@@ -572,24 +739,53 @@ function scopedTo(graph: DataflowGraph, scopes: CallScopes, call: NodeId | undef
 	return undefined;
 }
 
+/** The function definitions whose bodies `call` runs, see {@link scopedTo}. */
+function bodiesRunBy(graph: DataflowGraph, scopes: CallScopes, call: NodeId): ReadonlySet<NodeId> {
+	const idMap = graph.idMap;
+	return getOrSet(scopes, call, () => idMap === undefined ? new Set() : new Set(Dataflow.targetsOf(graph, call, EdgeType.Calls | EdgeType.Returns).map(t => RNode.findEnclosing(t, idMap, RFunctionDefinition.is)).filter(isNotUndefined)));
+}
+
 /** What a state of {@link LinkedFunctionResolver} reaches, the ids of function definitions and built-ins. */
 type Reached = ReadonlySet<NodeId>;
-const ReachesNothing: Reached = new Set();
 
 /** Finds the function definitions and built-ins that reads may evaluate to (see {@link getAllLinkedFunctionDefinitions}). */
 export class LinkedFunctionResolver {
 	private readonly graph:     DataflowGraph;
 	/** the number of each state, by whether an access led to it, its vertex, and its call */
 	private readonly numbers:   readonly [Map<NodeId, Map<NodeId | undefined, number>>, Map<NodeId, Map<NodeId | undefined, number>>] = [new Map(), new Map()];
-	private readonly states:    [id: NodeId, viaAccess: boolean, call: NodeId | undefined][] = [];
+	/** a state of the walk, or (with `region`) the state of {@link LinkedFunctionResolver#regions} the walk is in under any call running the same bodies */
+	private readonly states:    [id: NodeId, viaAccess: boolean, call: NodeId | undefined, region?: number][] = [];
 	/** the built-ins and function definitions the walk ends at, by their state */
 	private readonly ends =     new Map<number, Reached>();
 	private readonly scopes:    CallScopes = new Map();
+	private readonly passedBy = new Map<NodeId, ReadonlySet<NodeId>>();
 	private readonly summaries: ReachSummaries<number, Reached>;
+	/**
+	 * Within the bodies a call runs, the walk goes the same way under every call running them, but for the parameters it binds:
+	 * a function calling itself (as `[.data.table` does with each `x[...]`) would else have the walk visit its body once per call.
+	 * So the walk in these bodies is done once per set of bodies, by `region`, with `scope` standing for any call running them, and
+	 * leaves the parameters it reaches (`hit`) to each call.
+	 */
+	private readonly regions = {
+		numbers:  new Map<NodeId, readonly [Map<NodeId, number>, Map<NodeId, number>]>(),
+		states:   [] as [id: NodeId, viaAccess: boolean, scope: NodeId][],
+		/* by region state, filled once it is expanded */
+		within:   [] as (readonly number[])[],
+		leaving:  [] as (readonly number[])[],
+		hit:      new Map<number, readonly [arguments_: readonly NodeId[], viaAccess: boolean]>(),
+		/** the region states, by their scope, that hold the outer state of the walk in them */
+		outer:    new Map<number, number>(),
+		/** the scope standing for each call, by the bodies it runs */
+		scopeOf:  new Map<NodeId, NodeId>(),
+		byBodies: new Map<string, NodeId>()
+	};
+	/** the region states whose parameters a walk from a region state reaches */
+	private readonly hits: ReachSummaries<number, ReadonlySet<number>>;
 
 	constructor(graph: DataflowGraph) {
 		this.graph = graph;
-		this.summaries = new ReachSummaries(state => this.expand(state), state => this.ends.get(state), { empty: ReachesNothing, concat: unionOfSets });
+		this.summaries = new ReachSummaries(state => this.expand(state), state => this.ends.get(state), Monoid.set());
+		this.hits = new ReachSummaries<number, ReadonlySet<number>>(region => this.expandRegion(region).within, region => this.regions.hit.has(region) ? new Set([region]) : undefined, Monoid.set());
 	}
 
 	/** The function definitions and built-ins the reads with the given ids may evaluate to. */
@@ -609,21 +805,79 @@ export class LinkedFunctionResolver {
 	}
 
 	private state(id: NodeId, viaAccess: boolean, call: NodeId | undefined): number {
-		const byCall = this.numbers[viaAccess ? 1 : 0].get(id) ?? new Map<NodeId | undefined, number>();
-		let state = byCall.get(call);
-		if(state === undefined) {
-			state = this.states.push([id, viaAccess, call]) - 1;
-			if(byCall.size === 0) {
-				this.numbers[viaAccess ? 1 : 0].set(id, byCall);
-			}
-			byCall.set(call, state);
+		const byCall = getOrSet(this.numbers[viaAccess ? 1 : 0], id, () => new Map<NodeId | undefined, number>());
+		return getOrSet(byCall, call, () => this.states.push([id, viaAccess, call]) - 1);
+	}
+
+	/** The scope standing for every call that runs the same bodies as `call`. */
+	private scopeOf(call: NodeId): NodeId {
+		return getOrSet(this.regions.scopeOf, call, () => {
+			const bodies = bodiesRunBy(this.graph, this.scopes, call);
+			const key = [...bodies].map(String).sort().join(',');
+			return getOrSet(this.regions.byBodies, key, () => {
+				/* no vertex has this id, the walk only asks the scopes for the bodies it runs */
+				const scope = `\u0000bodies:${key}`;
+				this.scopes.set(scope, bodies);
+				return scope;
+			});
+		});
+	}
+
+	private regionState(id: NodeId, viaAccess: boolean, scope: NodeId): number {
+		const byId = getOrSet(this.regions.numbers, scope, () => [new Map<NodeId, number>(), new Map<NodeId, number>()] as const);
+		return getOrSet(byId[viaAccess ? 1 : 0], id, () => this.regions.states.push([id, viaAccess, scope]) - 1);
+	}
+
+	/** The state of the walk that is `region`. */
+	private outerOf(region: number): number {
+		return getOrSet(this.regions.outer, region, () => {
+			const [id, viaAccess, scope] = this.regions.states[region];
+			return this.states.push([id, viaAccess, scope, region]) - 1;
+		});
+	}
+
+	/** The steps from a region state, to the states of its scope it goes on to (`within`), and to the others (`leaving`). */
+	private expandRegion(region: number): { within: readonly number[], leaving: readonly number[] } {
+		const known = this.regions.within[region];
+		if(known !== undefined) {
+			return { within: known, leaving: this.regions.leaving[region] };
 		}
-		return state;
+		const [id, viaAccess, scope] = this.regions.states[region];
+		const within: number[] = [];
+		const leaving: number[] = [];
+		const end = walkLinkedDefinitions(this.graph, id, viaAccess, scope, this.scopes, (target, nextViaAccess, nextCall) => {
+			if(nextCall === scope) {
+				within.push(this.regionState(target, nextViaAccess, scope));
+			} else {
+				leaving.push(this.state(target, nextViaAccess, nextCall));
+			}
+		}, (arguments_, nextViaAccess) => this.regions.hit.set(region, [arguments_, nextViaAccess]));
+		if(end !== undefined) {
+			this.ends.set(this.outerOf(region), new Set([end]));
+		}
+		this.regions.within[region] = within;
+		this.regions.leaving[region] = leaving;
+		return { within, leaving };
 	}
 
 	/** The states the walk goes on to from `state`, none for a built-in or function definition it ends at. */
 	private expand(state: number): readonly number[] {
-		const [id, viaAccess, call] = this.states[state];
+		const [id, viaAccess, call, region] = this.states[state];
+		if(region !== undefined) {
+			const { within, leaving } = this.expandRegion(region);
+			return [...within.map(r => this.outerOf(r)), ...leaving];
+		} else if(call !== undefined) {
+			/* the walk in the bodies the call runs, and the arguments of the call the parameters it reaches there are bound to */
+			const entry = this.regionState(id, viaAccess, this.scopeOf(call));
+			const successors = [this.outerOf(entry)];
+			for(const hit of this.hits.of(entry)) {
+				const [arguments_, nextViaAccess] = this.regions.hit.get(hit) as readonly [readonly NodeId[], boolean];
+				for(const argument of boundBy(this.graph, call, arguments_, this.passedBy)) {
+					successors.push(this.state(argument, nextViaAccess, undefined));
+				}
+			}
+			return successors;
+		}
 		const successors: number[] = [];
 		const end = walkLinkedDefinitions(this.graph, id, viaAccess, call, this.scopes, (target, nextViaAccess, nextCall) => {
 			successors.push(this.state(target, nextViaAccess, nextCall));
@@ -651,6 +905,11 @@ export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: N
 			callees.add(inner.functionName.info.id);
 			/* the call vertex carries the call's id, its name symbol has no vertex of its own */
 			references.push({ nodeId: inner.info.id, name: inner.functionName.content, cds: undefined, type: ReferenceType.Function });
+		} else if(RExpressionList.is(inner)) {
+			/* the braces of a group name the group, which already calls `{` */
+			for(const brace of inner.grouping ?? []) {
+				callees.add(brace.info.id);
+			}
 		} else if(RSymbol.is(inner) && !callees.has(inner.info.id)) {
 			references.push({ nodeId: inner.info.id, name: inner.content, cds: undefined, type: ReferenceType.Variable });
 		}
@@ -665,11 +924,18 @@ export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: N
 
 /** Links the call `callId` to the functions the given definitions bind, which it did not know of when it was processed. */
 export function linkCallToDefinitions(graph: DataflowGraph, callId: NodeId, definitions: readonly NodeId[], idMap: AstIdMap): void {
+	if(definitions.length > 0 && DfgVertex.isFunctionCall(graph.getVertex(callId))) {
+		linkCallToFunctions(graph, callId, getAllLinkedFunctionDefinitions(new Set(definitions), graph)[0], idMap);
+	}
+}
+
+/** Links the call `callId` to the given functions, as {@link linkCallToDefinitions} does once it found them. */
+export function linkCallToFunctions(graph: DataflowGraph, callId: NodeId, functions: Iterable<Required<DataflowGraphVertexFunctionDefinition>>, idMap: AstIdMap): void {
 	const call = graph.getVertex(callId);
-	if(definitions.length === 0 || !DfgVertex.isFunctionCall(call)) {
+	if(!DfgVertex.isFunctionCall(call)) {
 		return;
 	}
-	for(const fn of getAllLinkedFunctionDefinitions(new Set(definitions), graph)[0]) {
+	for(const fn of functions) {
 		if(!Dataflow.hasEdge(graph, callId, fn.id, EdgeType.Calls)) {
 			linkFunctionCallWithSingleTarget(graph, fn, call, idMap);
 		}
@@ -840,6 +1106,16 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
 	}
 }
 
+/** An access of an environment one of `refs` is bound to in `environment` reads its field: `function(i) e$a`, and the call reads what the environment holds, as that of a named function does (see {@link readEnvironmentContents}): `function(i) rd(e)`. */
+function bindAccessedFields(refs: readonly IdentifierReference[], environment: REnvironmentInformation, graph: DataflowGraph, idMap: AstIdMap, call: NodeId): void {
+	for(const ref of refs) {
+		for(const holder of (ref.name === undefined ? undefined : Resolve.byNameAndType(ref.name, environment, ReferenceType.Variable)?.filter(hasEnvState)) ?? []) {
+			bindAccessedField(graph, ref.nodeId, holder.envState, idMap, call);
+			readEnvironmentContents(graph, call, holder);
+		}
+	}
+}
+
 /**
  * The open references a function definition still carries into its closure.
  * @helper api
@@ -848,6 +1124,18 @@ export const ClosureRefs = {
 	name: 'ClosureRefs',
 	/** Resolves the open ingoing references of a definition called anonymously at `callId` against `environment`, links what resolves, and leaves only the references that stay open. */
 	resolveOpenIngoing(this: void, graph: DataflowGraph, callId: NodeId, definition: DataflowGraphVertexFunctionDefinition, environment: REnvironmentInformation): void {
+		if(graph.idMap !== undefined) {
+			bindAccessedFields(definition.subflow.in, environment, graph, graph.idMap, callId);
+			/* what the closure writes into an environment a free variable holds is written by this call, as for a named call (see linkFreeReads) */
+			for(const ingoing of definition.subflow.in) {
+				for(const def of ingoing.name === undefined ? [] : Resolve.byNameAndType(ingoing.name, environment, ingoing.type) ?? []) {
+					if(hasEnvState(def) && !NodeId.isBuiltIn(def.nodeId) && !definition.subflow.graph.has(def.nodeId)) {
+						linkFieldWritesOnCall(graph, callId, definition.id, ingoing.nodeId, def.nodeId, def.envState, graph.idMap);
+						readEnvironmentContents(graph, callId, def);
+					}
+				}
+			}
+		}
 		definition.subflow.in = linkInputs(definition.subflow.in, environment, [], graph, false, callId);
 	}
 } as const;
@@ -882,7 +1170,8 @@ export function linkFieldReads(graph: DataflowGraph, accessId: NodeId, fieldDefs
 	recordFound(graph, accessId, fieldDefs?.map(d => d.nodeId).filter(d => !NodeId.isBuiltIn(d)) ?? [], call);
 	for(const fd of fieldDefs ?? []) {
 		graph.addEdge(accessId, fd.nodeId, EdgeType.Reads);
-		if(fd.definedAt !== undefined && fd.definedAt !== fd.nodeId) {
+		/* a parameter is defined by its parameter node, which has no vertex */
+		if(fd.definedAt !== undefined && fd.definedAt !== fd.nodeId && fd.type !== ReferenceType.Parameter) {
 			graph.addEdge(accessId, fd.definedAt, EdgeType.Reads);
 		}
 		if(returnsFunctions && (fd.type & (ReferenceType.Function | ReferenceType.Unknown)) !== 0) {

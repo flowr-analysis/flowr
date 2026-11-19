@@ -32,10 +32,10 @@ const imports = (name: string): Dep => ({ name, type: DepType.Imports });
  */
 function db(): SigDatabase {
 	const b = new SigDbBuilder();
-	const add = (name: string, deps: readonly Dep[] = [], fns: readonly string[] = [`${name}fn`]) => {
+	function add(name: string, deps: readonly Dep[] = [], fns: readonly string[] = [`${name}fn`]) {
 		b.addPackage(name, { latest: '1.0.0' });
 		b.addVersion(name, '1.0.0', { ...ver(fns.map(expFn)), dependencies: [...deps] });
-	};
+	}
 	add('leaf');
 	add('other');
 	add('dependent', [depends('R'), depends('leaf'), { name: 'other', type: DepType.Suggests }, { name: 'other', type: DepType.Enhances }, { name: 'other', type: DepType.LinkingTo }]);

@@ -2,8 +2,7 @@ import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../..
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { groupGenericOf } from '../../dataflow/environments/group-generics';
 import type { DecodedFunction } from './decode';
-import type { PackageSignatureSource } from './reader';
-import { MergedSignatureSource } from './reader';
+import { type PackageSignatureSource, MergedSignatureSource } from './reader';
 import type { LibraryExports } from './schema';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../context/flowr-analyzer-dependencies-context';
 import { log } from '../../util/log';
@@ -92,7 +91,7 @@ const signatureDbLog = log.getSubLogger({ name: 'signature-db' });
 export function signatureDbOf(deps: ReadOnlyFlowrAnalyzerDependenciesContext): SignatureDb {
 	const merged = () => new MergedSignatureSource(deps.signatureSources());
 	const versionOf = (pkg: BrandedNamespace) => deps.getDependency(pkg)?.resolvedVersion;
-	const answerFor = <T>(pkg: BrandedNamespace, version: string | undefined, ask: (src: PackageSignatureSource, v: string | undefined) => T | undefined): T | undefined => {
+	function answerFor<T>(pkg: BrandedNamespace, version: string | undefined, ask: (src: PackageSignatureSource, v: string | undefined) => T | undefined): T | undefined {
 		const src = merged();
 		const assumed = version ?? versionOf(pkg);
 		const found = ask(src, assumed);
@@ -104,16 +103,15 @@ export function signatureDbOf(deps: ReadOnlyFlowrAnalyzerDependenciesContext): S
 			signatureDbLog.debug(`no signature for ${pkg} ${assumed}, answering from the newest version the database holds`);
 		}
 		return any;
-	};
+	}
 
-	const functionOf = (id: Identifier, version?: string): DecodedFunction | undefined => {
+	function functionOf(id: Identifier, version?: string): DecodedFunction | undefined {
 		const [name, pkg, internal] = Identifier.toArray(id);
 		if(pkg === undefined) {
 			return undefined; // without a package there is nothing to look the function up in
 		}
 		/* `::` reaches what the package exports, only `:::` reaches the rest */
-		const reaches = (fn: DecodedFunction | undefined) =>
-			fn !== undefined && (fn.exported || internal === true) ? fn : undefined;
+		const reaches = (fn: DecodedFunction | undefined) => fn !== undefined && (fn.exported || internal === true) ? fn : undefined;
 		const found = reaches(answerFor(pkg, version, (src, v) => src.functionByName(pkg, name, v)));
 		if(found !== undefined) {
 			return found;
@@ -121,15 +119,15 @@ export function signatureDbOf(deps: ReadOnlyFlowrAnalyzerDependenciesContext): S
 		/* `setMethod('Math', 'cls', ...)` answers every member of the group at once, so the group is the entry */
 		const group = groupGenericOf(name);
 		return group === undefined ? undefined : reaches(answerFor(pkg, version, (src, v) => src.functionByName(pkg, group, v)));
-	};
+	}
 
-	const rawFunctionOf = (id: Identifier, version?: string): DecodedFunction | undefined => {
+	function rawFunctionOf(id: Identifier, version?: string): DecodedFunction | undefined {
 		const [name, pkg] = Identifier.toArray(id);
 		if(pkg === undefined) {
 			return undefined; // without a package there is nothing to look the function up in
 		}
 		return answerFor(pkg, version, (src, v) => src.functionByName(pkg, name, v));
-	};
+	}
 
 	return {
 		available:         () => deps.signatureSources().length > 0,

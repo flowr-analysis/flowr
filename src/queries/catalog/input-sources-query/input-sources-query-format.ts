@@ -18,10 +18,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flow
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from '../../../project/context/flowr-analyzer-environment-context';
 
 export type InputSourcesQueryConfig = InputClassifierConfig;
-/**
- * Calculates provenance for all inputs and their transformations
- * based on the `provenance` of a given function.
- */
+/** Calculates provenance for all inputs and their transformations based on the `provenance` of a given function. */
 export interface InputSourcesQuery extends BaseQueryFormat {
 	readonly type:      'input-sources';
 	/**
@@ -32,7 +29,6 @@ export interface InputSourcesQuery extends BaseQueryFormat {
 	readonly config?:   InputSourcesQueryConfig
 }
 
-
 /**
  * Which functions belong to which input type is stated with the functions themselves, in the built-in configuration
  * the analyzer registered (see {@link ReadOnlyFlowrAnalyzerEnvironmentContext#builtInDefinitions}):
@@ -40,7 +36,7 @@ export interface InputSourcesQuery extends BaseQueryFormat {
  */
 export const defaultInputClassifierConfig = (ctx: ReadOnlyFlowrAnalyzerContext): InputClassifierConfig => ctx.env.derive(inputClassifierConfigOf);
 
-const inputClassifierConfigOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): InputClassifierConfig => {
+function inputClassifierConfigOf(env: ReadOnlyFlowrAnalyzerEnvironmentContext): InputClassifierConfig {
 	const builtIns = env.builtInIndex;
 	return {
 		[InputTraceType.Pure]:   builtIns.without(InputProps),
@@ -63,7 +59,7 @@ const inputClassifierConfigOf = (env: ReadOnlyFlowrAnalyzerEnvironmentContext): 
 		linkedEntryPoints:       LinkedInputEntryPoints,
 		narrowing:               narrowingFunctions(builtIns)
 	};
-};
+}
 
 export interface InputSourcesQueryResult extends BaseQueryResult {
 	/** For each query key, a list of classified input sources (each with id and all traces) */

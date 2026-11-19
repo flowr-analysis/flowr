@@ -10,6 +10,7 @@ import { SigDbExt, type SigDbPkgMetaIndex, type SigDbShard, type SigDbTier } fro
 import type { ByteRange, SigDbIndexWire, SigShardIndexWire } from './index-format';
 import { CompressedExtPattern, compressedExtOf, decompressSyncFor, readableExtsPreferred, stripCompressedExt, writeCodecs } from './codec';
 import { sigDbCacheDir } from './decompress';
+import { CacheScope, GlobalCaches } from '../../util/global-caches';
 
 export const SigDbManifestMagic = 'flowr-sigdb-manifest';
 export const SigDbManifestSchema = 2;
@@ -154,7 +155,7 @@ export function defaultSigDbPath(scope?: SigDbScope, searchRoots?: readonly stri
 		return undefined;
 	}
 	const scopes = scope ? [scope] : SigDbScopeOrder;
-	const probe = (dir: string): string | undefined => {
+	function probe(dir: string): string | undefined {
 		for(const sub of SigDbSubDirs) {
 			for(const s of scopes) {
 				for(const suffix of ['', ...readableExtsPreferred()]) {
@@ -166,7 +167,7 @@ export function defaultSigDbPath(scope?: SigDbScope, searchRoots?: readonly stri
 			}
 		}
 		return undefined;
-	};
+	}
 	for(const root of sigDbSearchRoots(searchRoots)) {
 		for(let dir = root, i = 0; i < 10; i++) {
 			const hit = probe(dir);
@@ -195,7 +196,7 @@ export function defaultSigDbPath(scope?: SigDbScope, searchRoots?: readonly stri
  * repeats it for nothing. Kept honest by remembering the modification time of every directory the scan read: a
  * bundle dropped next to the shipped ones bumps that directory and the next call rescans.
  */
-const defaultSigDbPathsMemo = new Map<string, { paths: readonly string[], watched: readonly (readonly [string, number])[] }>();
+const defaultSigDbPathsMemo = GlobalCaches.map<string, { paths: readonly string[], watched: readonly (readonly [string, number])[] }>('default-sigdb-paths', CacheScope.Process, 64);
 
 /** Whether every directory the memoized scan read still carries the modification time it had back then */
 function memoizedScanStillCurrent(watched: readonly (readonly [string, number])[]): boolean {
@@ -215,7 +216,8 @@ function memoizedScanStillCurrent(watched: readonly (readonly [string, number])[
  * Every distinct sigdb bundle discoverable in the search dirs (see {@link defaultSigDbPath}) -- not just the
  * richest scope. So dropping an extra bundle next to the shipped default (a downloaded full-history
  * `full.manifest.json.br`, a custom `*.manifest.json`, or a standalone `*.sigs.ndjson`) makes flowR mount it
- * automatically. Manifests come first (scope-named leading, richest scope first), then standalone bundles; the
+ * automatically. Manifests come first, those of an earlier search root first (so `$FLOWR_SIGDB_DIR` overrides
+ * what ships with flowR), then scope-named leading, richest scope first, then standalone bundles; the
  * shard and dictionary files a manifest already owns are skipped. Deduped by filename, first search location wins.
  */
 export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
@@ -233,17 +235,21 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 	const manifests = new Map<string, string>();    // `<name>.manifest.json` (ignoring compression ext) -> first-found path
 	const standalones = new Map<string, string>();   // `<name>.sigs.ndjson` (ignoring compression ext) -> first-found path
 	const foundIn = new Map<string, string>();       // where a key was first found, to only compare codecs within one directory
+	/* the search root a key was first found under: a root asked for (`$FLOWR_SIGDB_DIR`) comes before the shipped bundles */
+	const rootOf = new Map<string, number>();
+	let root = 0;
 	/** keeps the first location, but picks the cheapest readable codec among the copies that location offers */
-	const keep = (into: Map<string, string>, key: string, file: string, dir: string): void => {
+	function keep(into: Map<string, string>, key: string, file: string, dir: string): void {
 		const previous = into.get(key);
 		if(previous === undefined) {
 			into.set(key, file);
 			foundIn.set(key, dir);
+			rootOf.set(key, root);
 		} else if(foundIn.get(key) === dir && codecRank(file) < codecRank(previous)) {
 			into.set(key, file);
 		}
-	};
-	const scanDir = (base: string): void => {
+	}
+	function scanDir(base: string): void {
 		for(const sub of SigDbSubDirs) {
 			const dir = path.join(base, sub);
 			let entries: string[];
@@ -262,9 +268,9 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 				}
 			}
 		}
-	};
-	for(const root of roots) {
-		for(let dir = root, i = 0; i < 10; i++) {
+	}
+	for(const start of roots) {
+		for(let dir = start, i = 0; i < 10; i++) {
 			scanDir(dir);
 			const parent = path.dirname(dir);
 			if(parent === dir) {
@@ -272,22 +278,23 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 			}
 			dir = parent;
 		}
+		root++;
 	}
 	for(const bundle of sigDbBundleDirs(watched)) {
 		scanDir(bundle);
 	}
 	// a standalone bundle is a `.sigs.ndjson` that is not a shard of a discovered manifest (`<manifest>.<shard>...`)
 	const prefixes = [...manifests.keys()].map(k => k.replace(/\.manifest\.json$/, ''));
-	const isShard = (name: string): boolean => {
+	function isShard(name: string): boolean {
 		const base = name.replace(new RegExp(`${SigDbExt.replace(/\./g, '\\.')}$`), '');
 		return prefixes.some(p => base === p || base.startsWith(p + '.'));
-	};
-	const scopeRank = (name: string): number => {
+	}
+	function scopeRank(name: string): number {
 		const scope = SigDbScopeOrder.indexOf(name.replace(/\.manifest\.json$/, '') as SigDbScope);
 		return scope === -1 ? SigDbScopeOrder.length : scope;   // custom bundles sort after the known scopes
-	};
+	}
 	const orderedManifests = [...manifests.entries()]
-		.sort((a, b) => scopeRank(a[0]) - scopeRank(b[0]) || compareByCodeUnit(a[0], b[0])).map(([, p]) => p);
+		.sort((a, b) => (rootOf.get(a[0]) ?? 0) - (rootOf.get(b[0]) ?? 0) || scopeRank(a[0]) - scopeRank(b[0]) || compareByCodeUnit(a[0], b[0])).map(([, p]) => p);
 	const bundles = standalones.entries().filter(([name]) => !isShard(name)).map(([, p]) => p);
 	const paths = [...orderedManifests, ...bundles];
 	defaultSigDbPathsMemo.set(memoKey, { paths, watched });

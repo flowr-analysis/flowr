@@ -61,4 +61,15 @@ describe('SigDb bundle auto-discovery (defaultSigDbPaths)', () => {
 			fs.rmSync(dir, { recursive: true, force: true });
 		}
 	});
+
+	test('a bundle under a root asked for comes before the ones flowR ships, whatever its name', () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sigdb-override-'));
+		try {
+			fs.writeFileSync(path.join(dir, 'flowr-sigdb.manifest.json'), '{}');
+			const paths = defaultSigDbPaths([dir]);
+			expect(paths[0]).toBe(path.join(dir, 'flowr-sigdb.manifest.json'));
+		} finally {
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
+	});
 });

@@ -1,24 +1,14 @@
 import { assert, beforeAll, describe, test } from 'vitest';
 import { flowrRepl } from './utility/utility';
-import type { PipelineOutput } from '../../src/core/steps/pipeline/pipeline';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../src/core/steps/pipeline/default-pipelines';
-import { PipelineExecutor } from '../../src/core/pipeline-executor';
 import { withShell } from '../functionality/_helper/shell';
-import type { RShell } from '../../src/r-bridge/shell';
 import type { DataflowGraph } from '../../src/dataflow/graph/graph';
 import { emptyGraph } from '../../src/dataflow/graph/dataflowgraph-builder';
 import type { NormalizedAst } from '../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../src/util/mermaid/ast';
-import { contextFromInput } from '../../src/project/context/flowr-analyzer-context';
 import { Dataflow } from '../../src/dataflow/graph/df-helper';
+import { analyze } from '../functionality/_helper/analyzer';
 
 describe('repl', () => {
-	async function analyze(shell: RShell, code: string): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> {
-		return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			parser:  shell,
-			context: contextFromInput(code)
-		}).allRemainingSteps();
-	}
 	describe('inspection', { concurrent: false }, withShell(shell => {
 		for(const [code, str] of [
 			['test', false],
@@ -33,9 +23,9 @@ describe('repl', () => {
 				let normalized: NormalizedAst | undefined = undefined;
 				let output = '';
 				beforeAll(async() => {
-					const data = await analyze(shell, code);
-					dfOut = data.dataflow.graph;
-					normalized = data.normalize;
+					const analyzer = await analyze(shell, code);
+					dfOut = (await analyzer.dataflow()).graph;
+					normalized = await analyzer.normalize();
 					output = await flowrRepl([`:df ${replCode}`, `:n ${replCode}`, `:df* ${replCode}`, `:n* ${replCode}`, ':quit']);
 				});
 				test(':df', () => {

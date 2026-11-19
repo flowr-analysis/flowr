@@ -9,3 +9,6 @@ export const ErrorConditionClasses: ReadonlySet<BrandedIdentifier> = new Set(['e
 export function namesAnErrorHandler<Info>(args: readonly PotentiallyEmptyRArgument<Info>[]): boolean {
 	return args.some(a => RArgument.isNamed(a) && ErrorConditionClasses.has(Identifier.getName(a.name.content)));
 }
+
+/** Classes the session signals on its own (a user interrupt) rather than the code, so a handler of them catches no error the code raises. */
+export const SessionConditionClasses: ReadonlySet<BrandedIdentifier> = new Set(['interrupt']);

@@ -153,10 +153,7 @@ export class FlowrUvrManifestFile extends FlowrManifestFile<DeepReadonly<UvrMani
 	}
 
 	public declares(): DeclaredPackages {
-		return {
-			imports:  packagesOf(this.content().dependencies),
-			suggests: packagesOf(this.content()['dev-dependencies'])
-		};
+		return { imports: packagesOf(this.content().dependencies), suggests: packagesOf(this.content()['dev-dependencies']) };
 	}
 }
 

@@ -11,11 +11,9 @@ import type { NamedJsonEntry } from '../../../json/format';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 import { BuiltInOperators } from '../../../../../../../dataflow/environments/default-builtin-config/base-operators';
 
-
 /**
  * Parses the construct as a {@link RUnaryOp}.
  * @param data     - The data used by the parser (see {@link NormalizerData})
- * @param operator - The operator token
  * @param operand  - The operand of the unary operator
  * @returns        The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
  */
@@ -33,12 +31,5 @@ function parseUnaryOp(data: NormalizerData, operator: NamedJsonEntry, operand: N
 	const operationName = retrieveOpName(operator);
 	const { location, content } = retrieveMetaStructure(operator.content);
 
-	return {
-		type:     RType.UnaryOp,
-		location,
-		operator: operationName,
-		lexeme:   content,
-		operand:  parsedOperand,
-		info:     currentSourceInfo(data)
-	};
+	return { type: RType.UnaryOp, location, operator: operationName, lexeme: content, operand: parsedOperand, info: currentSourceInfo(data) };
 }

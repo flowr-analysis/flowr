@@ -1,8 +1,7 @@
 import { test } from 'vitest';
 import type { TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
 import type { SlicingCriterion } from '../../../src/slicing/criterion/parse';
-import type { TaintAnalysisExpectation } from './helper';
-import { testTaintAnalysis } from './helper';
+import { type TaintAnalysisExpectation, testTaintAnalysis } from './helper';
 
 export const loopKinds = ['for', 'while', 'repeat'] as const;
 export type LoopKind = typeof loopKinds[number];

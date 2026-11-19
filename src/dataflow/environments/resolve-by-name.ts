@@ -1,4 +1,6 @@
 import { EnvType, type Environment, REnvironment, type REnvironmentInformation } from './environment';
+import { BoundedMap } from '../../util/collections/bounded-map';
+import { getOrSet } from '../../util/collections/defaultmap';
 import { Ternary } from '../../util/logic';
 import { type BrandedIdentifier, Identifier, type BrandedNamespace, type IdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
@@ -77,13 +79,10 @@ export function resolveByName(id: Identifier | undefined, environment: REnvironm
 	return found === undefined && target === ReferenceType.NonFunction ? ownDefinitions(id, environment) : found;
 }
 
+/** The memo of the walk below `env`, which may be the built-in environment or a shared base layer, so bounded by {@link TailCacheCap}. */
 function tailCacheOf(env: Environment, target: ReferenceType): Map<BrandedIdentifier, readonly IdentifierDefinition[] | undefined> {
 	env.tailCache ??= new Map();
-	let memo = env.tailCache.get(target);
-	if(memo === undefined) {
-		env.tailCache.set(target, memo = new Map<BrandedIdentifier, readonly IdentifierDefinition[] | undefined>());
-	}
-	return memo;
+	return getOrSet(env.tailCache, target, () => new BoundedMap<BrandedIdentifier, readonly IdentifierDefinition[] | undefined>(TailCacheCap));
 }
 
 /** {@link resolveByName} without its two special targets, i.e. the plain walk up the environments. */
@@ -165,11 +164,7 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 		? (builtIns === undefined || builtIns.length === 0 ? definitions : definitions.concat(builtIns))
 		: (builtIns === undefined || builtIns.length > 0 ? builtIns : undefined);
 	if(flattenAt !== undefined) {
-		const memo = tailCacheOf(flattenAt, target);
-		if(memo.size >= TailCacheCap) {
-			memo.clear();
-		}
-		memo.set(name, result);
+		tailCacheOf(flattenAt, target).set(name, result);
 	}
 	return result;
 }

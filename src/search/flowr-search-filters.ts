@@ -1,12 +1,9 @@
-import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { type RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import { FunctionSemantics } from '../dataflow/fn/function-semantics';
-import { ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
-import type { VertexType } from '../dataflow/graph/vertex';
-import { DfgVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
+import { type VertexType, DfgVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
-import type { Enrichment } from './search-executor/search-enrichers';
-import { enrichmentContent, EnrichmentElementContent } from './search-executor/search-enrichers';
+import { type Enrichment, enrichmentContent, EnrichmentElementContent } from './search-executor/search-enrichers';
 import type { DataflowInformation } from '../dataflow/info';
 import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
@@ -123,9 +120,7 @@ export interface CallPropsArgs {
 }
 
 type ValidFilterTypes<F extends FlowrFilter = FlowrFilter> = FlowrFilterName | FlowrFilterWithArgs<F, FlowrFilterArgs<F>> | RType | VertexType;
-/**
- * By default, we provide filter for every {@link RType} and {@link VertexType}.
- */
+/** By default, we provide filter for every {@link RType} and {@link VertexType}. */
 export type FlowrFilterExpression<F extends FlowrFilter = FlowrFilter> = FlowrFilterCombinator | ValidFilterTypes<F>;
 
 interface BooleanBinaryNode<Composite> {
@@ -144,11 +139,9 @@ type LeafSpecial<F extends FlowrFilter = FlowrFilter> = { readonly type: 'specia
 
 type Leaf = LeafRType | LeafVertexType | LeafSpecial;
 
-
 type BooleanNode = BooleanBinaryNode<BooleanNode>
 	| BooleanUnaryNode<BooleanNode>
 	| Leaf;
-
 
 type BooleanNodeOrCombinator = BooleanNode | FlowrFilterCombinator;
 
@@ -212,11 +205,7 @@ export class FlowrFilterCombinator {
 	}
 
 	private binaryRight<F extends FlowrFilter = FlowrFilter>(op: BooleanBinaryNode<BooleanNode>['type'], right: BooleanNodeOrCombinator | ValidFilterTypes<F>): this {
-		this.tree = {
-			type:  op,
-			left:  this.tree,
-			right: this.unpack(FlowrFilterCombinator.is(right))
-		};
+		this.tree = { type: op, left: this.tree, right: this.unpack(FlowrFilterCombinator.is(right)) };
 		return this;
 	}
 
@@ -225,10 +214,7 @@ export class FlowrFilterCombinator {
 	}
 
 	private unary(op: BooleanUnaryNode<BooleanNode>['type']): this {
-		this.tree = {
-			type:    op,
-			operand: this.tree
-		};
+		this.tree = { type: op, operand: this.tree };
 		return this;
 	}
 
@@ -242,9 +228,7 @@ export class FlowrFilterCombinator {
 }
 export const F = FlowrFilterCombinator;
 
-/**
- * Converts the given binary tree to a string representation.
- */
+/** Converts the given binary tree to a string representation. */
 export function binaryTreeToString(tree: BooleanNode): string {
 	const res = treeToStringImpl(tree, 0);
 	// drop outer parens

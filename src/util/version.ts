@@ -12,9 +12,7 @@ export { flowrVersion } from './flowr-version';
 
 type Version = `${number}.${number}.${number}`;
 
-/**
- * Describes the version of flowR and the used R interpreter.
- */
+/** Describes the version of flowR and the used R interpreter. */
 export interface VersionInformation {
 	/** The version of flowR */
 	flowr:  Version,
@@ -25,9 +23,7 @@ export interface VersionInformation {
 
 const versionRegex = /^\d+\.\d+\.\d+/m;
 
-/**
- * Retrieves the version information for flowR and the given parser or analysis provider.
- */
+/** Retrieves the version information for flowR and the given parser or analysis provider. */
 export async function retrieveVersionInformation(input: KnownParser | ReadonlyFlowrAnalysisProvider): Promise<VersionInformation> {
 	const flowr = flowrVersion().toString();
 
@@ -48,9 +44,7 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
 	return { flowr: flowr as Version, r: r as Version, engine: name };
 }
 
-/**
- * Displays the version information to the given output.
- */
+/** Displays the version information to the given output. */
 export async function printVersionInformation(output: ReplOutput, input: KnownParser | ReadonlyFlowrAnalysisProvider, engineOnly = false) {
 	const { flowr, r, engine } = await retrieveVersionInformation(input);
 	const dim = (s: string) => faint(s, output.formatter);
@@ -74,10 +68,10 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 		rows.push(['assumed R', `${ctx.resolvedRVersion} ${dim(`(solver.sigdb.assumedRVersion = "${setting}")`)}`]);
 		const dbs = ctx.deps.loadedSignatureDatabases();
 		const sigDbUrl = sigDbRemoteRelease()?.url;
-		const describe = (d: typeof dbs[number]) => {
+		function describe(d: typeof dbs[number]) {
 			const entry = `${d.scope} (v${d.version}, ${d.date}${d.format ? `, ${d.format}` : ''})`;
 			return sigDbUrl ? output.formatter.hyperlink(entry, sigDbUrl, true) : entry;
-		};
+		}
 		rows.push(['databases', dbs.length === 0 ? 'none' : dbs.map(describe).join(', '), dbs.length === 0]);
 		// the registered plugins, grouped by prefix; collected here and printed after the table (below) so the
 		// longer labels do not widen the version rows. The header links (once) to the plugin wiki section

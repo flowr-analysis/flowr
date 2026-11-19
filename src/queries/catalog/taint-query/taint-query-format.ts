@@ -1,22 +1,36 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
-import { executeTaintQuery } from './taint-query-executor';
-import type {
-	AnyPredefinedTaintAnalysisName
+import {
+	type AnyPredefinedTaintAnalysisName,
+	type AllPredefinedTaintAnalysisNames,
+	predefinedTaintAnalyses
 } from '../../../taint-analysis/predefined/predefined';
-import { predefinedTaintAnalyses } from '../../../taint-analysis/predefined/predefined';
 import { Bottom, BottomSymbol } from '../../../abstract-interpretation/domains/lattice';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
-import type { CommandCompletions } from '../../../cli/repl/completion';
-import { fileProtocol } from '../../../r-bridge/retriever';
+import { type CommandCompletions, completePrefixedList } from '../../../cli/repl/completion';
 import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
+import { log } from '../../../util/log';
 
+/** Executes the given taint queries using the provided analyzer. */
+export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: readonly TaintQuery[]): Promise<TaintQueryResult<AllPredefinedTaintAnalysisNames>> {
+	const flattened = queries.flatMap(q => q.defs);
+	const start = Date.now();
 
+	if(flattened.length === 0) {
+		log.warn('Missing taint query definition');
+		return { results: new Map(), '.meta': { timing: Date.now() - start } };
+	}
 
+	const analysis = analyzer
+		.taint<AllPredefinedTaintAnalysisNames>()
+		.addPredefined(...flattened);
+
+	return { results: await analysis.run(), '.meta': { timing: Date.now() - start } };
+}
 
 export interface TaintQuery extends BaseQueryFormat {
 	readonly type: 'taint';
@@ -30,34 +44,7 @@ export interface TaintQueryResult<Analyses extends string[]> extends BaseQueryRe
 const prefix = 'definitions:';
 
 function taintQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
-	const prefixNotPresent = line.length == 0 || (line.length == 1 && line[0].length < prefix.length);
-	const notFinished = line.length == 1 && line[0].startsWith(prefix) && !startingNewArg;
-	const endOfOptions = line.length == 1 && startingNewArg || line.length == 2;
-
-	if(prefixNotPresent) {
-		return { completions: [`${prefix}`] };
-	} else if(endOfOptions) {
-		return { completions: [fileProtocol] };
-	} else if(notFinished) {
-		const withoutPrefix = line[0].slice(prefix.length);
-		const used = withoutPrefix.split(',').map(r => r.trim());
-		const all = Object.keys(predefinedTaintAnalyses);
-		const unused = all.filter(r => !used.includes(r));
-		const last = used[used.length - 1];
-		const lastUnfinished = !all.includes(last);
-
-		if(lastUnfinished) {
-			// Return all strings that have not been added yet
-			return { completions: unused, argumentPart: last };
-		} else if(unused.length > 0) {
-			// Add a comma, if the current last string is complete
-			return { completions: [','], argumentPart: '' };
-		} else {
-			// All strings are used, complete with a space
-			return { completions: [' '], argumentPart: '' };
-		}
-	}
-	return { completions: [] };
+	return completePrefixedList(line, startingNewArg, prefix, Object.keys(predefinedTaintAnalyses));
 }
 
 function defsInInput(defsPart: readonly string[]): { valid: AnyPredefinedTaintAnalysisName[], invalid: string[] } {

@@ -20,10 +20,7 @@ interface RecallConfig {
 	unknownOnNonZeroArg?: boolean;
 }
 
-/**
- * Processes a built-in 'Recall' function call, linking
- * the recall to the enveloping function closure.
- */
+/** Processes a built-in 'Recall' function call, linking the recall to the enveloping function closure. */
 export function processRecall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -31,13 +28,7 @@ export function processRecall<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: RecallConfig,
 ): DataflowInformation {
-	const { information } = processKnownFunctionCall({
-		name,
-		args,
-		rootId,
-		data,
-		origin: BuiltInProcName.Recall
-	});
+	const { information } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Recall });
 
 	// If requested, treat Recall as an unknown side effect when a single argument is provided and it is not the numeric literal 0.
 	if(config?.unknownOnNonZeroArg) {
@@ -51,8 +42,6 @@ export function processRecall<OtherInfo>(
 		}
 	}
 
-
-
 	let cur = data.environment.current;
 	let closure: NodeId | undefined;
 	while(cur) {
@@ -65,6 +54,10 @@ export function processRecall<OtherInfo>(
 
 	if(closure) {
 		information.graph.addEdge(rootId, closure, EdgeType.Calls);
+		/* `sys.function()` hands back the closure it runs in, which a call on its result (`sys.function()(n - 1)`) runs */
+		if(config?.unknownOnNonZeroArg) {
+			information.graph.addEdge(rootId, closure, EdgeType.Returns);
+		}
 		// also kill the name of the recall function
 		const r = information.graph.getVertex(rootId);
 		if(DfgVertex.isFunctionCall(r)) {

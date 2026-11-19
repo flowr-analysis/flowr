@@ -1,4 +1,4 @@
-import { prettyPrint, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFix } from '../linter-format';
+import { prettyPrintAt, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFix } from '../linter-format';
 import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -7,8 +7,7 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import { type DataflowGraph, UnknownSideEffect } from '../../dataflow/graph/graph';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { DfgVertex } from '../../dataflow/graph/vertex';
-import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier } from '../../dataflow/environments/identifier';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
@@ -21,6 +20,7 @@ import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { PackageSignatureSource } from '../../project/sigdb/reader';
 import { DepType } from '../../project/sigdb/schema';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
+import { memoize } from '../../util/collections/defaultmap';
 
 export interface UnusedImportResult extends LintingResult {
 	/** the package the flagged call attaches */
@@ -120,15 +120,7 @@ function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph
 		}
 	}
 	/* what each imported package exports, read once: asking which packages export a name searches the whole database */
-	const exportsOf = new Map<BrandedNamespace, ReadonlySet<BrandedIdentifier>>();
-	const exports = (pkg: BrandedNamespace) => {
-		let found = exportsOf.get(pkg);
-		if(found === undefined) {
-			found = new Set(src.lookup(pkg)?.exported);
-			exportsOf.set(pkg, found);
-		}
-		return found;
-	};
+	const exports = memoize((pkg: BrandedNamespace): ReadonlySet<BrandedIdentifier> => new Set(src.lookup(pkg)?.exported));
 	for(const { name, callable, imports } of attachments) {
 		const usesPackage = (call: BrandedIdentifier) => callable.has(call) || imports.values().some(p => exports(p).has(call));
 		if(pending.has(name) && unbound.values().some(usesPackage)) {
@@ -223,17 +215,12 @@ export const UNUSED_IMPORT = {
 		metadata.totalUnused = results.length;
 		return { results, '.meta': metadata };
 	},
-	prettyPrint: prettyPrint(
-		result => `Import of ${result.package} at ${SourceLocation.format(result.loc)}`,
-		result => `Import of ${result.package} at ${SourceLocation.format(result.loc)} is unused (checked v${result.version}).`
-	),
-	info: {
+	prettyPrint: prettyPrintAt(result => `Import of ${result.package}`, result => `is unused (checked v${result.version}).`),
+	info:        {
 		name:          'Unused Import',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds packages that are attached but never used, so the code runs just the same without them. Requires a signature database, and packages that only do their work on load should be whitelisted in the configuration.',
-		defaultConfig: () => ({
-			whitelist: []
-		})
+		defaultConfig: () => ({ whitelist: [] })
 	}
 } as const satisfies LintingRule<UnusedImportResult, UnusedImportMetadata, UnusedImportConfig>;

@@ -1,5 +1,4 @@
-import Parser from 'web-tree-sitter';
-import type { Query, QueryCapture } from 'web-tree-sitter';
+import Parser, { type Query, type QueryCapture } from 'web-tree-sitter';
 import type { RParseRequest } from '../../retriever';
 import { type SyncParser, type TreeSitterInformation, ParserName } from '../../parser';
 import type { TreeSitterEngineConfig } from '../../../config';
@@ -23,9 +22,7 @@ export const DEFAULT_TREE_SITTER_WASM_PATH = resolveWasm('web-tree-sitter/tree-s
 
 const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });
 
-/**
- * Synchronous and (way) faster alternative to the {@link RShell} using tree-sitter.
- */
+/** Synchronous and (way) faster alternative to the {@link RShell} using tree-sitter. */
 export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 	public readonly name = ParserName.TreeSitter;
 	private readonly parser: Parser;

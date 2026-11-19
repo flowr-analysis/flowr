@@ -25,24 +25,16 @@ export interface HelpContent {
  */
 export function helpForOptions(script: keyof typeof scripts, content: HelpContent): string {
 	return commandLineUsage([
-		{
-			header:  scripts[script].description,
-			content: content.subtitle
-		},
+		{ header: scripts[script].description, content: content.subtitle },
 		{
 			header:  'Synopsis',
 			content: content.examples.map(e => `$ ${scripts[script].toolName} ${e}`)
 		},
-		{
-			header:     'Options',
-			optionList: scripts[script].options
-		}
+		{ header: 'Options', optionList: scripts[script].options }
 	]);
 }
 
-/**
- * Processes the command line arguments for a given script.
- */
+/** Processes the command line arguments for a given script. */
 export function processCommandLineArgs<T extends CommonOptions>(script: keyof typeof scripts, requireAdditionally: (keyof T)[], help: HelpContent): T {
 	const options = commandLineArgs(scripts[script].options) as T;
 

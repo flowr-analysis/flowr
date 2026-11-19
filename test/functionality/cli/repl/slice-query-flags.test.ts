@@ -7,9 +7,9 @@ import {
 	sliceDirectionParser,
 	sliceRemovalParser,
 	sliceQueryOptionsParser,
-	warnAboutSliceFlags
+	warnAboutSliceFlags,
+	type SliceFlag
 } from '../../../../src/cli/repl/parser/slice-query-parser';
-import type { SliceFlag } from '../../../../src/cli/repl/parser/slice-query-parser';
 import { DiceQueryDefinition } from '../../../../src/queries/catalog/dice-query/dice-query-format';
 import { FlowrConfig } from '../../../../src/config';
 import { SliceDirection } from '../../../../src/util/slice-direction';

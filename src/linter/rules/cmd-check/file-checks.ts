@@ -14,11 +14,11 @@ export interface FileResult<K extends string> extends CmdCheckResult {
 /** Collects findings located at package files; findings of the kinds in `skip` are dropped. */
 export function fileFindings<K extends string>(pf: PackageFiles, skip: readonly K[] = []) {
 	const results: FileResult<K>[] = [];
-	const add = (kind: K, file: string, message: string, line?: Line, certainty = LintingResultCertainty.Certain) => {
+	function add(kind: K, file: string, message: string, line?: Line, certainty = LintingResultCertainty.Certain) {
 		if(!skip.includes(kind)) {
 			results.push({ certainty, involvedId: undefined, loc: pf.locate(file, line), kind, file, message });
 		}
-	};
+	}
 	return { results, add };
 }
 
@@ -42,6 +42,9 @@ export function firstLine(pf: PackageFiles, file: string, pattern: RegExp): numb
 	const i = linesOf(pf, file).findIndex(l => pattern.test(l));
 	return i < 0 ? undefined : i + 1;
 }
+
+/** Pretty printing of a file finding as its kind, file and location, in full as its message and location. */
+export const KindInFile = prettyPrint((r: FileResult<string>) => `${r.kind} in ${r.file} at ${SourceLocation.format(r.loc)}`, r => `${r.message} (at ${SourceLocation.format(r.loc)})`);
 
 /** Pretty printing of a finding as its message and location. */
 export const MessageAtLocation = prettyPrint((r: { readonly message: string, readonly loc: SourceLocation | undefined }) => `${r.message} at ${SourceLocation.format(r.loc)}`);

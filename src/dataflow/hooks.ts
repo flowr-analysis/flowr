@@ -1,10 +1,8 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ControlDependency } from './info';
-import { happensInEveryBranch, negateControlDependency } from './info';
+import { type ControlDependency, happensInEveryBranch, negateControlDependency } from './info';
 import { DefaultMap } from '../util/collections/defaultmap';
 import type { KnownHooks } from './environments/built-in-kinds';
 export { KnownHooks } from './environments/built-in-kinds';
-
 
 /** Information about a registered hook within the dataflow information. */
 export interface HookInformation {
@@ -19,7 +17,6 @@ export interface HookInformation {
 	/** Whether the hook is executed after existing ones (true) or before (false) */
 	after?: boolean
 }
-
 
 /** Compacts a list of hook registrations by removing redundant and dominated ones. */
 export function compactHookStates(hooks: HookInformation[]): HookInformation[] {

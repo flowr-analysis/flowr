@@ -1,8 +1,7 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../graph/graph';
 import { EdgeType } from '../graph/edge';
-import type { DataflowCfgInformation, ExitPoint } from '../info';
-import { ControlDependency, ExitPointType, withCds } from '../info';
+import { type DataflowCfgInformation, type ExitPoint, ControlDependency, ExitPointType, withCds } from '../info';
 import { Ternary } from '../../util/logic';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';

@@ -1,6 +1,5 @@
 import { assertAst, withShell } from '../../../_helper/shell';
-import type { Pos } from '../../../_helper/ast-builder';
-import { bin, comment, exprList, group, lgl, num, sym } from '../../../_helper/ast-builder';
+import { type Pos, bin, comment, exprList, group, lgl, num, sym } from '../../../_helper/ast-builder';
 import { SourceRange, type Line, type Column } from '../../../../../src/util/range';
 import { label } from '../../../_helper/label';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';

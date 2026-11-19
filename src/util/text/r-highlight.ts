@@ -121,28 +121,28 @@ export function highlightR(code: string, knownNames?: KnownNames): string {
 			}
 		}
 	});
-	const significant = (at: number, step: 1 | -1): number => {
+	function significant(at: number, step: 1 | -1): number {
 		for(let i = at + step; i >= 0 && i < atoms.length; i += step) {
 			if(atoms[i].kind !== 'comment' && atoms[i].text.trim() !== '') {
 				return i;
 			}
 		}
 		return -1;
-	};
+	}
 	const replacement = (head: string, end: number | undefined): string => {
 		const next = end === undefined ? -1 : significant(end, 1);
 		const name = next >= 0 && atoms[next].kind === 'op' ? head + atoms[next].text : undefined;
 		return name !== undefined && knownNames.get(name) !== undefined ? name : head;
 	};
-	const grouping = (at: number): boolean => {
+	function grouping(at: number): boolean {
 		const prev = significant(at, -1);
 		if(prev < 0 || atoms[prev].kind === 'op' || atoms.slice(prev + 1, at).some(a => a.text.includes('\n'))) {
 			return true;
 		}
 		return atoms[prev].kind === 'text' && (openers.has(atoms[prev].text) || /[,;]$/.test(atoms[prev].text.trim()));
-	};
+	}
 	const stack: string[] = [];
-	const linkOf = (a: RToken, at: number): string | undefined => {
+	function linkOf(a: RToken, at: number): string | undefined {
 		switch(a.kind) {
 			case 'text':
 				if(a.text === '[' || a.text === '[[') {
@@ -167,7 +167,7 @@ export function highlightR(code: string, knownNames?: KnownNames): string {
 			default:
 				return undefined;
 		}
-	};
+	}
 	return atoms.map((a, at) => {
 		const link = linkOf(a, at);
 		if(a.kind === 'text' && openers.has(a.text)) {

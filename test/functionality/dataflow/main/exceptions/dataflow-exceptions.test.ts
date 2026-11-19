@@ -1,8 +1,7 @@
 import { assert, describe, test } from 'vitest';
-import { applyAssumedPackages, assertDataflow, assumedPackagesOf, assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
+import { analyze } from '../../../_helper/analyzer';
+import { assertDataflow, assumedPackagesOf, assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
-import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../../src/r-bridge/retriever';
 import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { Q } from '../../../../../src/search/flowr-search-builder';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
@@ -22,8 +21,7 @@ describe('Dataflow, Handle Exceptions', withTreeSitter(ts  => {
 		const effName = label(code, ['exceptions-and-errors'], ['dataflow']);
 		const assumed = assumedPackagesOf(undefined);
 		test(effName, async() => {
-			const analyzer = await applyAssumedPackages(new FlowrAnalyzerBuilder().setParser(ts), assumed).build();
-			analyzer.addRequest(requestFromInput(code));
+			const analyzer = await analyze(ts, code, { assumeLoaded: assumed });
 			const df = await analyzer.dataflow();
 			try {
 				for(const [coll, shouldHave] of [[constraints.hasVertices, true], [constraints.doesNotHaveVertices, false]] as const) {

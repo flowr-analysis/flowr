@@ -276,7 +276,7 @@ function firstFormalOf(methods: readonly S4Method[], idMap: AstIdMap): readonly 
 }
 
 /** The class the function `fn` is the S3 method of, for one of the generics `prefixes`, `undefined` unless every name it is bound to says the same. */
-function s3ClassOfMethod(fn: NodeId, prefixes: readonly BrandedIdentifier[], graph: DataflowGraph): ClassName | undefined {
+export function s3ClassOfMethod(fn: NodeId, prefixes: readonly BrandedIdentifier[], graph: DataflowGraph): ClassName | undefined {
 	let cls: ClassName | undefined;
 	for(const def of Dataflow.sourcesOf(graph, fn, EdgeType.DefinedBy)) {
 		const name = NodeId.recoverBareName(def, graph.idMap);

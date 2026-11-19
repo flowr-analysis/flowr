@@ -36,7 +36,6 @@ export interface SlicerCliOptions {
 	'config-json':       string | undefined
 }
 
-
 const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'criterion'], {
 	subtitle: 'Slice R code based on a given slicing criterion',
 	examples: [

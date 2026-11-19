@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-08, 09:20:49 UTC (v2.17.4), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-16, 20:55:37 UTC (v2.17.7), do not edit directly._
 <h2 id="Origin Query">Origin Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Retrieve the origin of a variable, function call, ...\
@@ -48,6 +48,6 @@ print(x)
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Origin Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/origin-query/origin-query-executor.ts#L11"><code><span title="Execute origin queries, catching duplicates with the same fingerprint">executeOriginQuery</span></code></a>.
+The Origin Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/origin-query/origin-query-format.ts#L16"><code><span title="Execute origin queries, catching duplicates with the same fingerprint">executeOriginQuery</span></code></a>.
 
 </details>

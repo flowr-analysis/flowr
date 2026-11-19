@@ -1,16 +1,14 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../../src/r-bridge/retriever';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
+import { analyze } from '../../../_helper/analyzer';
 
 describe('an argument is evaluated in the frame of its call', withTreeSitter(ts => {
 	/** whether the use `read` reads the definition `definition`, both given as slicing criteria */
 	async function reads(code: string, read: SlicingCriterion, definition: SlicingCriterion): Promise<boolean> {
-		const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
-		analyzer.addRequest(requestFromInput(code));
+		const analyzer = await analyze(ts, code);
 		const idMap = (await analyzer.normalize()).idMap;
 		const graph = (await analyzer.dataflow()).graph;
 		return Dataflow.targetsOf(graph, SlicingCriterion.parse(read, idMap), EdgeType.Reads).includes(SlicingCriterion.parse(definition, idMap));

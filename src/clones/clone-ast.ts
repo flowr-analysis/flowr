@@ -174,7 +174,7 @@ export function cloneChildren(n: CloneNode, canonical: boolean, inline?: InlineP
 export function cloneTree({ file, root, inline }: CloneAst, perspective: ClonePerspective): CloneTree {
 	const canonical = perspective !== ClonePerspective.Syntax;
 	const nodes: CloneNode[] = [], shape: string[] = [], size: number[] = [], names = new Map<number, string>();
-	const visit = (n: CloneNode, name: string | undefined): void => {
+	function visit(n: CloneNode, name: string | undefined): void {
 		const i = nodes.length;
 		const children = cloneChildren(n, canonical, inline);
 		const kind = n === EmptyArgument ? n : `${n.type}${'operator' in n ? String(n.operator) : ''}${RExpressionList.is(n) ? n.grouping?.[0].lexeme ?? '' : ''}`;
@@ -188,7 +188,7 @@ export function cloneTree({ file, root, inline }: CloneAst, perspective: ClonePe
 		const bound = a && RSymbol.is(a.target) && RFunctionDefinition.is(a.value) ? leafText(a.target) : undefined;
 		children.forEach(c => visit(c, bound));
 		size[i] = nodes.length - i;
-	};
+	}
 	visit(root, undefined);
 	return { file, nodes, shape, size, names };
 }

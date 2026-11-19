@@ -174,9 +174,7 @@ export interface BenchmarkMemoryMeasurement<T = number> extends MergeableRecord 
 	buffs:    T
 }
 
-/**
- * The statistics that are collected by the {@link BenchmarkSlicer} and used for benchmarking.
- */
+/** The statistics that are collected by the {@link BenchmarkSlicer} and used for benchmarking. */
 export interface SlicerStats {
 	commonMeasurements:          Map<CommonSlicerMeasurements, ElapsedTime>
 	perSliceMeasurements:        Map<SlicingCriteria, PerSliceStats>

@@ -42,7 +42,7 @@ describe('Transitivity through replacements, checked against R', withTreeSitter(
 		resolvesLikeR(parser, 'value of list elements replaced by two functions', 'g <- function() l$b <<- 2\nh <- function() l$c <<- 3\nl <- list(a = 1)\ng()\nh()\ny <- l$b\ncat(y)', '6@y', { imprecise: 'resolves 2 and NULL, the read in h also sees the list before g ran' });
 		resolvesLikeR(parser, 'value of a list element replaced in an always taken branch', 'l <- list(a = 1)\nif(TRUE) l$a <- 5\ny <- l$a\ncat(y)', '3@y');
 		resolvesLikeR(parser, 'value of a list element replaced in a branch', 'l <- list(a = 1)\nif(runif(1) > 2) l$a <- 5\ny <- l$a\ncat(y)', '3@y', { imprecise: 'unknown, the branch may run' });
-		resolvesLikeR(parser, 'value of a list element replaced in a try', 'l <- list(a = 1)\ntry(l$a <- 5, silent = TRUE)\ny <- l$a\ncat(y)', '3@y');
+		resolvesLikeR(parser, 'value of a list element replaced in a try', 'l <- list(a = 1)\ntry(l$a <- 5, silent = TRUE)\ny <- l$a\ncat(y)', '3@y', { imprecise: 'resolves 1 and 5, the replacement may raise' });
 		resolvesLikeR(parser, 'value of a list element a try never reaches', 'l <- list(a = 1)\ntry({ stop("x"); l$a <- 5 }, silent = TRUE)\ny <- l$a\ncat(y)', '3@y');
 		resolvesLikeR(parser, 'value of a list element replaced in a loop', 'l <- list(a = 0)\nfor(i in 1:3) l$a <- i\ny <- l$a\ncat(y)', '3@y');
 		resolvesLikeR(parser, 'value of a list element accumulated in a loop', 'l <- list(a = 0)\nfor(i in 1:3) l$a <- l$a + i\ny <- l$a\ncat(y)', '3@y');

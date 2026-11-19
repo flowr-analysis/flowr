@@ -2,9 +2,7 @@ import type { IPipelineStep, StepProcessingFunction } from '../steps/pipeline-st
 import type { TailOfArray } from '../../util/collections/arrays';
 import { guard } from '../../util/assert';
 
-/**
- * Defines the output format of a step that you are interested in.
- */
+/** Defines the output format of a step that you are interested in. */
 export const enum StepOutputFormat {
 	/**
 	 * [Internal]
@@ -17,24 +15,16 @@ export const enum StepOutputFormat {
 	 * of the dataflow analysis are not easily readable in text form.
 	 */
 	Text,
-	/**
-	 * This is usually a one-to-one serialization of the internal format, although it is possible that some recursive references are broken.
-	 */
+	/** This is usually a one-to-one serialization of the internal format, although it is possible that some recursive references are broken. */
 	Json,
 	/**
 	 * If possible, this will produce a mermaid graph of the result and contain the mermaid code.
 	 * This is only really possible for some of the step (e.g., the dataflow analysis).
 	 */
 	Mermaid,
-	/**
-	 * This is an extension of the {@link Mermaid} format. Instead of returning
-	 * the mermaid code, it will return an url to mermaid live.
-	 */
+	/** This is an extension of the {@link Mermaid} format. Instead of returning the mermaid code, it will return an url to mermaid live. */
 	MermaidUrl,
-	/**
-	 * Produce n-quads as the output.
-	 * See {@link serialize2quads}
-	 */
+	/** Produce n-quads as the output. See {@link serialize2quads} */
 	RdfQuads
 }
 

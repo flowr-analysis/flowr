@@ -1,6 +1,6 @@
 import { codeBlock } from './doc-util/doc-code';
 import { produceDataFlowGraph } from '../dataflow/extractor';
-import { parseRequests } from '../r-bridge/parser';
+import { parseRequests, type ParseStepOutputSingleFile } from '../r-bridge/parser';
 import { normalize, normalizeButNotDecorated } from '../r-bridge/lang-4.x/ast/parser/json/parser';
 import { documentReplSession } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
@@ -16,11 +16,7 @@ import { processRepeatLoop } from '../dataflow/internal/process/functions/call/b
 import { linkCircularRedefinitionsWithinALoop } from '../dataflow/internal/linker';
 import { DataflowInformation, filterOutLoopExitPoints } from '../dataflow/info';
 import { processDataflowFor } from '../dataflow/processor';
-import {
-	createDataflowPipeline,
-	createNormalizePipeline,
-	createParsePipeline
-} from '../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { fileProtocol, requestFromInput, retrieveParseDataFromRCode } from '../r-bridge/retriever';
 import { jsonReplacer } from '../util/json';
@@ -34,20 +30,17 @@ import { createPipeline } from '../core/steps/pipeline/pipeline';
 import { staticSlice } from '../slicing/static/static-slicer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
-import { contextFromInput } from '../project/context/flowr-analyzer-context';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { GasFeatureKey, GasLevel } from '../gas';
-import type { ArgProps, PropSelector } from '../dataflow/environments/built-in-props';
+import { type ArgProps, type PropSelector, ArgProp, CallProp, ExclusiveCallProps, CallProps, SemanticCallTag, SigDbInferable } from '../dataflow/environments/built-in-props';
 import type { Identifier } from '../dataflow/environments/identifier';
 import { enumMembers } from '../util/objects';
-import { ArgProp, CallProp, ExclusiveCallProps, CallProps, SemanticCallTag, SigDbInferable } from '../dataflow/environments/built-in-props';
 import { BuiltInIndex, inferFnProps } from '../dataflow/environments/query-fn-props';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { SemVer } from 'semver';
-import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import { processValue } from '../dataflow/internal/process/process-value';
 import { DataflowGraph } from '../dataflow/graph/graph';
 import { processAsNamedCall } from '../dataflow/internal/process/process-named-call';
@@ -73,20 +66,13 @@ async function extractStepsExample(analyzer: FlowrAnalyzer) {
 	return { normalizedAst, dataflow, cfg };
 }
 
-/**
- * Shows how to use the query API to perform a static slice (please do not simplify).
- */
+/** Shows how to use the query API to perform a static slice (please do not simplify). */
 async function sliceQueryExample(analyzer: FlowrAnalyzer) {
-	const { slice, reconstruct } = await analyzer.query({
-		type:     'static-slice',
-		criteria: ['1@y']
-	});
+	const { slice, reconstruct } = await analyzer.query({ type: 'static-slice', criteria: ['1@y'] });
 	return { slice, reconstruct };
 }
 
-/**
- * Shows how to inspect the context of an analyzer instance.
- */
+/** Shows how to inspect the context of an analyzer instance. */
 export function inspectContextExample(analyzer: FlowrAnalyzer) {
 	const ctx = analyzer.inspectContext();
 	console.log('dplyr version', ctx.deps.getDependency('dplyr'));
@@ -236,9 +222,7 @@ ${table('ArgProp', 'Argument role', prop => new Set(index.params(prop as number)
 `;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Core
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Core */
 export class WikiCore extends DocMaker<'wiki/Core.md'> {
 	constructor() {
 		super('wiki/Core.md', module.filename, 'core');
@@ -255,9 +239,7 @@ If you think parts of the wiki are missing, wrong, or outdated, please do not he
 In case you are new and want to develop for flowR, please check out the relevant ${ctx.linkPage('wiki/Setup', 'Setup', '-developing-for-flowr')} wiki page
 and the [Contributing Guidelines](${RemoteFlowrFilePathBaseRef}.github/CONTRIBUTING.md).
 
-${block({
-	type:    'NOTE',
-	content: `
+${block('NOTE', `
 Essentially every step we explain here can be explored directly from flowR's REPL in an interactive fashion (see the ${ctx.linkPage('wiki/Interface', 'Interface', 'using-the-repl')} wiki page).
 We recommend to use commands like ${getReplCommand('parse')} or ${getReplCommand('dataflow*')} to explore the output of flowR using your own samples.
 As a quickstart you may use:
@@ -269,8 +251,7 @@ ${await documentReplSession(shell, [{
 	
 If you are brave (or desperate) enough, you can also try to use the ${getCliLongOptionOf('flowr', 'verbose')} option to be dumped with information about flowR's internals (please, never use this for benchmarking).
 See the ${ctx.linkPage('wiki/FAQ', 'FAQ')} (*How to get flowR to talk?*) for more information.
-`
-})}
+`)}
 	
 * [Creating and Using a flowR Analyzer Instance](#creating-and-using-a-flowr-analyzer-instance)
 * [Pipelines and their Execution](#pipelines-and-their-execution)
@@ -317,13 +298,10 @@ on a given input. In general, these pipeline steps are analysis agnostic and may
 the ${ctx.link('DEFAULT_DATAFLOW_PIPELINE')} and the ${ctx.link('TREE_SITTER_DATAFLOW_PIPELINE')} adequately cover the most common analysis steps 
 (differentiated only by the ${ctx.linkPage('wiki/Engines', 'Engine')} used).
 
-${block({
-	type:    'TIP',
-	content: `
+${block('TIP', `
 	You can hover over most links within these wiki pages to get access to the tsdoc comment of the respective element. 
 	The links should direct you to the up-to-date implementation.
-`
-})}
+`)}
 	
 Using the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')} you can request a dataflow analysis of a sample piece of R code like the following:
 
@@ -361,14 +339,11 @@ As the types may seem to be somewhat confusing or over-complicated, we recommend
 the ${ctx.link('PARSE_WITH_R_SHELL_STEP')} or the ${ctx.link('STATIC_DATAFLOW')} step.
 The pipeline executor should do a good job of scheduling these steps (usually using a topological sort), and inferring the required inputs in the type system (have a look at the ${ctx.link(createPipeline)} function if you want to know more).
 
-${block({
-	type:    'NOTE',
-	content: `
+${block('NOTE', `
 Under the hood there is a step-subtype called a decoration. Such a step can be added to a pipeline to decorate the output of another one (e.g., making it more precise, re-adding debug info, ...).
 To mark a step as a decoration, you can use the \`decorates\` field in the ${ctx.link('IPipelineStepOrder')} interface.
 However, as such steps are currently not relevant for any of flowR's core analyses we will not go into detail here. It suffices to know how "real" steps work.
-`
-})}
+`)}
 	
 ## How flowR Produces Dataflow Graphs
 
@@ -408,38 +383,30 @@ ${await documentReplSession(shell, [{
 }
 ], { openOutput: false })}
 	
-${block({
-	type:    'TIP',
-	content: `
+${block('TIP', `
 	All of these commands accept file paths as well, so you can write longer R code within a file, and then pass 
-	the file path prefixed with \`${fileProtocol}\` (e.g., \`${fileProtocol}test/testfiles/example.R\`) to the commands.`
-})}
+	the file path prefixed with \`${fileProtocol}\` (e.g., \`${fileProtocol}test/testfiles/example.R\`) to the commands.`)}
 
 Especially when you are just starting with flowR, we recommend using the REPL to explore the output of the different steps.
 
-${block({
-	type:    'NOTE',
-	content: 'Maybe you are left with the question: What is tree-sitter doing differently? Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
+${block('NOTE', 'Maybe you are left with the question: What is tree-sitter doing differently? Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
 
 Essentially not much (from a user perspective, it does essentially everything and all differently under the hood)! Have a look at the ${ctx.linkPage('wiki/Engines', 'Engines')} wiki page for more information on the differences between the engines.
 Below you can see the Repl commands for the tree-sitter engine (using ${getCliLongOptionOf('flowr', 'default-engine')} to set the engine to tree-sitter):
 
-${await (async() => {
-	return await documentReplSession(treeSitter, [{
-		command:     `:parse "${sampleCode}"`,
-		description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${ctx.link(TreeSitterExecutor)}. See the ${ctx.linkPage('wiki/Engines', 'Engines')} wiki page for more information on the differences between the engines.`
-	},
-	{
-		command:     `:normalize* "${sampleCode}"`,
-		description: `Following the link output should show the following:\n${await printNormalizedAstForCode(treeSitter, sampleCode, { showCode: false })}`
-	},
-	{
-		command:     `:dataflow* "${sampleCode}"`,
-		description: `Following the link output should show the following:\n${await printDfGraphForCode(treeSitter, sampleCode, { showCode: false })}`
-	}], { openOutput: false, args: '--default-engine tree-sitter' });
-}
-)()}
-`) })}
+${await documentReplSession(treeSitter, [{
+	command:     `:parse "${sampleCode}"`,
+	description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${ctx.link(TreeSitterExecutor)}. See the ${ctx.linkPage('wiki/Engines', 'Engines')} wiki page for more information on the differences between the engines.`
+},
+{
+	command:     `:normalize* "${sampleCode}"`,
+	description: `Following the link output should show the following:\n${await printNormalizedAstForCode(treeSitter, sampleCode, { showCode: false })}`
+},
+{
+	command:     `:dataflow* "${sampleCode}"`,
+	description: `Following the link output should show the following:\n${await printDfGraphForCode(treeSitter, sampleCode, { showCode: false })}`
+}], { openOutput: false, args: '--default-engine tree-sitter' })}
+`))}
 
 ### Parsing
 
@@ -480,7 +447,7 @@ While looking at the mermaid visualization of such an AST is nice and usually su
 Let's have a look at the normalized AST for the sample code \`${sampleCode}\` (please refer to the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} wiki page for more information):
 
 ${details('Normalized AST for <code>x <- 1; print(x)</code>', codeBlock('json',
-	JSON.stringify((await createNormalizePipeline(shell, { context: contextFromInput(sampleCode) }).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
+	JSON.stringify((await (await new FlowrAnalyzerBuilder().setParser(shell).buildFor(sampleCode)).normalize()).ast, jsonReplacer, 4)
 ))}
 
 This is… a lot! We get the type from the ${ctx.link('RType')} enum, the lexeme, location information, an id, the children of the node, and their parents.
@@ -503,7 +470,7 @@ For single nodes, we use ${ctx.link(normalizeSingleNode)} which contains a catch
 The output of just this pass is listed below (using the ${ctx.link(normalizeButNotDecorated)} function):
 
 ${details('Ast for <code>x <- 1; print(x)</code> after the first normalization', codeBlock('json',
-	JSON.stringify(normalizeButNotDecorated((await createParsePipeline(shell, { context: contextFromInput(sampleCode) }).allRemainingSteps()).parse.files[0]), jsonReplacer, 4)
+	JSON.stringify(normalizeButNotDecorated((await (await new FlowrAnalyzerBuilder().setParser(shell).buildFor(sampleCode)).parse()).files[0] as ParseStepOutputSingleFile<string>), jsonReplacer, 4)
 ))}
 
 

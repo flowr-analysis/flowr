@@ -29,9 +29,7 @@ export interface SlicingCriteriaFilter extends MergeableRecord {
 	 * Be really careful with this one, as the number of possible slicing criteria can grow exponentially with the maximum size.
 	 */
 	maximumSize: number
-	/**
-	 * Function that determines the ids of all nodes that can be used as slicing criteria.
-	 */
+	/** Function that determines the ids of all nodes that can be used as slicing criteria. */
 	collectAll:  (root: RNodeWithParent) => NodeId[]
 }
 

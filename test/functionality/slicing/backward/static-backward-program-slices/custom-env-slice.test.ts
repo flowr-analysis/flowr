@@ -71,6 +71,9 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 		keepsAll('slice of x after attach(e) traces through assign and new.env', ['dynamic-environment-resolution', 'environment-sharing'],
 			`${envWithX}\nattach(e)\nx`, ['4@x']);
 
+		keepsAll('attach reports the global binding it masks', ['dynamic-environment-resolution'],
+			'att <- 1\nattach(list(att = 5), name = "mine")', ['2@attach']);
+
 		const cfgHead = 'cfg <- new.env()\nassign("alpha", 0.05, envir=cfg)';
 		const cfgTail = 'lr <- get("alpha", envir=cfg)\nlr';
 		assertSliced(label('multi-assign config: slice of specific get excludes unrelated assigns to same env', ['dynamic-environment-resolution', 'environment-sharing', 'name-created-resolved']),

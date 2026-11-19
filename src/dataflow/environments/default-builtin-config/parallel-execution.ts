@@ -5,8 +5,43 @@ import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 
+/** what a call sending `fun` to the workers of `cl` states, `fun` being its `at`th argument */
+const sendsToCluster = (at: number, fun: string, sends: Record<string, number> = {}) => ({
+	indexOfFunction:        at,
+	nameOfFunctionArgument: fun,
+	unquoteFunction:        true,
+	props:                  CallProp.MayPure | CallProp.Concurrent,
+	sig:                    sig({ cl: ArgProp.Handle, ...sends, [fun]: ArgProp.Callee, '...': ArgProp.Value })
+});
+/** the functions `parallel` and `snow` share, by the name in either */
+const cluster = (...names: string[]) => [...pkg(PkgName.Parallel, ...names), ...pkg(PkgName.Snow, ...names)];
+
 /** The built-in definitions of parallel and asynchronous execution and processes. */
 export const ParallelDefinitions = [
+	/* a cluster runs its workers as R processes of their own, which every call handing it `cl` sends work to */
+	fn([...cluster('makeCluster'), ...pkg(PkgName.Parallel, 'makePSOCKcluster', 'makeForkCluster'), ...pkg(PkgName.Snow, 'makeSOCKcluster', 'makeMPIcluster')], BuiltInProcName.Default,
+		{ props: CallProp.Concurrent, tags: [SemanticCallTag.Process, SemanticCallTag.Opens], sig: sig({ '...': ArgProp.Value }) }),
+	fn(cluster('stopCluster'), BuiltInProcName.Default,
+		{ props: CallProp.Concurrent | CallProp.Invisible, tags: [SemanticCallTag.Closes], sig: sig({ cl: ArgProp.Handle }) }),
+	fn(cluster('clusterApply', 'clusterApplyLB'), BuiltInProcName.Apply, sendsToCluster(2, 'fun', { x: ArgProp.Value })),
+	fn([...cluster('parLapply', 'parSapply', 'parRapply', 'parCapply'), ...pkg(PkgName.Parallel, 'parLapplyLB', 'parSapplyLB')], BuiltInProcName.Apply, sendsToCluster(2, 'fun', { X: ArgProp.Value })),
+	fn(cluster('parApply'), BuiltInProcName.Apply, sendsToCluster(3, 'FUN', { X: ArgProp.Value, MARGIN: ArgProp.Value })),
+	fn(cluster('clusterCall', 'clusterMap'), BuiltInProcName.Apply, sendsToCluster(1, 'fun')),
+	fn(cluster('clusterEvalQ'), BuiltInProcName.Default,
+		{ props: CallProp.Concurrent, sig: sig({ cl: ArgProp.Handle, expr: ArgProp.Nse }) }),
+	fn(pkg(PkgName.Parallel, 'clusterExport'), BuiltInProcName.Default,
+		{ props: CallProp.Concurrent | CallProp.Invisible, sig: sig({ cl: ArgProp.Handle, varlist: ArgProp.Value, envir: ArgProp.Value }) }),
+	fn(pkg(PkgName.Snow, 'clusterExport'), BuiltInProcName.Default,
+		{ props: CallProp.Concurrent | CallProp.Invisible, sig: sig({ cl: ArgProp.Handle, list: ArgProp.Value }) }),
+	/* forked workers: the children run `FUN` */
+	fn(pkg(PkgName.Parallel, 'mclapply', 'pvec'), BuiltInProcName.Apply,
+		{ indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure | CallProp.Concurrent, sig: sig({ X: ArgProp.Value, FUN: ArgProp.Callee, '...': ArgProp.Value }) }),
+	fn(pkg(PkgName.Parallel, 'mcmapply', 'mcMap'), BuiltInProcName.Apply,
+		{ indexOfFunction: 0, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure | CallProp.Concurrent, sig: sig({ FUN: ArgProp.Callee, '...': ArgProp.Value }) }),
+	fn(pkg(PkgName.Parallel, 'mcparallel'), BuiltInProcName.Default,
+		{ props: CallProp.Concurrent, sig: sig({ expr: ArgProp.Nse }) }),
+	fn(pkg(PkgName.Parallel, 'mccollect'), BuiltInProcName.Default,
+		{ props: CallProp.Concurrent, sig: sig({ jobs: ArgProp.Handle }) }),
 	fn(pkg(PkgName.Future, 'future'), BuiltInProcName.Default,
 		{ props: CallProp.Concurrent, sig: sig({ expr: ArgProp.Nse, envir: ArgProp.Written, substitute: ArgProp.Flag, globals: ArgProp.Value, packages: ArgProp.Value, lazy: ArgProp.Flag, seed: ArgProp.Value }) }),
 	fn(pkg(PkgName.Future, 'futureCall'), BuiltInProcName.Apply,
@@ -43,8 +78,10 @@ export const ParallelDefinitions = [
 		{ indexOfFunction: 0, nameOfFunctionArgument: 'func', unquoteFunction: true, props: CallProp.Concurrent, tags: [SemanticCallTag.Process, SemanticCallTag.Opens], sig: sig({ func: ArgProp.Callee, args: ArgProp.Value, '...': ArgProp.Value }) }),
 	fn(pkg(PkgName.RcppParallel, 'setThreadOptions'), BuiltInProcName.Default,
 		{ props: CallProp.Invisible | CallProp.Configures | CallProp.Concurrent, sig: sig({ numThreads: ArgProp.Value, stackSize: ArgProp.Value }) }),
-	fn(pkg(PkgName.Processx, 'run', 'process'), BuiltInProcName.Default,
+	fn(pkg(PkgName.Processx, 'run'), BuiltInProcName.Default,
 		{ libFn: true, tags: [SemanticCallTag.Process], sig: sig({ command: Forced.Value | ArgProp.Injectable, args: Forced.Value }) }),
+	/* an R6 class generator, `process$new(command, args)` starts the process, so it has no formals of its own */
+	fn(pkg(PkgName.Processx, 'process'), BuiltInProcName.Default, { libFn: true, tags: [SemanticCallTag.Process] }),
 	fn(pkg(PkgName.Sys, 'exec_wait', 'exec_internal', 'exec_background'), BuiltInProcName.Default,
 		{ libFn: true, tags: [SemanticCallTag.Process], sig: sig({ cmd: Forced.Value | ArgProp.Injectable, args: Forced.Value | ArgProp.Injectable }) }),
 ] as const satisfies AnyBuiltInDefinition[];

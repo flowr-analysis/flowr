@@ -3,13 +3,7 @@
  * @module
  */
 import { type LintingRuleNames, LintingRules } from './linter-rules';
-import {
-	LintingPrettyPrintContext,
-	LintingResultCertainty,
-	LintingResults,
-	type LintingResult,
-	LintQuickFix
-} from './linter-format';
+import { LintingPrettyPrintContext, LintingResultCertainty, LintingResults, type LintingResult, LintQuickFix } from './linter-format';
 import { SourceLocation } from '../util/range';
 import { relativeTo } from '../util/files';
 import { FlowrGithubRef } from '../documentation/doc-util/doc-files';

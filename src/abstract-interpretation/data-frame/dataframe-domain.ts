@@ -9,31 +9,23 @@ export type AbstractDataFrameShape = {
 	readonly rows:     PosIntervalDomain;
 };
 
-/**
- * The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain.
- */
+/** The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain. */
 export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 	public create(value: AbstractDataFrameShape): this {
 		return new DataFrameDomain(value) as this;
 	}
 
-	/**
-	 * The current abstract value of the column names domain.
-	 */
+	/** The current abstract value of the column names domain. */
 	public get colnames(): AbstractDataFrameShape['colnames'] {
 		return this.value.colnames;
 	}
 
-	/**
-	 * The current abstract value of the column count domain.
-	 */
+	/** The current abstract value of the column count domain. */
 	public get cols(): AbstractDataFrameShape['cols'] {
 		return this.value.cols;
 	}
 
-	/**
-	 * The current abstract value of the row count domain.
-	 */
+	/** The current abstract value of the row count domain. */
 	public get rows(): AbstractDataFrameShape['rows'] {
 		return this.value.rows;
 	}
@@ -60,15 +52,9 @@ export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 			const maxColNames = value.colnames.isFinite() ? value.colnames.must.size + value.colnames.may.size : Infinity;
 
 			if(minColNames >= value.cols.upper) {
-				value = {
-					...value,
-					colnames: value.colnames.create({ must: value.colnames.must, may: new Set() })
-				};
+				value = { ...value, colnames: value.colnames.create({ must: value.colnames.must, may: new Set() }) };
 			} else if(value.colnames.isFinite() && value.colnames.may.size > 0 && maxColNames <= value.cols.lower) {
-				value = {
-					...value,
-					colnames: value.colnames.create({ must: value.colnames.upper(), may: new Set() })
-				};
+				value = { ...value, colnames: value.colnames.create({ must: value.colnames.upper(), may: new Set() }) };
 			}
 		}
 		if(value.colnames.isValue() && value.cols.isValue()) {

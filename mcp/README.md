@@ -11,13 +11,14 @@ Version guessing and signature search need this database. Everything else also w
 runs the analyzed code. It contacts no other server, unless a query asks the linter to check the URLs in the code
 (`checkUrls`, which is never allowed over HTTP).
 
-In Claude Code, one plugin installs both this server and the flowR skill:
+In Claude Code, the [flowR plugin](plugin/README.md) installs the flowR skill, which uses this server when it is
+connected and flowR's command line otherwise:
 
 ```text
 /plugin install flowr --marketplace flowr-analysis/flowr
 ```
 
-Other local clients start it over stdio:
+Local clients start the server over stdio:
 
 ```shell
 claude mcp add flowr -- npx -y --omit=optional --ignore-scripts @eagleoutice/flowr-mcp      # Claude Code
@@ -57,5 +58,5 @@ Over HTTP, the server treats the code as untrusted:
 
 Put a rate limit in front of a public instance.
 
-[`SKILL.md`](SKILL.md) is an agent skill (Claude, Codex, Gemini CLI, ...) that says when and how to use flowR,
-with or without this server. To use it, copy it to, for example, `~/.claude/skills/flowr/SKILL.md`.
+[`SKILL.md`](plugin/skills/flowr/SKILL.md) is an agent skill (Claude, Codex, Gemini CLI, ...) that says when and how
+to use flowR, with or without this server. Outside Claude Code, copy it to, for example, `~/.codex/skills/flowr/SKILL.md`.

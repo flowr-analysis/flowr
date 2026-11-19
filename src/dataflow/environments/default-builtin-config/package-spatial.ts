@@ -3,7 +3,7 @@ import { fn, pkg, readsFile, writesFile } from './define-helpers';
 import { PkgName } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
 import { ArgProp, CallProp, SemanticCallTag } from '../built-in-props';
-import { AmbientStateAccessType } from '../built-in-kinds';
+import { Ambient } from '../ambient-effect';
 import type { AnyBuiltInDefinition } from '../built-in-config';
 
 /** The built-in definitions of spatial, geographic, and phylogenetic data. */
@@ -39,5 +39,5 @@ export const SpatialDefinitions = [
 	fn(pkg(PkgName.Ape, 'write.dna', 'write.nexus.data'), BuiltInProcName.DefaultReadAllArgs,
 		{ libFn: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: sig({ x: Forced.Value, file: Forced.Resource, '...': Forced.Value }) }),
 	fn(pkg(PkgName.Maptools, 'pointLabel'), BuiltInProcName.DefaultReadAllArgs,
-		{ props: CallProp.Invisible, ambient: { type: AmbientStateAccessType.DrawRng }, tags: [SemanticCallTag.Random] }),
+		{ props: CallProp.Invisible, ambient: Ambient.rng.adds, tags: [SemanticCallTag.Random] }),
 ] as const satisfies AnyBuiltInDefinition[];

@@ -1,8 +1,6 @@
 import { ObjectMap } from '../../util/collections/objectmap';
-import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
-import { simplifyControlFlowInformation } from '../../control-flow/cfg-simplification';
-import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import { extractCfg } from '../../control-flow/control-flow-graph';
+import { type CfgSimplificationPassName, simplifyControlFlowInformation } from '../../control-flow/cfg-simplification';
+import { type ControlFlowInformation, extractCfg } from '../../control-flow/control-flow-graph';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
@@ -55,7 +53,6 @@ export class FlowrAnalyzerControlFlowCache {
 	/**
 	 * Normalize the order of simplification passes.
 	 * Is currently an identity function, but may be extended in the future to enforce a specific order using heuristics.
-	 * @param simplifications - the requested simplification passes.
 	 */
 	private normalizeSimplificationOrder(simplifications: readonly CfgSimplificationPassName[]): readonly CfgSimplificationPassName[] {
 		return simplifications;

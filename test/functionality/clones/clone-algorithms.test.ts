@@ -1,7 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { CloneIndex, type SerializedCloneIndex } from '../../../src/clones/clone-index';
@@ -10,12 +9,12 @@ import { greedyStringTiling, type GstMatch } from '../../../src/clones/algorithm
 import { fingerprints, kgramHashes, winnow } from '../../../src/clones/algorithms/winnowing';
 import { baxterClones, treeSimilarity } from '../../../src/clones/algorithms/baxter-ast';
 import { CloneAlgorithm, type CloneDetectionConfig, CloneScope, DefaultCloneDetectionConfig, detectClones } from '../../../src/clones/clone-detector';
+import { analyze } from '../_helper/analyzer';
 
 const matchedTokens = (tiles: readonly GstMatch[]) => tiles.reduce((n, t) => n + t.length, 0);
 
 async function indexOf(parser: KnownParser, code: string, perspective: ClonePerspective = ClonePerspective.Syntax) {
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-	analyzer.addRequest(requestFromInput(code));
+	const analyzer = await analyze(parser, code);
 	return CloneIndex.build(analyzer, { perspective });
 }
 async function treesOf(parser: KnownParser, code: string, perspective: ClonePerspective = ClonePerspective.Syntax) {
@@ -141,8 +140,7 @@ describe('Code clones', withTreeSitter(parser => {
 			});
 		}
 		test('a serialized index round-trips and can be searched against', async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(requestFromInput(fileA));
+			const analyzer = await analyze(parser, fileA);
 			const corpus = CloneIndex.deserialize(JSON.parse(JSON.stringify(CloneIndex.serialize(await CloneIndex.build(analyzer, { perspective: ClonePerspective.Canonical })))) as SerializedCloneIndex);
 			const query = await indexOf(parser, fileB, ClonePerspective.Canonical);
 			const result = detectClones(query, { ...DefaultCloneDetectionConfig, algorithms: [CloneAlgorithm.Gst, CloneAlgorithm.Winnowing] }, corpus);

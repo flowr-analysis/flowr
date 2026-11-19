@@ -19,27 +19,21 @@ import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import type { DataflowInformation } from '../../../src/dataflow/info';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
-import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
-import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
-import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
+import { type FlowrFileProvider, FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
+import { type SlicingCriteria, SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { DropPathsOption } from '../../../src/config';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
-import type { SigDbSource } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
-import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
+import type {
+	SigDbSource
+} from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
 import type { LibraryExports } from '../../../src/project/sigdb/schema';
-import { applyAssumedPackages, assumedPackagesOf } from './shell';
+import { assumedPackagesOf } from './shell';
+import { analyze, testAnalyzerBuilder } from './analyzer';
 
 /** options steering the analyzer setup of a linter test (kept separate from the linting rule config) */
-export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], sigDb?: SigDbSource, noSigDb?: boolean, assumeLoaded?: readonly string[] };
-
-/** `builder` with `sigDb` in place of the bundled signature database. */
-export function withSigDb(builder: FlowrAnalyzerBuilder, sigDb: SigDbSource): FlowrAnalyzerBuilder {
-	return builder.unregisterPlugins(SigDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(sigDb));
-}
+export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], sigDb?: SigDbSource | false, assumeLoaded?: readonly string[] };
 
 /** a minimal in-memory signature source exporting the given `pkg -> exports` (so tests do not rely on the bundled one) */
 export function controlledSigDb(pkgs: Record<BrandedNamespace, readonly BrandedIdentifier[]>): PackageSignatureSource;
@@ -127,7 +121,7 @@ function statedFields(expected: readonly Record<string, unknown>[]): (result: ob
 
 /** Asserts the linting results, comparing only the fields the expected results state (the union over all of them, so state a field for every result or none).*/
 export function assertLinterFields<Name extends LintingRuleNames>(
-	parser: KnownParser,
+	parser: KnownParser | undefined,
 	code: string,
 	ruleName: Name,
 	expected: Record<string, unknown>[],
@@ -141,7 +135,7 @@ export function assertLinterFields<Name extends LintingRuleNames>(
 /** Like {@link assertLinterFields}, with a rule config, and `line` standing for the first line of a result's `loc` */
 export function assertLinterLines<Name extends LintingRuleNames>(
 	name: string | TestLabel,
-	parser: KnownParser,
+	parser: KnownParser | undefined,
 	code: string,
 	ruleName: Name,
 	expected: Record<string, unknown>[],
@@ -168,7 +162,7 @@ export const TestPackageRoot = '/pkg';
  */
 export function assertLinterPackage<Name extends LintingRuleNames>(
 	name: string | TestLabel,
-	parser: KnownParser,
+	parser: KnownParser | undefined,
 	code: string,
 	ruleName: Name,
 	expected: Record<string, unknown>[],
@@ -185,10 +179,9 @@ export function assertLinterPackage<Name extends LintingRuleNames>(
 }
 
 /** Asserts the lines the findings of `rule` start at, as the linter query of a fresh analyzer reports them */
-export function assertLintedLines(name: string, parser: KnownParser, code: string, rule: LintingRuleNames, lines: readonly number[]) {
+export function assertLintedLines(name: string, parser: KnownParser | undefined, code: string, rule: LintingRuleNames, lines: readonly number[]) {
 	test(name, async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest(code);
+		const analyzer = await analyze(parser, code);
 		const linted = await analyzer.query({ type: 'linter', rules: [rule] });
 		const results = (linted.results[rule] as unknown as { results?: { loc: readonly number[] }[] } | undefined)?.results ?? [];
 		assert.deepStrictEqual(results.map(r => r.loc[0]), lines, `${rule} should report the lines ${JSON.stringify(lines)}`);
@@ -210,31 +203,16 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 ) {
 	const assumed = assumedPackagesOf(lintingRuleConfig);
 	test(decorateLabelContext(name, ['linter']), async() => {
-		let builder = applyAssumedPackages(new FlowrAnalyzerBuilder()
-			.setInput({
-				getId: deterministicCountingIdGenerator(0)
-			})
-			.configure('solver.resolveSource.dropPaths', DropPathsOption.All), assumed);
-		if(parser !== undefined) {
-			builder = builder.setParser(parser);
+		const path = lintingRuleConfig?.useAsFilePath;
+		/* a controlled signature database (or none) keeps the tests independent of the bundled collection */
+		const analyzer = await testAnalyzerBuilder(parser, { getId: deterministicCountingIdGenerator(0), assumeLoaded: assumed, sigDb: lintingRuleConfig?.sigDb })
+			.configure('solver.resolveSource.dropPaths', DropPathsOption.All)
+			.build();
+		if(path) {
+			analyzer.addFile(new FlowrInlineTextFile(path, code));
 		}
-		// swap in a controlled signature database (or none) so tests do not depend on the bundled collection
-		if(lintingRuleConfig?.sigDb !== undefined) {
-			builder = withSigDb(builder, lintingRuleConfig.sigDb);
-		} else if(lintingRuleConfig?.noSigDb) {
-			builder = builder.unregisterPlugins(SigDbPluginName);
-		}
-		const analyzer = await builder.build();
-		if(lintingRuleConfig?.useAsFilePath) {
-			analyzer.addFile(new FlowrInlineTextFile(lintingRuleConfig.useAsFilePath, code));
-		}
-		if(lintingRuleConfig?.addFiles) {
-			analyzer.addFile(...lintingRuleConfig.addFiles);
-		}
-		analyzer.addRequest(lintingRuleConfig?.useAsFilePath ?
-			requestFromInput(fileProtocol + lintingRuleConfig.useAsFilePath) :
-			requestFromInput(code)
-		);
+		analyzer.addFile(...lintingRuleConfig?.addFiles ?? []);
+		analyzer.addRequest(requestFromInput(path ? fileProtocol + path : code));
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
 		const results = LintingResults.unpackSuccess(await executeLintingRule(ruleName, analyzer, lintingRuleConfig));

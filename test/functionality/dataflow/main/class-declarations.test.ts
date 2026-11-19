@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { ClassSystem, type DeclaredClass, MemberVisibility } from '../../../../src/dataflow/fn/class-declaration';
-import { applyAssumedPackages, assumedPackagesOf, assumeLoadedPackages } from '../../_helper/shell';
+import { assumedPackagesOf, assumeLoadedPackages } from '../../_helper/shell';
+import { testAnalyzerBuilder } from '../../_helper/analyzer';
 import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
 import { label } from '../../_helper/label';
 import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
@@ -12,8 +12,7 @@ assumeLoadedPackages('R6', 'S7');
 
 /** the classes {@link FunctionSemantics.classes.declared} finds in `code`; `attach` leaves nothing assumed, so the snippet's own `library()` has to bring the package in */
 async function classesOf(code: string, attach = false): Promise<Map<ClassName, DeclaredClass>> {
-	const builder = attach ? new FlowrAnalyzerBuilder() : applyAssumedPackages(new FlowrAnalyzerBuilder(), assumedPackagesOf(undefined));
-	const analyzer = await builder.build();
+	const analyzer = await testAnalyzerBuilder(undefined, { assumeLoaded: attach ? [] : assumedPackagesOf(undefined) }).build();
 	analyzer.addRequest(code);
 	return FunctionSemantics.classes.declared((await analyzer.dataflow()).graph);
 }

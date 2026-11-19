@@ -1,16 +1,16 @@
-import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type IdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import type { FunctionArgument } from '../../../../src/dataflow/graph/graph';
-import type {
-	Environment,
-	IEnvironment,
-	REnvironmentInformation
+import {
+	type Environment,
+	type IEnvironment,
+	type REnvironmentInformation,
+	REnvironment
 } from '../../../../src/dataflow/environments/environment';
 import type { ControlDependency } from '../../../../src/dataflow/info';
 import { FlowrAnalyzerEnvironmentContext } from '../../../../src/project/context/flowr-analyzer-environment-context';
 import type { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
-import { REnvironment } from '../../../../src/dataflow/environments/environment';
 
 
 /**
@@ -38,16 +38,16 @@ export function asFunction(name: string, definedAt: NodeId): IdentifierDefinitio
  * @param options - optional allows to give further options
  */
 export function argumentInCall(nodeId: NodeId, options?: { name?: string, cds?: ControlDependency[] }): FunctionArgument {
-	return { nodeId: NodeId.normalize(nodeId), valueId: undefined, type: ReferenceType.Argument, name: options?.name, cds: options?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) };
+	return { nodeId, valueId: undefined, type: ReferenceType.Argument, name: options?.name, cds: options?.cds };
 }
 /**
  * The constant global environment with all pre-defined functions.
  */
-export const defaultEnv = () => {
+export function defaultEnv() {
 	const ctx = new FlowrAnalyzerEnvironmentContext({ config: FlowrConfig.default() } as FlowrAnalyzerContext);
 	const global = ctx.makeCleanEnv();
 	return new EnvironmentBuilder(global.current, global.current.parent, 0);
-};
+}
 
 /**
  * EnvironmentBuilder extends REnvironmentInformation with builder pattern methods.
@@ -139,10 +139,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 */
 	defineInEnv(def: IdentifierDefinition, superAssignment = false) {
 		const envWithDefinition = REnvironment.define({
-			...def,
-			definedAt: NodeId.normalize(def.definedAt),
-			nodeId:    NodeId.normalize(def.nodeId),
-			cds:       def.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) }))
+			...def
 		} as IdentifierDefinition & { name: string }, superAssignment, this);
 		return new EnvironmentBuilder(envWithDefinition.current, this.builtInEnv, envWithDefinition.level);
 	}

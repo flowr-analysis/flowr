@@ -44,21 +44,21 @@ export async function setup(): Promise<void> {
 	await TreeSitterExecutor.initTreeSitter();
 	const parser = new TreeSitterExecutor();
 	const seen = new Set(Counterexamples.flatMap(({ cases }) => cases.map(keyOf)));
-	const attempt = async(from: Counterexample, pass: MutationPass): Promise<{ mutant?: Counterexample, error?: string }> => {
+	async function attempt(from: Counterexample, pass: MutationPass): Promise<{ mutant?: Counterexample, error?: string }> {
 		try {
 			return { mutant: await mutate(parser, from, pass) as Counterexample | undefined };
 		} catch(e) {
 			return { error: e instanceof Error ? e.stack ?? e.message : String(e) };
 		}
-	};
-	const keep = async(into: Mutant[], made: Pick<Mutant, 'group' | 'target' | 'passes'>, { mutant, error }: { mutant?: Counterexample, error?: string }) => {
+	}
+	async function keep(into: Mutant[], made: Pick<Mutant, 'group' | 'target' | 'passes'>, { mutant, error }: { mutant?: Counterexample, error?: string }) {
 		if(error !== undefined) {
 			into.push({ ...made, error });
 		} else if(mutant !== undefined && !seen.has(keyOf(mutant))) {
 			seen.add(keyOf(mutant));
 			into.push({ ...made, mutant, minRVersion: await minRVersionOfCode(mutant.code) });
 		}
-	};
+	}
 	const originals: Record<string, string | undefined> = {};
 	const once: Mutant[] = [];
 	/* what each pass makes of each counterexample, which the chains start from even where it repeats another mutant */
@@ -104,8 +104,7 @@ function sampled(made: readonly Mutant[]): readonly Mutant[] {
 		return made;
 	}
 	const seed = process.env.FLOWR_MUTATION_SEED ?? process.env.GITHUB_SHA ?? '';
-	const picked = ({ group, target, passes }: Mutant) =>
-		createHash('sha1').update(`${seed}\0${group}\0${target.name}\0${passes.join('\0')}`).digest().readUInt32BE(0) / 0x1_0000_0000 < share;
+	const picked = ({ group, target, passes }: Mutant) => createHash('sha1').update(`${seed}\0${group}\0${target.name}\0${passes.join('\0')}`).digest().readUInt32BE(0) / 0x1_0000_0000 < share;
 	return made.filter(m => m.error !== undefined || picked(m));
 }
 

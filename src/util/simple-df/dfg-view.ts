@@ -51,9 +51,7 @@ function makeFilter(options: ReduceVertexOptions, idMap?: AstIdMap): <T extends 
 	};
 }
 
-/**
- * Produces a reduced version of the given dataflow graph according to the given options.
- */
+/** Produces a reduced version of the given dataflow graph according to the given options. */
 export function reduceDfg(dfg: DataflowGraph, options: DeepPartial<ReduceOptions>, cleanEnv: REnvironmentInformation): DataflowGraph {
 	const newDfg = new DataflowGraph(dfg.idMap);
 	const applyOptions = deepMergeObject(defaultReduceOptions, options) as Required<ReduceOptions>;

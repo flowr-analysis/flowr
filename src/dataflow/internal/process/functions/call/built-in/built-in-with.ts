@@ -1,7 +1,6 @@
-import type { DataflowProcessorInformation } from '../../../../../processor';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { VertexType } from '../../../../../graph/vertex';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
-import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation } from '../known-call-handling';
 import { NseArguments, NseKind } from '../nse-kind';
@@ -12,8 +11,7 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IdentifierReference } from '../../../../../environments/identifier';
-import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
+import { type IdentifierReference, Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
 import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, signatureParamNames, unknownIfAmbiguous } from './built-in-envir-utils';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { isPipedArgument, patchFunctionCall } from '../common';

@@ -3,10 +3,10 @@ import { OperatorDefinitions } from './base-operators';
 import { UnnamedFunctionCallPrefix } from '../built-in-kinds';
 import { Identifier, PkgName, type BrandedIdentifier } from '../identifier';
 import { BuiltInProcName } from '../built-in-proc-name';
-import { ArgProps, CallProps } from '../built-in-props';
+import { ArgProps, type BuiltInFnInfo, CallProps } from '../built-in-props';
+import { ambientSummaryOf } from '../ambient-effect';
 import { AttachedBasePackageSet } from '../../../util/r-base-packages';
-import type { StatedSignature } from './shared-configs';
-import { statedSignatureOf, markGenerics, markPrimitives } from './shared-configs';
+import { type StatedSignature, statedSignatureOf, markGenerics, markPrimitives } from './shared-configs';
 import { BaseDefinitions } from './base-functions';
 import { InteractiveDefinitions } from './session-interactive';
 import { LanguageDefinitions } from './base-language';
@@ -26,24 +26,38 @@ import { WithrDefinitions } from './package-withr';
 import { ParallelDefinitions } from './parallel-execution';
 import { MiscDefinitions } from './misc-packages';
 import { TestingDefinitions } from './unit-testing';
+import { GuardDefinitions, markGuards } from './guards';
+import { PrimitiveLanguageDefinitions } from './guards-primitive-lang';
+import { PrimitiveOpsGuardDefinitions } from './guards-primitive-ops';
+import { formalsOfR, functionsOfR, markFormals } from './r-formals';
 
 export type { StatedSignature } from './shared-configs';
-export { StackEnvKind, StackEnvBuiltins, PlotFunctionPackages, plotFunctionOwners, namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, PlotCreate, PlotObjectCreate, TinyPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, BasePrimitiveTopics, statedSignatureOf, LinkToLastGgPlot, InternalGenerics } from './shared-configs';
+export { StackEnvKind, StackEnvBuiltins, PlotFunctionPackages, plotFunctionOwners, namespacePlotFunctions, GgPlotCreate, TinyPlotCrate, GraphicsPlotCreate, PlotCreate, PlotObjectCreate, TinyPlotAddons, GgPlotImplicitAddons, PlotFunctionsWithAddParam, GraphicsPlotAddons, GgPlotAddons, BasePrimitiveTopics, statedSignatureOf, LinkToLastGgPlot, InternalGenerics, RGenerics } from './shared-configs';
 
-/** What flowR states about every function it carries a definition for, as `name -> signatures` (a name may be defined for several packages, so all of them are here; {@link statedSignatureOf} picks by package). */
-export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuiltinConfig): Map<BrandedIdentifier, StatedSignature[]> {
+/**
+ * What flowR states about every function it carries a definition for, as `name -> signatures` (a name may be defined for several packages, so all of them
+ * are here; {@link statedSignatureOf} picks by package). `infoOf` answers for each `pkg::name`, as `functionInfo` does, the definition itself where it has nothing.
+ */
+export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuiltinConfig, infoOf?: (id: Identifier) => BuiltInFnInfo | undefined): Map<BrandedIdentifier, StatedSignature[]> {
 	const stated = new Map<BrandedIdentifier, StatedSignature[]>();
 	for(const definition of definitions) {
-		const info = definition.type === 'constant' ? undefined : definition.config;
-		for(const id of definition.names) {
+		const config = definition.type === 'constant' ? undefined : definition.config;
+		for(const id of definition.type === 'constant' ? definition.names : functionsOfR(definition)) {
 			const name = String(Identifier.getName(id));
 			const pkg = String(Identifier.getNamespace(id) ?? PkgName.Base);
+			const info = definition.type === 'constant' ? undefined : infoOf?.(Identifier.make(name, pkg)) ?? config;
+			const ambient = ambientSummaryOf(info);
 			const declared = info?.sig ?? [];
+			const unverified = definition.type !== 'constant' && formalsOfR(pkg, name) === undefined;
+			/* a lone `...` only says what every argument is used for when R's formals are unknown, it names no formal */
+			const named = declared.length > 0 && !(unverified && declared.every(([param]) => param === '...'));
 			const entry = {
 				pkg,
-				params: declared.length > 0 ? declared.map(([param]) => param).join(', ') : undefined,
+				params: named ? declared.map(([param]) => param).join(', ') : undefined,
+				...unverified ? { unverified: true as const } : {},
 				props:  CallProps.labels(info),
-				args:   declared.length > 0 ? declared.map(([param, props]) => [param, ArgProps.words(props)] as const) : undefined
+				args:   declared.length > 0 ? declared.map(([param, props]) => [param, ArgProps.words(props)] as const) : undefined,
+				...ambient.length > 0 ? { ambient } : {}
 			};
 			const known = stated.get(name) ?? [];
 			/* the last definition for a package is the one that resolves, so it is the one stated */
@@ -52,7 +66,6 @@ export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuilti
 	}
 	return stated;
 }
-
 
 /** Contains the built-in definitions recognized by flowR, as they are written down: {@link DefaultBuiltinConfig} is what {@link markGenerics} makes of them, and a test checks that this is all it changes. */
 export const WrittenBuiltinDefinitions = [
@@ -75,11 +88,14 @@ export const WrittenBuiltinDefinitions = [
 	...WithrDefinitions,
 	...ParallelDefinitions,
 	...MiscDefinitions,
-	...TestingDefinitions
+	...TestingDefinitions,
+	...GuardDefinitions,
+	...PrimitiveLanguageDefinitions,
+	...PrimitiveOpsGuardDefinitions
 ] as const satisfies AnyBuiltInDefinition[];
 
 /** Contains the built-in definitions recognized by flowR */
-export const DefaultBuiltinConfig = markPrimitives(markGenerics(WrittenBuiltinDefinitions));
+export const DefaultBuiltinConfig = markFormals(markGuards(markPrimitives(markGenerics(WrittenBuiltinDefinitions))));
 
 /** Expensive and naive lookup of the default processor for a built-in function name */
 export function getDefaultProcessor(name: BrandedIdentifier): BuiltInProcName | undefined {

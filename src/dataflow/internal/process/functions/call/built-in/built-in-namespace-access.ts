@@ -1,6 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
-import { ExitPointType } from '../../../../../info';
+import { type DataflowInformation, ExitPointType } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';

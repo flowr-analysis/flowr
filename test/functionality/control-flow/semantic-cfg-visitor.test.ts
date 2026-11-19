@@ -1,19 +1,18 @@
 import { assert, describe, it } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { SemanticCfgGuidedVisitor } from '../../../src/control-flow/semantic-cfg-guided-visitor';
-import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
-import { extractCfg } from '../../../src/control-flow/control-flow-graph';
-import type { ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
+import { extractCfg, type ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../../../src/dataflow/graph/vertex';
 import type { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
-import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { FlowrConfig } from '../../../src/config';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
+import { analyze } from '../_helper/analyzer';
+import type { DataflowInformation } from '../../../src/dataflow/info';
+import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 
 describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 	const config = FlowrConfig.default();
@@ -21,17 +20,17 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 	function testSemanticVisitor<V extends SemanticCfgGuidedVisitor>(
 		code: string,
 		visitor: (
-			o: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>,
+			o: { dataflow: DataflowInformation, normalize: NormalizedAst },
 			controlFlow: ControlFlowInformation,
 			ctx: ReadOnlyFlowrAnalyzerContext
 		) => V,
 		assert: (obj: V) => void
 	) {
 		it(code, async() => {
-			const context = contextFromInput(code, config);
-			const data = await createDataflowPipeline(ts, { context }).allRemainingSteps();
+			const analyzer = await analyze(ts, code, { config });
+			const data = { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() };
 			const cfg = extractCfg(data.dataflow);
-			const v = visitor(data, cfg, context);
+			const v = visitor(data, cfg, analyzer.inspectContext());
 			v.start();
 			try {
 				assert(v);

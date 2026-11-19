@@ -22,8 +22,7 @@ import { join } from 'path';
 import { type BrandedNamespace, type BrandedIdentifier, Identifier } from '../../../src/dataflow/environments/identifier';
 import { DefaultBuiltinConfig } from '../../../src/dataflow/environments/default-builtin-config';
 import { builtInNames, BuiltInIndex } from '../../../src/dataflow/environments/query-fn-props';
-import type { BuiltInFnInfo } from '../../../src/dataflow/environments/built-in-props';
-import { ArgProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
+import { type BuiltInFnInfo, ArgProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
 import { readFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/read-functions';
 import { writeFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { OtherPathFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
@@ -32,12 +31,13 @@ import { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyze
 import { FlowrConfig } from '../../../src/config';
 import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
 import { controlledSigDb } from '../_helper/linter';
+import { analyze } from '../_helper/analyzer';
 
 assumeLoadedPackages('car', 'ggplot2', 'ggthemes', 'jmcm', 'magrittr', 'maps', 'plotly', 'remotes', 'rlang', 'tinyplot');
 
 const defaultCtx = new FlowrAnalyzerContext(FlowrConfig.default());
 
-const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], transform: [], test: [], statistics: [] };
+const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], transform: [], test: [], statistics: [], interactive: [] };
 
 function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Partial<DependenciesQueryResult> {
 	const out: Partial<DependenciesQueryResult> = {
@@ -475,6 +475,12 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('the bare name once the library is loaded', 'library(remotes)\ninstall_github("user/repo")', { library: [{ nodeId: '1@library', functionName: 'library', value: 'remotes' }], remote: [{ nodeId: '2@install_github', functionName: 'install_github', value: 'user/repo', packageName: 'repo' }] });
 		/* a CRAN install is no remote one, whatever it installs comes from a configured repository */
 		testQuery('install.packages is no remote install', 'install.packages("dplyr")', {});
+		testQuery('pak installing from CRAN is no remote install', 'pak::pkg_install("dplyr")', { library: [{ nodeId: '1@pkg_install', functionName: '::', value: 'pak' }] });
+		testQuery('a local archive is a remote install', 'install.packages("pkg_1.0.tar.gz", repos = NULL)', { remote: [{ nodeId: '1@install.packages', functionName: 'install.packages', value: 'pkg_1.0.tar.gz', packageName: 'pkg' }] });
+		testQuery('a loader installing from GitHub', 'pacman::p_load_gh("user/repo")', {
+			library: [{ nodeId: '1:1', functionName: Identifier.make('p_load_gh', 'pacman'), value: 'user/repo' }, { nodeId: '1@p_load_gh', functionName: '::', value: 'pacman' }],
+			remote:  [{ nodeId: '1:1', functionName: Identifier.make('p_load_gh', 'pacman'), value: 'user/repo', packageName: 'repo' }]
+		});
 	});
 
 	describe('Sourced files', () => {
@@ -1131,6 +1137,18 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 	});
 
+	describe('Interactive use', () => {
+		testQuery('View left in a script', 'p <- mtcars\nView(p)', { interactive: [{ nodeId: '2@View', functionName: 'View' }] });
+		testQuery('the debugger', 'browser()', { interactive: [{ nodeId: '1@browser', functionName: 'browser' }] });
+		testQuery('a namespaced viewer', 'utils::View(mtcars)', { library: [{ nodeId: '1@View', functionName: '::', value: 'utils' }], interactive: [{ nodeId: '1@utils::View', functionName: Identifier.make('View', 'utils') }] });
+		test('the category is what the built-ins state', () => {
+			assert.deepStrictEqual(
+				defaultDependencyCategories(defaultCtx).interactive.functions.map(f => `${f.package as string}::${f.name}`).sort(),
+				BuiltInIndex.default().with(SemanticCallTag.Interactive).map(Identifier.toString).sort()
+			);
+		});
+	});
+
 	describe('Implicit echo', () => {
 		describe('Visible results are auto-printed', () => {
 			testQuery('a plain call', 'summary(x)', { write: [{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true, inputVariables: ['x'] }] });
@@ -1278,8 +1296,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				}
 			}
 			async function flowrPrints(code: string): Promise<boolean> {
-				const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-				analyzer.addRequest(code);
+				const analyzer = await analyze(parser, code);
 				const results = await analyzer.query({ type: 'dependencies' });
 				return (results.write ?? []).some(d => d.implicit === true);
 			}
@@ -1392,8 +1409,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		const recordedElsewhere = new Set<BrandedIdentifier>(['rast', 'vect', 'writeRaster', 'writeVector', 'writeCDF', 'readMat', 'writeMat', 'open.nc', 'create.nc']);
 
 		test('every entry names a package that exports it', async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest('1');
+			const analyzer = await analyze(parser, '1');
 			const sources = analyzer.inspectContext().deps.signatureSources();
 			const exportsOf = (pkg: BrandedNamespace): BrandedIdentifier[] => sources.filter(s => s.packageNames().includes(pkg))
 				.flatMap(s => [...s.lookup(pkg)?.exported ?? [], ...(s.functions(pkg) ?? []).map(f => f.name)]);

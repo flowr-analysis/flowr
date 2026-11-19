@@ -26,7 +26,6 @@ export interface FunctionArgInfo {
 export interface FunctionInfo extends FunctionArgInfo {
 	/** Which package does the function belong to */
 	package?:            BrandedNamespace
-	/** The name of the function */
 	name:                BrandedIdentifier
 	/** links to other function calls to get the dependency from there (e.g., with `sink` for `print`) */
 	linkTo?:             DependencyInfoLink[]

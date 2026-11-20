@@ -17,26 +17,30 @@ export type TaintArgSelector = {
 
 export type TaintFnCategory = {
 	/** Identifier of the function category, used to trace a resulting mapping back to its category */
-	name:      string,
+	name:              string,
 	/** Role the functions of the category should get assigned to */
-	role:      TaintRole,
+	role:              TaintRole,
 	/** Call properties of the function category */
-	callProps: CallProps,
+	callProps:         CallProps,
 	/** Argument properties of the function category */
-	args:      TaintArgSelector,
+	args:              TaintArgSelector,
 	/** Handler describing the calculation of the resulting taint */
-	handler:   TaintConditionFunction<AnyAbstractDomain>
+	handler:           TaintConditionFunction<AnyAbstractDomain>
+	/** Should provenance be recorded or not */
+	recordProvenance?: boolean
 };
 
 export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape', TaintFnCategory> = {
 	/** Pure functions which return a single one of their arguments unchanged */
 	pureAlias: {
-		name:      'pureAlias',
-		role:      TaintRole.Transformer,
-		callProps: CallProp.Pure,
-		args:      { argProps: ArgProp.Alias, argSelection: 'ExactlyOne' },
+		name:             'pureAlias',
+		role:             TaintRole.Transformer,
+		callProps:        CallProp.Pure,
+		args:             { argProps: ArgProp.Alias, argSelection: 'ExactlyOne' },
 		/** Pass through of incoming taint */
-		handler:   ([_arg], [taint]) => taint?.value
+		handler:          ([_arg], [taint]) => taint?.value,
+		/** No provenance recording for pure aliases */
+		recordProvenance: false
 	},
 	/** Pure functions which calculate their result on one or multiple arguments */
 	pureComputer: {
@@ -64,7 +68,7 @@ export const TaintFnCategory: Record<'pureAlias' | 'pureComputer' | 'pureShape',
 export function resolveCategoryToTaintMappings<Domain extends AnyAbstractDomain>(category: TaintFnCategory): TaintMapping<Domain>[] {
 	const mappings = taintMappingFromBuiltInIndex(category.callProps, category.args.argProps, category.handler)
 		.map(m => {
-			return { role: category.role, category: category.name, ...m };
+			return { role: category.role, category: category.name, recordProvenance: category.recordProvenance, ...m };
 		});
 
 	if(category.args.argSelection === 'ExactlyOne') {

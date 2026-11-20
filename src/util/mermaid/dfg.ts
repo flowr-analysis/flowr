@@ -29,6 +29,8 @@ export interface MermaidGraph {
 	simplified?:         boolean
 	/** show the edge-free base-R qualification (`acf` as `stats::acf`); `false` when the signature database is disabled */
 	qualifyBaseR?:       boolean
+	/** an additional line shown in the vertex with the given id as mermaid markdown */
+	annotate?:           (id: NodeId) => string | undefined
 }
 
 function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformation | undefined, mermaid: MermaidGraph, idPrefix = ''): void {
@@ -55,7 +57,8 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
 		mark:                mermaid.mark,
 		prefix:              null,
 		simplified:          mermaid.simplified,
-		qualifyBaseR:        mermaid.qualifyBaseR
+		qualifyBaseR:        mermaid.qualifyBaseR,
+		annotate:            mermaid.annotate
 	});
 	mermaid.nodeLines.push(...subgraph.nodeLines);
 	mermaid.edgeLines.push(...subgraph.edgeLines);
@@ -207,6 +210,8 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	}
 
 	const node = mermaid.rootGraph.idMap?.get(info.id);
+	const annotation = mermaid.annotate?.(origId);
+	const annotationLine = annotation === undefined ? '' : `\n    ${annotation}`;
 	const lexeme = node?.lexeme ?? (RExpressionList.is(node) ? node?.grouping?.[0]?.lexeme : '') ?? '??';
 
 	let display = lexeme;
@@ -221,7 +226,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	if(mermaid.simplified) {
 		const location = SourceRange.getStartLine(node?.location) ? ` (L. ${SourceRange.getStartLine(node?.location)})` : '';
 		const escapedName = (node ? boldLexeme(lexeme, display) : '**??**') + location + (node ? `\n*${node.type}*` : '');
-		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\`"${close}`);
+		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${annotationLine}\`"${close}`);
 	} else {
 		const escapedName = node ? `*${Mermaid.escape(`[${node.type}]`)}* ${boldLexeme(lexeme, display)}` : '??';
 		const deps = info.cds ? ', ' + info.cds.map(c => Mermaid.escapeId(c.id) + (c.when ? '+' : '-')).join(', ') : '';
@@ -231,7 +236,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		const n = SourceRange.fromNode(node) ?? (RExpressionList.is(node) ? node?.grouping?.[0].location : undefined);
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\n      *${SourceRange.format(n)}* (**id: ${id}**${deps}${lnks}${sources})${
 			fCall ? displayFunctionArgMapping(info.args) : '' + (DfgVertex.isFunctionDefinition(info) && info.mode && info.mode.length > 0 ? Mermaid.escape(JSON.stringify(info.mode)) : '')
-		}\`"${close}`);
+		}${annotationLine}\`"${close}`);
 	}
 	if(mark?.has(id)) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} ${mermaid.markStyle.vertex} `);
@@ -314,14 +319,16 @@ export interface MermaidGraphConfiguration {
 	includeOnlyIds?:      ReadonlySet<NodeId>, // If provided, only the given ids will be included in the mermaid graph
 	/** show the edge-free base-R package qualification (`acf` as `stats::acf`); pass `false` when the signature database is disabled. Default `true`. */
 	qualifyBaseR?:        boolean
+	/** an additional line shown in the vertex with the given id as mermaid markdown */
+	annotate?:            (id: NodeId) => string | undefined
 }
 
 // make the passing of root ids more performant again
 function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
-	{ simplified, graph, prefix = 'flowchart TD', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = MermaidDefaultMarkStyle, includeOnlyIds, qualifyBaseR = true }: MermaidGraphConfiguration
+	{ simplified, graph, prefix = 'flowchart TD', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = MermaidDefaultMarkStyle, includeOnlyIds, qualifyBaseR = true, annotate }: MermaidGraphConfiguration
 ): MermaidGraph {
-	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, presentVertices: new Set(), mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle, simplified, qualifyBaseR };
+	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, presentVertices: new Set(), mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle, simplified, qualifyBaseR, annotate };
 
 	for(const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {

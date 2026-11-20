@@ -193,7 +193,7 @@ export class CompositeTaintAnalysisDefinition<Name extends string> implements Ru
 		return this;
 	}
 
-	public createVisitor({ fnCallHook: _hook, ...config }: TaintVisitorConfiguration, _fnCategories?: TaintFnCategory[]): TaintInterpreter {
+	public createVisitor({ fnCallHook: _hook, provenanceTracker: _provenance, ...config }: TaintVisitorConfiguration, _fnCategories?: TaintFnCategory[]): TaintInterpreter {
 		const components: TaintComponent[] = this.definitions.map(def => ({ name: def.name, domain: def.domain, mapper: def.mapper }));
 		return new TaintInterpreter(components, config, this.reductions);
 	}

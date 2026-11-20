@@ -14,6 +14,8 @@ import { printAsMs } from '../../../util/text/time';
 import { type CommandCompletions, completePrefixedList } from '../../../cli/repl/completion';
 import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
 import { log } from '../../../util/log';
+import { queryLineCode } from '../../../cli/repl/parser/slice-query-parser';
+import { TaintProvenanceGraph } from '../../../taint-analysis/provenance/taint-provenance-graph';
 
 /** Executes the given taint queries using the provided analyzer. */
 export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: readonly TaintQuery[]): Promise<TaintQueryResult<AllPredefinedTaintAnalysisNames>> {
@@ -29,12 +31,17 @@ export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: r
 		.taint<AllPredefinedTaintAnalysisNames>()
 		.addPredefined(...flattened);
 
+	if(queries.some(q => q.recordProvenance)) {
+		analysis.withProvenance();
+	}
+
 	return { results: await analysis.run(), '.meta': { timing: Date.now() - start } };
 }
 
 export interface TaintQuery extends BaseQueryFormat {
-	readonly type: 'taint';
-	readonly defs: AnyPredefinedTaintAnalysisName[]
+	readonly type:              'taint';
+	readonly defs:              AnyPredefinedTaintAnalysisName[]
+	readonly recordProvenance?: boolean
 }
 
 export interface TaintQueryResult<Analyses extends string[]> extends BaseQueryResult {
@@ -42,6 +49,7 @@ export interface TaintQueryResult<Analyses extends string[]> extends BaseQueryRe
 }
 
 const prefix = 'definitions:';
+const provenancePrefix = 'provenance:';
 
 function taintQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
 	return completePrefixedList(line, startingNewArg, prefix, Object.keys(predefinedTaintAnalyses));
@@ -62,20 +70,29 @@ function defsInInput(defsPart: readonly string[]): { valid: AnyPredefinedTaintAn
 
 function taintQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'taint'> {
 	let defs: AnyPredefinedTaintAnalysisName[] = [];
-	let input: string | undefined = undefined;
-	if(line.length > 0 && line[0].startsWith(prefix)) {
-		const defsPart = line[0].slice(prefix.length).split(',');
-		const parseResult = defsInInput(defsPart);
-		if(parseResult.invalid.length > 0) {
-			output.stderr(`Unknown taint definition names: ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`
-				+ `\nKnown taint definitions are: ${Object.keys(predefinedTaintAnalyses).map(r => bold(r, output.formatter)).join(', ')}`);
+	let recordProvenance: boolean | undefined = undefined;
+	let at = 0;
+	for(; at < line.length; at++) {
+		if(line[at].startsWith(prefix)) {
+			const defsPart = line[at].slice(prefix.length).split(',');
+			const parseResult = defsInInput(defsPart);
+			if(parseResult.invalid.length > 0) {
+				output.stderr(`Unknown taint definition names: ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`
+					+ `\nKnown taint definitions are: ${Object.keys(predefinedTaintAnalyses).map(r => bold(r, output.formatter)).join(', ')}`);
+			}
+			defs = parseResult.valid;
+		} else if(line[at].startsWith(provenancePrefix)) {
+			const mode = line[at].slice(provenancePrefix.length);
+			if(mode === 'on' || mode === 'off') {
+				recordProvenance = mode === 'on';
+			} else {
+				output.stderr(`Unknown provenance setting: ${bold(mode, output.formatter)}, use ${bold('on', output.formatter)} or ${bold('off', output.formatter)}`);
+			}
+		} else {
+			break;
 		}
-		defs = parseResult.valid;
-		input = line[1];
-	} else if(line.length > 0) {
-		input = line[0];
 	}
-	return { query: [{ type: 'taint', defs: defs }], rCode: input };
+	return { query: [{ type: 'taint', defs, ...(recordProvenance === undefined ? {} : { recordProvenance }) }], rCode: queryLineCode(line, at) };
 }
 
 export const TaintQueryDefinition = {
@@ -94,8 +111,17 @@ export const TaintQueryDefinition = {
 				if(result.msg !== undefined) {
 					resultStrings.push(`      ╰ ${result.msg}:`);
 				}
-				resultStrings.push(...result.findings.map(finding =>
-					`          ╰ ${finding.msg !== undefined ? `${finding.msg} ` : ''}`));
+				for(const finding of result.findings) {
+					const [first, ...reasons] = (finding.msg ?? '').split('\n');
+					resultStrings.push(`          ╰ ${first} `, ...reasons.map(reason => `              ${reason}`));
+					if(result.provenance !== undefined) {
+						const provenanceGraph = TaintProvenanceGraph.hidePassthrough(TaintProvenanceGraph.ofFinding(result.provenance.graph, finding.nodeId), [finding.nodeId]);
+						resultStrings.push(`                  ╰ Provenance-Graph: ${TaintProvenanceGraph.toMermaidUrl(provenanceGraph, name)}`);
+					}
+				}
+			} else if(result.provenance !== undefined && result.provenance.graph.rootIds().size > 0) {
+				const provenanceGraph = TaintProvenanceGraph.hidePassthrough(result.provenance.graph);
+				resultStrings.push(`      ╰ Provenance: ${TaintProvenanceGraph.toMermaidUrl(provenanceGraph, name)}`);
 			}
 
 			if(lift === Bottom) {
@@ -116,10 +142,11 @@ export const TaintQueryDefinition = {
 	jsonFormatter: (queryResults: BaseQueryResult) => {
 		const { results, ...out } = queryResults as QueryResults<'taint'>['taint'];
 		const json = new Map(
-			Array.from(results, ([name, { domains, msg, findings }]) => [name, {
+			Array.from(results, ([name, { domains, msg, findings, provenance }]) => [name, {
 				domains: domains.value === Bottom ? domains.value.description : Object.fromEntries(domains.value.entries().map(([key, domain]) => [key, domain?.toJSON() ?? null])),
 				msg,
 				findings,
+				...provenance === undefined ? {} : { provenance: TaintProvenanceGraph.toJson(provenance.graph) }
 			}])
 		);
 		const result = { results: json, ...out } as object;
@@ -128,8 +155,9 @@ export const TaintQueryDefinition = {
 	completer: taintQueryCompleter,
 	fromLine:  taintQueryLineParser,
 	schema:    Joi.object({
-		type: Joi.string().valid('taint').required().description('The type of the query.'),
-		defs: Joi.array().description('The taint analyses to run.')
+		type:             Joi.string().valid('taint').required().description('The type of the query.'),
+		defs:             Joi.array().description('The taint analyses to run.'),
+		recordProvenance: Joi.boolean().optional().description('Whether to record where the taints of the findings originate from.')
 	}).description('The taint query conducts taint analyses and returns their results.'),
 	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'taint'>;

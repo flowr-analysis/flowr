@@ -452,7 +452,9 @@ code, pre { font-family: var(--mono); }
 .contract .cond .paren.p2 { color: color-mix(in srgb, #b07d00 70%, var(--fg)); }
 .contract .lit { background: color-mix(in srgb, var(--hue, var(--accent)) 20%, transparent); border-radius: .25rem; }
 #panel .contracts { display: grid; gap: .5rem; }
-#panel .fncontract .tcall { font-family: var(--mono); font-size: .8rem; font-weight: 600; }
+#panel .fncontract .tcall { font-family: var(--mono); font-size: .8rem; font-weight: 600; cursor: pointer; }
+#panel .fncontract .tcall::before { content: "\25BE"; display: inline-block; width: 1em; color: var(--muted); font-weight: 400; }
+#panel .fncontract .tcall.folded::before { content: "\25B8"; }
 .cm-editor { height: 100%; }
 .cm-editor.cm-focused { outline: none; }
 .right { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--sunk); overflow: hidden; }

@@ -275,6 +275,10 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 
 		this.files.fork(source.files, options);
 		this.inc.fork(source.inc);
+		this.gas.fork(source.gas);
+		this.deps.fork(source.deps);
+		this.env.fork(source.env);
+		this.meta.fork(source.meta);
 	}
 
 	/**

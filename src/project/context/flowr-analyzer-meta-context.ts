@@ -123,6 +123,10 @@ export class FlowrAnalyzerMetaContext implements ReadOnlyFlowrAnalyzerMetaContex
 		this.fields.clear();
 	}
 
+	fork(meta: FlowrAnalyzerMetaContext) {
+		throw new Error('Method not implemented.');
+	}
+
 	receive(event: InvalidationEvent): void {
 		resetOnFullInvalidation(this, event);
 	}

@@ -1,4 +1,4 @@
-import { FlowrConfig } from '../config';
+import { FlowrConfig, FlowrDefaultPlugins } from '../config';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser, KnownParserInformation } from '../r-bridge/parser';
 import { executeQueries, type Queries, type QueryResults, type SupportedQueryTypes } from '../queries/query';
@@ -45,6 +45,7 @@ export interface FlowrAnalysisOptions {
 
 /** Options for forking an analyzer */
 export interface ForkOptions {
+	/** Shares state until modified */
 	readonly lazy?:          boolean;
 	/** Reuses the dataflow result from the parent analyzer */
 	readonly forkDataflow?:  boolean;
@@ -241,7 +242,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 			return typeof plugin.fork === 'function' ? plugin.fork() : plugin;
 		});
 
-		const fork = await  new FlowrAnalyzerBuilder()
+		const fork = await  new FlowrAnalyzerBuilder(false)
 			.setEngine(this.parser.name)
 			.setConfig(FlowrConfig.clone(this.flowrConfig))
 			.registerPlugins(...forkedPlugins)

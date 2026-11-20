@@ -94,7 +94,7 @@ describe('Analyzer', withTreeSitter(parser => {
 		assert.deepStrictEqual(await graph(b), await analyze(aFile, bFile));
 	});
 
-	test('using the "forkDataflow" option to use the dataflow in the fork', async() => {
+	test('forks reuse the dataflow by default', async() => {
 		const a = await new FlowrAnalyzerBuilder()
 			.setParser(parser)
 			.setEngine('tree-sitter')
@@ -104,13 +104,15 @@ describe('Analyzer', withTreeSitter(parser => {
 
 		const graphA = await graph(a);
 
-		const b = await a.fork({ forkDataflow: true });
+		const b = await a.fork();
 		assert.deepStrictEqual(await graph(b), graphA);
 
 		b.addRequest('y <- x * 2');
-		const graphB = await graph(b);
-		assert.notDeepEqual(graphB, graphA);
+		assert.notDeepEqual(await graph(b), graphA);
 		assert.deepStrictEqual(await graph(a), graphA);
+
+		const c = await a.fork({ forkDataflow: false });
+		assert.deepStrictEqual(c.peekDataflow(), undefined);
 	});
 
 	test('using the "decouple files" option to share mutable inline files', async() => {

@@ -278,7 +278,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}
 
 		this.loadingOrder.fork(source.loadingOrder);
-		this.requestedRoots = [...source.requestedRoots];
+		this.requestedRoots = source.requestedRoots.slice();
 		this.implicitSourceDirs = new Set(source.implicitSourceDirs);
 		this.rootCache = source.rootCache;
 		this.rootResolved = source.rootResolved;

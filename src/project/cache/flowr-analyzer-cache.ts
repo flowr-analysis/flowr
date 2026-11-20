@@ -202,7 +202,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		target.normalize = source.peekNormalize();
 		target.parse = source.peekParse();
 
-		if(options?.forkDataflow ?? false) {
+		if(options?.forkDataflow ?? true) {
 			target.dataflow = source.peekDataflow();
 		}
 	}

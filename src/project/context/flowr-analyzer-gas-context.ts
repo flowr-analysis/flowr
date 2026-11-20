@@ -157,6 +157,10 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 		this.base.startTime = Date.now();
 	}
 
+	fork(gas: FlowrAnalyzerGasContext) {
+		throw new Error('Method not implemented.');
+	}
+
 	/** A new analysis makes the spent contingent irrelevant. */
 	public receive(_event: InvalidationEvent): void {
 		this.reset();

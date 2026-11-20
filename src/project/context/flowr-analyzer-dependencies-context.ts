@@ -143,6 +143,10 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		this.resolvedMisses = new Set();
 	}
 
+	fork(deps: FlowrAnalyzerDependenciesContext) {
+		throw new Error('Method not implemented.');
+	}
+
 	/** Register a resolver consulted by {@link getDependency} to fill in a package's exports lazily. */
 	public addLazyResolver(resolver: (name: string, existing?: Package) => Package | undefined): void {
 		this.lazyResolvers.push(resolver);

@@ -84,7 +84,7 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 		}
 
 		if(source.knownOrder) {
-			this.knownOrder = [...source.knownOrder];
+			this.knownOrder = source.knownOrder.slice();
 		}
 
 		this.rerunRequired = source.rerunRequired;

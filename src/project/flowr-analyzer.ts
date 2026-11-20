@@ -1,4 +1,4 @@
-import { FlowrConfig, FlowrDefaultPlugins } from '../config';
+import { FlowrConfig } from '../config';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser, KnownParserInformation } from '../r-bridge/parser';
 import { executeQueries, type Queries, type QueryResults, type SupportedQueryTypes } from '../queries/query';

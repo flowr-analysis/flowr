@@ -113,4 +113,11 @@ export class FlowrAnalyzerFunctionsContext extends AbstractFlowrAnalyzerContext<
 	public reset(): void {
 		this.functionInfo = new Map<string, FunctionInfo[]>();
 	}
+
+	public fork(source: FlowrAnalyzerFunctionsContext): void {
+		this.functionInfo = new Map<string, FunctionInfo[]>();
+		source.functionInfo.forEach((infos, name) => {
+			this.functionInfo.set(name, infos.map(info => ({ ...info })));
+		});
+	}
 }

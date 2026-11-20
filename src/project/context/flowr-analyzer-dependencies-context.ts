@@ -134,6 +134,8 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	/** resolvers consulted lazily to fill in exports; `existing` carries version info from other plugins */
 	private lazyResolvers: ((name: string, existing?: Package) => Package | undefined)[] = [];
 	private resolvedMisses = new Set<string>();
+	/** R version reported by the analysis engine, used when no project or config version is available */
+	private detectedR:     string | undefined;
 
 	public reset(): void {
 		this.dependencies = new Map();
@@ -143,8 +145,24 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		this.resolvedMisses = new Set();
 	}
 
-	fork(deps: FlowrAnalyzerDependenciesContext) {
-		throw new Error('Method not implemented.');
+	fork(source: FlowrAnalyzerDependenciesContext) {
+		this.dependencies = new Map(source.dependencies);
+		this.resolvedOnly = new Map(source.resolvedOnly);
+		this.staticsLoaded = source.staticsLoaded;
+		this.lazyResolvers = source.lazyResolvers.slice();
+		this.resolvedMisses = new Set(source.resolvedMisses);
+		if(source.detectedR !== undefined) {
+			this.setDetectedRVersion(source.detectedR);
+		}
+		this.functionsContext.fork(source.functionsContext);
+	}
+
+	public setDetectedRVersion(version: string): void {
+		this.detectedR = version;
+	}
+
+	public getDetectedRVersion(): string | undefined {
+		return this.detectedR;
 	}
 
 	/** Register a resolver consulted by {@link getDependency} to fill in a package's exports lazily. */

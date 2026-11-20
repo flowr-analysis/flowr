@@ -123,8 +123,16 @@ export class FlowrAnalyzerMetaContext implements ReadOnlyFlowrAnalyzerMetaContex
 		this.fields.clear();
 	}
 
-	fork(meta: FlowrAnalyzerMetaContext) {
-		throw new Error('Method not implemented.');
+	fork(source: FlowrAnalyzerMetaContext): void {
+		this.fields.clear();
+		source.fields.forEach((field, key) => {
+			this.fields.set(key, {
+				priority: field.priority,
+				value:    Array.isArray(field.value)
+					? field.value.slice()
+					: field.value
+			});
+		});
 	}
 
 	receive(event: InvalidationEvent): void {

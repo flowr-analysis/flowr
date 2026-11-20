@@ -132,8 +132,6 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	public readonly activatedPlugins = new Set<string>();
 	public readonly gas:   FlowrAnalyzerGasContext;
 	private _analyzer:     FlowrAnalyzer | undefined;
-	/** an auto-detected R version (from the engine), recorded once at the analyzer boundary; see {@link resolvedRVersion} */
-	private _detectedR:    string | undefined;
 
 	public readonly plugins:    ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
 	/** the configuration as given, i.e. before {@link FlowrConfig.specializeConfig} is applied */
@@ -265,10 +263,6 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 
 	/** Clone state from the source context into this context */
 	public fork(source: FlowrAnalyzerContext, options?: ForkOptions): void {
-		if(source._detectedR !== undefined) {
-			this.setDetectedRVersion(source._detectedR);
-		}
-
 		for(const plugin of source.activatedPlugins) {
 			this.activatedPlugins.add(plugin);
 		}
@@ -296,12 +290,12 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 
 	/** Record the engine's auto-detected R version (used when `solver.sigdb.assumedRVersion` is `"auto"`). */
 	public setDetectedRVersion(version: string): void {
-		this._detectedR = version;
+		this.deps.setDetectedRVersion(version);
 	}
 
 	/** The R version analysis assumes when resolving versioned (base-R) exports (see {@link resolveAssumedRVersion}). */
 	public get resolvedRVersion(): string {
-		return resolveAssumedRVersion(this.config, this._detectedR);
+		return resolveAssumedRVersion(this.config, this.deps.getDetectedRVersion());
 	}
 
 	/** Whether {@link resolvedRVersion} is a genuine signal (a config pin, project metadata, or engine detection) rather than the fallback default. */
@@ -316,7 +310,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 			return RVersionOrigin.Config;
 		} else if(this.meta.getRVersion() !== undefined) {
 			return RVersionOrigin.Metadata;
-		} else if(this._detectedR !== undefined && this._detectedR !== 'none' && this._detectedR !== 'unknown') {
+		} else if(this.deps.getDetectedRVersion() !== undefined && this.deps.getDetectedRVersion() !== 'none' && this.deps.getDetectedRVersion() !== 'unknown') {
 			return RVersionOrigin.Engine;
 		}
 		return RVersionOrigin.Default;

@@ -3,6 +3,8 @@ import { FlowrAnalyzerPlugin, PluginType } from '../../flowr-analyzer-plugin';
 import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';
 import type { FilePath } from '../../../context/flowr-file';
 import type { NormalizedAst, ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { SourceRange } from '../../../../util/range';
+import type { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
 import type { RExpressionList } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 /** How the files of an analysis differ from those of the analysis before, see {@link FlowrAnalyzerIncrementalDataflowUpdateTypePlugin}. */
@@ -93,19 +95,18 @@ export class DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin extends Flo
 		}
 		const differences = Array.from({ length: shared }, (_, i) => compareFiles(previous[i].root, files[i].root));
 		const unchanged = differences.every((d, i) => d.prefix === previous[i].root.children.length && d.prefix === files[i].root.children.length);
-		if(files.length === previous.length + 1 && unchanged && !differences.some(d => d.locations)) {
+		const moved = differences.every((d, i) => d.locations || d.prefix === previous[i].root.children.length) && differences.some(d => d.locations);
+		if(files.length === previous.length + 1 && unchanged) {
 			return { types: [IncrementalUpdateType.NewFileAtEnd], filePath: files[files.length - 1].filePath };
 		} else if(files.length + 1 === previous.length && unchanged) {
 			return { types: [IncrementalUpdateType.RemovedFileAtEnd], filePath: previous[previous.length - 1].filePath };
 		} else if(files.length !== previous.length) {
 			return { types: [IncrementalUpdateType.Full] };
 		}
-		if(unchanged) {
-			const types = [
-				...differences.some(d => d.comments) ? [IncrementalUpdateType.Comment] : [],
-				...differences.some(d => d.locations) ? [IncrementalUpdateType.Location] : []
-			];
-			return { types: types.length > 0 ? types : [IncrementalUpdateType.Nothing] };
+		if(moved) {
+			return { types: [IncrementalUpdateType.Location] };
+		} else if(unchanged) {
+			return { types: [differences.some(d => d.comments) ? IncrementalUpdateType.Comment : IncrementalUpdateType.Nothing] };
 		}
 		if(files.length !== 1) {
 			return { types: [IncrementalUpdateType.Full] };
@@ -126,15 +127,31 @@ const CommentKeys = new Set(['adToks']);
 function compareFiles(before: RExpressionList<ParentInformation>, after: RExpressionList<ParentInformation>): FileDifference {
 	const shared = Math.min(before.children.length, after.children.length);
 	let prefix = 0;
-	while(prefix < shared && sameNode(before.children[prefix], after.children[prefix], key => LocationKeys.has(key) || CommentKeys.has(key))) {
-		prefix++;
+	let comments = !sameNode(before.info.adToks, after.info.adToks, NoKey);
+	/* a statement is the same if it is, besides its comments, as the dataflow graph keeps the locations of what it creates */
+	for(; prefix < shared; prefix++) {
+		const [a, b] = [before.children[prefix], after.children[prefix]];
+		if(sameText(a, b)) {
+			comments ||= !sameNode(a.info.adToks, b.info.adToks, NoKey);
+		} else if(sameNode(a, b, key => CommentKeys.has(key))) {
+			comments = true;
+		} else {
+			break;
+		}
 	}
 	const complete = prefix === before.children.length && prefix === after.children.length;
-	return {
-		prefix,
-		locations: complete && !sameNode(before, after, key => CommentKeys.has(key)),
-		comments:  complete && !sameNode(before, after, key => LocationKeys.has(key))
-	};
+	const locations = !complete && before.children.length === after.children.length
+		&& before.children.every((c, i) => sameNode(c, after.children[i], key => LocationKeys.has(key) || CommentKeys.has(key)));
+	return { prefix, locations, comments: complete && comments };
+}
+
+const NoKey = () => false;
+
+/** Whether the two statements have the same id, range, and text, which, as the ids count the nodes before, makes them the same statement. */
+function sameText(a: RNode<ParentInformation>, b: RNode<ParentInformation>): boolean {
+	const [ra, rb] = [SourceRange.fromNode(a), SourceRange.fromNode(b)];
+	return a.info.id === b.info.id && a.info.fullLexeme !== undefined && a.info.fullLexeme === b.info.fullLexeme
+		&& ra !== undefined && rb !== undefined && ra.every((v, i) => v === rb[i]);
 }
 
 /**

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-11-18, 18:09:44 UTC (v2.17.8, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-11-21, 14:03:04 UTC (v2.17.9, R v4.5.0), do not edit directly._
 
 # Signature Database
 
@@ -52,7 +52,7 @@ These are derived on demand by the [signature query](https://github.com/flowr-an
 
 ## Reading It From an Analyzer
 
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L162"><code>FlowrAnalyzerDependenciesContext::<b>signatures</b></code></a> is the entry point, and it is the one you want.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L184"><code>FlowrAnalyzerDependenciesContext::<b>signatures</b></code></a> is the entry point, and it is the one you want.
 
 ```ts
 function fromTheAnalyzer(analyzer: FlowrAnalyzer) {
@@ -99,9 +99,9 @@ cover, and reaches the same functions directly.
 <i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L38">src/documentation/wiki-signature-database.ts#L38</a></i>
 
 To check what a project can resolve against without touching the raw sources, a [context](https://github.com/flowr-analysis/flowr/wiki/Analyzer) exposes
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L151"><code>FlowrAnalyzerDependenciesContext::<b>hasSignatureDatabase</b></code></a> (a cheap presence check) and
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L147"><code>FlowrAnalyzerDependenciesContext::<b>availableSignatureDatabases</b></code></a> (the identifying names of the loaded databases), alongside the
-richer <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L140"><code>FlowrAnalyzerDependenciesContext::<b>loadedSignatureDatabases</b></code></a> metadata.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L173"><code>FlowrAnalyzerDependenciesContext::<b>hasSignatureDatabase</b></code></a> (a cheap presence check) and
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L169"><code>FlowrAnalyzerDependenciesContext::<b>availableSignatureDatabases</b></code></a> (the identifying names of the loaded databases), alongside the
+richer <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L162"><code>FlowrAnalyzerDependenciesContext::<b>loadedSignatureDatabases</b></code></a> metadata.
 
 ## Configuration
 
@@ -152,11 +152,11 @@ build; the load column is the decompression time measured at generation time.
 
 | Shard | Contents | Versions kept | Packages | Versions | Size (`.br`) | Load (first touch) |
 |-------|----------|---------------|---------:|---------:|-------------:|-------------------:|
-| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 540 µs |
-| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 5.1 ms |
-| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 15 ms |
-| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 260 ms |
-| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 500 ms |
+| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 670 µs |
+| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 5.8 ms |
+| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 18 ms |
+| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 280 ms |
+| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 570 ms |
 
 Which shard answers a lookup follows from the package and the version asked for. A base-R package comes from
 `base-current`, one of the 1,000 most-downloaded CRAN packages from `current-top`, and anything else from

@@ -276,17 +276,18 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 		/* a live frame is handed to the copy and forks on its owner's next write, so it costs nothing to copy */
 		const shared = new Set<object>();
 		return deepCloneSharing(state, o => {
-			if(o instanceof Environment && o.builtInEnv !== true) {
+			/* most of what a copy meets are plain records (edges, vertices, references), so these are asked first */
+			if(Object.getPrototypeOf(o) === Object.prototype) {
+				return o === this.config || files.has(o)
+					|| ('info' in o && typeof o.info === 'object' && o.info !== null && 'id' in o.info && idMap.get(o.info.id as NodeId) === o);
+			} else if(o instanceof Environment) {
+				if(o.builtInEnv === true) {
+					return true;
+				}
 				shared.add(o.shareMemory());
 				return false;
 			}
-			return o === idMap
-				|| files.has(o)
-				|| o === this.config
-				|| o instanceof LazyBindings
-				|| (o instanceof Frame && (o.isFrozen || shared.has(o)))
-				|| (o instanceof Environment && o.builtInEnv === true)
-				|| ('info' in o && typeof o.info === 'object' && o.info !== null && 'id' in o.info && idMap.get(o.info.id as NodeId) === o);
+			return o === idMap || o instanceof LazyBindings || (o instanceof Frame && (o.isFrozen || shared.has(o)));
 		}, (owner, key) => typeof key === 'string' && (
 			(owner instanceof DataflowGraph && DroppedGraphCaches.has(key))
 			|| (owner instanceof Environment && (key === 'cache' || key === 'tailCache'))

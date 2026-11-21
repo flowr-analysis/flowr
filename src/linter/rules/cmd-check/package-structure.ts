@@ -9,7 +9,7 @@ import { FlowrInlineTextFile } from '../../../project/context/flowr-file';
 import { RDAParser, type RObject, type RObjectData } from '../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { escapeRegex } from '../../../util/text/strings';
 import { getPlatform } from '../../../util/os';
-import { type FileResult, fileFindings, MessageAtLocation, onPackageFiles } from './file-checks';
+import { type FileResult, fileFindings, prettyPrintMessageAtLocation, onPackageFiles } from './file-checks';
 import type { PackageEntry, PackageFiles } from './package-files';
 
 export type PackageStructureKind =
@@ -369,7 +369,7 @@ export const PACKAGE_STRUCTURE = {
 		buildFindings(env).forEach(([kind, message]) => found.add(kind, 'build/vignette.rds', message));
 		return { results: found.results, '.meta': { inspectedEntries: entries.length, onDisk: pf.onDisk } };
 	}),
-	prettyPrint: MessageAtLocation,
+	prettyPrint: prettyPrintMessageAtLocation(),
 	info:        {
 		name:          'Package Structure',
 		tags:          [LintingRuleTag.CmdCheck], certainty:     LintingRuleCertainty.BestEffort,

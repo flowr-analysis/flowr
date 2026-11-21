@@ -11,7 +11,7 @@ import { AuthorRole, parseRAuthorString } from '../../../util/r-author';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { AttachedBasePackageSet, isBaseRPackage } from '../../../util/r-base-packages';
 import { rootDescriptionFile } from './package-files';
-import { MessageAtLocation } from './file-checks';
+import { prettyPrintMessageAtLocation } from './file-checks';
 import { RPath } from '../../../util/files';
 import { type CmdCheckResult, DependencyFields, type DependencyField } from './cmd-check-util';
 
@@ -418,7 +418,7 @@ export const DESCRIPTION_METADATA = {
 		}
 		return { results, '.meta': { hasDescription: true } };
 	},
-	prettyPrint: MessageAtLocation,
+	prettyPrint: prettyPrintMessageAtLocation(),
 	info:        {
 		name:          'Description Metadata',
 		tags:          [LintingRuleTag.CmdCheck],

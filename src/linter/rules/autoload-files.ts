@@ -3,7 +3,6 @@ import { FileRole } from '../../project/context/flowr-file';
 import { LintingRuleTag } from '../linter-tags';
 import type { MergeableRecord } from '../../util/objects';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
-import { requestFromInput } from '../../r-bridge/retriever';
 import { dirname, isAbsolute, join, normalize } from 'path';
 
 export interface AutoloadFilesResult extends LintingResult {
@@ -54,16 +53,19 @@ export const AUTOLOAD_FILES = {
 				analyzer.addFile(file);
 			}
 			for(const file of startupFiles) {
-				analyzer.addRequest(requestFromInput(`file://${file.path()}`));
+				analyzer.addRequest({ request: 'file', content: file.path() });
 			}
 			const deps = await analyzer.query([{ type: 'dependencies', enabledCategories: ['source'] }]);
-			const df = (await analyzer.dataflow()).graph;
+			const idMap = (await analyzer.dataflow()).graph.idMap;
+			if(idMap === undefined) {
+				return ret;
+			}
 
 			for(const sourced of deps.dependencies.source) {
 				if(sourced.value === undefined || sourced.nodeId === undefined) {
 					continue;
 				}
-				const node = df.idMap?.get(sourced.nodeId);
+				const node = idMap.get(sourced.nodeId);
 				if(node === undefined) {
 					continue;
 				}

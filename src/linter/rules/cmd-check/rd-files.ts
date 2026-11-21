@@ -18,7 +18,7 @@ import { type RdMacroUse, type RdNode, type RdScan, parseRdMacros, scanRd } from
 import { type packageInfo, DependencyFields, firstErrorRow, projectNodes } from './cmd-check-util';
 import type { PackageFiles } from './package-files';
 import { rdExamples } from './package-code';
-import { type FileResult, fileFindings, onPackageFiles, KindInFile } from './file-checks';
+import { type FileResult, fileFindings, onPackageFiles, prettyPrintKindInFile } from './file-checks';
 
 /** what is wrong with an Rd page or the manual, named after the part of `R CMD check` that finds it */
 export type RdFilesKind = 'rd-syntax' | 'rd-unknown-macro' | 'rd-structure' | 'rd-empty-section' | 'rd-encoding' | 'rd-markup' | 'rd-lost-braces'
@@ -680,7 +680,7 @@ export const RD_FILES = {
 		}
 		return { results, '.meta': { checkedFiles: pages.length } };
 	}),
-	prettyPrint: KindInFile,
+	prettyPrint: prettyPrintKindInFile(),
 	info:        {
 		name:          'Rd Files',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness],

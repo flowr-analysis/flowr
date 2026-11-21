@@ -19,6 +19,7 @@ import { json } from '@codemirror/legacy-modes/mode/javascript';
 import { FlowrConfig } from '../../src/config';
 import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FlowrAnalyzerBuilder } from '../../src/project/flowr-analyzer-builder';
+import type { FlowrAnalyzer } from '../../src/project/flowr-analyzer';
 import { stringifyValue } from '../../src/dataflow/eval/values/r-value';
 import { LintingRules } from '../../src/linter/linter-rules';
 import type { LintQuickFix } from '../../src/linter/linter-format';
@@ -2443,7 +2444,38 @@ function packageSource(): FlowrAnalyzerPackageVersionsSigDbPlugin | undefined {
 const packages = packageSource();
 
 let ready: Promise<void> | undefined;
-async function analyzer(code?: string, open?: string) {
+
+/** the analyzer of the files as they are, kept across edits so that the dataflow analysis continues the one before, see `incremental.dataflow` */
+let live: { readonly key: string, readonly analyzer: Promise<FlowrAnalyzer> } | undefined;
+
+/** An analyzer of `code`, or of the files with `open` standing in for the open one, or (without either) the {@link live} one of the files as they are. */
+async function analyzer(code?: string, open?: string): Promise<FlowrAnalyzer> {
+	if(code !== undefined || open !== undefined) {
+		return freshAnalyzer(code, open);
+	}
+	const project = projectFiles().map(([name, text]) => [name, isRSession(name, text) ? sessionAsScript(text) : text, isRSession(name, text)] as const);
+	/* what the analyzer was built with besides the contents, which an edit only changes in place */
+	const key = JSON.stringify([settings, project.map(([name, , session]) => [name, session]), files.filter(f => Analyzed.test(f.name)).map(f => f.name)]);
+	if(live?.key !== key) {
+		live = { key, analyzer: freshAnalyzer(undefined, undefined, true) };
+		return live.analyzer;
+	}
+	const built = await live.analyzer;
+	const known = project.map(([name, content]) => [built.inspectContext().files.getFileByPath(name), content] as const);
+	/* a file the analyzer does not hold as it was handed over cannot be changed in place, so it starts over */
+	if(known.some(([file]) => !(file instanceof FlowrInlineTextFile))) {
+		live = { key, analyzer: freshAnalyzer(undefined, undefined, true) };
+		return live.analyzer;
+	}
+	for(const [file, content] of known) {
+		if(file instanceof FlowrInlineTextFile && file.content() !== content) {
+			file.updateInlineContent(content);
+		}
+	}
+	return built;
+}
+
+async function freshAnalyzer(code?: string, open?: string, incremental = false): Promise<FlowrAnalyzer> {
 	ready ??= TreeSitterExecutor.initTreeSitter(undefined, rWasm, treeSitterWasm);
 	await ready;
 	const builder = new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor());
@@ -2453,6 +2485,11 @@ async function analyzer(code?: string, open?: string) {
 	}
 	if(settings !== undefined) {
 		builder.setConfig(settings);
+	}
+	if(incremental) {
+		builder.amendConfig(c => {
+			c.incremental.dataflow.activated = true;
+		});
 	}
 	const built = await builder.build();
 	if(code !== undefined) {

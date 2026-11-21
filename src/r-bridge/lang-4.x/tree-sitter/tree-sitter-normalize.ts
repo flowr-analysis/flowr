@@ -211,7 +211,8 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				return {
 					type:     RType.Symbol,
 					location: makeSourceRange(rhs),
-					content:  Identifier.make(rhsText, lhs.text, int.text === ':::'),
+					/* `base::"system"` and `"base"::system` name the same function as `base::system` */
+					content:  Identifier.make(RString.unquote(rhsText), RString.unquote(lhs.text), int.text === ':::'),
 					lexeme:   rhsText,
 					...defaultInfo(),
 					info:     { ...defaultInfo().info, adToks: comments.map(c => c[1]) }

@@ -332,9 +332,9 @@ export function enumMembers<T extends object>(enumObject: T): [name: string, val
  * Deep clones `obj` and keeps the shape of what it reaches: an object reached twice is cloned once, cycles are kept,
  * and class instances (including those of `Map`, `Set`, and `Array` subclasses) keep their prototype.
  * Functions, and every object `keep` says so of, are shared by reference instead of cloned.
- * A property `drop` says so of is left out of the clone.
+ * A property `drop` says so of is left out of the clone, and one `replace` hands a copier for is copied by that, which may hand values on to the clone.
  */
-export function deepCloneSharing<T>(obj: T, keep: (o: object) => boolean, drop?: (owner: object, key: PropertyKey) => boolean): T {
+export function deepCloneSharing<T>(obj: T, keep: (o: object) => boolean, drop?: (owner: object, key: PropertyKey) => boolean, replace?: (owner: object, key: PropertyKey) => ((value: unknown, clone: (v: unknown) => unknown) => unknown) | undefined): T {
 	const seen = new Map<object, unknown>();
 	function clone(value: unknown): unknown {
 		if(typeof value !== 'object' || value === null) {
@@ -404,7 +404,9 @@ export function deepCloneSharing<T>(obj: T, keep: (o: object) => boolean, drop?:
 			if(drop?.(value, key)) {
 				continue;
 			}
-			(result as Record<PropertyKey, unknown>)[key] = clone((value as Record<PropertyKey, unknown>)[key]);
+			const copier = replace?.(value, key);
+			const field = (value as Record<PropertyKey, unknown>)[key];
+			(result as Record<PropertyKey, unknown>)[key] = copier === undefined ? clone(field) : copier(field, clone);
 		}
 		return result;
 	}

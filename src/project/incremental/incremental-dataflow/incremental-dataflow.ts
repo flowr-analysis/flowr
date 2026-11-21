@@ -9,6 +9,7 @@ import { Frame, LazyBindings } from '../../../dataflow/environments/frame-memory
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RProjectFile } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { DataflowGraph } from '../../../dataflow/graph/graph';
+import type { DFControlFlowEdge, DfEdge } from '../../../dataflow/graph/edge';
 import { deepCloneSharing } from '../../../util/objects';
 import { activeDataflowBudget } from '../../../gas';
 import type { FlowrConfig } from '../../../config';
@@ -54,6 +55,17 @@ interface AnalysisState {
 
 /** what a graph derives from its vertices and edges on demand, so a copy rebuilds it when it needs it */
 const DroppedGraphCaches: ReadonlySet<string> = new Set(['incomingIndex', 'qualifiedNames', 'targetWalks', 'derived']);
+
+/**
+ * The edges are most of what a copy of a graph holds, and nearly all of them only carry their types, so these are copied as they are.
+ * A control edge shares its dependency with the vertices behind it, so it goes through the clone; the edges without side effects on calls are derived from the edges, so they start out empty.
+ */
+const GraphCopiers: ReadonlyMap<PropertyKey, (value: unknown, clone: (v: unknown) => unknown) => unknown> = new Map<PropertyKey, (value: unknown, clone: (v: unknown) => unknown) => unknown>([
+	['edgeInformation', (value, clone) => new Map((value as Map<NodeId, Map<NodeId, DfEdge>>).entries().map(([from, targets]) => [from,
+		new Map(targets.entries().map(([to, edge]) => [to, (edge as Partial<DFControlFlowEdge>).cd === undefined ? { types: edge.types } : clone(edge)]))
+	]))],
+	['beyondSideEffects', () => new Map()]
+]);
 
 interface ListCheckpoint extends AnalysisState {
 	readonly list: ExpressionListState;
@@ -292,7 +304,7 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 			(owner instanceof DataflowGraph && DroppedGraphCaches.has(key))
 			|| (owner instanceof Environment && (key === 'cache' || key === 'tailCache'))
 			|| (owner instanceof Frame && (key === 'flat' || key === 'flatKeys'))
-		));
+		), (owner, key) => owner instanceof DataflowGraph ? GraphCopiers.get(key) : undefined);
 	}
 
 	private restore(state: AnalysisState, data: DataflowProcessorInformation<ParentInformation>): void {

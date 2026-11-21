@@ -877,6 +877,21 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 	});
 
 	describe('with() / within()', () => {
+		assertDataflow(label('with(list(x = v), x): x reads the element of the list, not the variable of the caller', ['dynamic-environment-resolution', 'environment-with']),
+			shell,
+			'x <- 3\nwith(list(x = readline()), system(x))\nx',
+			emptyGraph()
+				.use(12, 'x').reads(12, 7)
+				.use(17, 'x').reads(17, 0),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: false, mustNotHaveEdges: [[12, 0]] }
+		);
+		assertDataflow(label('with(list(f = system), f(y)): the element is the function it names', ['dynamic-environment-resolution', 'environment-with', 'environment-alias']),
+			shell,
+			'with(list(f = system), f(readline()))',
+			emptyGraph()
+				.calls(11, NodeId.toBuiltIn('system')),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: false }
+		);
 		assertDataflow(label('with(e, x): x resolves from envState, e is read', ['dynamic-environment-resolution', 'environment-with']),
 			shell,
 			[

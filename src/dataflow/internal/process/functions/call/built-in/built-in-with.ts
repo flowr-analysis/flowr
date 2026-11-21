@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { VertexType } from '../../../../../graph/vertex';
+import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation } from '../known-call-handling';
@@ -11,7 +11,7 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type IdentifierReference, Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, type IdentifierReference, Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
 import { envirOf, resolveArgToEnvirOrAmbiguous, routeWrittenToEnvir, signatureParamNames, unknownIfAmbiguous } from './built-in-envir-utils';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { isPipedArgument, patchFunctionCall } from '../common';
@@ -20,6 +20,7 @@ import type { DataflowGraph } from '../../../../../graph/graph';
 import { ControlFlow } from '../../../../control-flow';
 import { linkInputs } from '../../../../linker';
 import { REnvironment } from '../../../../../environments/environment';
+import { getAliases } from '../../../../../eval/resolve/alias-tracking';
 
 /** Fallback formal parameter names for `with(data, expr, ...)` / `within(data, expr, ...)` when the signature database has no `base::with`. */
 const withParamsFallback = ['data', 'expr'] as const;
@@ -76,6 +77,11 @@ export function processWithEnv<OtherInfo>(
 	// columns of `data`, not variables in scope, so mark the non-data arguments as non-standard-evaluated
 	if(dataArg?.value === undefined || exprArg?.value === undefined) {
 		return markAsMaskedFallback(name, args, rootId, data);
+	}
+
+	const literal = literalListElements(dataArg.value, data);
+	if(literal !== undefined && !isPipedArgument(dataArg, rootId, data)) {
+		return processWithLiteralList(name, rootId, data, dataArg.value, exprArg.value, literal);
 	}
 
 	const envirRouting = resolveArgToEnvirOrAmbiguous(dataArg, data);
@@ -144,6 +150,83 @@ export function processWithEnv<OtherInfo>(
 		unknownReferences: []
 	};
 	return callsOpaque(dfExpr.graph, rootId) ? mayWriteInto(dataArg.value, result, rootId, data) : result;
+}
+
+/** The named elements of a `list(a = ..., b = ...)` written as the data, `undefined` if the data is no such call or the names it binds are unknown (a `...`). */
+function literalListElements<OtherInfo>(dataNode: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): [BrandedIdentifier, RNode<OtherInfo & ParentInformation>][] | undefined {
+	if(!RFunctionCall.isNamed(dataNode, 'list') || !Resolve.isBuiltIn(dataNode.functionName.content, data.environment, ReferenceType.Function)) {
+		return undefined;
+	}
+	const elements: [BrandedIdentifier, RNode<OtherInfo & ParentInformation>][] = [];
+	for(const arg of dataNode.arguments) {
+		if(RArgument.isEmpty(arg) || arg.value === undefined) {
+			continue;
+		} else if(arg.name === undefined) {
+			if(RSymbol.is(arg.value) && arg.value.content === Identifier.dotdotdot()) {
+				return undefined;
+			}
+			continue;
+		}
+		elements.push([Identifier.getName(arg.name.content), arg.value]);
+	}
+	return elements;
+}
+
+/**
+ * `with(list(f = system, x = readline()), f(x))` evaluates `expr` in a frame holding the named elements of the
+ * list, whose parent is the calling environment: `f` is `system` there and `x` the value of `readline()`.
+ * Neither `with` nor `within` changes a variable of the caller.
+ */
+function processWithLiteralList<OtherInfo>(
+	name:     RSymbol<OtherInfo & ParentInformation>,
+	rootId:   NodeId,
+	data:     DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	dataNode: RNode<OtherInfo & ParentInformation>,
+	expr:     RNode<OtherInfo & ParentInformation>,
+	elements: readonly [BrandedIdentifier, RNode<OtherInfo & ParentInformation>][]
+): DataflowInformation {
+	const dfDataArg = processDataflowFor(dataNode, data);
+	let frame = REnvironment.pushLocal(data.environment);
+	for(const [element, value] of elements) {
+		const vertex = dfDataArg.graph.getVertex(value.info.id);
+		frame = REnvironment.define({
+			nodeId:    value.info.id,
+			name:      element,
+			type:      DfgVertex.isFunctionDefinition(vertex) ? ReferenceType.Function : DfgVertex.isValue(vertex) ? ReferenceType.Variable : ReferenceType.Unknown,
+			definedAt: value.info.id,
+			cds:       data.cds,
+			/* like `f <- system`, the element holds what its value aliases */
+			value:     getAliases([value.info.id], dfDataArg.graph, data.environment)
+		}, false, frame);
+	}
+	const dfExpr = processDataflowFor(expr, { ...data, environment: frame });
+	const remainingFromExpr: IdentifierReference[] = [];
+	linkInputs(dfExpr.unknownReferences, frame, remainingFromExpr, dfExpr.graph, false);
+	patchFunctionCall({
+		nextGraph:             dfDataArg.graph,
+		rootId,
+		name,
+		data,
+		argumentProcessResult: [dfDataArg, dfExpr],
+		origin:                BuiltInProcName.With
+	});
+	const merged = dfDataArg.graph.mergeWith(dfExpr.graph);
+	const cfgEntry = ControlFlow.inSequence(merged, [dfDataArg, dfExpr], rootId);
+	/* the expression only runs because the call evaluates it, and the frame of the data is gone afterwards */
+	keepCallFor(dfExpr.out, merged, rootId);
+	return {
+		hooks:             dfDataArg.hooks.concat(dfExpr.hooks),
+		/* only what `<<-` writes beyond the frame stays */
+		environment:       REnvironment.popLocal(dfExpr.environment),
+		exitPoints:        dfDataArg.exitPoints.concat(dfExpr.exitPoints),
+		graph:             merged,
+		entryPoint:        rootId,
+		cfgEntry,
+		cfgExit:           rootId,
+		in:                dfDataArg.in.concat(dfExpr.in, dfDataArg.unknownReferences, remainingFromExpr, [{ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function }]),
+		out:               [],
+		unknownReferences: []
+	};
 }
 
 /** whether `graph` holds a call other than `rootId` that may run a closure of the data, like `with(e, inc())` */

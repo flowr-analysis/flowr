@@ -100,7 +100,16 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 }
 
 export type ConfigPlugin<T extends BuiltInFlowrPluginName | string> =
-	T | string | (T extends BuiltInFlowrPluginName ? [T, BuiltInFlowrPluginArgs<T>] : [string, unknown[]]);
+	T | string | (T extends BuiltInFlowrPluginName ? [T, BuiltInFlowrPluginArgs<T>?] : [string, unknown[]?]);
+
+/**
+ * A plugin name or a `[name, args]` tuple. The args reach the plugin constructor and override what the config
+ * says (e.g., the on-demand mirrors), so an untrusted config keeps the plugin but loses its args.
+ */
+const ConfigPluginsSchema = Joi.array().items(Joi.alternatives().try(
+	Joi.string(),
+	Joi.array().ordered(Joi.string().required(), securitySensitive(Joi.array().items(Joi.any()))).min(1).max(2)
+));
 
 /** One {@link FlowrConfig.specializeConfig} entry: a config overwrite, optionally `inherit`ing another kind's overwrite (own keys win). */
 export type SpecializeConfigEntry = DeepPartial<FlowrConfig> & { readonly inherit?: ProjectKind };
@@ -719,12 +728,12 @@ export const FlowrConfig = {
 				drawingWritesDevice: Joi.boolean().optional().description('Whether calls drawing on a graphics device (e.g., `plot`) count as writing to it, which the ambient state queries then report.')
 			}).optional().description('Semantics regarding the global state (options, devices, files, ...) calls access.')
 		}).description('Configure language semantics and how flowR handles them.'),
-		defaultPlugins: Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The default plugins to load when creating a new instance of FlowrAnalyzer'),
+		defaultPlugins: ConfigPluginsSchema.optional().description('The default plugins to load when creating a new instance of FlowrAnalyzer'),
 		repl:           Joi.object({
 			quickStats:          Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
 			dfProcessorHeat:     Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.'),
 			hints:               Joi.boolean().optional().description('Whether to show dim inline hints on the empty prompt (automatically disabled on non-interactive terminals).'),
-			plugins:             Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode'),
+			plugins:             ConfigPluginsSchema.optional().description('The plugins to load in REPL mode'),
 			autoUseFileProtocol: Joi.boolean().optional().description('Prepend the file protocol to a repl input that looks like a path, instead of only warning about it.'),
 			queryStats:          Joi.boolean().optional().description('Whether `:query` closes with the line stating how long the queries took (`:query*` never prints it).'),
 			showPlugins:         Joi.boolean().optional().description('Whether `:version` grays out the plugins that did not activate during the last analysis.')
@@ -796,7 +805,7 @@ export const FlowrConfig = {
 				warmInBackground:            Joi.boolean().optional().description('Decompress the hot shards (base + most-downloaded) in a background task on startup so the first library() lookup is warm (default false; for long-running servers/REPLs).'),
 				additionalPaths:             securitySensitive(Joi.array().items(Joi.string()).optional()).description('Extra directories or bundle/manifest files searched for signature databases (alongside the shipped default and $FLOWR_SIGDB_DIR); a downloaded full-history bundle placed here is mounted automatically.'),
 				downloadRepo:                securitySensitive(Joi.string().optional()).description('GitHub owner/repo the full-history bundle is downloaded from via ":signature download" (default "flowr-analysis/flowr"; the release tag comes from the committed sigdb.remote.json unless a version is given).'),
-				autoSync:                    Joi.boolean().optional().description('On startup, re-download shards whose committed sigdb.remote.json hash no longer matches the cache, in the background (default false; opt-in network sync after a git pull).'),
+				autoSync:                    securitySensitive(Joi.boolean().optional()).description('On startup, re-download shards whose committed sigdb.remote.json hash no longer matches the cache, in the background (default false; opt-in network sync after a git pull).'),
 				installedLibrary:            Joi.object({
 					enabled:           Joi.boolean().required().description('Recover packages no signature database knows from their installed copy (default false).'),
 					paths:             securitySensitive(Joi.array().items(Joi.string()).optional()).description('Library directories to search; when empty they are discovered from the environment and the project.'),
@@ -831,7 +840,7 @@ export const FlowrConfig = {
 			transitiveSideEffectRounds: Joi.number().min(1).optional().description(`How many rounds the transitive side-effect fixpoint may run before it is cut off (default ${DefaultTransitiveSideEffectRounds}); the propagation stops on its own as soon as a round adds nothing.`),
 			maxOverlayDepth:            Joi.number().min(0).optional().description(`How many binding overlays may stack on one environment frame before a write flattens them (default ${DefaultMaxOverlayDepth}); a pure performance knob, trading lookup cost against copy cost without changing any result.`),
 			instrument:                 Joi.object({
-				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
+				dataflowExtractors: securitySensitive(Joi.any().optional()).description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),
 			resolveSource: Joi.object({
 				dropPaths:             Joi.string().valid(...Object.values(DropPathsOption)).description('Allow to drop the first or all parts of the sourced path, if it is relative.'),
@@ -946,7 +955,7 @@ export const FlowrConfig = {
 	},
 	/** Like {@link FlowrConfig.dropSecuritySensitive}, but in {@link SecureMode} also drops the {@link FlowrConfig.regexPaths}. */
 	dropUntrusted(this: void, raw: unknown): string[] {
-		const dropped = FlowrConfig.dropSecuritySensitive(raw);
+		const dropped = [...dropPrototypeKeys(raw, ''), ...FlowrConfig.dropSecuritySensitive(raw)];
 		return SecureMode.isEnabled() ? [...dropped, ...FlowrConfig.regexPaths().flatMap(p => dropPath(raw, p, ''))] : dropped;
 	},
 	/** Creates a new flowr config that has the updated values. */
@@ -1133,6 +1142,7 @@ function taggedPaths(meta: string): readonly (readonly string[])[] {
 interface JoiDescription {
 	readonly keys?:    Record<string, JoiDescription>
 	readonly items?:   readonly JoiDescription[]
+	readonly ordered?: readonly JoiDescription[]
 	readonly matches?: readonly { readonly schema?: JoiDescription }[]
 	readonly metas?:   readonly Record<string, unknown>[]
 }
@@ -1146,8 +1156,31 @@ function collectTaggedPaths(d: JoiDescription | undefined, meta: string, at: rea
 	return [
 		...Object.entries(d.keys ?? {}).flatMap(([k, v]) => collectTaggedPaths(v, meta, [...at, k])),
 		...(d.items ?? []).flatMap(i => collectTaggedPaths(i, meta, [...at, '*'])),
+		...(d.ordered ?? []).flatMap((o, i) => collectTaggedPaths(o, meta, [...at, String(i)])),
 		...(d.matches ?? []).flatMap(m => collectTaggedPaths(m.schema, meta, at))
 	];
+}
+
+/**
+ * Removes every own `__proto__` key: merging the config assigns it as the prototype, which hides the options below it
+ * from {@link dropPath} while reads still find them (e.g. `specializeConfig.package.solver.sigdb.__proto__.downloadRepo`).
+ */
+function dropPrototypeKeys(obj: unknown, at: string): string[] {
+	if(obj === null || typeof obj !== 'object') {
+		return [];
+	}
+	const record = obj as Record<string, unknown>;
+	const dropped: string[] = [];
+	for(const key of Object.keys(record)) {
+		const next = at === '' ? key : `${at}.${key}`;
+		if(key === '__proto__') {
+			Reflect.deleteProperty(record, key);
+			dropped.push(next);
+		} else {
+			dropped.push(...dropPrototypeKeys(record[key], next));
+		}
+	}
+	return dropped;
 }
 
 function dropPath(obj: unknown, path: readonly string[], at: string): string[] {
@@ -1157,11 +1190,13 @@ function dropPath(obj: unknown, path: readonly string[], at: string): string[] {
 	const [head, ...rest] = path;
 	const record = obj as Record<string, unknown>;
 	const dropped: string[] = [];
-	for(const key of head === '*' ? Object.keys(record) : Object.hasOwn(record, head) ? [head] : []) {
+	const keys = head === '*' ? Object.keys(record) : Object.hasOwn(record, head) ? [head] : [];
+	// back to front, so removing an array element does not shift the ones still to visit
+	for(const key of Array.isArray(obj) ? keys.reverse() : keys) {
 		const next = at === '' ? key : `${at}.${key}`;
 		if(rest.length > 0) {
 			dropped.push(...dropPath(record[key], rest, next));
-		} else if(Reflect.deleteProperty(record, key)) {
+		} else if(Array.isArray(obj) ? obj.splice(Number(key), 1).length > 0 : Reflect.deleteProperty(record, key)) {
 			dropped.push(next);
 		}
 	}

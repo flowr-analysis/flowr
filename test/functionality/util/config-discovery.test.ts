@@ -100,13 +100,13 @@ describe('Project config trust', () => {
 	});
 
 	/* so that a new option naming an executable or a file to load cannot slip in untagged */
-	test(label('every string option is classified as security-sensitive or not', ['name-normal'], ['other']), () => {
+	test(label('every string or untyped option is classified as security-sensitive or not', ['name-normal'], ['other']), () => {
 		const notSensitive = new Set([
-			'defaultEngine', 'defaultPlugins.*', 'engines.*.type', 'logLevel', 'linter.disabledRules.*', 'linter.disabledTags.*',
+			'defaultEngine', 'defaultPlugins.*', 'defaultPlugins.*.0', 'engines.*.type', 'logLevel', 'linter.disabledRules.*', 'linter.disabledTags.*',
 			'project.basePackages.*', 'project.classification.notebookExtensions.*', 'project.classification.shinyDescriptionTypes.*',
 			'project.classification.shinyEntryFiles.*', 'project.classification.shinyUsagePattern', 'project.discovery.ignore.*',
 			'project.discovery.perKind.*.exclude.*', 'project.discovery.perKind.*.include.*', 'project.implicitSources.*', 'project.useProjectType',
-			'repl.plugins.*', 'solver.assumeAttachedPackages.*', 'solver.resolveSource.dropPaths', 'solver.resolveSource.inferWorkingDirectory',
+			'repl.plugins.*', 'repl.plugins.*.0', 'solver.assumeAttachedPackages.*', 'solver.resolveSource.dropPaths', 'solver.resolveSource.inferWorkingDirectory',
 			// reads files the invoking user can already read (see SECURITY.md)
 			'solver.resolveSource.searchPath.*',
 			'solver.sigdb.assumedRVersion', 'solver.sigdb.installedLibrary.packages.*', 'solver.sigdb.versionOverrides.*',
@@ -116,11 +116,11 @@ describe('Project config trust', () => {
 		]);
 		const sensitive = new Set(FlowrConfig.securitySensitivePaths().map(p => p.join('.')));
 		const unclassified: string[] = [];
-		function walk(d: { type?: string, keys?: Record<string, unknown>, items?: unknown[], matches?: { schema?: unknown }[], patterns?: { rule?: unknown }[] } | undefined, at: string[]): void {
+		function walk(d: { type?: string, keys?: Record<string, unknown>, items?: unknown[], ordered?: unknown[], matches?: { schema?: unknown }[], patterns?: { rule?: unknown }[] } | undefined, at: string[]): void {
 			if(!d || sensitive.has(at.join('.'))) {
 				return;
 			}
-			if(d.type === 'string' && !notSensitive.has(at.join('.')) && !at.includes('inputSources')) {
+			if((d.type === 'string' || d.type === 'any') && !notSensitive.has(at.join('.')) && !at.includes('inputSources')) {
 				unclassified.push(at.join('.'));
 			}
 			for(const [k, v] of Object.entries(d.keys ?? {})) {
@@ -128,6 +128,9 @@ describe('Project config trust', () => {
 			}
 			for(const i of d.items ?? []) {
 				walk(i as typeof d, [...at, '*']);
+			}
+			for(const [i, o] of (d.ordered ?? []).entries()) {
+				walk(o as typeof d, [...at, String(i)]);
 			}
 			for(const m of d.matches ?? []) {
 				walk(m.schema as typeof d, at);

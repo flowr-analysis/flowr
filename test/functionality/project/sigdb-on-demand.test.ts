@@ -8,7 +8,9 @@ import { FlowrAnalyzerPackageVersionsOnDemandPlugin, packagesNamedIn } from '../
 import { readTarEntries, TarError } from '../../../src/project/sigdb/on-demand/tar';
 import { recoverPackage, sanitizeRecovered } from '../../../src/project/sigdb/on-demand/package-sources';
 import { checkedUrl, isLocalHost, RefusedUrlError } from '../../../src/project/sigdb/on-demand/fetch';
-import { FlowrConfig } from '../../../src/config';
+import { type ConfigPlugin, FlowrConfig } from '../../../src/config';
+import { makePlugin } from '../../../src/project/plugins/plugin-registry';
+import { ProjectKind } from '../../../src/project/context/project-kind';
 import { bioconductorSource, cranSource, GitHubSource, isPackageName, parseGitHubRemote, parsePackagesIndex, type FetchBytes, type OnDemandSource } from '../../../src/project/sigdb/on-demand/remote-sources';
 import { OnDemandRecoverer, type OnDemandOptions } from '../../../src/project/sigdb/on-demand/recoverer';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -486,6 +488,32 @@ describe('On-demand package sources', withTreeSitter(parser => {
 			const raw = { solver: { sigdb: { onDemand: { enabled: true, repositories: { x: 'a/b' }, cranMirror: 'https://evil.org/' } } } };
 			const dropped = FlowrConfig.dropSecuritySensitive(raw);
 			assert.includeMembers(dropped, ['solver.sigdb.onDemand.enabled', 'solver.sigdb.onDemand.repositories', 'solver.sigdb.onDemand.cranMirror']);
+		});
+		test(name('a project cannot switch on the fetching through plugin arguments'), () => {
+			const plugins = ['versions:sigdb', ['versions:on-demand', [{ enabled: true, cranMirror: 'https://10.0.0.5/', cacheDir: '/tmp/x' }]], ['versions:sigdb', ['/tmp/evil.sigdb']]];
+			const config = FlowrConfig.parse(JSON.stringify({
+				defaultPlugins:   plugins,
+				repl:             { plugins },
+				specializeConfig: { [ProjectKind.ShinyApp]: { defaultPlugins: plugins } }
+			}), false);
+			assert.isDefined(config);
+			const kept: ConfigPlugin<string>[] = ['versions:sigdb', ['versions:on-demand'], ['versions:sigdb']];
+			assert.deepStrictEqual(config.defaultPlugins, kept);
+			assert.deepStrictEqual(config.repl.plugins, kept);
+			assert.deepStrictEqual(config.specializeConfig?.[ProjectKind.ShinyApp]?.defaultPlugins, kept);
+			for(const p of config.defaultPlugins) {
+				assert.isDefined(makePlugin(p));
+			}
+		});
+		test(name('a project cannot hide options behind a prototype key'), () => {
+			const config = FlowrConfig.parse(JSON.stringify({ solver: { sigdb: { autoSync: true } } }).slice(0, -1)
+				+ ',"specializeConfig":{"package":{"solver":{"sigdb":{"__proto__":{"downloadRepo":"evil/repo"},"onDemand":{"__proto__":{"cranMirror":"https://10.0.0.5/","cacheDir":"/tmp/x"}}}}}}}', false);
+			assert.isDefined(config);
+			const sigdb = FlowrConfig.forKind(config, ProjectKind.Package).solver.sigdb;
+			assert.isFalse(sigdb.autoSync);
+			assert.isUndefined(sigdb.downloadRepo);
+			assert.isUndefined(sigdb.onDemand?.cranMirror);
+			assert.isUndefined(sigdb.onDemand?.cacheDir);
 		});
 	});
 }));

@@ -156,8 +156,8 @@ export function getPlugin(name: string, args?: unknown[]): FlowrAnalyzerPlugin |
 export type PluginToRegister<T extends BuiltInFlowrPluginName | string> =
 	FlowrAnalyzerPlugin | T | string |
 	(T extends BuiltInFlowrPluginName ?
-		[T, BuiltInFlowrPluginArgs<T>]
-		: [string, unknown[]]
+		[T, BuiltInFlowrPluginArgs<T>?]
+		: [string, unknown[]?]
 		);
 
 /** Create a Flowr Analyzer plugin from a {@link PluginToRegister} specification. */
@@ -166,8 +166,8 @@ export function makePlugin<T extends BuiltInFlowrPluginName | string>(toRegister
 		return toRegister;
 	}
 	if(Array.isArray(toRegister)) {
-		const [name, args] = toRegister;
-		const plugin = getPlugin(name, args as unknown[]);
+		const [name, args = []] = toRegister;
+		const plugin = getPlugin(name, args);
 		guard(plugin !== undefined, () => `Unknown Flowr Analyzer plugin: ${name.toString()}`);
 		return plugin;
 	}

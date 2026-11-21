@@ -1,4 +1,4 @@
-import type { FlowrConfig } from '../config';
+import { FlowrConfig } from '../config';
 import type { DeepPartial } from 'ts-essentials';
 import { type KnownParser, type KnownParserInformation, ParserName } from '../r-bridge/parser';
 import { executeQueries, Query, type Queries, type QueryArgumentsWithType, type QueryResults, type SingleQueryResult, type SupportedQueryTypes } from '../queries/query';
@@ -29,6 +29,7 @@ import type { InvalidationEvent } from './cache/flowr-cache';
 import type { GasOverrides } from '../gas';
 import type { FnInfo, FnInfoOptions } from '../dataflow/environments/query-fn-props';
 import type { Identifier } from '../dataflow/environments/identifier';
+import { FlowrAnalyzerBuilder } from './flowr-analyzer-builder';
 
 /** Options for a single analyzer operation, bounding what it may cost. */
 export interface FlowrAnalysisOptions {
@@ -43,7 +44,19 @@ export interface FlowrAnalysisOptions {
 	readonly gas?: GasOverrides;
 }
 
-/** Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state. */
+/** Options for forking an analyzer */
+export interface ForkOptions {
+	/** Shares state until modified */
+	readonly lazy?:          boolean;
+	/** Reuses the dataflow result from the parent analyzer */
+	readonly forkDataflow?:  boolean;
+	/** Decouples inline files instead of using their references */
+	readonly decoupleFiles?: boolean;
+}
+
+/**
+ * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
+ */
 export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser> extends ReadonlyFlowrAnalysisProvider<Parser> {
 	/**
 	 * Returns project context information.
@@ -239,6 +252,22 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.ctx = ctx;
 		ctx.setAnalyzer(this);
 		this.cache = cache;
+	}
+
+	public async fork(options?: ForkOptions): Promise<FlowrAnalyzer> {
+		const forkedPlugins = this.ctx.plugins.values().toArray().flat().map(plugin => {
+			return typeof plugin.fork === 'function' ? plugin.fork() : plugin;
+		});
+
+		const fork = await  new FlowrAnalyzerBuilder(false)
+			.setEngine(this.parser.name)
+			.setConfig(FlowrConfig.clone(this.flowrConfig))
+			.registerPlugins(...forkedPlugins)
+			.build();
+
+		fork.ctx.fork(this.ctx, options);
+		fork.cache.fork(this.cache, options);
+		return fork;
 	}
 
 	public get flowrConfig(): FlowrConfig {

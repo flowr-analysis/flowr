@@ -100,7 +100,15 @@ export abstract class FlowrAnalyzerPlugin<In = unknown, Out extends AsyncOrSync<
 		throw new Error('This is to be implemented by every Plugin Layer');
 	}
 
-	/** Run the plugin with the given context and arguments. */
+	/**
+	 * Optional Hook to create deep copies of a Plugin for analyzer forks
+	 * If not implemented forking an analyzer will copy by reference
+	 */
+	fork?(): FlowrAnalyzerPlugin<In, Out>;
+
+	/**
+	 * Run the plugin with the given context and arguments.
+	 */
 	public processor(context: FlowrAnalyzerContext, args: In): Out {
 		const now = Date.now();
 		try {

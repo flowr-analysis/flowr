@@ -115,6 +115,8 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 		this.builtInEnv.namespaces = builtIns.packageMemory;
 	}
 
+	fork(_source: FlowrAnalyzerEnvironmentContext): void {}
+
 	public get builtInIndex(): BuiltInIndex {
 		return this.index ??= BuiltInIndex.of(this.builtInDefinitions);
 	}

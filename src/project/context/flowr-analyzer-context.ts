@@ -18,7 +18,7 @@ import type { DeepPartial } from 'ts-essentials';
 import { type FileRole, type FlowrFileProvider, FlowrInlineTextFile } from './flowr-file';
 import { type ReadOnlyFlowrAnalyzerEnvironmentContext, FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
 import { type ReadOnlyFlowrAnalyzerMetaContext, FlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
-import type { FlowrAnalyzer } from '../flowr-analyzer';
+import type { FlowrAnalyzer, ForkOptions } from '../flowr-analyzer';
 import { type ReadOnlyFlowrAnalyzerIncrementalAnalysisContext, FlowrAnalyzerIncrementalAnalysisContext } from './flowr-analyzer-incremental-analysis-context';
 import { type InvalidationEvent, type InvalidationEventReceiver, InvalidationEventType } from '../cache/flowr-cache';
 import { FlowrAnalyzerGasContext, type ReadOnlyFlowrAnalyzerGasContext } from './flowr-analyzer-gas-context';
@@ -103,9 +103,8 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	public readonly activatedPlugins = new Set<string>();
 	public readonly gas:   FlowrAnalyzerGasContext;
 	private _analyzer:     FlowrAnalyzer | undefined;
-	/** an auto-detected R version (from the engine), recorded once at the analyzer boundary; see {@link resolvedRVersion} */
-	private _detectedR:    string | undefined;
 
+	public readonly plugins:    ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
 	/** the configuration as given, i.e. before {@link FlowrConfig.specializeConfig} is applied */
 	public readonly baseConfig: FlowrConfig;
 	/** {@link baseConfig}, specialized for {@link _configKind} */
@@ -213,6 +212,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]> | readonly FlowrAnalyzerPlugin[] = []) {
 		const byType = Array.isArray(plugins) ? arraysGroupBy(plugins as readonly FlowrAnalyzerPlugin[], p => p.type)
 			: plugins as ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
+		this.plugins = byType;
 		this.baseConfig = config;
 		this._config = config;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, byType.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
@@ -225,6 +225,20 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		// the plugins contributing the metadata are the ones the dependency context runs on demand
 		this.meta = new FlowrAnalyzerMetaContext(() => this.deps.ensureStaticsLoaded());
 		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (byType.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
+	}
+
+	/** Clone state from the source context into this context */
+	public fork(source: FlowrAnalyzerContext, options?: ForkOptions): void {
+		for(const plugin of source.activatedPlugins) {
+			this.activatedPlugins.add(plugin);
+		}
+
+		this.files.fork(source.files, options);
+		this.inc.fork(source.inc);
+		this.gas.fork(source.gas);
+		this.deps.fork(source.deps);
+		this.env.fork(source.env);
+		this.meta.fork(source.meta);
 	}
 
 	/**
@@ -242,12 +256,12 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 
 	/** Record the engine's auto-detected R version (used when `solver.sigdb.assumedRVersion` is `"auto"`). */
 	public setDetectedRVersion(version: string): void {
-		this._detectedR = version;
+		this.deps.setDetectedRVersion(version);
 	}
 
 	/** The R version analysis assumes when resolving versioned (base-R) exports (see {@link resolveAssumedRVersion}). */
 	public get resolvedRVersion(): string {
-		return resolveAssumedRVersion(this.config, this._detectedR);
+		return resolveAssumedRVersion(this.config, this.deps.getDetectedRVersion());
 	}
 
 	/** Whether {@link resolvedRVersion} is a genuine signal (a config pin, project metadata, or engine detection) rather than the fallback default. */
@@ -262,7 +276,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 			return RVersionOrigin.Config;
 		} else if(this.meta.getRVersion() !== undefined) {
 			return RVersionOrigin.Metadata;
-		} else if(this._detectedR !== undefined && this._detectedR !== 'none' && this._detectedR !== 'unknown') {
+		} else if(this.deps.getDetectedRVersion() !== undefined && this.deps.getDetectedRVersion() !== 'none' && this.deps.getDetectedRVersion() !== 'unknown') {
 			return RVersionOrigin.Engine;
 		}
 		return RVersionOrigin.Default;

@@ -17,6 +17,7 @@ import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 import { FlowrAnalyzerControlFlowCache } from './flowr-analyzer-controlflow-cache';
 import type { Tree } from 'web-tree-sitter';
 import { CallGraph } from '../../dataflow/graph/call-graph';
+import type { ForkOptions } from '../flowr-analyzer';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
 	parser:  Parser;
@@ -204,6 +205,17 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 */
 	public peekDataflow(): NonNullable<AnalyzerCacheType<Parser>['dataflow']> | undefined {
 		return this.get()?.dataflow;
+	}
+
+	/** Reuse cached results from the source cache according to the given fork options. */
+	public fork(source: FlowrAnalyzerCache<KnownParser>, options?: ForkOptions): void {
+		const target = this.get();
+		target.normalize = source.peekNormalize();
+		target.parse = source.peekParse();
+
+		if(options?.forkDataflow ?? true) {
+			target.dataflow = source.peekDataflow();
+		}
 	}
 
 	/**

@@ -1,9 +1,7 @@
 import type { SourceLocation } from '../../util/range';
 import type { NodeId } from '../lang-4.x/ast/model/processing/node-id';
 
-/**
- * Known Roxygen tags as per {@link https://roxygen2.r-lib.org/reference/index.html}
- */
+/** Known Roxygen tags as per {@link https://roxygen2.r-lib.org/reference/index.html} */
 export enum KnownRoxygenTags {
 	/* ---- Tags Index Crossref ---- */
 	Aliases = 'aliases',
@@ -71,9 +69,7 @@ export enum KnownRoxygenTags {
 	Unknown = 'unknown'
 }
 
-/**
- * Base interface for all roxygen tags.
- */
+/** Base interface for all roxygen tags. */
 export interface RoxygenTagBase<Type extends KnownRoxygenTags> {
 	/** The type of the roxygen tag. */
 	type: Type;
@@ -162,9 +158,7 @@ export type RoxygenTagName = RoxygenTagWithValue<KnownRoxygenTags.Name, string>;
 export type RoxygenTagText = RoxygenTagWithValue<KnownRoxygenTags.Text, string>;
 export type RoxygenOtherTag = RoxygenTagAuthor | RoxygenUnknownTag | RoxygenDocType | RoxygenTagName | RoxygenTagText;
 
-/**
- * All known Roxygen tag types.
- */
+/** All known Roxygen tag types. */
 export type RoxygenTag = (RoxygenCrossrefTag
 	| RoxygenNamespaceTag
 	| RoxygenFormattingTag
@@ -173,9 +167,7 @@ export type RoxygenTag = (RoxygenCrossrefTag
 	| RoxygenReusingDocumentationTag
     | RoxygenOtherTag) & { inherited?: boolean };
 
-/**
- * A roxygen comment block, consisting of multiple {@link RoxygenTag|roxygen tags}.
- */
+/** A roxygen comment block, consisting of multiple {@link RoxygenTag|roxygen tags}. */
 export interface RoxygenBlock {
 	readonly type:        'roxygen-block';
 	/** The ast node to which we assign the comment */
@@ -189,9 +181,7 @@ export interface RoxygenBlock {
 }
 
 const ValidRoxygenTagsSet: Set<string> = new Set(Object.values(KnownRoxygenTags));
-/**
- * Checks whether the given text is a known roxygen tag.
- */
+/** Checks whether the given text is a known roxygen tag. */
 export function isKnownRoxygenText(text: string): text is KnownRoxygenTags {
 	return ValidRoxygenTagsSet.has(text);
 }

@@ -5,7 +5,6 @@ import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, Top, TopSymbol } from './lattice';
 import { SetComparator, type SetDomain } from './value-abstract-domain';
 
-
 /** The Top element of the set range domain with an empty set as must set and {@link Top} as may set */
 export const SetRangeTop = { must: new Set<never>(), may: Top } as const satisfies SetRangeValue<unknown>;
 
@@ -71,32 +70,24 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		return new SetRangeDomain(value, this.limit, this.setType) as this;
 	}
 
-	/**
-	 * The set of values that must be present in the set.
-	 */
+	/** The set of values that must be present in the set. */
 	public get must(): SetRangeMustSet<T, Value> {
 		return (this.isValue() ? this.value.must : Bottom) as SetRangeMustSet<T, Value>;
 	}
 
-	/**
-	 * The set of values that may be present in the set (can be {@link Top}).
-	 */
+	/** The set of values that may be present in the set (can be {@link Top}). */
 	public get may(): SetRangeMaySet<T, Value> {
 		return (this.isValue() ? this.value.may : Bottom) as SetRangeMaySet<T, Value>;
 	}
 
-	/**
-	 * The lower bound of the set range representing all values that must be present (equals the must set).
-	 */
+	/** The lower bound of the set range representing all values that must be present (equals the must set). */
 	public lower(this: SetRangeDomain<T, SetRangeValue<T>>): ReadonlySet<T>;
 	public lower(this: SetRangeDomain<T, SetRangeLift<T>>): ReadonlySet<T> | typeof Bottom;
 	public lower(): ReadonlySet<T> | typeof Bottom {
 		return this.must;
 	}
 
-	/**
-	 * The upper bound of the set range representing all values that can possibly be present (union of must set and may set).
-	 */
+	/** The upper bound of the set range representing all values that can possibly be present (union of must set and may set). */
 	public upper(this: SetRangeDomain<T, SetRangeFinite<T>>): ReadonlySet<T>;
 	public upper(this: SetRangeDomain<T, SetRangeValue<T>>): ReadonlySet<T> | typeof Top;
 	public upper(this: SetRangeDomain<T, SetRangeLift<T>>): ReadonlySet<T> | typeof Top | typeof Bottom;
@@ -338,9 +329,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		}
 	}
 
-	/**
-	 * Extends the must set of the current abstract value down to the empty set.
-	 */
+	/** Extends the must set of the current abstract value down to the empty set. */
 	public widenDown(): this {
 		if(this.isValue()) {
 			return this.create({ must: new this.setType(), may: this.upper() });
@@ -348,9 +337,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		return this.bottom();
 	}
 
-	/**
-	 * Extends the may set of the current abstract value up to {@link Top}.
-	 */
+	/** Extends the may set of the current abstract value up to {@link Top}. */
 	public widenUp(): this {
 		if(this.isValue()) {
 			return this.create({ must: this.must, may: Top });

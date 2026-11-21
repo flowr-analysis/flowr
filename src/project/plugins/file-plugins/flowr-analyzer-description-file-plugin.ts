@@ -28,9 +28,7 @@ export const DescriptionFile = {
 	}
 } as const;
 
-/**
- * This plugin provides support for R `DESCRIPTION` files.
- */
+/** This plugin provides support for R `DESCRIPTION` files. */
 export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerPatternFilePlugin {
 	public readonly name = 'flowr-analyzer-description-file-plugin';
 	public readonly description = 'Reads DESCRIPTION files into key-value pairs.';

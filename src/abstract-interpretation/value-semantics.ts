@@ -1,10 +1,9 @@
-import type { IdentifierString } from '../dataflow/environments/identifier';
-import { Identifier } from '../dataflow/environments/identifier';
+import { type BrandedIdentifier, type IdentifierString, Identifier } from '../dataflow/environments/identifier';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { DfgVertex, type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import type { RLogicalValue } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { RNull, RNumberValue, RStringValue, RFalse, RTrue  } from '../r-bridge/lang-4.x/convert-values';
+import type { RNull, RNumberValue, RStringValue, RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { Record } from '../util/record';
 import type { AbsintContext, AbstractSemantics } from './abstract-semantics';
 import type { AnyAbstractDomain } from './domains/abstract-domain';
@@ -73,7 +72,7 @@ type CallSemanticsApplier<Semantics> = Semantics extends Record<IdentifierString
  * @template Domain - Type of the state abstract domain the semantics are defined for
  */
 type CallSemanticsDefinition<Domain extends StateDomain> = {
-	readonly [Key in keyof CallSemantics<Domain>]: ReadonlyMap<string, CallSemanticsEntry<Domain, Key>[]>;
+	readonly [Key in keyof CallSemantics<Domain>]: ReadonlyMap<BrandedIdentifier, CallSemanticsEntry<Domain, Key>[]>;
 };
 
 /**
@@ -109,7 +108,7 @@ export class ValueSemantics<Domain extends StateDomain<AnyAbstractDomain>> imple
 	constructor({ constants, ...callSemantics }: SemanticsDefinition<Domain>) {
 		this.constantSemantics = constants;
 		this.callSemantics = Record.mapPartialProps(callSemantics, semantics => {
-			const map = new Map<string, CallSemanticsEntry<Domain>[]>();
+			const map = new Map<BrandedIdentifier, CallSemanticsEntry<Domain>[]>();
 
 			for(const [key, applier] of Record.entries(semantics)) {
 				const identifier = Identifier.parse(key);

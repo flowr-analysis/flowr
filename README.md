@@ -38,7 +38,7 @@ It offers a wide variety of features, for example:
     	
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.16.7, R grammar v14 (tree-sitter engine)
+    flowR repl v2.17.6, R grammar v14 (tree-sitter engine)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -46,31 +46,15 @@ It offers a wide variety of features, for example:
     <summary style='color:gray'>Output</summary>
     
     ```text
-    Query: linter (16 ms)
-       ╰ Deprecated Functions (deprecated-functions): no findings
+    Query: linter (15 ms)
        ╰ File Path Validity (file-path-validity):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-       ╰ Seeded Randomness (seeded-randomness): no findings
        ╰ Absolute Paths (absolute-file-paths):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-       ╰ Unused Definitions (unused-definitions): no findings
-       ╰ Network Functions (network-functions): no findings
-       ╰ Dataframe Access Validation (dataframe-access-validation): no findings
-       ╰ Dead Code (dead-code): no findings
-       ╰ Useless Loops (useless-loop): no findings
-       ╰ Problematic Inputs (problematic-inputs): no findings
-       ╰ Stop Without Call (stop-call): no findings
-       ╰ Roxygen Arguments (roxygen-arguments): no findings
-       ╰ No Leaked Credentials (no-leaked-credentials): no findings
-       ╰ Undefined Symbol (undefined-symbol): no findings
-       ╰ Unused Import (unused-import): no findings
-       ╰ Unclosed Connection (unclosed-connection): no findings
-       ╰ Overwritten File (overwritten-file): no findings
-       ╰ Unescaped Arguments (unescaped-arguments): no findings
-       ╰ Namespace Access Validity (namespace-access): no findings
-    All queries together required ≈16 ms (1ms accuracy, total 16 ms)
+       ╰ +21 rules with no findings (:query to see all)
+    All queries together required ≈15 ms (1ms accuracy, total 15 ms)
     ```
     
     The linter will analyze the code and return any issues found.
@@ -84,31 +68,15 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (31 ms)\
-    &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
+    Query: **linter** (15 ms)\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **Problematic Inputs** (problematic-inputs): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **Stop Without Call** (stop-call): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **Roxygen Arguments** (roxygen-arguments): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **No Leaked Credentials** (no-leaked-credentials): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **Overwritten File** (overwritten-file): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
-    &nbsp;&nbsp;&nbsp;╰ **Namespace Access Validity** (namespace-access): _no findings_\
-    _All queries together required ≈31 ms (1ms accuracy, total 31 ms)_
+    &nbsp;&nbsp;&nbsp;╰ _+21 rules with no findings (:query* to see all)_\
+    _All queries together required ≈15 ms (1ms accuracy, total 15 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
@@ -117,46 +85,7 @@ It offers a wide variety of features, for example:
     The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
     
     ```json
-    {
-      "linter": {
-        "results": {
-          "deprecated-functions": {"results":[],".meta":{"builtin":0,"sigdb":0}},
-          "file-path-validity": {
-            "results": [{"involvedId":3,"loc":[1,1,1,23],"filePath":"/root/x.txt","certainty":"certain"}],
-            ".meta": {"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0}
-          },
-          "seeded-randomness": {
-            "results": [],
-            ".meta": {"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"callsWithOtherBranchProducers":0}
-          },
-          "absolute-file-paths": {"results":[{"certainty":"certain","filePath":"/root/x.txt","loc":[1,1,1,23]}],".meta":{"totalConsidered":1,"totalUnknown":0}},
-          "unused-definitions": {"results":[],".meta":{"totalConsidered":0}},
-          "network-functions": {"results":[],".meta":{"totalCalls":0,"totalFunctionDefinitions":0}},
-          "dataframe-access-validation": {"results":[],".meta":{"numOperations":0,"numAccesses":0,"totalAccessed":0}},
-          "dead-code": {"results":[],".meta":{}},
-          "useless-loop": {"results":[],".meta":{"numOfUselessLoops":0}},
-          "problematic-inputs": {"results":[],".meta":{}},
-          "stop-call": {"results":[],".meta":{"consideredNodes":0}},
-          "roxygen-arguments": {"results":[],".meta":{}},
-          "no-leaked-credentials": {"results":[],".meta":{"totalChecked":1}},
-          "undefined-symbol": {
-            "results": [],
-            ".meta": {
-              "totalFunctionCalls": 1,
-              "totalVariableUses": 0,
-              "suppressed": {"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0,"unresolvedLibrary":0,"declaredGlobal":0}
-            }
-          },
-          "unused-import": {"results":[],".meta":{"totalConsidered":0,"totalUnresolved":0,"totalMultiPackage":0,"totalUnused":0}},
-          "unclosed-connection": {"results":[],".meta":{"totalOpened":0,"totalClosed":0}},
-          "overwritten-file": {"results":[],".meta":{"totalFiles":0}},
-          "unescaped-arguments": {"results":[],".meta":{"totalCriticalArguments":0,"totalEscapedArguments":0}},
-          "namespace-access": {"results":[],".meta":{"unresolved":0}}
-        },
-        ".meta": {}
-      },
-      ".meta": {}
-    }
+    {"linter":{"results":{"deprecated-functions":{"results":[],".meta":{"builtin":0,"sigdb":0}},"file-path-validity":{"results":[{"involvedId":3,"loc":[1,1,1,23],"filePath":"/root/x.txt","certainty":"certain"}],".meta":{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0}},"seeded-randomness":{"results":[],".meta":{"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"callsWithOtherBranchProducers":0}},"absolute-file-paths":{"results":[{"certainty":"certain","filePath":"/root/x.txt","loc":[1,1,1,23]}],".meta":{"totalConsidered":1,"totalUnknown":0}},"unused-definitions":{"results":[],".meta":{"totalConsidered":0}},"network-functions":{"results":[],".meta":{"totalCalls":0,"totalFunctionDefinitions":0}},"dataframe-access-validation":{"results":[],".meta":{"numOperations":0,"numAccesses":0,"totalAccessed":0}},"dead-code":{"results":[],".meta":{}},"useless-loop":{"results":[],".meta":{"numOfUselessLoops":0}},"problematic-inputs":{"results":[],".meta":{}},"stop-call":{"results":[],".meta":{"consideredNodes":0}},"roxygen-arguments":{"results":[],".meta":{}},"no-leaked-credentials":{"results":[],".meta":{"totalChecked":1}},"undefined-symbol":{"results":[],".meta":{"totalFunctionCalls":1,"totalVariableUses":0,"suppressed":{"installed":0,"loadedPackage":0,"enclosingScope":0,"nonStandardEval":0,"subscript":0,"unresolvedLibrary":0,"declaredGlobal":0}}},"unused-import":{"results":[],".meta":{"totalConsidered":0,"totalUnresolved":0,"totalMultiPackage":0,"totalUnused":0}},"unclosed-connection":{"results":[],".meta":{"totalOpened":0,"totalClosed":0}},"overwritten-file":{"results":[],".meta":{"totalFiles":0}},"unescaped-arguments":{"results":[],".meta":{"totalCriticalArguments":0,"totalEscapedArguments":0}},"namespace-access":{"results":[],".meta":{"unresolved":0}},"secret-exfiltration":{"results":[],".meta":{"secretSinkCalls":0}},"process-state-in-session":{"results":[],".meta":{"sessionFunctions":0}},"call-contracts":{"results":[],".meta":{"checkedCalls":0}},"interactive-functions":{"results":[],".meta":{"totalCalls":0,"totalFunctionDefinitions":0}}},".meta":{}},".meta":{}}
     ```
     
     </details>
@@ -199,7 +128,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.16.7, R grammar v14 (tree-sitter engine)
+    flowR repl v2.17.6, R grammar v14 (tree-sitter engine)
     R> :query @static-slice (11@sum) file://test/testfiles/example.R
     ```
     
@@ -212,7 +141,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈3 ms (1ms accuracy, total 3 ms)
+    All queries together required ≈15 ms (1ms accuracy, total 15 ms)
     ```
     
     </details>
@@ -220,7 +149,7 @@ It offers a wide variety of features, for example:
     </details>
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\
-  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">104.2 ms</span></i> (as of Oct 27, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark),
+  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">104.2 ms</span></i> (as of Nov 13, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark),
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for more details on the [dataflow graphs](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) as well as [call graphs](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg).
   (&nbsp;[▶&nbsp;Explore in Browser](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zDYSwRgTghhCeAUATADsWECUAoLBnAxlMAKYD6ALgPakC2UAHgAQA8AtIwGYCuAdvuSEo949DIyYB6RnXojsWaAHdGKlW0aIo5KADoO0GsXghEjALyMAjAC4AbABpGANyJdi5xvngBmRwA5HAHZHACZHAE5HABYMbHwSKB5VdQ4QYHJiCHglRxdgN0YAPkYQuISeABICImJTdWqSCmoZeHjiRIq8t3lcLho6OFJcbXJcFnZe-pgQXCM2xMdDRI8l4Qba2KxeLlnEJu1gNQm%2B7KhFTtdieUUIEAydfFwneEmB2CGR3EcAIleYWAeT2%2B2FQlHIrXKVUIJEQIMoIB4owh7UqJgwQA&p=13:1 "run this script in flowR's playground, no setup")&nbsp;)
@@ -251,7 +180,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.16.7, R grammar v14 (tree-sitter engine)
+    flowR repl v2.17.6, R grammar v14 (tree-sitter engine)
     R> :dataflow* test/testfiles/example.R
     ```
     

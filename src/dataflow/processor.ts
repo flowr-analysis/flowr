@@ -1,14 +1,7 @@
-/**
- * Based on a two-way fold, this processor will automatically supply scope information
- */
-import type { ControlDependency } from './info';
-import { DataflowInformation } from './info';
+/** Based on a two-way fold, this processor will automatically supply scope information */
+import { type ControlDependency, DataflowInformation } from './info';
 import { activeDataflowBudget } from '../gas';
-import type {
-	NormalizedAst,
-	ParentInformation,
-	RNodeWithParent
-} from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation, RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from './environments/environment';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -18,31 +11,20 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	readonly parser:               Parser<KnownParserType>
-	/**
-	 * Initial and frozen ast-information
-	 */
+	/** Initial and frozen ast-information */
 	readonly completeAst:          NormalizedAst<OtherInfo>
 	/**
 	 * Correctly contains pushed local scopes introduced by `function` scopes.
 	 * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
 	 */
 	readonly environment:          REnvironmentInformation
-	/**
-	 * Other processors to be called by the given functions
-	 */
+	/** Other processors to be called by the given functions */
 	readonly processors:           DataflowProcessors<OtherInfo>
-	/**
-	 * The chain of file paths that lead to this inclusion.
-	 * The most recent (last) entry is expected to always be the current one.
-	 */
+	/** The chain of file paths that lead to this inclusion. The most recent (last) entry is expected to always be the current one. */
 	readonly referenceChain:       (string | undefined)[]
-	/**
-	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
-	 */
+	/** The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs). */
 	readonly cds:                  readonly ControlDependency[] | undefined
-	/**
-	 * The flowr context used for environment seeding, files, and precision control, ...
-	 */
+	/** The flowr context used for environment seeding, files, and precision control, ... */
 	readonly ctx:                  FlowrAnalyzerContext
 	/**
 	 * If set, the function call with this id is known to resolve to built-ins only,
@@ -69,15 +51,15 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	readonly pipedArgument?:       { readonly rootId: NodeId, readonly argument: RArgument<OtherInfo & ParentInformation> }
 	/** Where the top-level statements of every file start and end running, see {@link DataflowGraph#statementOrder} */
 	readonly statementOrder?:      Map<NodeId, [start: number, end: number]>
+	/** The statements left unanalyzed as they follow one that always exits, so walks over the AST can skip what never runs */
+	readonly unreachable?:         Set<NodeId>
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation;
 
 type NodeWithKey<OtherInfo, Key> = RNode<OtherInfo & ParentInformation> & { type: Key };
 
-/**
- * This way, a processor mapped to a {@link RType#Symbol} require a {@link RSymbol} as first parameter and so on.
- */
+/** This way, a processor mapped to a {@link RType#Symbol} require a {@link RSymbol} as first parameter and so on. */
 export type DataflowProcessors<OtherInfo> = {
 	[key in RNode['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, key>>
 };

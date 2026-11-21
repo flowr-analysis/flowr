@@ -5,7 +5,7 @@ import { type JsonEntry, convertPreparedParsedData, prepareParsedData } from '..
 import { extractLocation, getTokenType } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
 import type Parser from 'web-tree-sitter';
 import type { SyntaxNode } from 'web-tree-sitter';
-import type { ParseStepOutputSingleFile } from '../../../r-bridge/parser';
+import { type ParseStepOutputSingleFile, ParserName } from '../../../r-bridge/parser';
 import { FlowrFile } from '../../../project/context/flowr-file';
 
 type DepthList =  { depth: number, node: JsonEntry, leaf: boolean }[];
@@ -70,7 +70,6 @@ function lastElementInNesting(i: number, list: Readonly<DepthList>, depth: numbe
 	// only more deeply nested come after
 	return true;
 }
-
 
 function initialIndentation(i: number, depth: number, deadDepths: Set<number>, nextDepth: number, list: Readonly<DepthList>, f: OutputFormatter): string {
 	let result = `${i === 0 ? '' : '\n'}${f.getFormatString({ style: FontStyles.Faint })}`;
@@ -151,7 +150,6 @@ function findErrors(node: SyntaxNode): SyntaxNode[] {
 	return errors;
 }
 
-
 export const parseCommand: ReplCodeCommand = {
 	description:   'Prints ASCII Art of the parsed, unmodified AST',
 	isCodeCommand: true,
@@ -169,7 +167,7 @@ export const parseCommand: ReplCodeCommand = {
 		const result = (await analyzer.parse()).files;
 		const parserInfo = analyzer.parserInformation();
 
-		if(parserInfo.name === 'r-shell') {
+		if(parserInfo.name === ParserName.Shell) {
 			for(const { parsed, filePath } of result as ParseStepOutputSingleFile<string>[]) {
 				if(filePath && filePath !== FlowrFile.INLINE_PATH) {
 					output.stdout(output.formatter.format(`File: ${filePath}\n`, { style: FontStyles.Underline }));

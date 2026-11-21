@@ -80,15 +80,12 @@ function prepareStack(this: void, stack: string | undefined): string {
 	lines.shift();
 	// clip over 8
 	if(lines.length > 8) {
-		lines = [...lines.slice(0, 3),
-			'...', ...lines.slice(lines.length - 5)];
+		lines = [...lines.slice(0, 3), '...', ...lines.slice(lines.length - 5)];
 	}
 	return lines.map(l => l.replaceAll(/\(\/.*(src|test)/g, '(<>/$1')).join('\n');
 }
 
-/**
- * Generates a GitHub issue URL for reporting guard errors
- */
+/** Generates a GitHub issue URL for reporting guard errors */
 export function getGuardIssueUrl(message: string): string {
 	const body = encodeURIComponent(`<!-- Please describe your issue in more detail below! -->
 

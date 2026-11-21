@@ -61,9 +61,7 @@ export enum EdgeType {
 	ControlEdge = 1 << 13,
 }
 
-/**
- * See {@link EdgeType} for the basis.
- */
+/** See {@link EdgeType} for the basis. */
 export const enum EdgeTypeName {
 	Reads                 = 'reads',
 	DefinedBy             = 'defined-by',
@@ -109,9 +107,7 @@ type DfEdgeLike = { types: number };
  */
 export const DfEdge = {
 	name: 'DfEdge',
-	/**
-	 * Takes joint edge types and returns their human-readable names.
-	 */
+	/** Takes joint edge types and returns their human-readable names. */
 	typesToNames(this: void, { types }: DfEdgeLike): Set<EdgeTypeName> {
 		const rTypes = new Set<EdgeTypeName>();
 		for(const [bit, name] of edgeTypeToHumanReadableName.entries()) {
@@ -143,7 +139,7 @@ export const DfEdge = {
 	 * Otherwise, use {@link DfEdge#typesToNames} which handles these cases.
 	 */
 	typeToName(this: void, type: EdgeType): string {
-		return edgeTypeToHumanReadableName.get(type) as string;
+		return edgeTypeToHumanReadableName.get(type) ?? String(type);
 	},
 	/**
 	 * Check if the given-edge type has any of the given types.
@@ -214,7 +210,6 @@ export const DfEdge = {
 	},
 } as const;
 
-
 export const enum TraverseEdge {
 	/** Do not traverse this edge */
 	Never = 0,
@@ -226,14 +221,11 @@ export const enum TraverseEdge {
 	Always = 3
 }
 
-
 const alwaysTraverseEdgeTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Argument | EdgeType.Calls;
 
 const definedByOnCallTypes = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall;
 
-/**
- * Determines whether an edge should be traversed during dataflow analysis.
- */
+/** Determines whether an edge should be traversed during dataflow analysis. */
 export function shouldTraverseEdge(e: DfEdge): TraverseEdge {
 	if(DfEdge.includesType(e, EdgeType.NonStandardEvaluation)) {
 		return TraverseEdge.Never;

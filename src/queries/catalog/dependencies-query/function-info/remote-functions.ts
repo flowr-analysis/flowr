@@ -1,24 +1,32 @@
-import type { FunctionInfo } from './function-info';
-import { Constant, Unknown } from '../dependencies-query-format';
+import type { FunctionArgInfo, FunctionInfo } from './function-info';
+import type { BuiltInDefinitions } from '../../../../dataflow/environments/built-in-config';
+import { builtInNames } from '../../../../dataflow/environments/query-fn-props';
+import { CallProp, CallProps, SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
+import { Ambient, AmbientVerb } from '../../../../dataflow/environments/ambient-effect';
+import { KeyedState, PlainPackageName } from '../../../../dataflow/environments/ambient-state-name';
+import { Identifier } from '../../../../dataflow/environments/identifier';
+import { Constant, Unknown } from '../dependency-values';
 
 /**
- * The installers that fetch a package from somewhere other than a configured CRAN-like repository, with the
- * argument naming what they fetch: a `user/repo` slug for the forge installers, a url or path for the rest.
- * `remotes` implements them and `devtools` re-exports the whole API, so the entries state no package and match
- * either spelling as well as the bare name.
+ * The installers that fetch a package over the network, with the argument naming what they fetch, as the built-ins state them:
+ * a call is a remote install unless that argument is a plain package name, which comes from a configured CRAN-like repository.
  */
-export const RemoteFunctions: FunctionInfo[] = [
-	{ name: 'install_github',    argIdx: 0, argName: 'repo', resolveValue: true },
-	{ name: 'install_gitlab',    argIdx: 0, argName: 'repo', resolveValue: true },
-	{ name: 'install_bitbucket', argIdx: 0, argName: 'repo', resolveValue: true },
-	{ name: 'install_git',       argIdx: 0, argName: 'url',  resolveValue: true },
-	{ name: 'install_svn',       argIdx: 0, argName: 'url',  resolveValue: true },
-	{ name: 'install_url',       argIdx: 0, argName: 'url',  resolveValue: true },
-	{ name: 'install_bioc',      argIdx: 0, argName: 'repo', resolveValue: true },
-	{ package: 'pak', name: 'pkg_install',  argIdx: 0, argName: 'pkg', resolveValue: true, invisible: true },
-	{ package: 'pak', name: 'pak',          argIdx: 0, argName: 'pkg', resolveValue: true, invisible: true },
-	{ package: 'renv', name: 'install',     argIdx: 0, argName: 'packages', resolveValue: true, invisible: true }
-] as const;
+export function computeRemoteFunctions(definitions: BuiltInDefinitions): FunctionInfo[] {
+	return definitions.flatMap(d => {
+		const info = d.type === 'constant' ? undefined : d.config;
+		const member = info !== undefined && CallProps.hasAny(info, SemanticCallTag.Network)
+			? Ambient.list(info.ambient).find(e => e.family === KeyedState.InstalledPackages && (e.access === AmbientVerb.Writes || e.access === AmbientVerb.Adds))?.member : undefined;
+		const arg: FunctionArgInfo | undefined = typeof member !== 'object' ? undefined
+			: member.from === 'parameter' ? { argIdx: member.signature.indexOf(String(member.names[0])), argName: member.names[0] } : member.from === 'unnamed' ? { argIdx: 'unnamed' } : undefined;
+		return arg === undefined ? [] : builtInNames(d).map(id => ({ package: Identifier.getNamespace(id), name: Identifier.getName(id), ...arg, resolveValue: true,
+			...CallProps.hasAny(info, CallProp.Invisible) ? { invisible: true } : {} }));
+	});
+}
+
+/** Whether a value an installer was given names a package only implicitly, or may do so as it never resolved. */
+export function installsRemotely(value: string | undefined): boolean {
+	return value !== Constant && (value === undefined || value === Unknown || !PlainPackageName.test(value));
+}
 
 /** `github::`, `bioc::`, ... prefixes of a `pak` reference, and the `.git` a clone url ends in */
 const RemotePrefix = /^[a-z]+::/;

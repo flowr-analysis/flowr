@@ -1,5 +1,4 @@
-import { type ConfigValueAt, type EngineConfig, type EngineConfigPath, FlowrConfig, type ValidFlowrConfigPaths } from '../config';
-import type { DeepWritable } from 'ts-essentials';
+import { type WritableFlowrConfig, type ConfigValueAt, type EngineConfig, type EngineConfigPath, FlowrConfig, type ValidFlowrConfigPaths } from '../config';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
@@ -8,8 +7,7 @@ import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize
 import { guard } from '../util/assert';
 import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
-import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-registry';
-import { makePlugin } from './plugins/plugin-registry';
+import { type BuiltInFlowrPluginName, type PluginToRegister, makePlugin } from './plugins/plugin-registry';
 
 /**
  * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
@@ -35,7 +33,7 @@ import { makePlugin } from './plugins/plugin-registry';
  * ```
  */
 export class FlowrAnalyzerBuilder {
-	private flowrConfig:                 DeepWritable<FlowrConfig> = FlowrConfig.default();
+	private flowrConfig:                 WritableFlowrConfig = FlowrConfig.default();
 	private parser?:                     KnownParser;
 	private input?:                      Omit<NormalizeRequiredInput, 'context'>;
 	private readonly plugins:            Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
@@ -64,7 +62,7 @@ export class FlowrAnalyzerBuilder {
 	 * @param func - Receives the current configuration of the builder and allows for amendment.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- amendments usually mutate in place and return nothing
-	public amendConfig(func: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): this {
+	public amendConfig(func: (config: WritableFlowrConfig) => FlowrConfig | void): this {
 		this.flowrConfig = FlowrConfig.amend(this.flowrConfig, func);
 		return this;
 	}
@@ -102,9 +100,7 @@ export class FlowrAnalyzerBuilder {
 		key: K,
 		value: ConfigValueAt<K>
 	): this;
-	/**
-	 * Set a specific value in the configuration used by the resulting analyzer.
-	 */
+	/** Set a specific value in the configuration used by the resulting analyzer. */
 	public configure(key: ValidFlowrConfigPaths | EngineConfigPath, value: unknown): this {
 		FlowrConfig.setInConfigInPlace(this.flowrConfig, key, value as never);
 		return this;
@@ -131,10 +127,7 @@ export class FlowrAnalyzerBuilder {
 		return this;
 	}
 
-	/**
-	 * Additional parameters for the analyses.
-	 * @param input - The input.
-	 */
+	/** Additional parameters for the analyses. */
 	public setInput(input: Omit<NormalizeRequiredInput, 'context'>): this {
 		this.input = input;
 		return this;
@@ -196,6 +189,14 @@ export class FlowrAnalyzerBuilder {
 	}
 
 	/**
+	 * {@link FlowrAnalyzerBuilder#build|Build} the analyzer and {@link FlowrAnalyzer#addRequest|add} the given requests to it,
+	 * e.g., `await new FlowrAnalyzerBuilder().setParser(parser).buildFor('x <- 1')`.
+	 */
+	public async buildFor(...request: Parameters<FlowrAnalyzer['addRequest']>): Promise<FlowrAnalyzer> {
+		return (await this.build()).addRequest(...request);
+	}
+
+	/**
 	 * Synchronous version of {@link FlowrAnalyzerBuilder#build}, please only use this if you have set the parser using
 	 * {@link FlowrAnalyzerBuilder#setParser} before, otherwise an error will be thrown.
 	 */
@@ -206,11 +207,7 @@ export class FlowrAnalyzerBuilder {
 		if(this.flowrConfig.solver.sigdb.enabled && this.flowrConfig.solver.sigdb.eagerlyLoad) {
 			context.deps.eagerlyLoadSignatureDatabases();
 		}
-		const cache = FlowrAnalyzerCache.create({
-			parser: this.parser,
-			context,
-			...(this.input ?? {})
-		});
+		const cache = FlowrAnalyzerCache.create({ parser: this.parser, context, ...(this.input ?? {}) });
 
 		return new FlowrAnalyzer(
 			this.parser,

@@ -52,8 +52,7 @@ export class BasicCfgGuidedVisitor<
 		const graph = this.config.controlFlow.graph;
 		const forward = this.config.defaultVisitingOrder === 'forward';
 		const stack = Array.from(start);
-		while(stack.length > 0) {
-			const current = stack.pop() as NodeId;
+		for(let current; (current = stack.pop()) !== undefined;) {
 
 			if(!this.visitNode(current)) {
 				continue;
@@ -85,20 +84,15 @@ export class BasicCfgGuidedVisitor<
 		}
 	}
 
-	/**
-	 * Start the visiting process.
-	 */
+	/** Start the visiting process. */
 	public start(): void {
 		this.startVisitor(this.config.defaultVisitingOrder === 'forward' ? this.config.controlFlow.entryPoints : this.config.controlFlow.exitPoints);
 	}
 
-	/**
-	 * Get the control flow vertex for the given node id or fail if it does not exist.
-	 */
+	/** Get the control flow vertex for the given node id or fail if it does not exist. */
 	protected getCfgVertex(id: NodeId): CfgVertex | undefined {
 		return this.config.controlFlow.graph.getVertex(id);
 	}
-
 
 	/**
 	 * The constructs whose outcome the given vertex decides, e.g. the `if` a condition belongs to.

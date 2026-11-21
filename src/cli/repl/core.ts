@@ -11,7 +11,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { splitAtEscapeSensitive } from '../../util/text/args';
-import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
+import { ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
 import { fileProtocol } from '../../r-bridge/retriever';
@@ -19,6 +19,7 @@ import { type ReplOutput, standardReplOutput } from './commands/repl-main';
 import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfig } from '../../config';
+import type { CommandCompletions } from './completion';
 import { genericWrapReplFailIfNoRequest, SupportedQueries, type SupportedQuery } from '../../queries/query';
 import { signatureCommand, replSignatureCompleter } from './commands/repl-signature';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
@@ -26,6 +27,9 @@ import { startAndEndsWith, matchByPrefixOrSubsequence } from '../../util/text/st
 import type { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { instrumentDataflowCount } from '../../dataflow/instrument/instrument-dataflow-count';
 import { exitSafe } from '../../util/proc';
+import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
+import { Identifier } from '../../dataflow/environments/identifier';
+import { datasetsOf } from '../../util/r-datasets';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -40,33 +44,6 @@ const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory');
 function isReplStatsLine(line: string): boolean {
 	const text = line.trimStart();
 	return (text.startsWith(rawPrompt) ? text.slice(rawPrompt.length).trimStart() : text).startsWith('[REPL Stats]');
-}
-
-/**
- * Completion suggestions for a specific REPL command
- */
-export interface CommandCompletions {
-	/** The possible completions for the current argument */
-	readonly completions:   string[];
-	/**
-	 * The current argument fragment being completed, if any.
-	 * This is relevant if an argument is composed of multiple parts (e.g. comma-separated lists).
-	 */
-	readonly argumentPart?: string;
-	/** What Tab displays per completion, only used while several remain: readline inserts what it displays. */
-	readonly labels?:       ReadonlyMap<string, string>;
-	/** Display-only suggestions (e.g. a `<string>` type placeholder): previewed as a ghost hint but never inserted on Tab. */
-	readonly hints?:        readonly string[];
-	/**
-	 * The completer already selected these, so they must not be filtered against the typed fragment again.
-	 * Needed when a completion legitimately shares no prefix with what was typed, e.g. a glob expanding to the keys it matches.
-	 */
-	readonly preFiltered?:  boolean;
-}
-
-/** Labels a completion with what it does, see {@link CommandCompletions#labels|labels}. */
-export function describeCompletion(insert: string, describe: string): string {
-	return `${insert}  ${ansiFormatter.format(describe, { style: FontStyles.Faint })}`;
 }
 
 /**
@@ -119,8 +96,58 @@ export function computeCompletions(line: string, config: FlowrConfig): [string[]
 		}
 	}
 
+	/* a plain R line, which runs in R: the name typed last completes to what R finds without the script binding it */
+	if(line.trim().length > 0 && !line.trimStart().startsWith(':')) {
+		return completeRName(line);
+	}
 	// if no command is already typed, just return all commands that match
 	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
+}
+
+/** the most names a plain R line is offered, the first ones in order */
+const MaxRNames = 40;
+
+/** the functions flowR knows and the data sets R always finds (`penguins`), by name, with the packages they come from */
+let rNames: ReadonlyMap<string, readonly string[]> | undefined;
+
+/** whether the end of `line` is within a string or a comment, where nothing names an R object */
+function endsInText(line: string): boolean {
+	let quote: string | undefined;
+	for(let at = 0; at < line.length; at++) {
+		const c = line[at];
+		if(quote !== undefined) {
+			quote = c === '\\' ? (at++, quote) : c === quote ? undefined : quote;
+		} else if(c === '"' || c === "'" || c === '`') {
+			quote = c;
+		} else if(c === '#') {
+			return true;
+		}
+	}
+	return quote !== undefined;
+}
+
+/**
+ * Completes the name `line` ends in, as `Vi` to `View`, from {@link rNames}, only from the package named in
+ * `base::pri`. Nothing after `$` or `@`, which name a column or slot, within a number, a string, or a comment.
+ */
+function completeRName(line: string): [string[], string, ReadonlyMap<string, string>] {
+	rNames ??= (() => {
+		const found = new Map<string, string[]>();
+		const add = (name: string, pkg: string) => found.set(name, [...found.get(name) ?? [], pkg]);
+		datasetsOf('datasets').forEach(name => add(String(name), 'datasets'));
+		DefaultBuiltinConfig.forEach(d => d.names.forEach(id => add(String(Identifier.getName(id)), String(Identifier.getNamespace(id) ?? ''))));
+		return found;
+	})();
+	const typed = /(?:([A-Za-z][\w.]*):::?)?((?<![\w.$@])[A-Za-z.][\w.]*)$/.exec(line);
+	if(typed === null || endsInText(line) || /^\.\d/.test(typed[2])) {
+		return [[], '', new Map()];
+	}
+	const [, pkg, fragment] = typed;
+	const known = rNames;
+	const found = [...known.keys()].filter(name => name.startsWith(fragment) && name !== fragment && (pkg === undefined || known.get(name)?.includes(pkg)))
+		.sort((a, b) => a.length - b.length || a.localeCompare(b)).slice(0, MaxRNames);
+	const what = (name: string) => known.get(name)?.includes('datasets') ? 'data set of datasets' : 'flowR built-in';
+	return [found, fragment, new Map(found.map(name => [name, `${name}  ${what(name)}`]))];
 }
 
 /**
@@ -174,10 +201,7 @@ function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolea
 	return { completions: [] };
 }
 
-
-/**
- * Produces default readline options for the flowR REPL
- */
+/** Produces default readline options for the flowR REPL */
 export function makeDefaultReplReadline(config: FlowrConfig, historyFile: string | undefined = defaultHistoryFile): readline.ReadLineOptions {
 	return {
 		input:                   process.stdin,
@@ -190,15 +214,9 @@ export function makeDefaultReplReadline(config: FlowrConfig, historyFile: string
 	};
 }
 
-
-/**
- * Handles a string input for the REPL, returning the parsed string and any remaining input.
- */
+/** Handles a string input for the REPL, returning the parsed string and any remaining input. */
 export function handleString(code: string) {
-	return {
-		rCode:     code.length === 0 ? undefined : startAndEndsWith(code, '"') ? JSON.parse(code) as string : code,
-		remaining: []
-	};
+	return { rCode: code.length === 0 ? undefined : startAndEndsWith(code, '"') ? JSON.parse(code) as string : code, remaining: [] };
 }
 
 /** Convert a statement containing {@link watchProtocol} into one using {@link fileProtocol} so it can be executed. */
@@ -256,12 +274,12 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
-		const reportFailure = (e: unknown) => {
+		function reportFailure(e: unknown) {
 			output.stderr(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 			if(log.settings.minLevel < LogLevel.Fatal) {
 				console.error(e);
 			}
-		};
+		}
 		try {
 			const processor = getCommand(command);
 			if(processor?.localOnly && remote) {
@@ -367,7 +385,6 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
  * This function interprets the given `expr` as a REPL command (see {@link repl} for more on the semantics).
  * @param analyzer            - The flowR analyzer to use.
  * @param output              - Defines two methods that every function in the repl uses to output its data.
- * @param expr                - The expression to process.
  * @param allowRSessionAccess - If true, allows the execution of arbitrary R code.
  * @param remote              - If true, the expression comes from a (untrusted) client of the server, which may not use {@link ReplBaseCommand#localOnly} commands.
  */
@@ -379,13 +396,9 @@ export async function replProcessAnswer(analyzer: FlowrAnalyzer, output: ReplOut
 	}
 }
 
-/**
- * Options for the {@link repl} function.
- */
+/** Options for the {@link repl} function. */
 export interface FlowrReplOptions extends MergeableRecord {
-	/**
-	 * The flowR analyzer to use.
-	 */
+	/** The flowR analyzer to use. */
 	readonly analyzer:             FlowrAnalyzer
 	/**
 	 * A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
@@ -422,9 +435,7 @@ export async function repl(
 		rl.on('history', h => fs.writeFileSync(historyFile, h.filter(l => !isReplStatsLine(l)).join('\n'), { encoding: 'utf-8' }));
 	}
 
-	const ghostHint = installGhostHint(rl, analyzer.flowrConfig, {
-		suggest: line => completionSuggestion(line, analyzer.flowrConfig)
-	});
+	const ghostHint = installGhostHint(rl, analyzer.flowrConfig, { suggest: line => completionSuggestion(line, analyzer.flowrConfig) });
 
 	let sigintCount = 0;
 	rl.on('SIGINT', () => {
@@ -480,10 +491,7 @@ export async function repl(
 	}
 }
 
-
-/**
- * Loads the REPL history from the given file.
- */
+/** Loads the REPL history from the given file. */
 export function loadReplHistory(historyFile: string): string[] | undefined {
 	try {
 		if(!fs.existsSync(historyFile)) {

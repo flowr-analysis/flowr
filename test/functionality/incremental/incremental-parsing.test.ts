@@ -237,21 +237,14 @@ function executeAndCompareScenario(scenario: IncrementalParsingScenario): void {
 
 const lines = (...xs: string[]): string => xs.join('\n');
 
-const file = (
-	path: string,
-	content: string
-): FileState => ({
+const file = (path: string, content: string): FileState => ({
 	path,
 	content
 });
 
 const step = (...files: FileState[]): readonly FileState[] => files;
 
-const scenario = (
-	testLabel: string,
-	initialFiles: readonly FileState[],
-	...fileUpdates: readonly (readonly FileState[])[]
-): IncrementalParsingScenario => ({
+const scenario = (testLabel: string, initialFiles: readonly FileState[], ...fileUpdates: readonly (readonly FileState[])[]): IncrementalParsingScenario => ({
 	testLabel,
 	initialFiles,
 	fileUpdates

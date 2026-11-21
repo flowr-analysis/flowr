@@ -8,13 +8,11 @@ import type { FlowrSearchElement, FlowrSearchElements } from '../../search/flowr
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { MergeableRecord } from '../../util/objects';
 import { isNotUndefined } from '../../util/assert';
-import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
+import { getArgumentStringValue, type ResolveMode } from '../../dataflow/eval/resolve/resolve-argument';
+import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
-import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
-import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
+import { type BrandedIdentifier, Identifier } from '../../dataflow/environments/identifier';
 import { Ternary } from '../../util/logic';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { AsyncOrSync } from 'ts-essentials';
@@ -29,19 +27,14 @@ export interface FunctionsMetadata extends MergeableRecord {
 	totalFunctionDefinitions: number;
 }
 
-/**
- * This helper object collects utility functions used to create linting rules that search for specific functions.
- */
+/** This helper object collects utility functions used to create linting rules that search for specific functions. */
 export const functionFinderUtil = {
 	createSearch: (functions?: readonly Identifier[], qualifyNames = true) => {
 		const search = Q.all().filter(VertexType.FunctionCall)
 			.with(Enrichment.CallTargets, { onlyBuiltin: true, qualifyNames });
 		return functions === undefined ? search : search.filter({
 			name: FlowrFilter.MatchesEnrichment,
-			args: {
-				enrichment: Enrichment.CallTargets,
-				test:       { targets: Identifier.regex(...functions) }
-			}
+			args: { enrichment: Enrichment.CallTargets, test: { targets: Identifier.regex(...functions) } }
 		});
 	},
 	async processSearchResult<T extends FlowrSearchElement<ParentInformation>[]>(
@@ -51,10 +44,7 @@ export const functionFinderUtil = {
 		_data: unknown,
 		refineSearch: (elements: T) => AsyncOrSync<(T[number] & { certainty?: LintingResultCertainty })[]> = e => e,
 	) {
-		const metadata: FunctionsMetadata = {
-			totalCalls:               0,
-			totalFunctionDefinitions: 0
-		};
+		const metadata: FunctionsMetadata = { totalCalls: 0, totalFunctionDefinitions: 0 };
 
 		const results = (await refineSearch(elements.getElements()))
 			.flatMap(element => {
@@ -87,7 +77,7 @@ export const functionFinderUtil = {
 	),
 	async requireArgumentValue(
 		element: FlowrSearchElement<ParentInformation>,
-		pool: ReadonlyMap<string, FunctionInfo>,
+		pool: ReadonlyMap<BrandedIdentifier, FunctionInfo>,
 		analyzer: ReadonlyFlowrAnalysisProvider,
 		requireValue: RegExp | string | undefined,
 		identifier: Identifier | undefined
@@ -113,22 +103,18 @@ export const functionFinderUtil = {
 	}
 };
 
-
-function suppliesArgument(call: DataflowGraphVertexFunctionCall, argIdx: number | 'unnamed' | undefined, argName: string | undefined): boolean {
-	return call.args.some((arg, index) => arg !== EmptyArgument
-		&& (argName !== undefined ? arg.name === argName : index === argIdx));
+function suppliesArgument(call: DataflowGraphVertexFunctionCall, argIdx: number | 'unnamed' | undefined, argName: BrandedIdentifier | undefined): boolean {
+	return call.args.some((arg, index) => arg !== EmptyArgument && (argName !== undefined ? arg.name === argName : index === argIdx));
 }
 
-/**
- * Test if a function call has an argument with a specific value
- */
+/** Test if a function call has an argument with a specific value */
 export function hasArgumentValue(
 	test: RegExp | string,
 	fnVertex: DataflowGraphVertexFunctionCall,
 	analyzer: ReadonlyFlowrAnalysisProvider,
 	dataflow: DataflowGraph,
-	resolveValue: boolean | 'library' | undefined,
-	argName?: string,
+	resolveValue: ResolveMode | undefined,
+	argName?: BrandedIdentifier,
 	argIdx?: number | 'unnamed'): Ternary {
 	const args = getArgumentStringValue(
 		analyzer.flowrConfig.solver.variables,

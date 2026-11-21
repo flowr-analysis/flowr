@@ -1,10 +1,4 @@
-import {
-	prettyPrint,
-	type LintingResult,
-	LintingResultCertainty,
-	type LintingRule,
-	LintingRuleCertainty
-} from '../linter-format';
+import { prettyPrintAt, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
 import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -34,21 +28,8 @@ export const DEAD_CODE = {
 		checkReachable:       true,
 		simplificationPasses: config.simplificationPasses ?? [...DefaultCfgSimplificationOrder, 'analyze-dead-code']
 	}).filter(F.not(F.or(
-		{
-			name: FlowrFilter.MatchesEnrichment,
-			args: {
-				enrichment: Enrichment.CfgInformation,
-				test:       {
-					isReachable: true
-				}
-			}
-		},
-		{
-			name: FlowrFilter.RoleInParent,
-			args: {
-				roleInParent: RoleInParent.ExpressionListGrouping
-			}
-		}
+		{ name: FlowrFilter.MatchesEnrichment, args: { enrichment: Enrichment.CfgInformation, test: { isReachable: true } } },
+		{ name: FlowrFilter.RoleInParent, args: { roleInParent: RoleInParent.ExpressionListGrouping } }
 	))),
 	processSearchResult: async(elements, _config, data) => {
 		const { idMap } = await data.normalize();
@@ -67,15 +48,12 @@ export const DEAD_CODE = {
 				const fix = own === undefined ? undefined : isUnbracedBody(own, idMap)
 					? { type: 'replace' as const, loc: result.loc, replacement: '{}', description: 'Replace the unreachable code with an empty block' }
 					: isStatement(own, idMap) ? { type: 'remove' as const, loc: result.loc, description: 'Remove the unreachable code' } : undefined;
-				return fix === undefined ? result : { ...result, quickFix: [fix] };
+				return fix === undefined ? result : { ...result, quickFix: [fix] } as DeadCodeResult;
 			})
 		};
 	},
-	prettyPrint: prettyPrint(
-		result => `Code at ${SourceLocation.format(result.loc)}`,
-		result => `Code at ${SourceLocation.format(result.loc)} can never be executed`
-	),
-	info: {
+	prettyPrint: prettyPrintAt(() => 'Code', () => 'can never be executed'),
+	info:        {
 		name:          'Dead Code',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility, LintingRuleTag.QuickFix],
 		// our limited dead code analysis causes complex cases of dead code not to be included in the linting result, but deadness is properly investigated for returned results
@@ -91,7 +69,7 @@ function ownNode(result: DeadCodeResult, idMap: AstIdMap): RNode<ParentInformati
 	return ids.map(id => id === undefined ? undefined : idMap.get(id)).find(node => {
 		const own = SourceLocation.fromNode(node);
 		return node?.info.role === RoleInParent.ExpressionListChild && own !== undefined
-			&& SourceLocation.isSubsetOf(result.loc, own) && SourceLocation.isSubsetOf(own, result.loc);
+			&& SourceLocation.isSubsetOf(result.loc as SourceLocation, own) && SourceLocation.isSubsetOf(own, result.loc as SourceLocation);
 	});
 }
 
@@ -110,7 +88,7 @@ function isUnbracedBody(node: RNode<ParentInformation>, idMap: AstIdMap): boolea
 function combineResults(results: Writable<DeadCodeResult>[]): DeadCodeResult[] {
 	for(let i = results.length - 1; i >= 0; i--) {
 		const result = results[i];
-		const other = results.find(other => result !== other && SourceLocation.isSubsetOf(result.loc, other.loc));
+		const other = results.find(other => result !== other && SourceLocation.isSubsetOf(result.loc as SourceLocation, other.loc as SourceLocation));
 		if(other !== undefined) {
 			if(!Array.isArray(other.involvedId)) {
 				other.involvedId = other.involvedId !== undefined ? [other.involvedId] : [];

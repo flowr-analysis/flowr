@@ -8,8 +8,8 @@
   "plugins": [
     {
       "name": "flowr",
-      "source": "./mcp",
-      "description": "Slicing, linting, dependencies, version guessing, and signature search for R code: the flowR skill and MCP server"
+      "source": "./mcp/plugin",
+      "description": "Slicing, linting, dependencies, version guessing, and signature search for R code: the flowR skill"
     }
   ]
 }

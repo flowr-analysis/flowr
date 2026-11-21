@@ -87,19 +87,9 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: reado
 	if(parsedArguments.length === 0) {
 		// interestingly, next() and break() work
 		if(RNext.is(calledFunction)) {
-			return {
-				type:   RType.Next,
-				lexeme: content,
-				location,
-				info:   currentSourceInfo(data)
-			};
+			return { type: RType.Next, lexeme: content, location, info: currentSourceInfo(data) };
 		} else if(RBreak.is(calledFunction)) {
-			return {
-				type:   RType.Break,
-				lexeme: content,
-				location,
-				info:   currentSourceInfo(data)
-			};
+			return { type: RType.Break, lexeme: content, location, info: currentSourceInfo(data) };
 		}
 	}
 
@@ -113,7 +103,6 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: reado
 		info:           currentSourceInfo(data)
 	};
 }
-
 
 function parseNamedFunctionCall(data: NormalizerData, symbolContent: readonly NamedJsonEntry[], mappedWithName: readonly NamedJsonEntry[], location: SourceRange, content: string): RNamedFunctionCall {
 	let functionName: RNode | undefined;

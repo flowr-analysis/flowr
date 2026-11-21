@@ -16,10 +16,7 @@ export const FlowrPositron = 'https://open-vsx.org/extension/code-inspect/vscode
 export const FlowrRStudioAddin = `${FlowrGithubBaseRef}/rstudio-addin-flowr`;
 export const FlowrRAdapter = `${FlowrGithubBaseRef}/flowr-r-adapter`;
 
-
-/**
- * Returns a markdown link to the given file path relative to the project root.
- */
+/** Returns a markdown link to the given file path relative to the project root. */
 export function getFilePathMd(filePath: string): string {
 	// we go one up as we are in doc-util now :D #convenience
 	const fullpath = require.resolve('../' + filePath);
@@ -36,9 +33,7 @@ export function getFileContentFromRoot(path: string): string {
 	return fs.readFileSync(fullpath, 'utf-8');
 }
 
-/**
- * Returns a markdown link to the given flowr source file path.
- */
+/** Returns a markdown link to the given flowr source file path. */
 export function linkFlowRSourceFile(path: string): string {
 	return `[${path}](${flowrSourceFileUrl(path)})`;
 }

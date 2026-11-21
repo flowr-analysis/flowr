@@ -9,16 +9,8 @@ import { DataMaskingFunctionNames } from '../../../../environments/data-masking-
 import type { DataflowGraph } from '../../../../graph/graph';
 import { type DataflowGraphVertexInfo, DfgVertex } from '../../../../graph/vertex';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
-
-/** The escape a quoting function offers, a property of the function: `quote(!!x)` negates, `expr(!!x)` splices. */
-export enum Unquote {
-	/** no escape at all, everything within the argument stays unevaluated */
-	None   = 'none',
-	/** rlang's `!!` and `!!!` splice in the value of their operand */
-	Rlang  = 'rlang',
-	/** `bquote`'s `.(x)` evaluates its operand */
-	Bquote = 'bquote'
-}
+import { Unquote } from '../../../../environments/built-in-kinds';
+export { Unquote } from '../../../../environments/built-in-kinds';
 
 /** `!!x` parses as `!(!x)`, so peel the run of `!` to reach the operand. */
 function unquotedOperandOf<Info>(node: RNode<Info>, style: Unquote): RNode<Info> | undefined {
@@ -59,12 +51,7 @@ function definesAFunction(graph: DataflowGraph, id: NodeId): boolean {
 	} else if(!DfgVertex.isVariableDefinition(vertex)) {
 		return false;
 	}
-	for(const [target, edge] of graph.edgesFrom(id)) {
-		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && DfgVertex.isFunctionDefinition(graph.getVertex(target))) {
-			return true;
-		}
-	}
-	return false;
+	return graph.edgesFrom(id).entries().some(([target, edge]) => DfEdge.includesType(edge, EdgeType.DefinedBy) && DfgVertex.isFunctionDefinition(graph.getVertex(target)));
 }
 
 /**

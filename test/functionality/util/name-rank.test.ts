@@ -4,11 +4,11 @@ import { rankName } from '../../../src/util/text/name-rank';
 
 /** The order the signature browser lists its hits in and the playground offers its completions in. */
 describe('Name ranking', () => {
-	const beats = (name: string, better: Parameters<typeof rankName>[0], worse: Parameters<typeof rankName>[0]): void => {
+	function beats(name: string, better: Parameters<typeof rankName>[0], worse: Parameters<typeof rankName>[0]): void {
 		test(label(name, ['name-normal'], ['other']), () => {
 			assert.isAbove(rankName(better), rankName(worse), `${better.name} should be offered before ${worse.name}`);
 		});
-	};
+	}
 
 	beats('a plain name before the S3 method of it',
 		{ name: 'print', needle: 'pri', known: true }, { name: 'print.foo', needle: 'pri', s3: true });

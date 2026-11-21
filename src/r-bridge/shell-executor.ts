@@ -6,7 +6,7 @@ import semver from 'semver/preload';
 import { expensiveTrace, log } from '../util/log';
 import { initCommand } from './init';
 import { ts2r } from './lang-4.x/convert-values';
-import type { BaseRShellInformation, SyncParser } from './parser';
+import { type BaseRShellInformation, type SyncParser, ParserName } from './parser';
 import { retrieveParseDataFromRCode, type RParseRequest } from './retriever';
 import { SecureMode } from '../util/secure-mode';
 
@@ -23,7 +23,7 @@ const executorLog = log.getSubLogger({ name: 'RShellExecutor' });
  * we provide {@link RShellExecutor#parse|parse(request)} and {@link RShellExecutor#rVersion|rVersion()}.
  */
 export class RShellExecutor implements SyncParser<string> {
-	public readonly name = 'r-shell';
+	public readonly name = ParserName.Shell;
 	public readonly incremental = false;
 	public readonly options:        Readonly<RShellExecutionOptions>;
 	private readonly prerequisites: string[];
@@ -33,9 +33,7 @@ export class RShellExecutor implements SyncParser<string> {
 		this.prerequisites = [initCommand(this.options.eol, this.options.pipeBind)];
 	}
 
-	/**
-	 * Adds commands that should be executed for every {@link RShellExecutor#run|run}.
-	 */
+	/** Adds commands that should be executed for every {@link RShellExecutor#run|run}. */
 	public addPrerequisites(commands: string | string[]): this {
 		this.prerequisites.push(...(typeof commands === 'string' ? [commands] : commands));
 		return this;
@@ -52,10 +50,7 @@ export class RShellExecutor implements SyncParser<string> {
 	}
 
 	public information(): BaseRShellInformation {
-		return {
-			name:     'r-shell',
-			rVersion: () => Promise.resolve(this.rVersion())
-		};
+		return { name: ParserName.Shell, rVersion: () => Promise.resolve(this.rVersion()) };
 	}
 
 	/**
@@ -68,9 +63,7 @@ export class RShellExecutor implements SyncParser<string> {
 		return semver.coerce(version);
 	}
 
-	/**
-	 * Runs the given command in the R interpreter.
-	 */
+	/** Runs the given command in the R interpreter. */
 	public run(command: string, returnErr = false): string {
 		command += ';base::quit()';
 		expensiveTrace(executorLog, () => `> ${JSON.stringify(command)}`);
@@ -86,9 +79,7 @@ export class RShellExecutor implements SyncParser<string> {
 		return (returnErr ? returns.stderr : returns.stdout).trim();
 	}
 
-	/**
-	 * Parses the given request and returns the result.
-	 */
+	/** Parses the given request and returns the result. */
 	public parse(request: RParseRequest): string {
 		return retrieveParseDataFromRCode(request, this);
 	}

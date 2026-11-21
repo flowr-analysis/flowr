@@ -3,8 +3,11 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
-import type { InputClassifierConfig, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
-import { InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
+import {
+	type InputClassifierConfig,
+	type InputSources,
+	InputType
+} from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
@@ -13,7 +16,7 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { ArgProp, CallProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { escapeRegex } from '../../util/text/strings';
 import { type BuiltInIndex, quotedForWorker } from '../../dataflow/environments/query-fn-props';
 import { boundArgumentIndex } from '../../dataflow/eval/resolve/resolve-argument';
@@ -132,7 +135,7 @@ function resolveFileArgId(graph: DataflowGraph, vertex: DataflowGraphVertexInfo 
 }
 
 export interface ProblematicInputsResult extends LintingResult {
-	name:         string
+	name:         BrandedIdentifier
 	sources:      InputSources
 	pipeCommand?: string
 }
@@ -175,10 +178,10 @@ export const PROBLEMATIC_INPUTS = {
 				continue;
 			}
 			const [criterion, call] = [SlicingCriterion.fromId(target), SlicingCriterion.fromId(nid)];
-			const res = (await data.query([{ type: 'input-sources', criterion: target === nid ? call : [criterion, call], config: config.inputFns }]))['input-sources']?.results;
-			const own = res?.[criterion] ?? [];
+			const res = (await data.query({ type: 'input-sources', criterion: target === nid ? call : [criterion, call], config: config.inputFns })).results;
+			const own = res[criterion] ?? [];
 			/* a file argument that is an input itself (`pdf(readline())`) only shows as a source of the call */
-			const sources = target === nid || own.some(s => s.id === target) ? own : own.concat((res?.[call] ?? []).filter(s => s.id === target));
+			const sources = target === nid || own.some(s => s.id === target) ? own : own.concat((res[call] ?? []).filter(s => s.id === target));
 			const pipeCommand = pipeSpec === undefined ? undefined : getPipeCommandValue(sources, pipeSpec.allowedValues, pipeSpec.disallowedValues);
 			const evalValues: string[] = [];
 			if(consider?.resolveSourceArgs) {
@@ -225,9 +228,6 @@ export const PROBLEMATIC_INPUTS = {
 		description:   'Finds dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with \'|\' indicating a pipe command injection.',
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.Performance],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: ctx => ({
-			consider:             ctx.env.deriveFromIndex(defaultConsider),
-			pipeCommandFunctions: defaultPipeCommandFunctions
-		})
+		defaultConfig: ctx => ({ consider: ctx.env.deriveFromIndex(defaultConsider), pipeCommandFunctions: defaultPipeCommandFunctions })
 	}
 } as const satisfies LintingRule<ProblematicInputsResult, never, ProblematicInputsConfig>;

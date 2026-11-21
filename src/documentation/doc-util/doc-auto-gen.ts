@@ -38,7 +38,6 @@ export function autoGenHeader(
 		+ ' do not edit directly._';
 }
 
-
 /**
  * The source path as the generated header spells it, shortened to start at `src/`.
  * @param filename - the path to shorten

@@ -2,14 +2,14 @@ import { assert, beforeAll, describe, test } from 'vitest';
 import { assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
-import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
-import type { PipelineOutput } from '../../../../../src/core/steps/pipeline/pipeline';
 import { guard } from '../../../../../src/util/assert';
-import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { DfEdge } from '../../../../../src/dataflow/graph/edge';
 import { OriginType } from '../../../../../src/dataflow/origin/dfg-get-origin';
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import { analyze } from '../../../_helper/analyzer';
+import type { DataflowInformation } from '../../../../../src/dataflow/info';
+import type { NormalizedAst } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 
 assumeLoadedPackages('dplyr', 'ggplot2', 'rlang');
 
@@ -21,9 +21,10 @@ describe('Dataflow', withTreeSitter(ts => {
 			expected: Record<SlicingCriterion, SlicingCriterion | readonly SlicingCriterion[] | undefined>
 		): void {
 			describe(label(name, capabilities, ['dataflow']), () => {
-				let analysis: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
+				let analysis: { dataflow: DataflowInformation, normalize: NormalizedAst } | undefined;
 				beforeAll(async() => {
-					analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
+					const analyzer = await analyze(ts, code);
+					analysis = { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() };
 				});
 				test.each(Object.keys(expected) as SlicingCriterion[])('%s', (use: SlicingCriterion) => {
 					guard(analysis !== undefined);
@@ -71,11 +72,11 @@ describe('Dataflow', withTreeSitter(ts => {
 		   is the column and nothing else, as R asks the data first and a closure is not what `>` compares */
 		test(label('a masked name the caller binds reads the data as well', ['function-calls', 'data-masking'], ['dataflow']), async() => {
 			const code = 'library(dplyr)\ndf <- data.frame(id = 1:3)\nid <- function(k) k\nn <- 1\nfilter(df, id > n)';
-			const analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
+			const analyzer = await analyze(ts, code);
+			const analysis = { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() };
 			const idMap = analysis.normalize.idMap;
-			const targets = (use: SlicingCriterion) =>
-				[...analysis.dataflow.graph.edgesFrom(SlicingCriterion.parse(use, idMap))]
-					.filter(([, edge]) => !DfEdge.isOnlyControlFlow(edge)).map(([target]) => target);
+			const targets = (use: SlicingCriterion) => [...analysis.dataflow.graph.edgesFrom(SlicingCriterion.parse(use, idMap))]
+				.filter(([, edge]) => !DfEdge.isOnlyControlFlow(edge)).map(([target]) => target);
 			assert.deepStrictEqual(targets('5@id'), [SlicingCriterion.parse('5@df', idMap)], 'a name bound to a function is the column');
 			assert.sameMembers(targets('5@n'), [SlicingCriterion.parse('4@n', idMap), SlicingCriterion.parse('5@df', idMap)],
 				'a name bound to a value is both');
@@ -90,7 +91,8 @@ describe('Dataflow', withTreeSitter(ts => {
 				['structure() attaches a class', head + 'id <- structure(function(...) 42, class = "cls")\nfilter(df, id > 42)', '4@id', true],
 				['class<- attaches one too', head + 'id <- function(...) 42\nclass(id) <- "cls"\nfilter(df, id > 42)', '5@id', true]
 			] as const)('%s', async(_what, code, use, keepsIt) => {
-				const analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
+				const analyzer = await analyze(ts, code);
+				const analysis = { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() };
 				const idMap = analysis.normalize.idMap;
 				const at = SlicingCriterion.parse(use, idMap);
 				const targets = [...analysis.dataflow.graph.edgesFrom(at)]
@@ -226,9 +228,11 @@ describe('Dataflow', withTreeSitter(ts => {
 			});
 
 		test(label('an evaluated capture is no longer marked as unevaluated', ['built-in-quoting', 'built-in-evaluation'], ['dataflow']), async() => {
-			const analysis = await createDataflowPipeline(ts, { context: contextFromInput('x <- 1\ne <- quote(x + 1)\neval(e)') }).allRemainingSteps();
-			const graph = analysis.dataflow.graph;
-			const use = SlicingCriterion.parse('2@x', analysis.normalize.idMap);
+			const analyzer = await analyze(ts, 'x <- 1\ne <- quote(x + 1)\neval(e)');
+			const dataflow = await analyzer.dataflow();
+			const normalize = await analyzer.normalize();
+			const graph = dataflow.graph;
+			const use = SlicingCriterion.parse('2@x', normalize.idMap);
 			assert.isFalse(Dataflow.isQuoted(use, graph), 'the expression is evaluated, so nothing about it is quoted');
 		});
 

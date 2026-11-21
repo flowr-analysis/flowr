@@ -14,30 +14,20 @@ describe('Simple Defs in Multiple Files', { concurrent: false }, withShell(shell
 			{ request: 'text', content: 'y <- 3' },
 			{ request: 'text', content: 'print(x + y)' },
 		],
-		emptyGraph()
+		emptyGraph().autoPrints([13], true)
 			.use(9)
-			.reads(9, '0')
+			.reads(9, 0)
 			.use(10)
 			.reads(10, 4)
-			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
-			.calls('2', NodeId.toBuiltIn('<-'))
-			.argument('2', ['1', '0'])
+			.call(2, '<-', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [NodeId.toBuiltIn('<-'), 1], onlyBuiltIn: true })
 			.call(6, '<-', [argumentInCall(4), argumentInCall(5)], { returns: [4], reads: [NodeId.toBuiltIn('<-'), 5], onlyBuiltIn: true })
-			.calls(6, NodeId.toBuiltIn('<-'))
-			.argument(6, [5, 4])
-			.argument(11, 9)
-			.argument(11, 10)
 			.call(11, '+', [argumentInCall(9), argumentInCall(10)], { returns: [], reads: [9, 10, NodeId.toBuiltIn('+')], onlyBuiltIn: true })
-			.calls(11, NodeId.toBuiltIn('+'))
-			.argument(13, 11)
 			.reads(13, 11)
 			.call(13, 'print', [argumentInCall(11)], { returns: [11], reads: [NodeId.toBuiltIn('print')], onlyBuiltIn: true })
-			.calls(13, NodeId.toBuiltIn('print'))
-			.constant('1')
-			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
+			.constant(1)
+			.defineVariable(0, 'x', { definedBy: [1, 2] })
 			.constant(5)
 			.defineVariable(4, 'y', { definedBy: [5, 6] })
-			.markIdForUnknownSideEffects(13)
 	);
 
 	test('Correct File-Info for Multiple Files', async() => {

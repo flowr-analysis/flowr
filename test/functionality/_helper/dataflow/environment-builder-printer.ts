@@ -3,7 +3,7 @@
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert';
 import { wrap, wrapControlDependencies } from './printer';
 import type { IEnvironment, REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
-import { type IdentifierDefinition, ReferenceType } from '../../../../src/dataflow/environments/identifier';
+import { type BrandedIdentifier, type IdentifierDefinition, ReferenceType } from '../../../../src/dataflow/environments/identifier';
 
 export class EnvironmentBuilderPrinter {
 	private readonly env:   REnvironmentInformation;
@@ -33,7 +33,7 @@ export class EnvironmentBuilderPrinter {
 		}
 	}
 
-	private processDefinition(name: string, def: IdentifierDefinition) {
+	private processDefinition(name: BrandedIdentifier, def: IdentifierDefinition) {
 		const { type } = def;
 		switch(type) {
 			case ReferenceType.Unknown:

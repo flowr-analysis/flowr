@@ -1,10 +1,7 @@
-import type { Leaf, Location, NoInfo } from '../model';
-import { RNode } from '../model';
+import { type Leaf, type Location, type NoInfo, RNode } from '../model';
 import { RType } from '../type';
 
-/**
- * A `break` statement.
- */
+/** A `break` statement. */
 export interface RBreak<Info = NoInfo> extends Location, Leaf<Info> {
 	readonly type: RType.Break;
 }

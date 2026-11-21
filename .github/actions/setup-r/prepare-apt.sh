@@ -7,6 +7,7 @@ Acquire::Retries "3";
 Acquire::http::Timeout "20";
 Acquire::https::Timeout "20";
 Acquire::Languages "none";
+APT::Install-Recommends "false";
 EOF
 
 # what setup-r installs before it unpacks the R package

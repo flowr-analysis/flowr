@@ -1,7 +1,7 @@
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
-import { UnknownSideEffect } from '../../dataflow/graph/graph';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { UnknownSideEffect, type DataflowGraph } from '../../dataflow/graph/graph';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../dataflow/environments/identifier';
 import { builtInOf, callsBuiltIn, namesWith } from '../linter-util';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import type { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
@@ -11,6 +11,7 @@ import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { FileRole } from '../../project/context/flowr-file';
+import { datasetShape } from '../../util/r-datasets';
 import { AttachedBasePackages, BaseDatasets, baseRExportOwner } from '../../util/r-base-packages';
 import { nonBaseImports } from './unused-import';
 import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -19,7 +20,6 @@ import { type LintingResult, type LintingRule, LintingResultCertainty, prettyPri
 import { LintingRuleTag } from '../linter-tags';
 import { collectScopeDefinedNames, isDefinedInEnclosingScope, isInstalledResourceFile, isInSubscript, isNonStandardEvaluated, useResolvesToDefinitionOrBuiltin } from './undefined-symbol-util';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -29,11 +29,11 @@ export type UndefinedSymbolKind = 'function' | 'variable';
 
 export interface UndefinedSymbolResult extends LintingResult {
 	/** the name that could not be resolved */
-	name:                 string
+	name:                 BrandedIdentifier
 	/** whether the name is used as a function call or as a variable read */
 	kind:                 UndefinedSymbolKind
 	/** packages that export this name - a hint that a `library()`/`::` might be missing (empty if none known) */
-	availableInPackages?: readonly string[]
+	availableInPackages?: readonly BrandedNamespace[]
 }
 
 export interface UndefinedSymbolConfig extends MergeableRecord {
@@ -84,8 +84,8 @@ const DispatchVariables = ['.Generic', '.Method', '.Class'] as const;
  * The names declared by the `utils::globalVariables(names)` calls of the code (resolved by flowR), which is how a
  * package tells `R CMD check` about names it uses through non-standard evaluation, and the variables of R's dispatch.
  */
-function declaredGlobalVariables(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<string> {
-	const names = new Set<string>(DispatchVariables);
+function declaredGlobalVariables(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<BrandedIdentifier> {
+	const names = new Set<BrandedIdentifier>(DispatchVariables);
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const callee = builtInOf(graph, id);
 		const [name, ns] = callee === undefined ? [] : Identifier.toArray(callee);
@@ -93,14 +93,15 @@ function declaredGlobalVariables(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyze
 			continue;
 		}
 		const values = getArgumentStringValue(ctx.config.solver.variables, graph, vertex, 0, 'names', true, ctx);
-		for(const str of values?.values().flatMap(v => [...v]) ?? []) {
-			if(str !== undefined) {
-				names.add(str);
-			}
+		for(const str of values?.values().flatMap(v => [...v]).filter(isNotUndefined) ?? []) {
+			names.add(str);
 		}
 	}
 	return names;
 }
+
+/** what {@link getArgumentStringValue} gives for a value it cannot tell, as the dependencies query has it */
+const UnknownValue = 'unknown';
 
 /** the calls binding the name they are handed as a string, which flowR does not link to the reads of that name */
 const NameBindingFunctions = new Set(['assign', 'delayedAssign']);
@@ -108,38 +109,36 @@ const NameBindingFunctions = new Set(['assign', 'delayedAssign']);
 /**
  * The names bound by the `assign(name, value)` calls of the code, as far as flowR resolves `name`:
  * `assign(paste0("year", i), ...)` in a loop over `2000:2025` binds `year2000` to `year2025`.
+ * `undefined` if one of them binds a name flowR cannot tell (`lapply(1:3, function(i) assign(paste0("g", i), i))`), which may be any.
  */
-function assignedNames(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<string> {
-	const names = new Set<string>();
+function assignedNames(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlySet<BrandedIdentifier> | undefined {
+	const names = new Set<BrandedIdentifier>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(!callsBuiltIn(graph, id, NameBindingFunctions)) {
 			continue;
 		}
 		const values = getArgumentStringValue(ctx.config.solver.variables, graph, vertex, 0, 'x', true, ctx);
-		for(const str of values?.values().flatMap(v => [...v]) ?? []) {
-			if(str !== undefined) {
-				names.add(str);
-			}
+		const found = values === undefined ? [] : [...values.values().flatMap(v => [...v])];
+		if(found.length === 0 || found.some(str => str === undefined || str === UnknownValue)) {
+			return undefined;
 		}
+		found.forEach(str => names.add(str as BrandedIdentifier));
 	}
 	return names;
 }
 
-/** calls that load or attach a package (what flowR states, plus `pacman::p_load`); an unresolved one means we cannot enumerate all exports in scope */
-function libraryLoadFunctions(index: BuiltInIndex): ReadonlySet<string> {
-	return new Set([...namesWith(index, SemanticCallTag.LoadsPackage), ...namesWith(index, SemanticCallTag.AttachesPackage), 'p_load']);
+/** calls that load or attach a package; an unresolved one means we cannot enumerate all exports in scope */
+function libraryLoadFunctions(index: BuiltInIndex): ReadonlySet<BrandedIdentifier> {
+	return new Set([...namesWith(index, SemanticCallTag.LoadsPackage), ...namesWith(index, SemanticCallTag.AttachesPackage)]);
 }
 
 /** test frameworks whose namespace a test file runs under implicitly (e.g. `tests/testthat/test-*.R` sees testthat's exports without a `library()`) */
 const ImplicitTestFrameworks = ['testthat', 'tinytest', 'RUnit'];
 
 /** whether name is an export of a default-attached base package (needs no library()) */
-function isAttachedBaseName(name: string): boolean {
-	if(BaseDatasets.has(name)) {
-		return true;
-	}
+function isAttachedBaseName(name: BrandedIdentifier): boolean {
 	const owner = baseRExportOwner(name);
-	return owner !== undefined && AttachedBasePackages.includes(owner);
+	return BaseDatasets.has(name) || (owner !== undefined && AttachedBasePackages.includes(owner));
 }
 
 /** upper bound on the number of packages named in a "did you forget to load it" hint */
@@ -163,29 +162,25 @@ export const UNDEFINED_SYMBOL = {
 			totalVariableUses:  0,
 			suppressed:         { installed: 0, loadedPackage: 0, enclosingScope: 0, nonStandardEval: 0, subscript: 0, unresolvedLibrary: 0, declaredGlobal: 0 }
 		};
-		const suppress = (reason: keyof SuppressionCounts): undefined => {
+		function suppress(reason: keyof SuppressionCounts): undefined {
 			meta.suppressed[reason]++;
 			return undefined;
-		};
+		}
 
 		// `inst/` files are installed verbatim (resources, not namespace source); skip them. Key off the
 		// FileRole.Install role, with a path fallback for requests that bypass the file-role plugins.
 		const installedFiles = new Set(ctx.files.getFilesByRole(FileRole.Install).map(f => f.path()));
-		const isInstalledFile = (file: string | undefined): boolean =>
-			file !== undefined && (installedFiles.has(file) || isInstalledResourceFile(file));
+		const isInstalledFile = (file: string | undefined): boolean => file !== undefined && (installedFiles.has(file) || isInstalledResourceFile(file));
 
 		// test files run under their framework's attached namespace, so a bare name a test framework exports is defined there
 		const testFiles = new Set(ctx.files.getFilesByRole(FileRole.Test).map(f => f.path()));
-		const testExports = new Set(testFiles.size === 0 ? [] : deps.signatureSources().flatMap(
-			src => ImplicitTestFrameworks.flatMap(pkg => src.lookup(pkg)?.exported ?? [])));
-		const isImplicitTestExport = (name: string, file: string | undefined): boolean =>
-			file !== undefined && testFiles.has(file) && testExports.has(name);
+		const testExports = new Set(testFiles.size === 0 ? [] : deps.signatureSources().flatMap(src => ImplicitTestFrameworks.flatMap(pkg => src.lookup(pkg)?.exported ?? [])));
+		const isImplicitTestExport = (name: BrandedIdentifier, file: string | undefined): boolean => file !== undefined && testFiles.has(file) && testExports.has(name);
 
 		/* a library() we could not resolve could export any bare name, so such names are suppressed rather than guessed */
-		const unknownIds = new Set([...graph.unknownSideEffects].map(e => UnknownSideEffect.id(e)));
+		const unknownIds = new Set([...graph.unknownSideEffects].map(UnknownSideEffect.id));
 		const libraryLoads = libraryLoadFunctions(ctx.env.builtInIndex);
-		const unresolvedLibraryInScope = unknownIds.size > 0 && [...graph.verticesOfType(VertexType.FunctionCall)]
-			.some(([id, v]) => unknownIds.has(id) && libraryLoads.has(Identifier.getName(v.name)));
+		const unresolvedLibraryInScope = unknownIds.size > 0 && graph.verticesOfType(VertexType.FunctionCall).some(([id, v]) => unknownIds.has(id) && libraryLoads.has(Identifier.getName(v.name)));
 
 		// names a package declares global (`utils::globalVariables`) are no undefined symbols to R CMD check either
 		const declaredGlobals = declaredGlobalVariables(graph, ctx);
@@ -196,38 +191,31 @@ export const UNDEFINED_SYMBOL = {
 
 		// packages whose exports are in scope: DESCRIPTION/library() deps plus the default-attached base
 		// packages, each resolved (exports enriched) from the package database via getDependency
-		const loadedPackages = [
-			...deps.getDependencies().map(p => deps.getDependency(p.name) ?? p),
-			...AttachedBasePackages.map(n => deps.getDependency(n)).filter(isNotUndefined)
-		];
+		const loadedPackages = [...deps.getDependencies().map(p => deps.getDependency(p.name) ?? p), ...AttachedBasePackages.map(n => deps.getDependency(n)).filter(isNotUndefined)];
 
 		/* a package may re-export what it imports, as dplyr does tibble's `as_tibble` */
-		const src = deps.signatures().sources();
+		const db = deps.signatures();
+		const src = db.sources();
 		const importedByLoaded = new Set(loadedPackages.flatMap(p => src.isBaseR(p.name) ? [] : nonBaseImports(src, p.name, p.resolvedVersion)));
-		const isExportedByLoadedPackage = memoize((name: string): boolean =>
-			loadedPackages.some(p => p.has(name)) || (importedByLoaded.size > 0 && deps.packagesExporting(name).some(p => importedByLoaded.has(p))));
+		const exportsOf = memoize((pkg: BrandedNamespace): ReadonlySet<BrandedIdentifier> => new Set(db.exportsOf(pkg)?.exported ?? []));
+		const loadedNames = new Set<BrandedNamespace>(loadedPackages.map(p => p.name));
+		/* the database records no data sets, which a loaded package makes available as lazy data */
+		const isDatasetOfLoadedPackage = (name: BrandedIdentifier): boolean => datasetShape(name, undefined, pkg => loadedNames.has(pkg)) !== undefined;
+		const isExportedByLoadedPackage = memoize((name: BrandedIdentifier): boolean => loadedPackages.some(p => p.has(name)) || isDatasetOfLoadedPackage(name) || [...importedByLoaded].some(p => exportsOf(p).has(name)));
 
 		// hint an unloaded package that exports `name` (e.g. `ggplot` -> `ggplot2`), from the package database
 		const attached = new Set(AttachedBasePackages);
-		const hintPackagesFor = (name: string): string[] =>
-			deps.packagesExporting(name).filter(p => !attached.has(p)).slice(0, MaxHintPackages);
+		const hintPackagesFor = (name: BrandedIdentifier): BrandedNamespace[] => deps.packagesExporting(name).filter(p => !attached.has(p)).slice(0, MaxHintPackages);
 
 		/** shared resolution logic for a name used either as a function call or a variable */
-		const check = (node: RNodeWithParent, name: string, namespace: string | undefined, kind: UndefinedSymbolKind): UndefinedSymbolResult | undefined => {
+		function check(node: RNodeWithParent, name: BrandedIdentifier, namespace: BrandedNamespace | undefined, kind: UndefinedSymbolKind): UndefinedSymbolResult | undefined {
 			const id = node.info.id;
-			// resolved by flowR itself (local/param/builtin) - never a candidate, so not counted as suppressed
-			if(kind === 'variable' ? useResolvesToDefinitionOrBuiltin(graph, id) : (Dataflow.origin(graph, id)?.length ?? 0) > 0) {
-				return undefined;
-			}
-			// a bare call to a registered flowR builtin whose dataflow origin was rewritten away from its
-			// builtin marker (e.g. a fully-resolved `UseMethod` dispatch is re-tagged as a plain function
-			// call) is still defined, so recognise it directly from the built-in environment
-			if(kind === 'function' && namespace === undefined && ctx.env.builtInEnvironment.memory.has(name)) {
-				return undefined;
-			}
-			// a bare name from a default-attached base package (or a primitive) is defined without a library() call,
-			// and `base::name` (or any other base package) is known to flowR without a signature database
-			if(namespace === undefined ? isAttachedBaseName(name) : baseRExportOwner(name) === namespace) {
+			/* never a candidate, so not counted as suppressed: resolved by flowR itself (local/param/builtin), a bare call to a built-in
+			   whose origin was rewritten (a resolved `UseMethod` dispatch is re-tagged as a plain call), a bare name from a default-attached
+			   base package (or a primitive), and `base::name` (or any other base package), known to flowR without a signature database */
+			if((kind === 'variable' ? useResolvesToDefinitionOrBuiltin(graph, id) : (Dataflow.origin(graph, id)?.length ?? 0) > 0)
+				|| (kind === 'function' && namespace === undefined && ctx.env.builtInEnvironment.memory.has(name))
+				|| (namespace === undefined ? isAttachedBaseName(name) : baseRExportOwner(name) === namespace)) {
 				return undefined;
 			}
 			// a bare name a test framework exports, used in a test file where that framework's namespace is attached
@@ -237,18 +225,13 @@ export const UNDEFINED_SYMBOL = {
 			// exported by a package in scope (`pkg::fn`, a loaded package, or a default-attached base package)
 			/* the database records no data sets, so `pkg::x` read as a variable may be lazy data of a known package */
 			const nsPackage = namespace === undefined ? undefined : deps.getDependency(namespace);
-			const exported = namespace === undefined
-				? isExportedByLoadedPackage(name)
-				: nsPackage !== undefined && (kind === 'variable' || nsPackage.has(name));
-			if(exported) {
+			if(namespace === undefined ? isExportedByLoadedPackage(name) : nsPackage !== undefined && (kind === 'variable' || nsPackage.has(name))) {
 				return suppress('loadedPackage');
-			}
-			// declared global (as R CMD check honors it) or bound by R's method dispatch
-			if(namespace === undefined && declaredGlobals.has(name)) {
+			} else if(namespace === undefined && declaredGlobals.has(name)) {
 				return suppress('declaredGlobal');
 			}
 			// forward-referenced closure binding flowR's dataflow did not link (unconditional bindings only)
-			if(isDefinedInEnclosingScope(graph, scopeDefined, id, name) || (kind === 'variable' && namespace === undefined && boundByAssign.has(name))) {
+			if(isDefinedInEnclosingScope(graph, scopeDefined, id, name) || (kind === 'variable' && namespace === undefined && (boundByAssign === undefined || boundByAssign.has(name)))) {
 				return suppress('enclosingScope');
 			}
 			// consumed by non-standard evaluation (quoting), hence not an ordinary read
@@ -267,25 +250,18 @@ export const UNDEFINED_SYMBOL = {
 				return undefined;
 			}
 			const availableInPackages = namespace === undefined ? hintPackagesFor(name) : [];
-			return {
-				certainty:  LintingResultCertainty.Uncertain,
-				name,
-				kind,
-				involvedId: id,
-				loc,
-				...(availableInPackages.length > 0 ? { availableInPackages } : {})
-			} satisfies UndefinedSymbolResult;
-		};
+			return { certainty: LintingResultCertainty.Uncertain, name, kind, involvedId: id, loc, ...(availableInPackages.length > 0 ? { availableInPackages } : {}) } satisfies UndefinedSymbolResult;
+		}
 
 		/** the symbol to check if the config asks for it: a called function, or a plain symbol read */
-		const symbolOf = (node: RNodeWithParent): [UndefinedSymbolKind, Identifier] | undefined => {
+		function symbolOf(node: RNodeWithParent): [UndefinedSymbolKind, Identifier] | undefined {
 			const vtx = graph.getVertex(node.info.id);
 			if(DfgVertex.isFunctionCall(vtx)) {
 				return !DfgVertex.hasOrigin(vtx, BuiltInProcName.Unnamed) && config.checkFunctions ? ['function', vtx.name] : undefined;
 			}
 			const plainSymbol = RSymbol.is(node) && node.lexeme !== '...' && node.lexeme !== undefined;
 			return DfgVertex.isUse(vtx) && config.checkVariables && plainSymbol ? ['variable', node.content] : undefined;
-		};
+		}
 
 		const results = elements.getElements().map(({ node }) => {
 			const symbol = symbolOf(node);
@@ -294,10 +270,7 @@ export const UNDEFINED_SYMBOL = {
 			}
 			const [kind, identifier] = symbol;
 			meta[kind === 'function' ? 'totalFunctionCalls' : 'totalVariableUses']++;
-			if(isInstalledFile(node.info.file)) {
-				return suppress('installed');
-			}
-			return check(node, Identifier.getName(identifier), Identifier.getNamespace(identifier), kind);
+			return isInstalledFile(node.info.file) ? suppress('installed') : check(node, Identifier.getName(identifier), Identifier.getNamespace(identifier), kind);
 		}).filter(isNotUndefined);
 		return { results, '.meta': meta };
 	},
@@ -320,10 +293,6 @@ export const UNDEFINED_SYMBOL = {
 		certainty:     LintingRuleCertainty.OverApproximative,
 		description:   'Finds functions and variables that are neither defined locally, a base R builtin, nor exported by a loaded package.',
 		tags:          [LintingRuleTag.Bug, LintingRuleTag.Experimental],
-		defaultConfig: () => ({
-			checkFunctions:  true,
-			checkVariables:  true,
-			checkSubscripts: false
-		})
+		defaultConfig: () => ({ checkFunctions: true, checkVariables: true, checkSubscripts: false })
 	}
 } as const satisfies LintingRule<UndefinedSymbolResult, UndefinedSymbolMetadata, UndefinedSymbolConfig>;

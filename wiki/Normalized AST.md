@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-10-27, 11:16:11 UTC (v2.16.6, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-11-16, 20:55:37 UTC (v2.17.7, R v4.6.1), do not edit directly._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
 offering the following benefits:
@@ -9,8 +9,8 @@ offering the following benefits:
 
 In general, the mapping should be rather intuitive and focused primarily on the
 syntactic structure of the program. As with other types in flowR, you get corresponding helper objects.
-So if you want to work with an `RBinaryOp` node, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L21"><code><span title="Helper for working with RBinaryOp AST nodes.">RBinaryOp</span></code></a> object to check whether a node is an `RBinaryOp` and to access its fields
-(e.g., with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L28"><code><span title="Type guard for RBinaryOp nodes.">RBinaryOp::<b>is</b></span></code></a>).
+So if you want to work with an `RBinaryOp` node, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L17"><code><span title="Helper for working with RBinaryOp AST nodes.">RBinaryOp</span></code></a> object to check whether a node is an `RBinaryOp` and to access its fields
+(e.g., with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L24"><code><span title="Type guard for RBinaryOp nodes.">RBinaryOp::<b>is</b></span></code></a>).
 Consider the following example which shows the normalized AST of the code
 
 ```r
@@ -55,8 +55,8 @@ x"])
 > you can either use the [Visual Studio Code extension](https://github.com/flowr-analysis/vscode-flowr) or the <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the normalized AST of R code (aliases: :n*)">`:normalize*`</span>
 > command in the REPL (see the [Interface wiki page](https://github.com/flowr-analysis/flowr/wiki/Interface) for more information).
 
-Indicative of the normalization is the root <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L24"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a> node, which is present in every normalized AST
-and provides the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L20"><code><span title="Helper for working with RExpressionList AST nodes.">RExpressionList</span></code></a> nodes for each file in the project.
+Indicative of the normalization is the root <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L21"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a> node, which is present in every normalized AST
+and provides the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L19"><code><span title="Helper for working with RExpressionList AST nodes.">RExpressionList</span></code></a> nodes for each file in the project.
 In general, we provide node types for:
 
 1. literals (e.g., numbers and strings)
@@ -85,30 +85,30 @@ class RNode~Info = NoInfo~{
     <<type>>
 }
 style RNode opacity:.35,fill:#FAFAFA
-click RNode href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L266" "The #96;RNode#96; type is the union of all possible nodes in the R#45;ast. It should be used whenever you either not care what kind of node you are dealing with or if you want to handle all possible nodes. #60;p#62; All other subtypes (like; #60;code#62;RLoopConstructs#60;/code#62;; ) listed above can be used to restrict the kind of node. They do not have to be exclusive, some nodes can appear in multiple subtypes."
+click RNode href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L237" "The #96;RNode#96; type is the union of all possible nodes in the R#45;ast. It should be used whenever you either not care what kind of node you are dealing with or if you want to handle all possible nodes. #60;p#62; All other subtypes (like; #60;code#62;RLoopConstructs#60;/code#62;; ) listed above can be used to restrict the kind of node. They do not have to be exclusive, some nodes can appear in multiple subtypes."
 class RExpressionList~Info = NoInfo~{
     <<interface>>
     type#58; RType.ExpressionList
     grouping#58; #91;start#58; RSymbol#60;Info, Identifier#62;, end#58; RSymbol#60;Info, Identifier#62;#93;
 }
-click RExpressionList href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L10" "Holds a list of expressions (and hence may be the root of an AST, summarizing all expressions in a file). The #96;grouping#96; property holds information on if the expression list is structural or created by a wrapper like #96;#123;#125;#96; or #96;()#96;."
+click RExpressionList href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L9" "Holds a list of expressions (and hence may be the root of an AST, summarizing all expressions in a file). The #96;grouping#96; property holds information on if the expression list is structural or created by a wrapper like #96;#123;#125;#96; or #96;()#96;."
 class WithChildren~Info, Children extends RAstNodeBase<Info, string | undefined>~{
     <<interface>>
     children#58; #123;#125;
 }
-click WithChildren href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L82" ""
+click WithChildren href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L78" ""
 class RAstNodeBase~Info, LexemeType = string~{
     <<interface>>
     type#58; RType
     lexeme#58; LexemeType
     info#58; Info #38; Source
 }
-click RAstNodeBase href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74" "Provides the common base of all; #60;code#62;RNodes#60;/code#62;; ."
+click RAstNodeBase href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70" "Provides the common base of all; #60;code#62;RNodes#60;/code#62;; ."
 class MergeableRecord{
     <<type>>
 }
 style MergeableRecord opacity:.35,fill:#FAFAFA
-click MergeableRecord href "https://github.com/flowr-analysis/flowr/tree/main/src/util/objects.ts#L23" ""
+click MergeableRecord href "https://github.com/flowr-analysis/flowr/tree/main/src/util/objects.ts#L21" ""
 class Record{
     <<variable>>
 }
@@ -116,7 +116,7 @@ click Record href "https://github.com/flowr-analysis/flowr/tree/main/src/util/re
 class string{
     <<variable>>
 }
-click string href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/value-semantics.ts#L19" "The abstract semantics of string constants, such as #96;#34;id#34;#96;"
+click string href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/value-semantics.ts#L18" "The abstract semantics of string constants, such as #96;#34;id#34;#96;"
 class ConstantSemantics~Domain extends StateDomain~{
     <<interface>>
     string(state#58; Domain, vertex#58; DataflowGraphVertexValue, ctx#58; AbsintContext#60;Domain#62;, value#58; RStringValue) void
@@ -125,15 +125,15 @@ class ConstantSemantics~Domain extends StateDomain~{
     null(state#58; Domain, vertex#58; DataflowGraphVertexValue, ctx#58; AbsintContext#60;Domain#62;, value#58; #34;NULL#34;) void
     symbol(state#58; Domain, vertex#58; DataflowGraphVertexValue, ctx#58; AbsintContext#60;Domain#62;, value#58; Identifier) void
 }
-click ConstantSemantics href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/value-semantics.ts#L17" "The abstract semantics of the different types of R constants."
+click ConstantSemantics href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/value-semantics.ts#L16" "The abstract semantics of the different types of R constants."
 class unknown{
     <<variable>>
 }
-click unknown href "https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts#L89" ""
+click unknown href "https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts#L86" ""
 class Info{
     <<enum>>
 }
-click Info href "https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L70" ""
+click Info href "https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L67" ""
 class LogLevel{
     <<enum>>
     Silly#58; LogLevel.Silly
@@ -144,29 +144,29 @@ class LogLevel{
     Error#58; LogLevel.Error
     Fatal#58; LogLevel.Fatal
 }
-click LogLevel href "https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L66" ""
+click LogLevel href "https://github.com/flowr-analysis/flowr/tree/main/src/util/log.ts#L63" ""
 class RFunctions~Info~{
     <<type>>
 }
 style RFunctions opacity:.35,fill:#FAFAFA
-click RFunctions href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L210" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types related to functions (calls and definitions) in the normalized AST."
+click RFunctions href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L183" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types related to functions (calls and definitions) in the normalized AST."
 class RFunctionDefinition~Info = NoInfo~{
     <<interface>>
     type#58; RType.FunctionDefinition
     parameters#58; #123;#125;
     body#58; RNode#60;Info#62;
 }
-click RFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L16" "#96;#96;#96;r function(#60;parameters#62;) #60;body#62; #96;#96;#96; or#58; #96;#96;#96;r #92;(#60;parameters#62;) #60;body#62; #96;#96;#96;"
+click RFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L15" "#96;#96;#96;r function(#60;parameters#62;) #60;body#62; #96;#96;#96; or#58; #96;#96;#96;r #92;(#60;parameters#62;) #60;body#62; #96;#96;#96;"
 class Location{
     <<interface>>
     location#58; SourceRange
 }
-click Location href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L99" "Indicates, that the respective; #60;code#62;RAstNodeBase#60;/code#62;; node has known source code location information."
+click Location href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L92" "Indicates, that the respective; #60;code#62;RAstNodeBase#60;/code#62;; node has known source code location information."
 class RFunctionCall~Info = NoInfo~{
     <<type>>
 }
 style RFunctionCall opacity:.35,fill:#FAFAFA
-click RFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L40" ""
+click RFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L38" ""
 class RNamedFunctionCall~Info = NoInfo~{
     <<interface>>
     type#58; RType.FunctionCall
@@ -174,7 +174,7 @@ class RNamedFunctionCall~Info = NoInfo~{
     functionName#58; RSymbol#60;Info, Identifier#62;
     arguments#58; #123;#125;
 }
-click RNamedFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L17" "Calls of functions like #96;a()#96; and #96;foo(42, #34;hello#34;)#96;."
+click RNamedFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L16" "Calls of functions like #96;a()#96; and #96;foo(42, #34;hello#34;)#96;."
 class RUnnamedFunctionCall~Info = NoInfo~{
     <<interface>>
     type#58; RType.FunctionCall
@@ -183,7 +183,7 @@ class RUnnamedFunctionCall~Info = NoInfo~{
     infixSpecial#58; boolean
     arguments#58; #123;#125;
 }
-click RUnnamedFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L30" "Direct calls of functions like #96;(function(x) #123; x #125;)(3)#96;."
+click RUnnamedFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L28" "Direct calls of functions like #96;(function(x) #123; x #125;)(3)#96;."
 class RParameter~Info = NoInfo~{
     <<interface>>
     type#58; RType.Parameter
@@ -191,61 +191,61 @@ class RParameter~Info = NoInfo~{
     special#58; boolean
     defaultValue#58; RNode#60;Info#62;
 }
-click RParameter href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-parameter.ts#L10" "Represents a parameter of a function definition in R."
+click RParameter href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-parameter.ts#L7" "Represents a parameter of a function definition in R."
 class RArgument~Info = NoInfo~{
     <<interface>>
     type#58; RType.Argument
     name#58; RSymbol#60;Info, BrandedIdentifier#62;
     value#58; RNode#60;Info#62;
 }
-click RArgument href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-argument.ts#L14" "Represents a named or unnamed argument of a function definition in R."
+click RArgument href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-argument.ts#L10" "Represents a named or unnamed argument of a function definition in R."
 class ROther~Info~{
     <<type>>
 }
 style ROther opacity:.35,fill:#FAFAFA
-click ROther href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L233" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types of otherwise hard to categorize nodes in the normalized AST. At the moment these are the comment#45;like nodes."
+click ROther href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L204" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types of otherwise hard to categorize nodes in the normalized AST. At the moment these are the comment#45;like nodes."
 class RComment~Info = NoInfo~{
     <<interface>>
     type#58; RType.Comment
 }
-click RComment href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L10" "#96;#96;#96;r # I am a line comment #96;#96;#96;"
+click RComment href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L9" "#96;#96;#96;r # I am a line comment #96;#96;#96;"
 class Leaf{
     <<type>>
 }
 style Leaf opacity:.35,fill:#FAFAFA
-click Leaf href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L145" ""
+click Leaf href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L140" ""
 class LeafRType{
     <<type>>
 }
 style LeafRType opacity:.35,fill:#FAFAFA
-click LeafRType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L141" ""
+click LeafRType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L136" ""
 class LeafVertexType{
     <<type>>
 }
 style LeafVertexType opacity:.35,fill:#FAFAFA
-click LeafVertexType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L142" ""
+click LeafVertexType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L137" ""
 class LeafSpecial~F extends FlowrFilter = FlowrFilter~{
     <<type>>
 }
 style LeafSpecial opacity:.35,fill:#FAFAFA
-click LeafSpecial href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L143" ""
+click LeafSpecial href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L138" ""
 class RLineDirective~Info = NoInfo~{
     <<interface>>
     type#58; RType.LineDirective
     line#58; number
     file#58; string
 }
-click RLineDirective href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L8" "Special comment to signal line mappings (e.g., in generated code) to the interpreter."
+click RLineDirective href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L5" "Special comment to signal line mappings (e.g., in generated code) to the interpreter."
 class RConstructs~Info~{
     <<type>>
 }
 style RConstructs opacity:.35,fill:#FAFAFA
-click RConstructs href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L187" "As an extension to; #60;code#62;RLoopConstructs#60;/code#62;; , this subtype of; #60;code#62;RNode#60;/code#62;; includes the; #60;code#62;RIfThenElse#60;/code#62;; construct as well."
+click RConstructs href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L165" "As an extension to; #60;code#62;RLoopConstructs#60;/code#62;; , this subtype of; #60;code#62;RNode#60;/code#62;; includes the; #60;code#62;RIfThenElse#60;/code#62;; construct as well."
 class RLoopConstructs~Info~{
     <<type>>
 }
 style RLoopConstructs opacity:.35,fill:#FAFAFA
-click RLoopConstructs href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L164" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all looping constructs in the normalized AST."
+click RLoopConstructs href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L142" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all looping constructs in the normalized AST."
 class RForLoop~Info = NoInfo~{
     <<interface>>
     type#58; RType.ForLoop
@@ -253,20 +253,20 @@ class RForLoop~Info = NoInfo~{
     vector#58; RNode#60;Info#62;
     body#58; RExpressionList#60;Info#62;
 }
-click RForLoop href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-for-loop.ts#L12" "#96;#96;#96;r for(#60;variable#62; in #60;vector#62;) #60;body#62; #96;#96;#96;"
+click RForLoop href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-for-loop.ts#L11" "#96;#96;#96;r for(#60;variable#62; in #60;vector#62;) #60;body#62; #96;#96;#96;"
 class RRepeatLoop~Info = NoInfo~{
     <<interface>>
     type#58; RType.RepeatLoop
     body#58; RExpressionList#60;Info#62;
 }
-click RRepeatLoop href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop.ts#L11" "#96;#96;#96;r repeat #60;body#62; #96;#96;#96;"
+click RRepeatLoop href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop.ts#L10" "#96;#96;#96;r repeat #60;body#62; #96;#96;#96;"
 class RWhileLoop~Info = NoInfo~{
     <<interface>>
     type#58; RType.WhileLoop
     condition#58; RNode#60;Info#62;
     body#58; RExpressionList#60;Info#62;
 }
-click RWhileLoop href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-while-loop.ts#L11" "#96;#96;#96;r while(#60;condition#62;) #60;body#62; #96;#96;#96;"
+click RWhileLoop href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-while-loop.ts#L10" "#96;#96;#96;r while(#60;condition#62;) #60;body#62; #96;#96;#96;"
 class RIfThenElse~Info = NoInfo~{
     <<interface>>
     type#58; RType.IfThenElse
@@ -274,33 +274,33 @@ class RIfThenElse~Info = NoInfo~{
     then#58; RExpressionList#60;Info#62;
     otherwise#58; RExpressionList#60;Info#62;
 }
-click RIfThenElse href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-if-then-else.ts#L11" "#96;#96;#96;r if(#60;condition#62;) #60;then#62; #91;else #60;otherwise#62;#93; #96;#96;#96;"
+click RIfThenElse href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-if-then-else.ts#L10" "#96;#96;#96;r if(#60;condition#62;) #60;then#62; #91;else #60;otherwise#62;#93; #96;#96;#96;"
 class RNamedAccess~Info = NoInfo~{
     <<interface>>
     operator#58; #34;$#34; | #34;@#34;
     access#58; #91;RUnnamedArgument#60;Info#62;#93;
 }
-click RNamedAccess href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L20" "Represents an R named access operation with #96;$#96; or #96;@#96;, the field is a string."
+click RNamedAccess href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L16" "Represents an R named access operation with #96;$#96; or #96;@#96;, the field is a string."
 class RAccessBase~Info = NoInfo~{
     <<interface>>
     type#58; RType.Access
     accessed#58; RNode#60;Info#62;
     operator#58; #34;$#34; | #34;@#34; | #34;#91;#34; | #34;#91;#91;#34;
 }
-click RAccessBase href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L10" "Represents an R Indexing operation with #96;$#96;, #96;@#96;, #96;#91;#91;#96;, or #96;#91;#96;."
+click RAccessBase href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L8" "Represents an R Indexing operation with #96;$#96;, #96;@#96;, #96;#91;#91;#96;, or #96;#91;#96;."
 class RIndexAccess~Info = NoInfo~{
     <<interface>>
     operator#58; #34;#91;#34; | #34;#91;#91;#34;
     access#58; #123;#125;
 }
-click RIndexAccess href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L26" "access can be a number, a variable or an expression that resolves to one, a filter etc."
+click RIndexAccess href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L22" "access can be a number, a variable or an expression that resolves to one, a filter etc."
 class RUnaryOp~Info = NoInfo~{
     <<interface>>
     type#58; RType.UnaryOp
     operator#58; string
     operand#58; RNode#60;Info#62;
 }
-click RUnaryOp href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L10" "Unary operations like #96;#43;#96; and #96;#45;#96;"
+click RUnaryOp href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L6" "Unary operations like #96;#43;#96; and #96;#45;#96;"
 class RBinaryOp~Info = NoInfo~{
     <<interface>>
     type#58; RType.BinaryOp
@@ -308,58 +308,58 @@ class RBinaryOp~Info = NoInfo~{
     lhs#58; RNode#60;Info#62;
     rhs#58; RNode#60;Info#62;
 }
-click RBinaryOp href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L10" "Operators like #96;#43;#96;, #96;==#96;, #96;#38;#38;#96;, etc."
+click RBinaryOp href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L6" "Operators like #96;#43;#96;, #96;==#96;, #96;#38;#38;#96;, etc."
 class RSingleNode~Info~{
     <<type>>
 }
 style RSingleNode opacity:.35,fill:#FAFAFA
-click RSingleNode href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L142" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types of; #60;code#62;Leaf#60;/code#62;; nodes in the normalized AST."
+click RSingleNode href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L124" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types of; #60;code#62;Leaf#60;/code#62;; nodes in the normalized AST."
 class RSymbol~Info = NoInfo, T extends Identifier = Identifier~{
     <<interface>>
     type#58; RType.Symbol
     content#58; T
 }
-click RSymbol href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-symbol.ts#L13" "Represents identifiers (variables) such as #96;x#96; in #96;x #60;#45; 42#96; or #96;a#58;#58;foo#96; in #96;a#58;#58;foo()#96;. See; #60;code#62;Identifier#60;/code#62;; for more information about how identifiers are represented."
+click RSymbol href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-symbol.ts#L12" "Represents identifiers (variables) such as #96;x#96; in #96;x #60;#45; 42#96; or #96;a#58;#58;foo#96; in #96;a#58;#58;foo()#96;. See; #60;code#62;Identifier#60;/code#62;; for more information about how identifiers are represented."
 class RConstant~Info~{
     <<type>>
 }
 style RConstant opacity:.35,fill:#FAFAFA
-click RConstant href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L118" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types of constants represented in the normalized AST."
+click RConstant href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L105" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types of constants represented in the normalized AST."
 class RNumber~Info = NoInfo~{
     <<interface>>
     type#58; RType.Number
     content#58; RNumberValue
 }
-click RNumber href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L12" "A number like #96;3#96;, #96;#45;2.14#96;, #96;1L#96;, or #96;2i#96;. Includes numeric, integer, and complex. See; #60;code#62;RNumberValue#60;/code#62;; for more information."
+click RNumber href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L7" "A number like #96;3#96;, #96;#45;2.14#96;, #96;1L#96;, or #96;2i#96;. Includes numeric, integer, and complex. See; #60;code#62;RNumberValue#60;/code#62;; for more information."
 class RString~Info = NoInfo~{
     <<interface>>
     type#58; RType.String
     content#58; RStringValue
 }
-click RString href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L13" "Represents a string like #96;#34;hello#34;#96;, including raw strings like #96;r#34;(hello)#34;#96;."
+click RString href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L11" "Represents a string like #96;#34;hello#34;#96;, including raw strings like #96;r#34;(hello)#34;#96;."
 class RLogical~Info = NoInfo~{
     <<interface>>
     type#58; RType.Logical
     content#58; boolean
 }
-click RLogical href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-logical.ts#L10" "Represents logical values (#96;TRUE#96; or #96;FALSE#96;)."
+click RLogical href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-logical.ts#L7" "Represents logical values (#96;TRUE#96; or #96;FALSE#96;)."
 class RBreak~Info = NoInfo~{
     <<interface>>
     type#58; RType.Break
 }
-click RBreak href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-break.ts#L8" "A #96;break#96; statement."
+click RBreak href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-break.ts#L5" "A #96;break#96; statement."
 class RNext~Info = NoInfo~{
     <<interface>>
     type#58; RType.Next
 }
-click RNext href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-next.ts#L8" "A #96;next#96; statement."
+click RNext href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-next.ts#L5" "A #96;next#96; statement."
 class RPipe~Info = NoInfo~{
     <<interface>>
     type#58; RType.Pipe
     lhs#58; RNode#60;Info#62;
     rhs#58; RNode#60;Info#62;
 }
-click RPipe href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-pipe.ts#L10" "Variant of the binary operator, specifically for the new, built#45;in pipe operator."
+click RPipe href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-pipe.ts#L7" "Variant of the binary operator, specifically for the new, built#45;in pipe operator."
 RExpressionList .. RNode
 WithChildren <|-- RExpressionList
 RAstNodeBase <|-- RExpressionList
@@ -492,7 +492,7 @@ In summary, we have the following types:
 
 <details><summary>Normalized AST Node Types</summary>
 
- * [RNode](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L266)   
+ * [RNode](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L237)   
    The `RNode` type is the union of all possible nodes in the R-ast.
    It should be used whenever you either not care what kind of
    node you are dealing with or if you want to handle all possible nodes.
@@ -502,7 +502,7 @@ In summary, we have the following types:
    ) listed above
    can be used to restrict the kind of node. They do not have to be
    exclusive, some nodes can appear in multiple subtypes.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L266">src/r-bridge/lang-4.x/ast/model/model.ts#L266</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L237">src/r-bridge/lang-4.x/ast/model/model.ts#L237</a></summary>
    
    ```ts
    /**
@@ -525,10 +525,10 @@ In summary, we have the following types:
    
    </details>
    
-   * **[RExpressionList](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L10)**   
+   * **[RExpressionList](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L9)**   
      Holds a list of expressions (and hence may be the root of an AST, summarizing all expressions in a file).
      The `grouping` property holds information on if the expression list is structural or created by a wrapper like `{}` or `()`.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L10</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L9">src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L9</a></summary>
      
      ```ts
      /**
@@ -544,11 +544,11 @@ In summary, we have the following types:
      
      </details>
      
-     * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74)**   
+     * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70)**   
        Provides the common base of all
        <code>RNodes</code>
        .
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74">src/r-bridge/lang-4.x/ast/model/model.ts#L74</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70">src/r-bridge/lang-4.x/ast/model/model.ts#L70</a></summary>
        
        ```ts
        /**
@@ -567,24 +567,20 @@ In summary, we have the following types:
        
        </details>
        
-   * [RFunctions](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L210)   
+   * [RFunctions](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L183)   
      This subtype of
      <code>RNode</code>
-     represents all types related to functions
-     (calls and definitions) in the normalized AST.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L210">src/r-bridge/lang-4.x/ast/model/model.ts#L210</a></summary>
+     represents all types related to functions (calls and definitions) in the normalized AST.
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L183">src/r-bridge/lang-4.x/ast/model/model.ts#L183</a></summary>
      
      ```ts
-     /**
-      * This subtype of {@link RNode} represents all types related to functions
-      * (calls and definitions) in the normalized AST.
-      */
+     /** This subtype of {@link RNode} represents all types related to functions (calls and definitions) in the normalized AST. */
      export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RParameter<Info> | RArgument<Info>;
      ```
      
      </details>
      
-     * **[RFunctionDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L16)**   
+     * **[RFunctionDefinition](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L15)**   
        ```r
        function(<parameters>) <body>
        ```
@@ -592,7 +588,7 @@ In summary, we have the following types:
        ```r
        \(<parameters>) <body>
        ```
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L16">src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L16</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L15">src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L15</a></summary>
        
        ```ts
        /**
@@ -614,11 +610,11 @@ In summary, we have the following types:
        
        </details>
        
-       * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74)**   
+       * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70)**   
          Provides the common base of all
          <code>RNodes</code>
          .
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74">src/r-bridge/lang-4.x/ast/model/model.ts#L74</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70">src/r-bridge/lang-4.x/ast/model/model.ts#L70</a></summary>
          
          ```ts
          /**
@@ -637,9 +633,9 @@ In summary, we have the following types:
          
          </details>
          
-     * [RFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L40)   
+     * [RFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L38)   
      
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L40">src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L40</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L38">src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L38</a></summary>
        
        ```ts
        export type RFunctionCall<Info = NoInfo> = RNamedFunctionCall<Info> | RUnnamedFunctionCall<Info>;
@@ -647,9 +643,9 @@ In summary, we have the following types:
        
        </details>
        
-       * **[RNamedFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L17)**   
+       * **[RNamedFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L16)**   
          Calls of functions like `a()` and `foo(42, "hello")`.
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L17">src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L17</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L16">src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L16</a></summary>
          
          ```ts
          /**
@@ -667,11 +663,11 @@ In summary, we have the following types:
          
          </details>
          
-         * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74)**   
+         * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70)**   
            Provides the common base of all
            <code>RNodes</code>
            .
-           <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74">src/r-bridge/lang-4.x/ast/model/model.ts#L74</a></summary>
+           <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70">src/r-bridge/lang-4.x/ast/model/model.ts#L70</a></summary>
            
            ```ts
            /**
@@ -690,9 +686,9 @@ In summary, we have the following types:
            
            </details>
            
-       * **[RUnnamedFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L30)**   
+       * **[RUnnamedFunctionCall](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L28)**   
          Direct calls of functions like `(function(x) { x })(3)`.
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L30">src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L30</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L28">src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L28</a></summary>
          
          ```ts
          /**
@@ -712,11 +708,11 @@ In summary, we have the following types:
          
          </details>
          
-         * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74)**   
+         * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70)**   
            Provides the common base of all
            <code>RNodes</code>
            .
-           <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74">src/r-bridge/lang-4.x/ast/model/model.ts#L74</a></summary>
+           <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70">src/r-bridge/lang-4.x/ast/model/model.ts#L70</a></summary>
            
            ```ts
            /**
@@ -735,14 +731,12 @@ In summary, we have the following types:
            
            </details>
            
-     * **[RParameter](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-parameter.ts#L10)**   
+     * **[RParameter](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-parameter.ts#L7)**   
        Represents a parameter of a function definition in R.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-parameter.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-parameter.ts#L10</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-parameter.ts#L7">src/r-bridge/lang-4.x/ast/model/nodes/r-parameter.ts#L7</a></summary>
        
        ```ts
-       /**
-        * Represents a parameter of a function definition in R.
-        */
+       /** Represents a parameter of a function definition in R. */
        export interface RParameter<Info = NoInfo> extends RAstNodeBase<Info>, Location {
            readonly type: RType.Parameter;
            /* the name is represented as a symbol to additionally get location information */
@@ -755,11 +749,11 @@ In summary, we have the following types:
        
        </details>
        
-       * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74)**   
+       * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70)**   
          Provides the common base of all
          <code>RNodes</code>
          .
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74">src/r-bridge/lang-4.x/ast/model/model.ts#L74</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70">src/r-bridge/lang-4.x/ast/model/model.ts#L70</a></summary>
          
          ```ts
          /**
@@ -778,14 +772,12 @@ In summary, we have the following types:
          
          </details>
          
-     * **[RArgument](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-argument.ts#L14)**   
+     * **[RArgument](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-argument.ts#L10)**   
        Represents a named or unnamed argument of a function definition in R.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-argument.ts#L14">src/r-bridge/lang-4.x/ast/model/nodes/r-argument.ts#L14</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-argument.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-argument.ts#L10</a></summary>
        
        ```ts
-       /**
-        * Represents a named or unnamed argument of a function definition in R.
-        */
+       /** Represents a named or unnamed argument of a function definition in R. */
        export interface RArgument<Info = NoInfo> extends RAstNodeBase<Info>, Location {
            readonly type: RType.Argument;
            /* the name is represented as a symbol to additionally get location information */
@@ -796,11 +788,11 @@ In summary, we have the following types:
        
        </details>
        
-       * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74)**   
+       * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70)**   
          Provides the common base of all
          <code>RNodes</code>
          .
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74">src/r-bridge/lang-4.x/ast/model/model.ts#L74</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70">src/r-bridge/lang-4.x/ast/model/model.ts#L70</a></summary>
          
          ```ts
          /**
@@ -819,12 +811,12 @@ In summary, we have the following types:
          
          </details>
          
-   * [ROther](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L233)   
+   * [ROther](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L204)   
      This subtype of
      <code>RNode</code>
      represents all types of otherwise hard to categorize
      nodes in the normalized AST. At the moment these are the comment-like nodes.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L233">src/r-bridge/lang-4.x/ast/model/model.ts#L233</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L204">src/r-bridge/lang-4.x/ast/model/model.ts#L204</a></summary>
      
      ```ts
      /**
@@ -836,11 +828,11 @@ In summary, we have the following types:
      
      </details>
      
-     * **[RComment](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L10)**   
+     * **[RComment](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L9)**   
        ```r
        # I am a line comment
        ```
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L10</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L9">src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L9</a></summary>
        
        ```ts
        /**
@@ -855,14 +847,12 @@ In summary, we have the following types:
        
        </details>
        
-     * **[RLineDirective](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L8)**   
+     * **[RLineDirective](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L5)**   
        Special comment to signal line mappings (e.g., in generated code) to the interpreter.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L8">src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L8</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L5">src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L5</a></summary>
        
        ```ts
-       /**
-        * Special comment to signal line mappings (e.g., in generated code) to the interpreter.
-        */
+       /** Special comment to signal line mappings (e.g., in generated code) to the interpreter. */
        export interface RLineDirective<Info = NoInfo> extends Location, Leaf<Info> {
            readonly type: RType.LineDirective;
            line:          number;
@@ -872,47 +862,41 @@ In summary, we have the following types:
        
        </details>
        
-   * [RConstructs](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L187)   
+   * [RConstructs](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L165)   
      As an extension to
      <code>RLoopConstructs</code>
      , this subtype of
      <code>RNode</code>
-     includes
-     the
+     includes the
      <code>RIfThenElse</code>
      construct as well.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L187">src/r-bridge/lang-4.x/ast/model/model.ts#L187</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L165">src/r-bridge/lang-4.x/ast/model/model.ts#L165</a></summary>
      
      ```ts
-     /**
-      * As an extension to {@link RLoopConstructs}, this subtype of {@link RNode} includes
-      * the {@link RIfThenElse} construct as well.
-      */
+     /** As an extension to {@link RLoopConstructs}, this subtype of {@link RNode} includes the {@link RIfThenElse} construct as well. */
      export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>;
      ```
      
      </details>
      
-     * [RLoopConstructs](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L164)   
+     * [RLoopConstructs](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L142)   
        This subtype of
        <code>RNode</code>
        represents all looping constructs in the normalized AST.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L164">src/r-bridge/lang-4.x/ast/model/model.ts#L164</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L142">src/r-bridge/lang-4.x/ast/model/model.ts#L142</a></summary>
        
        ```ts
-       /**
-        * This subtype of {@link RNode} represents all looping constructs in the normalized AST.
-        */
+       /** This subtype of {@link RNode} represents all looping constructs in the normalized AST. */
        export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>;
        ```
        
        </details>
        
-       * **[RForLoop](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-for-loop.ts#L12)**   
+       * **[RForLoop](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-for-loop.ts#L11)**   
          ```r
          for(<variable> in <vector>) <body>
          ```
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-for-loop.ts#L12">src/r-bridge/lang-4.x/ast/model/nodes/r-for-loop.ts#L12</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-for-loop.ts#L11">src/r-bridge/lang-4.x/ast/model/nodes/r-for-loop.ts#L11</a></summary>
          
          ```ts
          /**
@@ -922,22 +906,22 @@ In summary, we have the following types:
           */
          export interface RForLoop<Info = NoInfo> extends RAstNodeBase<Info>, Location {
              readonly type: RType.ForLoop
-             /** variable used in for-loop: <p> `for(<variable> in ...) ...`*/
+             /** variable used in for-loop: <p> `for(<variable> in ...) ...` */
              variable:      RSymbol<Info>
-             /** vector used in for-loop: <p> `for(... in <vector>) ...`*/
+             /** vector used in for-loop: <p> `for(... in <vector>) ...` */
              vector:        RNode<Info>
-             /** body used in for-loop: <p> `for(... in ...) <body>`*/
+             /** body used in for-loop: <p> `for(... in ...) <body>` */
              body:          RExpressionList<Info>
          }
          ```
          
          </details>
          
-         * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74)**   
+         * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70)**   
            Provides the common base of all
            <code>RNodes</code>
            .
-           <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74">src/r-bridge/lang-4.x/ast/model/model.ts#L74</a></summary>
+           <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70">src/r-bridge/lang-4.x/ast/model/model.ts#L70</a></summary>
            
            ```ts
            /**
@@ -956,11 +940,11 @@ In summary, we have the following types:
            
            </details>
            
-       * **[RRepeatLoop](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop.ts#L11)**   
+       * **[RRepeatLoop](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop.ts#L10)**   
          ```r
          repeat <body>
          ```
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop.ts#L11">src/r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop.ts#L11</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop.ts#L10</a></summary>
          
          ```ts
          /**
@@ -976,11 +960,11 @@ In summary, we have the following types:
          
          </details>
          
-         * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74)**   
+         * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70)**   
            Provides the common base of all
            <code>RNodes</code>
            .
-           <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74">src/r-bridge/lang-4.x/ast/model/model.ts#L74</a></summary>
+           <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70">src/r-bridge/lang-4.x/ast/model/model.ts#L70</a></summary>
            
            ```ts
            /**
@@ -999,11 +983,11 @@ In summary, we have the following types:
            
            </details>
            
-       * **[RWhileLoop](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-while-loop.ts#L11)**   
+       * **[RWhileLoop](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-while-loop.ts#L10)**   
          ```r
          while(<condition>) <body>
          ```
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-while-loop.ts#L11">src/r-bridge/lang-4.x/ast/model/nodes/r-while-loop.ts#L11</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-while-loop.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-while-loop.ts#L10</a></summary>
          
          ```ts
          /**
@@ -1020,11 +1004,11 @@ In summary, we have the following types:
          
          </details>
          
-         * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74)**   
+         * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70)**   
            Provides the common base of all
            <code>RNodes</code>
            .
-           <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74">src/r-bridge/lang-4.x/ast/model/model.ts#L74</a></summary>
+           <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70">src/r-bridge/lang-4.x/ast/model/model.ts#L70</a></summary>
            
            ```ts
            /**
@@ -1043,11 +1027,11 @@ In summary, we have the following types:
            
            </details>
            
-     * **[RIfThenElse](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-if-then-else.ts#L11)**   
+     * **[RIfThenElse](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-if-then-else.ts#L10)**   
        ```r
        if(<condition>) <then> [else <otherwise>]
        ```
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-if-then-else.ts#L11">src/r-bridge/lang-4.x/ast/model/nodes/r-if-then-else.ts#L11</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-if-then-else.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-if-then-else.ts#L10</a></summary>
        
        ```ts
        /**
@@ -1065,11 +1049,11 @@ In summary, we have the following types:
        
        </details>
        
-       * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74)**   
+       * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70)**   
          Provides the common base of all
          <code>RNodes</code>
          .
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74">src/r-bridge/lang-4.x/ast/model/model.ts#L74</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70">src/r-bridge/lang-4.x/ast/model/model.ts#L70</a></summary>
          
          ```ts
          /**
@@ -1088,14 +1072,12 @@ In summary, we have the following types:
          
          </details>
          
-   * **[RNamedAccess](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L20)**   
+   * **[RNamedAccess](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L16)**   
      Represents an R named access operation with `$` or `@`, the field is a string.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L20">src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L20</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L16">src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L16</a></summary>
      
      ```ts
-     /**
-      * Represents an R named access operation with `$` or `@`, the field is a string.
-      */
+     /** Represents an R named access operation with `$` or `@`, the field is a string. */
      export interface RNamedAccess<Info = NoInfo> extends RAccessBase<Info> {
          operator: '$' | '@';
          access:   [RUnnamedArgument<Info>];
@@ -1104,9 +1086,9 @@ In summary, we have the following types:
      
      </details>
      
-   * **[RIndexAccess](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L26)**   
+   * **[RIndexAccess](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L22)**   
      access can be a number, a variable or an expression that resolves to one, a filter etc.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L26">src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L26</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L22">src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L22</a></summary>
      
      ```ts
      /** access can be a number, a variable or an expression that resolves to one, a filter etc. */
@@ -1119,14 +1101,12 @@ In summary, we have the following types:
      
      </details>
      
-   * **[RUnaryOp](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L10)**   
+   * **[RUnaryOp](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L6)**   
      Unary operations like `+` and `-`
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L10</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L6">src/r-bridge/lang-4.x/ast/model/nodes/r-unary-op.ts#L6</a></summary>
      
      ```ts
-     /**
-      * Unary operations like `+` and `-`
-      */
+     /** Unary operations like `+` and `-` */
      export interface RUnaryOp<Info = NoInfo> extends RAstNodeBase<Info>, Location {
          readonly type: RType.UnaryOp;
          operator:      string;
@@ -1136,11 +1116,11 @@ In summary, we have the following types:
      
      </details>
      
-     * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74)**   
+     * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70)**   
        Provides the common base of all
        <code>RNodes</code>
        .
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74">src/r-bridge/lang-4.x/ast/model/model.ts#L74</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70">src/r-bridge/lang-4.x/ast/model/model.ts#L70</a></summary>
        
        ```ts
        /**
@@ -1159,14 +1139,12 @@ In summary, we have the following types:
        
        </details>
        
-   * **[RBinaryOp](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L10)**   
+   * **[RBinaryOp](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L6)**   
      Operators like `+`, `==`, `&&`, etc.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L10</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L6">src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L6</a></summary>
      
      ```ts
-     /**
-      * Operators like `+`, `==`, `&&`, etc.
-      */
+     /** Operators like `+`, `==`, `&&`, etc. */
      export interface RBinaryOp<Info = NoInfo> extends RAstNodeBase<Info>, Location {
          readonly type: RType.BinaryOp;
          operator:      string;
@@ -1177,11 +1155,11 @@ In summary, we have the following types:
      
      </details>
      
-     * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74)**   
+     * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70)**   
        Provides the common base of all
        <code>RNodes</code>
        .
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74">src/r-bridge/lang-4.x/ast/model/model.ts#L74</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70">src/r-bridge/lang-4.x/ast/model/model.ts#L70</a></summary>
        
        ```ts
        /**
@@ -1200,30 +1178,26 @@ In summary, we have the following types:
        
        </details>
        
-   * [RSingleNode](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L142)   
+   * [RSingleNode](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L124)   
      This subtype of
      <code>RNode</code>
      represents all types of
      <code>Leaf</code>
-     nodes in the
-     normalized AST.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L142">src/r-bridge/lang-4.x/ast/model/model.ts#L142</a></summary>
+     nodes in the normalized AST.
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L124">src/r-bridge/lang-4.x/ast/model/model.ts#L124</a></summary>
      
      ```ts
-     /**
-      * This subtype of {@link RNode} represents all types of {@link Leaf} nodes in the
-      * normalized AST.
-      */
+     /** This subtype of {@link RNode} represents all types of {@link Leaf} nodes in the normalized AST. */
      export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info> | RLineDirective<Info>;
      ```
      
      </details>
      
-     * **[RComment](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L10)**   
+     * **[RComment](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L9)**   
        ```r
        # I am a line comment
        ```
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L10</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L9">src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L9</a></summary>
        
        ```ts
        /**
@@ -1238,12 +1212,12 @@ In summary, we have the following types:
        
        </details>
        
-     * **[RSymbol](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-symbol.ts#L13)**   
+     * **[RSymbol](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-symbol.ts#L12)**   
        Represents identifiers (variables) such as `x` in `x <- 42` or `a::foo` in `a::foo()`.
        See
        <code>Identifier</code>
        for more information about how identifiers are represented.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-symbol.ts#L13">src/r-bridge/lang-4.x/ast/model/nodes/r-symbol.ts#L13</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-symbol.ts#L12">src/r-bridge/lang-4.x/ast/model/nodes/r-symbol.ts#L12</a></summary>
        
        ```ts
        /**
@@ -1260,37 +1234,27 @@ In summary, we have the following types:
        
        </details>
        
-     * [RConstant](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L118)   
+     * [RConstant](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L105)   
        This subtype of
        <code>RNode</code>
-       represents all types of constants
-       represented in the normalized AST.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L118">src/r-bridge/lang-4.x/ast/model/model.ts#L118</a></summary>
+       represents all types of constants represented in the normalized AST.
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L105">src/r-bridge/lang-4.x/ast/model/model.ts#L105</a></summary>
        
        ```ts
-       /**
-        * This subtype of {@link RNode} represents all types of constants
-        * represented in the normalized AST.
-        */
+       /** This subtype of {@link RNode} represents all types of constants represented in the normalized AST. */
        export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info>;
        ```
        
        </details>
        
-       * **[RNumber](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L12)**   
-         A number like `3`, `-2.14`, `1L`, or `2i`.
-         Includes numeric, integer, and complex.
-         See
+       * **[RNumber](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L7)**   
+         A number like `3`, `-2.14`, `1L`, or `2i`. Includes numeric, integer, and complex. See
          <code>RNumberValue</code>
          for more information.
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L12">src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L12</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L7">src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L7</a></summary>
          
          ```ts
-         /**
-          * A number like `3`, `-2.14`, `1L`, or `2i`.
-          * Includes numeric, integer, and complex.
-          * See {@link RNumberValue} for more information.
-          */
+         /** A number like `3`, `-2.14`, `1L`, or `2i`. Includes numeric, integer, and complex. See {@link RNumberValue} for more information. */
          export interface RNumber<Info = NoInfo> extends Leaf<Info>, Location {
              readonly type: RType.Number
              content:       RNumberValue
@@ -1299,14 +1263,12 @@ In summary, we have the following types:
          
          </details>
          
-       * **[RString](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L13)**   
+       * **[RString](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L11)**   
          Represents a string like `"hello"`, including raw strings like `r"(hello)"`.
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L13">src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L13</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L11">src/r-bridge/lang-4.x/ast/model/nodes/r-string.ts#L11</a></summary>
          
          ```ts
-         /**
-          * Represents a string like `"hello"`, including raw strings like `r"(hello)"`.
-          */
+         /** Represents a string like `"hello"`, including raw strings like `r"(hello)"`. */
          export interface RString<Info = NoInfo> extends Leaf<Info>, Location {
              readonly type: RType.String;
              content:       RStringValue;
@@ -1315,14 +1277,12 @@ In summary, we have the following types:
          
          </details>
          
-       * **[RLogical](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-logical.ts#L10)**   
+       * **[RLogical](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-logical.ts#L7)**   
          Represents logical values (`TRUE` or `FALSE`).
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-logical.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-logical.ts#L10</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-logical.ts#L7">src/r-bridge/lang-4.x/ast/model/nodes/r-logical.ts#L7</a></summary>
          
          ```ts
-         /**
-          * Represents logical values (`TRUE` or `FALSE`).
-          */
+         /** Represents logical values (`TRUE` or `FALSE`). */
          export interface RLogical<Info = NoInfo> extends Leaf<Info>, Location {
              readonly type: RType.Logical
              content:       RLogicalValue
@@ -1331,14 +1291,12 @@ In summary, we have the following types:
          
          </details>
          
-     * **[RBreak](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-break.ts#L8)**   
+     * **[RBreak](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-break.ts#L5)**   
        A `break` statement.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-break.ts#L8">src/r-bridge/lang-4.x/ast/model/nodes/r-break.ts#L8</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-break.ts#L5">src/r-bridge/lang-4.x/ast/model/nodes/r-break.ts#L5</a></summary>
        
        ```ts
-       /**
-        * A `break` statement.
-        */
+       /** A `break` statement. */
        export interface RBreak<Info = NoInfo> extends Location, Leaf<Info> {
            readonly type: RType.Break;
        }
@@ -1346,14 +1304,12 @@ In summary, we have the following types:
        
        </details>
        
-     * **[RNext](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-next.ts#L8)**   
+     * **[RNext](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-next.ts#L5)**   
        A `next` statement.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-next.ts#L8">src/r-bridge/lang-4.x/ast/model/nodes/r-next.ts#L8</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-next.ts#L5">src/r-bridge/lang-4.x/ast/model/nodes/r-next.ts#L5</a></summary>
        
        ```ts
-       /**
-        * A `next` statement.
-        */
+       /** A `next` statement. */
        export interface RNext<Info = NoInfo> extends Location, Leaf<Info> {
            readonly type: RType.Next;
        }
@@ -1361,14 +1317,12 @@ In summary, we have the following types:
        
        </details>
        
-     * **[RLineDirective](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L8)**   
+     * **[RLineDirective](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L5)**   
        Special comment to signal line mappings (e.g., in generated code) to the interpreter.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L8">src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L8</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L5">src/r-bridge/lang-4.x/ast/model/nodes/r-line-directive.ts#L5</a></summary>
        
        ```ts
-       /**
-        * Special comment to signal line mappings (e.g., in generated code) to the interpreter.
-        */
+       /** Special comment to signal line mappings (e.g., in generated code) to the interpreter. */
        export interface RLineDirective<Info = NoInfo> extends Location, Leaf<Info> {
            readonly type: RType.LineDirective;
            line:          number;
@@ -1378,14 +1332,12 @@ In summary, we have the following types:
        
        </details>
        
-   * **[RPipe](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-pipe.ts#L10)**   
+   * **[RPipe](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-pipe.ts#L7)**   
      Variant of the binary operator, specifically for the new, built-in pipe operator.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-pipe.ts#L10">src/r-bridge/lang-4.x/ast/model/nodes/r-pipe.ts#L10</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-pipe.ts#L7">src/r-bridge/lang-4.x/ast/model/nodes/r-pipe.ts#L7</a></summary>
      
      ```ts
-     /**
-      * Variant of the binary operator, specifically for the new, built-in pipe operator.
-      */
+     /** Variant of the binary operator, specifically for the new, built-in pipe operator. */
      export interface RPipe<Info = NoInfo> extends RAstNodeBase<Info>, Location {
          readonly type: RType.Pipe;
          readonly lhs:  RNode<Info>;
@@ -1395,11 +1347,11 @@ In summary, we have the following types:
      
      </details>
      
-     * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74)**   
+     * **[RAstNodeBase](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70)**   
        Provides the common base of all
        <code>RNodes</code>
        .
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L74">src/r-bridge/lang-4.x/ast/model/model.ts#L74</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L70">src/r-bridge/lang-4.x/ast/model/model.ts#L70</a></summary>
        
        ```ts
        /**
@@ -1427,12 +1379,12 @@ The following segments intend to give you an overview of how to work with the no
 
 > [!TIP]
 > If you want to get more information on roxygen comments attached to AST nodes,
-> check out <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/roxygen2/roxygen-parse.ts#L34"><code><span title="Parses the roxygen comments attached to a node into a RoxygenBlock AST node. Will return undefined if there are no valid roxygen comments attached to the node. Please note that this does *not* do any clever mapping of parameters or requests. For a higher-level function that also traverses up the AST to find comments attached to parent nodes, see RNode.documentation .">parseRoxygenCommentsOfNode</span></code></a>.
+> check out <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/roxygen2/roxygen-parse.ts#L33"><code><span title="Parses the roxygen comments attached to a node into a RoxygenBlock AST node. Will return undefined if there are no valid roxygen comments attached to the node. Please note that this does *not* do any clever mapping of parameters or requests. For a higher-level function that also traverses up the AST to find comments attached to parent nodes, see RNode.documentation .">parseRoxygenCommentsOfNode</span></code></a>.
 
 ## How to Get a Normalized AST
 
 As explained alongside the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface#creating-analyses-with-flowr) wiki page, you can use an instance of
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L205"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> to get the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L91"><code><span title="Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.">NormalizedAst</span></code></a>:
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L218"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> to get the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L80"><code><span title="Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.">NormalizedAst</span></code></a>:
 
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder().build();
@@ -1444,7 +1396,7 @@ From the REPL, you can use the <span title="Description (Repl Command): Get merm
 
 ### Multi-File Projects
 
-With the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L205"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can analyze multiple files at once:
+With the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L218"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can analyze multiple files at once:
 
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder()
@@ -1546,20 +1498,20 @@ source"])
 ## Traversing the Normalized AST
 
 We provide a visitor to traverse the normalized AST.
-Please note, that it usually operates on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L20"><code><span title="Helper for working with RExpressionList AST nodes.">RExpressionList</span></code></a> level, and it is up to
-you to decide how you want to traverse multiple files with a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L24"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a> in the AST (you can, for example, simplify flat-map over the files).
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L24"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a> node cannot appear nested within other nodes, so you can safely assume that any child of a node is not an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L24"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a>.
+Please note, that it usually operates on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list.ts#L19"><code><span title="Helper for working with RExpressionList AST nodes.">RExpressionList</span></code></a> level, and it is up to
+you to decide how you want to traverse multiple files with a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L21"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a> in the AST (you can, for example, simplify flat-map over the files).
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L21"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a> node cannot appear nested within other nodes, so you can safely assume that any child of a node is not an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L21"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a>.
 
 > [!TIP]
-> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L51"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
+> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L31"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
 
 ### Visitors
 
-If you want a simple visitor which traverses the AST, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L364"><code><span title="Visits all node ids within a tree given by a respective root node using a depth-first search with prefix order.">RNode::<b>visitAst</b></span></code></a> function is a good starting point.
+If you want a simple visitor which traverses the AST, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L331"><code><span title="Visits all node ids within a tree given by a respective root node using a depth-first search with prefix order.">RNode::<b>visitAst</b></span></code></a> function is a good starting point.
 You may specify functions to be called whenever you enter and exit a node during the traversal, and any
 computation is to be done by side effects.
-For example, if you want to collect all the `id`s present within a normalized (sub-)AST,
-as it is done by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L373"><code><span title="Collects all node ids within a tree given by a respective root node">RNode::<b>collectAllIds</b></span></code></a> (and corresponding <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L444"><code><span title="Collects all node ids within a tree given by a respective root node, but stops collecting at nodes where the given stop function returns true.   This can be used to exclude certain subtrees from the collection, for example to exclude function bodies when collecting ids on the root level.">RNode::<b>collectAllIdsWithStop</b></span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L54"><code><span title="Collects all node ids within a project">RProject::<b>collectAllIds</b></span></code></a>, ...) function, you can use the following visitor:
+For example, if you want to collect all ids present within a normalized (sub-)AST,
+as it is done by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L340"><code><span title="Collects all node ids within a tree given by a respective root node">RNode::<b>collectAllIds</b></span></code></a> (and corresponding <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L436"><code><span title="Collects all node ids within a tree given by a respective root node, but stops collecting at nodes where the given stop function returns true.   This can be used to exclude certain subtrees from the collection, for example to exclude function bodies when collecting ids on the root level.">RNode::<b>collectAllIdsWithStop</b></span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L51"><code><span title="Collects all node ids within a project">RProject::<b>collectAllIds</b></span></code></a>, ...) function, you can use the following visitor:
 
 ```ts
 
@@ -1572,5 +1524,5 @@ return ids;
 
 ### Stateful Fold
 
-A stateful fold over the normalized AST can be performed with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/stateful-fold.ts#L77"><code><span title="Folds in old functional-fashion over the AST structure but allowing for a down function which can pass context to child nodes.">foldAstStateful</span></code></a> function.
+A stateful fold over the normalized AST can be performed with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/stateful-fold.ts#L74"><code><span title="Folds in old functional-fashion over the AST structure but allowing for a down function which can pass context to child nodes.">foldAstStateful</span></code></a> function.
 It allows you to specify a down function which is called during the down-pass and can pass information to child nodes, and fold functions which are called after the down-pass in conventional fold-fashion.

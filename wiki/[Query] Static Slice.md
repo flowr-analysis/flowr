@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-16, 20:55:37 UTC (v2.17.7), do not edit directly._
 <h2 id="Static Slice Query">Static Slice Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).\
@@ -22,15 +22,7 @@ x
 If you are interested in the parts required for the use of `x` in the last line and `z`, you can use the following query:
 
 ```json
-[
-  {
-    "type": "static-slice",
-    "criteria": [
-      "3@z",
-      "4@x"
-    ]
-  }
-]
+[ { "type": "static-slice",   "criteria": [ "3@z",    "4@x" ] } ]
 ```
 
 (This can be shortened to `@static-slice (3@z;4@x) "x <- 1\ny <- 2\nz <- 3\nx"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
@@ -48,18 +40,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "static-slice": {
-    ".meta": {},
-    "results": {
-      "3@z,4@x": {
-        "slice": {"timesHitThreshold":0,"result":[6,9,0,2,1,8,7],"slicedFor":[6,9],"freeNames":[],".meta":{}},
-        "reconstruct": {"code":"x <- 1\nz <- 3\nx","files":[{"code":"x <- 1\nz <- 3\nx"}],"linesWithAutoSelected":0,".meta":{}}
-      }
-    }
-  },
-  ".meta": {}
-}
+{"static-slice":{".meta":{},"results":{"3@z,4@x":{"slice":{"timesHitThreshold":0,"result":[6,9,0,2,1,8,7],"slicedFor":[6,9],"freeNames":[],".meta":{}},"reconstruct":{"code":"x <- 1\nz <- 3\nx","files":[{"code":"x <- 1\nz <- 3\nx"}],"linesWithAutoSelected":0,".meta":{}}}}},".meta":{}}
 ```
 
 </details>
@@ -70,20 +51,12 @@ you can use the `noReconstruction` flag.
 <details><summary>No Reconstruction Example</summary>
 
 ```json
-[
-  {
-    "type": "static-slice",
-    "criteria": [
-      "4@x"
-    ],
-    "noReconstruction": true
-  }
-]
+[ { "type": "static-slice",   "criteria": [ "4@x" ],   "noReconstruction": true } ]
 ```
 
 _Results (prettified and summarized):_
 
-Query: **static-slice** (3 ms)\
+Query: **static-slice** (7 ms)\
 &nbsp;&nbsp;&nbsp;╰ Slice "4@x" \
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Id List: {9, 0, 2, 1}
 
@@ -104,15 +77,7 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 Likewise, if you want the forward slice for the first use of `x`, you can do it like this:
 
 ```json
-[
-  {
-    "type": "static-slice",
-    "criteria": [
-      "1@x"
-    ],
-    "direction": "forward"
-  }
-]
+[ { "type": "static-slice",   "criteria": [ "1@x" ],   "direction": "forward" } ]
 ```
 
 (This can be shortened to `@static-slice (1@x)f "x <- 1\ny <- 2\nz <- 3\nx"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
@@ -129,18 +94,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "static-slice": {
-    ".meta": {},
-    "results": {
-      "1@x": {
-        "slice": {"timesHitThreshold":0,"result":[0,2,9],"slicedFor":[0],"freeNames":[],".meta":{}},
-        "reconstruct": {"code":"x <- 1\nx","files":[{"code":"x <- 1\nx"}],"linesWithAutoSelected":0,".meta":{}}
-      }
-    }
-  },
-  ".meta": {}
-}
+{"static-slice":{".meta":{},"results":{"1@x":{"slice":{"timesHitThreshold":0,"result":[0,2,9],"slicedFor":[0],"freeNames":[],".meta":{}},"reconstruct":{"code":"x <- 1\nx","files":[{"code":"x <- 1\nx"}],"linesWithAutoSelected":0,".meta":{}}}}},".meta":{}}
 ```
 
 </details>
@@ -152,15 +106,7 @@ self-contained R text (cyclic or unresolvable `source()` calls are kept verbatim
 criteria (and may combine it with the forward `f` as `fi`), for example (with a faked `library.R` providing `greeting`):
 
 ```json
-[
-  {
-    "type": "static-slice",
-    "criteria": [
-      "2@print"
-    ],
-    "inlineSources": true
-  }
-]
+[ { "type": "static-slice",   "criteria": [ "2@print" ],   "inlineSources": true } ]
 ```
 
 (This can be shortened to `@static-slice (2@print)i "source("library.R")\nprint(greeting)"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
@@ -177,18 +123,7 @@ The analysis ran (including parsing and normalization and the query) within the 
 The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "static-slice": {
-    ".meta": {},
-    "results": {
-      "2@print": {
-        "slice": {"timesHitThreshold":0,"result":[7,5,"library.R:1:1-0",3,"library.R:1:1-2","library.R:1:1-1",1],"slicedFor":[7],"freeNames":[],".meta":{}},
-        "reconstruct": {"code":"greeting <- \"hello\"\nprint(greeting)","linesWithAutoSelected":0,"inlineWarnings":[],".meta":{}}
-      }
-    }
-  },
-  ".meta": {}
-}
+{"static-slice":{".meta":{},"results":{"2@print":{"slice":{"timesHitThreshold":0,"result":[7,5,"library.R:1:1-0",3,"library.R:1:1-2","library.R:1:1-1",1],"slicedFor":[7],"freeNames":[],".meta":{}},"reconstruct":{"code":"greeting <- \"hello\"\nprint(greeting)","linesWithAutoSelected":0,"inlineWarnings":[],".meta":{}}}}},".meta":{}}
 ```
 
 </details>
@@ -200,6 +135,6 @@ This query replaces the old [`request-slice`](https://github.com/flowr-analysis/
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Static Slice Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/static-slice-query/static-slice-query-executor.ts#L29"><code><span title="Execute static slice queries, catching duplicates with the same fingerprint">executeStaticSliceQuery</span></code></a>.
+The Static Slice Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/static-slice-query/static-slice-query-format.ts#L38"><code><span title="Execute static slice queries, catching duplicates with the same fingerprint">executeStaticSliceQuery</span></code></a>.
 
 </details>

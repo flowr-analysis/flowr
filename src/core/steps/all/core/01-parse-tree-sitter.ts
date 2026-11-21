@@ -1,4 +1,4 @@
-import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep, PipelineStepStage, requires } from '../../pipeline-step';
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
 import type { DeepReadonly } from 'ts-essentials';
 import type { Tree } from 'web-tree-sitter';
@@ -10,10 +10,7 @@ export const PARSE_WITH_TREE_SITTER_STEP = {
 	description:       'Parse the given R code into an AST using tree-sitter',
 	processor:         parseRequests<Tree>,
 	executed:          PipelineStepStage.OncePerFile,
-	printer:           {
-		[StepOutputFormat.Internal]: internalPrinter,
-		[StepOutputFormat.Json]:     JSON.stringify
-	},
-	dependencies:  [],
-	requiredInput: undefined as unknown as ParseRequiredInput<Tree>
+	printer:           { [StepOutputFormat.Internal]: internalPrinter, [StepOutputFormat.Json]: JSON.stringify },
+	dependencies:      [],
+	requiredInput:     requires<ParseRequiredInput<Tree>>()
 } as const satisfies DeepReadonly<IPipelineStep<'parse', typeof parseRequests<Tree>>>;

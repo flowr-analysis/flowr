@@ -26,16 +26,10 @@ export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyz
 
 		for(const pkg in deps) {
 			const info = deps[pkg];
-			ctx.deps.addDependency(new Package(
-				{
-					name:          pkg,
-					namespaceInfo: info
-				}
-			));
-			/* the S4 lists are exports as much as the other two, they just say *why* the name is exported */
+			ctx.deps.addDependency(new Package({ name: pkg, namespaceInfo: info }));
+			/* the S4 lists are exports as much as the plain one, they just say *why* the name is exported */
 			const exportKinds = [
 				[info.exportedSymbols, {}],
-				[info.exportedFunctions, {}],
 				[info.exportedS4Methods, { isS4Method: true }],
 				[info.exportedS4Classes, { isS4Class: true }]
 			] as const;

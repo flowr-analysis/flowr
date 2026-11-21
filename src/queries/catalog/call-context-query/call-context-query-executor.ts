@@ -1,5 +1,5 @@
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { isArray } from '../../../util/collections/arrays';
+import { isArray, uniqueArrayBy } from '../../../util/collections/arrays';
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
@@ -12,9 +12,8 @@ import type {
 } from './call-context-query-format';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { memoize } from '../../../util/collections/defaultmap';
-import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexInfo, DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
@@ -24,38 +23,25 @@ import { satisfiesCallTargets } from './identify-link-to-last-call-relation';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { identifyLinkToRelation } from './identify-link-to-relation';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { quotedForWorker } from '../../../dataflow/environments/query-fn-props';
 import { ArrayQueue } from '../../../util/collections/queue';
+import { StronglyConnected } from '../../../util/fixpoint';
 import { baseRExportOwner } from '../../../util/r-base-packages';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 
+/** The report of what was collected, dropping results identical to an earlier one of the same subkind. */
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
-	const result: CallContextQueryKindResult = {};
-	for(const [kind, collected] of collector.store) {
-		const subkinds = {} as CallContextQueryKindResult[string]['subkinds'];
-		for(const [subkind, values] of collected) {
-			if(!Array.isArray(subkinds[subkind])) {
-				subkinds[subkind] = [];
-			}
-			const collectIn = subkinds[subkind];
-			for(const value of values) {
-				collectIn.push(value);
-			}
-		}
-		result[kind] = {
-			subkinds
-		};
-	}
-	return result;
+	return Object.fromEntries(collector.store.entries().map(([kind, collected]) =>
+		[kind, { subkinds: Object.fromEntries(collected.entries().map(([subkind, values]) => [subkind, uniqueArrayBy(values, v => JSON.stringify(v))])) }]));
 }
 
 function isSubCallQuery(query: CallContextQuery): query is SubCallContextQueryFormat {
 	return 'linkTo' in query && query.linkTo !== undefined;
 }
 
-export type PromotedCallTest = (t: string) => boolean;
+export type PromotedCallTest = (t: BrandedIdentifier) => boolean;
 
 /**
  * Convert a name to a predicate that checks whether an input conforms to this name.
@@ -63,21 +49,21 @@ export type PromotedCallTest = (t: string) => boolean;
  */
 export function promoteCallName(callName: CallNameTypes, exact = false): PromotedCallTest {
 	if(Array.isArray(callName)) {
-		const s = new Set<string>(callName);
-		return (t: string) => s.has(t);
+		const s = new Set<BrandedIdentifier>(callName);
+		return (t: BrandedIdentifier) => s.has(t);
 	} else if(typeof callName === 'string' && exact) {
-		return (t: string) => t === callName;
+		return (t: BrandedIdentifier) => t === callName;
 	}
 	const source = typeof callName === 'string' ? callName : exact ? '^' + callName.source + '$' : callName.source;
 	let r: RegExp | undefined;
-	return (t: string) => (r ??= new RegExp(source)).test(t);
+	return (t: BrandedIdentifier) => (r ??= new RegExp(source)).test(t);
 }
 
 // when promoting queries, we convert all strings to regexes, and all string arrays to string sets
 type PromotedQuery = Omit<CallContextQuery, 'callName' | 'fileFilter' | 'linkTo'> & {
 	callName:    PromotedCallTest,
 	/** names the query matches exactly (if any), allowing map-based lookup instead of per-vertex predicate checks */
-	exactNames?: readonly string[],
+	exactNames?: readonly BrandedIdentifier[],
 	/** position in the original query list, keeps result order stable */
 	idx:         number,
 	fileFilter?: FileFilter<PromotedCallTest>,
@@ -86,7 +72,7 @@ type PromotedQuery = Omit<CallContextQuery, 'callName' | 'fileFilter' | 'linkTo'
 export type PromotedLinkTo<LT = LinkTo> = Omit<LT, 'callName'> & { callName: PromotedCallTest };
 
 /** string arrays always match exactly, plain strings only if the query requests an exact match */
-function exactNamesOf(callName: CallNameTypes, exact: boolean | undefined): readonly string[] | undefined {
+function exactNamesOf(callName: CallNameTypes, exact: boolean | undefined): readonly BrandedIdentifier[] | undefined {
 	if(Array.isArray(callName)) {
 		return callName;
 	}
@@ -106,10 +92,7 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 			callName:   promoteCallName(q.callName, q.callNameExact),
 			exactNames: exactNamesOf(q.callName, q.callNameExact),
 			idx,
-			fileFilter: q.fileFilter && {
-				...q.fileFilter,
-				filter: promoteCallName(q.fileFilter.filter)
-			}
+			fileFilter: q.fileFilter && { ...q.fileFilter, filter: promoteCallName(q.fileFilter.filter) }
 		};
 		if(!isSubCallQuery(q)) {
 			return promoted;
@@ -123,7 +106,6 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 
 	return { promotedQueries, requiresCfg };
 }
-
 
 /**
  * Where the function of a call comes from: the functions it calls and the definition of its name, or the expression
@@ -144,7 +126,6 @@ function calleesOf(id: NodeId, call: DataflowGraphVertexFunctionCall, outgoing: 
 	).map(([target]) => target).toArray();
 }
 
-/* maybe we want to add caches to this */
 /**
  * Whether the name at a vertex the alias walk reaches names a function there: a built-in, a function definition,
  * and a use reading one, a function definition's binding, or nothing (an unknown function), like the `print` of
@@ -171,26 +152,34 @@ function namesFunction(id: NodeId, graph: DataflowGraph): boolean {
 }
 
 /**
- * The names of the functions the call at `nodeId` may be a call of, each with the vertices naming it.
+ * The names `asked` accepts of the functions the call at `nodeId` may be a call of, each with the vertices naming it.
  * Without `follow`, only what the call reaches directly, which is all there is when no function of interest is ever
  * used as a value (`f <- read.csv`, `g(read.csv)`, `get("read.csv")`), as then nothing can be an alias of one.
+ * Given `below` (see {@link wantedBelow}), the walk only gives the functions asked for and, past the callee, only enters a vertex
+ * from which it can still find one it has not found yet.
  */
-function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: boolean): Map<string, NodeId[]> {
+function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: boolean, namesFunction: (id: NodeId) => boolean, wanted: WantedBelow | undefined, asked: (name: string) => boolean): Map<string, NodeId[]> {
 	/* we want the names of all functions called at the source id, including synonyms and returns */
 	const aliases: Map<string, NodeId[]> = new Map();
 
 	const visited = new Set<NodeId>();
+	/* the wanted functions found so far, and whether one past the callee is still to be found from a vertex */
+	let found = 0n;
+	const leadsOn = (id: NodeId) => wanted === undefined || ((wanted.below.get(id) ?? 0n) & ~found) !== 0n;
+	/* the callees are what the call names, whatever they reach */
+	const firstLevel = new Set<NodeId>();
 	/* we store the current call name alongside each id */
 	const queue = new ArrayQueue<readonly [string, NodeId]>([[NodeId.recoverContent(nodeId, graph) ?? '', nodeId]]);
 
-	while(!queue.isEmpty()) {
-		const [str, id] = queue.dequeue() as readonly [string, NodeId];
-		if(visited.has(id)) {
+	for(let next = queue.dequeue(); next !== undefined; next = queue.dequeue()) {
+		const [str, id] = next;
+		if(visited.has(id) || (id !== nodeId && !leadsOn(id) && !firstLevel.has(id))) {
 			continue;
 		}
 		visited.add(id);
 		if(id !== nodeId) {
-			if(namesFunction(id, graph)) {
+			found |= wanted?.bits.get(id) ?? 0n;
+			if(asked(str) && namesFunction(id)) {
 				const present = aliases.get(str);
 				if(present) {
 					present.push(id);
@@ -203,55 +192,82 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph, follow: bo
 			}
 		}
 
-		const vertex = graph.get(id);
-		if(vertex === undefined) {
+		const info = graph.getVertex(id);
+		if(info === undefined) {
 			continue;
 		}
-		const [info, outgoing] = vertex;
-
-		if(DfgVertex.isFunctionDefinition(info)) {
-			/* the function itself, what it reads (like the `library` call providing a package's) makes no alias */
-			continue;
-		} else if(!DfgVertex.isFunctionCall(info)) {
-			const wantedTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
-			const x = outgoing.entries()
-				.filter(([,e]) => DfEdge.includesType(e, wantedTypes))
-				.map(([t]) => [NodeId.recoverContent(t, graph) ?? '', t] as const)
-				.toArray();
-			/** only follow defined-by and reads */
-			for(const e of x) {
-				queue.enqueue(e);
-			}
-			continue;
-		}
-
 		/* a call reached on the way is an alias only for what it hands back, not for what it reads or calls */
-		const out = id === nodeId ? calleesOf(id, info, outgoing, graph)
-			: outgoing.entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Returns)).map(([t]) => t);
-
-		for(const call of out) {
-			queue.enqueue([NodeId.recoverContent(call, graph) ?? NodeId.recoverContent(id, graph) ?? '', call]);
+		const isStart = id === nodeId && DfgVertex.isFunctionCall(info);
+		for(const step of isStart ? calleesOf(id, info, graph.edgesFrom(id), graph) : aliasSteps(graph, id, info)) {
+			if(isStart) {
+				firstLevel.add(step);
+			} else if(!leadsOn(step)) {
+				/* past the callee, what reaches no name asked for only names functions nobody asks about */
+				continue;
+			}
+			queue.enqueue([stepName(graph, id, info, step), step]);
 		}
 	}
 
 	return aliases;
 }
 
-function removeIdenticalDuplicates(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>) {
-	for(const [, collected] of collector.store) {
-		for(const [subkind, values] of collected) {
-			const seen = new Set<string>();
-			const newValues = values.filter(v => {
-				const str = JSON.stringify(v);
-				if(seen.has(str)) {
-					return false;
-				}
-				seen.add(str);
-				return true;
-			});
-			collected.set(subkind, newValues);
+/**
+ * For each vertex from which the alias walk of {@link retrieveAllCallAliases} can reach a function with a name that `wanted` accepts,
+ * those functions as bits, so a walk can stop at a vertex once it has found all of them. A variable merely called like one
+ * (the `from` of `seq(from, to)`, not `import::from`) names no function. Vertices reaching none are left out.
+ */
+interface WantedBelow {
+	/** the wanted functions each vertex reaches */
+	readonly below: ReadonlyMap<NodeId, bigint>
+	/** the bit of each wanted function */
+	readonly bits:  ReadonlyMap<NodeId, bigint>
+}
+
+/** What the alias walk of {@link retrieveAllCallAliases} follows past `id`: what a call hands back, or what anything else reads or is defined by. */
+function aliasSteps(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexInfo): NodeId[] {
+	if(DfgVertex.isFunctionDefinition(info)) {
+		return [];
+	}
+	const types = DfgVertex.isFunctionCall(info) ? EdgeType.Returns : EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
+	return graph.edgesFrom(id).entries().filter(([, e]) => DfEdge.includesType(e, types)).map(([t]) => t).toArray();
+}
+
+/** The name an alias step from `id` to `target` carries: the target's, or for a call without one, the call's. */
+function stepName(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexInfo, target: NodeId): string {
+	return NodeId.recoverContent(target, graph) ?? (DfgVertex.isFunctionCall(info) ? NodeId.recoverContent(id, graph) : undefined) ?? '';
+}
+
+/** {@link WantedBelow} of the graph. */
+function wantedBelow(graph: DataflowGraph, wanted: (name: string) => boolean, namesFunction: (id: NodeId) => boolean): WantedBelow {
+	const bits = new Map<NodeId, bigint>();
+	for(const [id, info] of graph.vertices(true)) {
+		for(const target of aliasSteps(graph, id, info)) {
+			if(!bits.has(target) && wanted(stepName(graph, id, info, target)) && namesFunction(target)) {
+				bits.set(target, 1n << BigInt(bits.size));
+			}
 		}
 	}
+	const below = new Map<NodeId, bigint>();
+	const components = new StronglyConnected<NodeId>(id => {
+		const info = graph.getVertex(id);
+		return info ? aliasSteps(graph, id, info) : [];
+	}, (members, successorsOf) => {
+		let mask = 0n;
+		for(const m of members) {
+			mask |= bits.get(m) ?? 0n;
+			for(const t of successorsOf(m)) {
+				mask |= below.get(t) ?? 0n;
+			}
+		}
+		if(mask !== 0n) {
+			members.forEach(m => below.set(m, mask));
+		}
+	});
+	for(const [id] of graph.vertices(true)) {
+		components.visit(id);
+	}
+	return { below, bits };
 }
 
 function doesFilepathMatch(file: string | undefined, filter: FileFilter<PromotedCallTest> | undefined): boolean {
@@ -269,7 +285,7 @@ function doesFilepathMatch(file: string | undefined, filter: FileFilter<Promoted
  * signature database: base R's export owner, then any package the loaded sources record as exporting `name`.
  * Only meaningful once the version plugins are initialized (see {@link primeSigDbForNamespaceFilter}).
  */
-function bareCallOwnedBy(name: string, target: string, deps: ReadOnlyFlowrAnalyzerDependenciesContext): boolean {
+function bareCallOwnedBy(name: BrandedIdentifier, target: BrandedNamespace, deps: ReadOnlyFlowrAnalyzerDependenciesContext): boolean {
 	return baseRExportOwner(name) === target || deps.packagesExporting(name).includes(target);
 }
 
@@ -329,7 +345,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 	}
 	const calls = cfg ? new Map(dataflow.graph.verticesOfType(VertexType.FunctionCall) as MapIterator<[NodeId, Required<DataflowGraphVertexFunctionCall>]>) : undefined;
 	/* index exact-name queries so each name costs one map lookup instead of a predicate check per query */
-	const byName = new Map<string, PromotedQuery[]>();
+	const byName = new Map<BrandedIdentifier, PromotedQuery[]>();
 	const patterns: PromotedQuery[] = [];
 	for(const query of promotedQueries) {
 		if(query.exactNames) {
@@ -345,10 +361,10 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			patterns.push(query);
 		}
 	}
-	const queriesFor = (name: string): readonly PromotedQuery[] => {
+	function queriesFor(name: BrandedIdentifier): readonly PromotedQuery[] {
 		const exact = byName.get(name) ?? [];
 		return patterns.length === 0 ? exact : [...exact, ...patterns.filter(q => q.callName(name))];
-	};
+	}
 	const aliasQueries = promotedQueries.filter(q => q.includeAliases);
 	/* an alias of a function needs the function used as a value somewhere, like `read.csv` in `f <- read.csv` */
 	const followAliases = aliasQueries.length > 0 && dataflow.graph.verticesOfType(VertexType.Use).some(([id]) => {
@@ -356,13 +372,20 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 		return value !== undefined && queriesFor(value).some(q => q.includeAliases);
 	});
 
+	/* only the aliases some query asks for count */
+	const asksAliases = (name: string) => queriesFor(name).some(q => q.includeAliases);
+	/* whether a vertex names a function is the same for every call reaching it */
+	const namesFunctionOf = memoize((id: NodeId) => namesFunction(id, dataflow.graph));
+	/* a call whose own name asks for no aliases only has some if its walk reaches a function asked for */
+	const wanted = followAliases ? wantedBelow(dataflow.graph, asksAliases, namesFunctionOf) : undefined;
 	for(const [nodeId, info] of dataflow.graph.verticesOfType(VertexType.FunctionCall)) {
 		const n = Identifier.getName(info.name);
 		/* each query matching the call by its name or, if it asks for them, by the functions it is an alias of */
 		const matched = new Map<PromotedQuery, NodeId[] | undefined>(queriesFor(n).map(q => [q, undefined]));
 		/* without a function used as a value, a call is only one of its own name, whose roots only matter if it matches */
-		if(followAliases || matched.keys().some(q => q.includeAliases)) {
-			for(const [alias, ids] of retrieveAllCallAliases(nodeId, dataflow.graph, followAliases)) {
+		const ownAliases = matched.keys().some(q => q.includeAliases);
+		if(ownAliases || (wanted !== undefined && calleesOf(nodeId, info, dataflow.graph.edgesFrom(nodeId), dataflow.graph).some(c => wanted.below.has(c)))) {
+			for(const [alias, ids] of retrieveAllCallAliases(nodeId, dataflow.graph, followAliases, namesFunctionOf, wanted, asksAliases)) {
 				for(const query of queriesFor(alias)) {
 					if(query.includeAliases) {
 						matched.set(query, [...matched.get(query) ?? [], ...ids]);
@@ -431,10 +454,5 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 		}
 	}
 
-	removeIdenticalDuplicates(initialIdCollector);
-
-	return {
-		...metaSince(now),
-		kinds: makeReport(initialIdCollector)
-	};
+	return { ...metaSince(now), kinds: makeReport(initialIdCollector) };
 }

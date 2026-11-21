@@ -35,17 +35,9 @@ export const USELESS_LOOP = {
 				&& useLessLoopConfig.loopyFunctions.has(vertex.origin[0]);
 		}).filter(loop =>
 			onlyLoopsOnce(loop.node.info.id, dataflow.graph, cfg, normalize, data.inspectContext())
-		).map(res => ({
-			...at(res.node),
-			name: res.node.lexeme as string
-		} satisfies UselessLoopResult));
+		).map(res => ({ ...at(res.node), name: res.node.lexeme as string } satisfies UselessLoopResult));
 
-		return {
-			results: results,
-			'.meta': {
-				numOfUselessLoops: results.length
-			}
-		};
+		return { results: results, '.meta': { numOfUselessLoops: results.length } };
 	},
 	prettyPrint: prettyPrint(
 		result => `${result.name}-loop at ${SourceLocation.format(result.loc)} only loops once`
@@ -55,8 +47,6 @@ export const USELESS_LOOP = {
 		description:   'Finds loops that iterate only once.',
 		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Readability],
-		defaultConfig: () => ({
-			loopyFunctions: loopyFunctions
-		})
+		defaultConfig: () => ({ loopyFunctions: loopyFunctions })
 	}
 } as const satisfies LintingRule<UselessLoopResult, UselessLoopMetadata, UselessLoopConfig>;

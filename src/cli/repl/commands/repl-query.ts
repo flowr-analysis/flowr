@@ -8,11 +8,11 @@ import {
 	SupportedQueries,
 	type SupportedQuery,
 	type SupportedQueryTypes,
-	VirtualQuerySchema
+	VirtualQuerySchema,
+	asciiSummaryOfQueryResult
 } from '../../../queries/query';
 import { SupportedVirtualQueries } from '../../../queries/virtual-query/virtual-queries';
 import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import { jsonReplacer } from '../../../util/json';
 import type { BaseQueryResult } from '../../../queries/base-query-format';
 import { closingQuote, splitAtEscapeSensitive, unescapeArg } from '../../../util/text/args';
@@ -30,7 +30,6 @@ function analyzerHasTarget(analyzer: ReadonlyFlowrAnalysisProvider, input: strin
 	const current = analyzer.inspectContext().files.loadingOrder.getUnorderedRequests();
 	return current.length === 1 && current[0].request === requested.request && current[0].content === requested.content;
 }
-
 
 function printQueryHelp(output: ReplOutput) {
 	output.stderr(`Format: ${italic(':query <query> <code>', output.formatter)}`);
@@ -180,14 +179,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 		}
 	}
 
-	return {
-		query: await executeQueries({
-			analyzer,
-		},
-		parsedQuery),
-		parsedQuery,
-		analyzer
-	};
+	return { query: await executeQueries({ analyzer }, parsedQuery), parsedQuery, analyzer };
 }
 
 const ConfigLineRegex = /^(@config)(?:\s+([\s\S]*))?$/;
@@ -197,7 +189,6 @@ const ConfigLineRegex = /^(@config)(?:\s+([\s\S]*))?$/;
  * All input is treated as arguments, no R code is separated so that the individual queries can handle it.
  * `@config` is passed its rest-of-line untouched, since its own `fromLine` reads a single raw token and the
  * generic tokenizer would otherwise strip quotes out of a `+path=["a"]` value.
- * @param line - The input line
  */
 function parseQueryArgs(line: string) {
 	const configMatch = ConfigLineRegex.exec(line);

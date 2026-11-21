@@ -2,21 +2,23 @@
  * The read path for the `flowr-sigdb` package database: fast partial readers for a single bundle ({@link SigDatabase})
  * and a sharded set ({@link SigDatabaseSet}), the shared-source cache, whole-bundle reading, and the verification gate.
  */
+import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
 import fs from 'fs';
 import { compareByCodeUnit } from '../../util/text/strings';
 import path from 'path';
 import readline from 'readline';
 import { RVersion, type VersionString } from '../../util/r-version';
-import { DefaultCranBase, FnProp, SigDbExt, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigClassInfo, type SigDb, type SigDbContent, type SigDbPkgMeta, type SigDbPkgMetaIndex } from './schema';
+import { DefaultCranBase, FnProp, SigDbExt, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigClassInfo, type SigNativeRoutineInfo, type SigDb, type SigDbContent, type SigDbPkgMeta, type SigDbPkgMetaIndex } from './schema';
 import { dayToMillis, releasesOf, newestVersion, resolveVersion, type VersionRelease } from './sigdb-version';
 import { decodeIndex, readSigDbIndex, type ByteRange, type SigDbIndex } from './index-format';
-import { tupleToBlob, decodeFunction, decodeDependencies, decodeClasses, deriveLibraryExports, versionFnIndices, transitiveCallees, type DecodedFunction, type ResolvedDependency } from './decode';
+import { tupleToBlob, decodeFunction, decodeDependencies, decodeClasses, decodeNatives, deriveLibraryExports, versionFnIndices, transitiveCallees, type DecodedFunction, type ResolvedDependency } from './decode';
 import { isCompressed, isUnpacked, parseHeader, sigDbStream, resolveSource, ensurePlain, ensurePlainSync } from './decompress';
 import { stripCompressedExt } from './codec';
 import { SigDict } from './dict';
 import { contentHash, dictionaryHash, shardHash } from './hash';
 import { readManifestFile, SigDbManifestMagic, type SigDbManifest, type SigDbShardRef } from './manifest';
 import { uniqueArray } from '../../util/collections/arrays';
+import { log } from '../../util/log';
 
 /** the run of names one `d` line (`["d", start, payload]`, newline-blob or legacy `string[]` form) adds */
 function dictLineRun(json: string): { start: number, names: string } {
@@ -38,7 +40,7 @@ function applyDictLine(json: string, strings: string[]): void {
 const dictionaryBuckets = new WeakMap<SigDict, Map<number, Int32Array>>();
 
 /** the id `strings.indexOf(name)` would give, through {@link dictionaryBuckets}; `-1` when the dictionary lacks it */
-function dictionaryIdOf(strings: SigDict, name: string): number {
+function dictionaryIdOf(strings: SigDict, name: BrandedIdentifier): number {
 	let buckets = dictionaryBuckets.get(strings);
 	if(buckets === undefined) {
 		/* one pass over the 1.4 million entries: sizing them first meant walking all of them twice and a map
@@ -112,55 +114,60 @@ export async function readSignatureDb(file: string): Promise<SigDb> {
  */
 export interface PackageSignatureSource {
 	/** whether the source can resolve the package at all */
-	has(pkg: string): boolean;
+	has(pkg: BrandedNamespace): boolean;
 	/** whether the source actually carries the given version of a package (not just the package itself) */
-	hasVersion(pkg: string, version: string): boolean;
+	hasVersion(pkg: BrandedNamespace, version: string): boolean;
 	/** whether a version is a current CRAN release (i.e. not in the package's `noncran`/removed set) */
-	isCranVersion(pkg: string, version: string): boolean;
+	isCranVersion(pkg: BrandedNamespace, version: string): boolean;
 	/** the repository a version came from, `undefined` in bundles that record none */
-	sourceOf(pkg: string, version: string): string | undefined;
+	sourceOf(pkg: BrandedNamespace, version: string): string | undefined;
 	/** The export view of a package version; `version` defaults to the database's newest if omitted. */
-	lookup(pkg: string, version?: string): LibraryExports | undefined;
+	lookup(pkg: BrandedNamespace, version?: string): LibraryExports | undefined;
 	/**
 	 * The packages exporting `name`, ordered by downloads (descending, ties by name); answered without a reverse
 	 * index, since a name the database never stores is rejected outright and only blobs that may hold it are decoded.
 	 */
-	packagesExporting(name: string): readonly string[];
+	packagesExporting(name: BrandedIdentifier): readonly BrandedNamespace[];
 	/**
 	 * The package OWNING class `className` (S3: {@link LibraryExports.s3Classes}; S4: {@link LibraryExports.s4Classes};
 	 * S3 wins ties). With a `version`, every candidate package is scanned at it instead of using the cached reverse index.
 	 */
-	classOwner(className: string, version?: string): string | undefined;
+	classOwner(className: string, version?: string): BrandedNamespace | undefined;
 	/** Rich per-function view (signatures and call graphs) of a package version; `version` defaults to the newest. */
-	functions(pkg: string, version?: string): DecodedFunction[] | undefined;
+	functions(pkg: BrandedNamespace, version?: string): DecodedFunction[] | undefined;
 	/** The rich view of a single named function, decoding only it (unlike {@link functions}); `version` defaults to the newest. */
-	functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined;
+	functionByName(pkg: BrandedNamespace, name: BrandedIdentifier, version?: string): DecodedFunction | undefined;
 	/** Transitive callees of a function within one package version, expanding the stored local call graphs; `version` defaults to the newest. */
-	transitiveCallees(pkg: string, name: string, version?: string): string[] | undefined;
+	transitiveCallees(pkg: BrandedNamespace, name: BrandedIdentifier, version?: string): BrandedIdentifier[] | undefined;
 	/** Declared dependencies (Depends, Imports, ...) of a package version, with version qualifiers; `version` defaults to the newest. */
-	dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined;
+	dependencies(pkg: BrandedNamespace, version?: string): ResolvedDependency[] | undefined;
 	/**
 	 * The classes a package version declares and the relations between them (superclasses, slot types, virtual,
 	 * union) -- {@link LibraryExports.s4Classes}, a flat name list, has nowhere to hang this; `version` defaults to the newest.
 	 */
-	classes(pkg: string, version?: string): SigClassInfo[] | undefined;
+	classes(pkg: BrandedNamespace, version?: string): SigClassInfo[] | undefined;
+	/**
+	 * The native (C, C++, Fortran) routines of a package version with their tool-derived facts (see
+	 * {@link SigNativeRoutineInfo}); `version` defaults to the newest. Optional: a source without them leaves it out.
+	 */
+	nativeRoutines?(pkg: BrandedNamespace, version?: string): SigNativeRoutineInfo[] | undefined;
 	/** every package name this source can resolve */
-	packageNames(): string[];
+	packageNames(): BrandedNamespace[];
 	/** whether the package is an R-core / base package (its versions are the R releases it shipped with) */
-	isBaseR(pkg: string): boolean;
+	isBaseR(pkg: BrandedNamespace): boolean;
 	/** how often the package was downloaded when the database was built, the popularity {@link SigDbPkgMeta} records */
-	downloads(pkg: string): number;
+	downloads(pkg: BrandedNamespace): number;
 	/** for a base package, the R versions it was part of core (ascending); `undefined` otherwise */
-	coreVersions(pkg: string): RVersion[] | undefined;
+	coreVersions(pkg: BrandedNamespace): RVersion[] | undefined;
 	/**
 	 * The release date of a package version, `undefined` if unknown. Omitted, `version` defaults to the newest
 	 * release *by recorded date* (unlike the queries above, which default to the package's recorded latest).
 	 */
-	releaseDate(pkg: string, version?: string): Date | undefined;
+	releaseDate(pkg: BrandedNamespace, version?: string): Date | undefined;
 	/** every known release of a package (version + date), ascending by R-version order */
-	releaseDates(pkg: string): VersionRelease[];
-	/** the newest version of a package by release date (falling back to the recorded latest, then SemVer order) */
-	latestVersion(pkg: string): RVersion | undefined;
+	releaseDates(pkg: BrandedNamespace): VersionRelease[];
+	/** the version a package's latest stands for, see {@link newestVersion} */
+	latestVersion(pkg: BrandedNamespace): RVersion | undefined;
 	/** release any held file handles */
 	close(): void;
 }
@@ -187,7 +194,7 @@ export interface ShardStatus {
  * The versions a source can answer for a package (dated releases, base-R core releases, and the recorded latest),
  * deduplicated and ascending; the single enumeration both the signature query and the version-guessing query build on.
  */
-export function availableVersionEntries(src: PackageSignatureSource, pkg: string): AvailableVersion[] {
+export function availableVersionEntries(src: PackageSignatureSource, pkg: BrandedNamespace): AvailableVersion[] {
 	const map = new Map<string, Date | undefined>();
 	for(const r of src.releaseDates(pkg)) {
 		if(!map.has(r.version.str)) {
@@ -213,9 +220,9 @@ export function availableVersionEntries(src: PackageSignatureSource, pkg: string
  * The reverse index `class -> owning package` over `candidates`, at each one's latest version (S3 indexed first, a
  * stronger signal than S4); the targeted counterpart of {@link PackageSignatureSource.classOwner}.
  */
-export function classOwnerIndexFor(src: PackageSignatureSource, candidates: Iterable<string>): Map<string, string> {
-	const index = new Map<string, string>();
-	const libs: { pkg: string, lib: LibraryExports | undefined }[] = [];
+export function classOwnerIndexFor(src: Pick<PackageSignatureSource, 'has' | 'lookup'>, candidates: Iterable<BrandedNamespace>): Map<string, BrandedNamespace> {
+	const index = new Map<string, BrandedNamespace>();
+	const libs: { pkg: BrandedNamespace, lib: LibraryExports | undefined }[] = [];
 	for(const pkg of candidates) {
 		if(src.has(pkg)) {
 			libs.push({ pkg, lib: src.lookup(pkg) });
@@ -234,7 +241,7 @@ export function classOwnerIndexFor(src: PackageSignatureSource, candidates: Iter
 }
 
 /** the package owning `className` at a specific version (linear scan; S3 and S4 both count) */
-function classOwnerAtVersion(src: PackageSignatureSource, className: string, version: string): string | undefined {
+function classOwnerAtVersion(src: Pick<PackageSignatureSource, 'packageNames' | 'lookup'>, className: string, version: string): BrandedNamespace | undefined {
 	return src.packageNames().find(pkg => {
 		const lib = src.lookup(pkg, version);
 		return (lib?.s3Classes.includes(className) ?? false) || (lib?.s4Classes.includes(className) ?? false);
@@ -245,8 +252,8 @@ function classOwnerAtVersion(src: PackageSignatureSource, className: string, ver
  * Every package any of `sources` states exports `name`, most-downloaded first and ties broken by name.
  * The shared tail of the fan-out sources, which differ only in where their sub-sources come from.
  */
-function packagesExportingAcross(name: string, downloads: (pkg: string) => number, sources: Iterable<PackageSignatureSource | undefined>): readonly string[] {
-	const found = new Set<string>();
+function packagesExportingAcross(name: BrandedIdentifier, downloads: (pkg: BrandedNamespace) => number, sources: Iterable<PackageSignatureSource | undefined>): readonly BrandedNamespace[] {
+	const found = new Set<BrandedNamespace>();
 	for(const source of sources) {
 		for(const pkg of source?.packagesExporting(name) ?? []) {
 			found.add(pkg);
@@ -260,7 +267,7 @@ export class MergedSignatureSource implements PackageSignatureSource {
 	public constructor(private readonly sources: readonly PackageSignatureSource[]) {}
 
 	/** source carrying a version, or the one with the newest release when unpinned */
-	private pick(pkg: string, version: string | undefined): PackageSignatureSource | undefined {
+	private pick(pkg: BrandedNamespace, version: string | undefined): PackageSignatureSource | undefined {
 		if(version !== undefined) {
 			return this.sources.find(s => s.hasVersion(pkg, version));
 		}
@@ -275,25 +282,25 @@ export class MergedSignatureSource implements PackageSignatureSource {
 		return bestSource ?? this.sources.find(s => s.has(pkg));
 	}
 
-	public has(pkg: string): boolean {
+	public has(pkg: BrandedNamespace): boolean {
 		return this.sources.some(s => s.has(pkg));
 	}
-	public hasVersion(pkg: string, version: string): boolean {
+	public hasVersion(pkg: BrandedNamespace, version: string): boolean {
 		return this.sources.some(s => s.hasVersion(pkg, version));
 	}
-	public isCranVersion(pkg: string, version: string): boolean {
+	public isCranVersion(pkg: BrandedNamespace, version: string): boolean {
 		return this.pick(pkg, version)?.isCranVersion(pkg, version) ?? false;
 	}
-	public sourceOf(pkg: string, version: string): string | undefined {
+	public sourceOf(pkg: BrandedNamespace, version: string): string | undefined {
 		return this.pick(pkg, version)?.sourceOf(pkg, version);
 	}
-	public lookup(pkg: string, version?: string): LibraryExports | undefined {
+	public lookup(pkg: BrandedNamespace, version?: string): LibraryExports | undefined {
 		return this.pick(pkg, version)?.lookup(pkg, version);
 	}
-	public packagesExporting(name: string): readonly string[] {
+	public packagesExporting(name: BrandedIdentifier): readonly BrandedNamespace[] {
 		return packagesExportingAcross(name, pkg => this.downloads(pkg), this.sources);
 	}
-	public classOwner(className: string, version?: string): string | undefined {
+	public classOwner(className: string, version?: string): BrandedNamespace | undefined {
 		for(const s of this.sources) {
 			const owner = s.classOwner(className, version);
 			if(owner !== undefined) {
@@ -302,37 +309,40 @@ export class MergedSignatureSource implements PackageSignatureSource {
 		}
 		return undefined;
 	}
-	public functions(pkg: string, version?: string): DecodedFunction[] | undefined {
+	public functions(pkg: BrandedNamespace, version?: string): DecodedFunction[] | undefined {
 		return this.pick(pkg, version)?.functions(pkg, version);
 	}
-	public functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined {
+	public functionByName(pkg: BrandedNamespace, name: BrandedIdentifier, version?: string): DecodedFunction | undefined {
 		return this.pick(pkg, version)?.functionByName(pkg, name, version);
 	}
-	public transitiveCallees(pkg: string, name: string, version?: string): string[] | undefined {
+	public transitiveCallees(pkg: BrandedNamespace, name: BrandedIdentifier, version?: string): BrandedIdentifier[] | undefined {
 		return this.pick(pkg, version)?.transitiveCallees(pkg, name, version);
 	}
-	public dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined {
+	public dependencies(pkg: BrandedNamespace, version?: string): ResolvedDependency[] | undefined {
 		return this.pick(pkg, version)?.dependencies(pkg, version);
 	}
-	public classes(pkg: string, version?: string): SigClassInfo[] | undefined {
+	public classes(pkg: BrandedNamespace, version?: string): SigClassInfo[] | undefined {
 		return this.pick(pkg, version)?.classes(pkg, version);
 	}
-	public packageNames(): string[] {
+	public nativeRoutines(pkg: BrandedNamespace, version?: string): SigNativeRoutineInfo[] | undefined {
+		return this.pick(pkg, version)?.nativeRoutines?.(pkg, version);
+	}
+	public packageNames(): BrandedNamespace[] {
 		return uniqueArray(this.sources.flatMap(s => s.packageNames()));
 	}
-	public isBaseR(pkg: string): boolean {
+	public isBaseR(pkg: BrandedNamespace): boolean {
 		return this.sources.some(s => s.has(pkg) && s.isBaseR(pkg));
 	}
-	public downloads(pkg: string): number {
+	public downloads(pkg: BrandedNamespace): number {
 		return Math.max(0, ...this.sources.map(s => s.downloads(pkg)));
 	}
-	public coreVersions(pkg: string): RVersion[] | undefined {
+	public coreVersions(pkg: BrandedNamespace): RVersion[] | undefined {
 		return this.sources.find(s => s.has(pkg))?.coreVersions(pkg);
 	}
-	public releaseDate(pkg: string, version?: string): Date | undefined {
+	public releaseDate(pkg: BrandedNamespace, version?: string): Date | undefined {
 		return this.pick(pkg, version)?.releaseDate(pkg, version);
 	}
-	public releaseDates(pkg: string): VersionRelease[] {
+	public releaseDates(pkg: BrandedNamespace): VersionRelease[] {
 		const map = new Map<string, VersionRelease>();
 		for(const s of this.sources) {
 			for(const r of s.releaseDates(pkg)) {
@@ -343,7 +353,7 @@ export class MergedSignatureSource implements PackageSignatureSource {
 		}
 		return [...map.values()].sort((a, b) => RVersion.compare(a.version.str, b.version.str));
 	}
-	public latestVersion(pkg: string): RVersion | undefined {
+	public latestVersion(pkg: BrandedNamespace): RVersion | undefined {
 		let best: RVersion | undefined;
 		for(const s of this.sources) {
 			const latest = s.latestVersion(pkg);
@@ -358,7 +368,7 @@ export class MergedSignatureSource implements PackageSignatureSource {
 }
 
 /** source that answers for pkg, merging all sources that carry it; undefined if none do */
-export function sourceForPackage(sources: readonly PackageSignatureSource[], pkg: string): PackageSignatureSource | undefined {
+export function sourceForPackage(sources: readonly PackageSignatureSource[], pkg: BrandedNamespace): PackageSignatureSource | undefined {
 	const having = sources.filter(s => s.has(pkg));
 	return having.length === 0 ? undefined : having.length === 1 ? having[0] : new MergedSignatureSource(having);
 }
@@ -413,9 +423,7 @@ const cachedBlobs: CachedBlob[] = [];
 let hand = 0;
 let cachedBlobBytes = 0;
 
-/**
- * Keep `blob` decoded for `db`, dropping blobs until all of them fit the budget (age gated).
- */
+/** Keep `blob` decoded for `db`, dropping blobs until all of them fit the budget (age gated). */
 function keepBlob(db: SigDatabase, blobIdx: number, bytes: number): CachedBlob {
 	while(cachedBlobBytes + bytes > blobCacheBudget && cachedBlobs.length > 0) {
 		if(hand >= cachedBlobs.length) {
@@ -451,32 +459,98 @@ function releaseBlobs(db: SigDatabase): void {
 /** the function records of one package version, as {@link SigDatabase.versionFns} keeps them */
 interface VersionFns {
 	readonly idxs: readonly number[];
-	byName?:       ReadonlyMap<string, number>;
+	byName?:       ReadonlyMap<BrandedIdentifier, number>;
+}
+
+/** what {@link SigDatabase} and {@link SigDatabaseSet} answer alike, off the blob holding a package's most complete history */
+abstract class HistorySource {
+	/** reverse index `S3 class -> owning package`, over every package's latest version; built once (see {@link classOwner}) */
+	protected classIndex: Map<string, string> | undefined;
+	protected abstract historyBlob(pkg: BrandedNamespace): PkgBlob | undefined;
+	/** the latest version the metadata records, `undefined` when this source carries no metadata for the package */
+	protected abstract recordedLatest(pkg: BrandedNamespace): string | undefined;
+	abstract has(pkg: BrandedNamespace): boolean;
+	abstract packageNames(): BrandedNamespace[];
+	abstract isBaseR(pkg: BrandedNamespace): boolean;
+	abstract lookup(pkg: BrandedNamespace, version?: string): LibraryExports | undefined;
+	abstract functions(pkg: BrandedNamespace, version?: string): DecodedFunction[] | undefined;
+
+	public classOwner(className: string, version?: string): BrandedNamespace | undefined {
+		if(version !== undefined) {
+			return classOwnerAtVersion(this, className, version);
+		}
+		this.classIndex ??= classOwnerIndexFor(this, this.packageNames());
+		return this.classIndex.get(className);
+	}
+
+	public transitiveCallees(pkg: BrandedNamespace, name: BrandedIdentifier, version?: string): BrandedIdentifier[] | undefined {
+		const fns = this.functions(pkg, version);
+		return fns?.some(f => f.name === name) ? transitiveCallees(fns, name) : undefined;
+	}
+
+	/** the R versions a base package was part of core, ascending (exactly its stored versions); `undefined` for a non-base package */
+	public coreVersions(pkg: BrandedNamespace): RVersion[] | undefined {
+		if(!this.isBaseR(pkg)) {
+			return undefined;
+		}
+		return Object.keys(this.historyBlob(pkg)?.versions ?? {}).map(RVersion.parseOrZero).sort((a, b) => RVersion.compare(a.str, b.str));
+	}
+
+	/** every known release date of a package, in ascending R-version order (empty when no dates were stored) */
+	public releaseDates(pkg: BrandedNamespace): VersionRelease[] {
+		return releasesOf(this.historyBlob(pkg));
+	}
+
+	/** the version `version` stands for, the newest release when omitted, with the blob holding its date */
+	private dated(pkg: BrandedNamespace, version?: string): { blob: PkgBlob, ver: string | undefined } | undefined {
+		const blob = this.historyBlob(pkg);
+		const latest = blob ? this.recordedLatest(pkg) : undefined;
+		return blob && latest !== undefined ? { blob, ver: version ?? newestVersion(blob, latest) } : undefined;
+	}
+
+	/** the release date of a package version (defaulting to the newest release), or `undefined` if unknown */
+	public releaseDate(pkg: BrandedNamespace, version?: string): Date | undefined {
+		const d = this.dated(pkg, version);
+		const day = d?.ver === undefined ? undefined : d.blob.dates[d.ver];
+		return day === undefined ? undefined : new Date(dayToMillis(day));
+	}
+
+	/** the version a package's latest stands for, see {@link newestVersion} */
+	public latestVersion(pkg: BrandedNamespace): RVersion | undefined {
+		const ver = this.dated(pkg)?.ver;
+		return ver === undefined ? undefined : RVersion.parseOrZero(ver);
+	}
 }
 
 /**
  * Fast, partial reader for a single bundle. `open()`/`openSync()` load the string dictionary + `.idx` once, then every
  * query seeks straight to one package blob; `open()` additionally decompresses a `.br`/`.gz` source into a hash-keyed cache.
  */
-export class SigDatabase implements PackageSignatureSource {
+export class SigDatabase extends HistorySource implements PackageSignatureSource {
 	private closed = false;
 	/** parsed blobs by blob index so repeated lookups skip the re-read + JSON.parse; bounded by {@link setBlobCacheBudget|the shared budget} */
 	private readonly blobCache = new Map<number, { blob: PkgBlob, entry?: CachedBlob }>();
 	/** a version's function indices plus its `name -> index` view, keyed by package and version; FIFO-bounded */
 	private readonly versionFnCache = new Map<string, VersionFns>();
 	private static readonly VersionFnCacheCap = 2048;
+	/** bounds {@link nameIds}: a shared database lives as long as the process, and the names asked for come from the analyzed code */
+	private static readonly NameIdCacheCap = 65_536;
 	/** which names a package can offer at all, as sorted dictionary ids; filled the first time its blob is read */
 	private readonly nameIdsOfBlob = new Map<number, Int32Array>();
 	/** dictionary id per name asked for, so only the names someone actually queried are ever resolved */
-	private readonly nameIds = new Map<string, number>();
-	/** reverse index `S3 class -> owning package`, over every package's latest version; built once (see {@link classOwner}) */
-	private classIndex:        Map<string, string> | undefined;
+	private readonly nameIds = new Map<BrandedIdentifier, number>();
+	/**
+	 * per package, what the version lookups need of its blob: every name resolved asks for a package's latest version, and a blob
+	 * the shared budget dropped would be read and decoded again just for that; at most one per package of the bundle
+	 */
+	private readonly outlines = new Map<BrandedNamespace, { readonly latest: RVersion | undefined, readonly versions: ReadonlySet<string> }>();
 	private readonly fd:       number;
 	readonly strings:          SigDict;
 	readonly index:            SigDbIndex;
 	readonly content:          SigDbContent | undefined;
 	private readonly cranBase: string;
 	private constructor(fd: number, strings: SigDict, index: SigDbIndex, content: SigDbContent | undefined, cranBase: string) {
+		super();
 		this.fd = fd;
 		this.strings = strings;
 		this.index = index;
@@ -535,21 +609,21 @@ export class SigDatabase implements PackageSignatureSource {
 			if(opts.hash === undefined) {
 				throw new Error('openSyncFrom needs a hash to key the cache for a compressed source');
 			}
-			plain = ensurePlainSync(source, { cacheDir: opts.cacheDir, hash: opts.hash, index: opts.index });
+			plain = ensurePlainSync(source, { cacheDir: opts.cacheDir, hash: opts.hash, index: opts.index, bytes: opts.index?.byteCount });
 		}
 		return SigDatabase.openSync(plain, { index: opts.index, strings: opts.strings });
 	}
 
-	public has(pkg: string): boolean {
+	public has(pkg: BrandedNamespace): boolean {
 		return this.index.pkgs[pkg] !== undefined;
 	}
 
-	public packageNames(): string[] {
+	public packageNames(): BrandedNamespace[] {
 		return Object.keys(this.index.pkgs);
 	}
 
 	/** load a single package's blob by seeking to its line (undefined if absent); cached by blob index */
-	public blob(pkg: string): PkgBlob | undefined {
+	public blob(pkg: BrandedNamespace): PkgBlob | undefined {
 		const blobIdx = this.index.pkgs[pkg];
 		if(blobIdx === undefined) {
 			return undefined;
@@ -574,10 +648,10 @@ export class SigDatabase implements PackageSignatureSource {
 	}
 
 	/** the dictionary id of `name`, or `-1` if the dictionary does not hold it, so no package can offer it */
-	private nameId(name: string): number {
+	private nameId(name: BrandedIdentifier): number {
 		let id = this.nameIds.get(name);
 		if(id === undefined) {
-			this.nameIds.set(name, id = dictionaryIdOf(this.strings, name));
+			id = SigDatabase.cache(this.nameIds, name, dictionaryIdOf(this.strings, name), SigDatabase.NameIdCacheCap);
 		}
 		return id;
 	}
@@ -586,7 +660,7 @@ export class SigDatabase implements PackageSignatureSource {
 	 * Whether `pkg` can offer `name` in any of its versions, answered from {@link nameIdsOfBlob} alone; `true` whenever
 	 * nothing is known about the package yet, so this only ever skips work that would have found nothing.
 	 */
-	private mayOffer(pkg: string, name: string): boolean {
+	private mayOffer(pkg: BrandedNamespace, name: BrandedIdentifier): boolean {
 		const blobIdx = this.index.pkgs[pkg];
 		const ids = blobIdx === undefined ? undefined : this.nameIdsOfBlob.get(blobIdx);
 		if(ids === undefined) {
@@ -608,6 +682,33 @@ export class SigDatabase implements PackageSignatureSource {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Whether `pkg` may offer the name with dictionary id `id`, deciding from the raw bytes of a blob not decoded yet: every `[id,` they hold may
+	 * start a function record, so their ids are a superset of the names the package has, kept for {@link mayOffer} as {@link nameIdsOfBlob}.
+	 */
+	private mayHoldNameId(pkg: BrandedNamespace, name: BrandedIdentifier): boolean {
+		const blobIdx = this.index.pkgs[pkg];
+		if(blobIdx === undefined || this.fd === NoFile || this.blobCache.has(blobIdx) || this.nameIdsOfBlob.has(blobIdx)) {
+			return true;
+		}
+		const [start, bytes] = this.index.blobs[blobIdx];
+		const buf = Buffer.allocUnsafe(bytes);
+		fs.readSync(this.fd, buf, 0, bytes, start);
+		const ids = new Set<number>();
+		for(let at = buf.indexOf(91); at >= 0; at = buf.indexOf(91, at + 1)) {
+			let num = 0;
+			let end = at + 1;
+			for(; end < bytes && buf[end] >= 48 && buf[end] <= 57; end++) {
+				num = num * 10 + buf[end] - 48;
+			}
+			if(end > at + 1 && buf[end] === 44) {
+				ids.add(num);
+			}
+		}
+		this.nameIdsOfBlob.set(blobIdx, Int32Array.from(ids).sort());
+		return this.mayOffer(pkg, name);
 	}
 
 	/** drop one decoded blob, for the shared budget to reclaim what it costs (see {@link keepBlob}) */
@@ -654,39 +755,57 @@ export class SigDatabase implements PackageSignatureSource {
 	}
 
 	/** whether this bundle actually carries the given version of a package (not just the package) */
-	public hasVersion(pkg: string, version: string): boolean {
-		return this.blob(pkg)?.versions[version] !== undefined;
+	public hasVersion(pkg: BrandedNamespace, version: string): boolean {
+		return this.outline(pkg)?.versions.has(version) ?? false;
 	}
 
-	public isCranVersion(pkg: string, version: string): boolean {
+	public override latestVersion(pkg: BrandedNamespace): RVersion | undefined {
+		return this.outline(pkg)?.latest;
+	}
+
+	/** the {@link outlines} entry of the package, read off its blob the first time */
+	private outline(pkg: BrandedNamespace): { readonly latest: RVersion | undefined, readonly versions: ReadonlySet<string> } | undefined {
+		let outline = this.outlines.get(pkg);
+		if(outline === undefined) {
+			const blob = this.blob(pkg);
+			if(blob === undefined) {
+				return undefined;
+			}
+			outline = { latest: super.latestVersion(pkg), versions: new Set(Object.keys(blob.versions)) };
+			this.outlines.set(pkg, outline);
+		}
+		return outline;
+	}
+
+	public isCranVersion(pkg: BrandedNamespace, version: string): boolean {
 		return !this.blob(pkg)?.noncran?.includes(version);
 	}
 
-	public sourceOf(pkg: string, version: string): string | undefined {
+	public sourceOf(pkg: BrandedNamespace, version: string): string | undefined {
 		const idx = this.blob(pkg)?.sources?.[version];
 		return idx === undefined ? undefined : this.strings.at(idx);
 	}
 
 	/** `{ blob, meta }` for `pkg` when this bundle carries both, `undefined` otherwise; the shared prologue of most per-package queries below. */
-	private blobMeta(pkg: string): { blob: PkgBlob, meta: SigDbPkgMeta } | undefined {
+	private blobMeta(pkg: BrandedNamespace): { blob: PkgBlob, meta: SigDbPkgMeta } | undefined {
 		const blob = this.blob(pkg);
 		const meta = this.index.meta[pkg];
 		return blob && meta ? { blob, meta } : undefined;
 	}
 
-	public lookup(pkg: string, version?: string): LibraryExports | undefined {
+	public lookup(pkg: BrandedNamespace, version?: string): LibraryExports | undefined {
 		const bm = this.blobMeta(pkg);
 		return bm && deriveLibraryExports(this.strings, bm.blob, bm.meta, pkg, version, this.cranBase);
 	}
 
-	public packagesExporting(name: string): readonly string[] {
+	public packagesExporting(name: BrandedIdentifier): readonly BrandedNamespace[] {
 		const id = this.nameId(name);
 		if(id < 0) {
 			return [];
 		}
 		const found: string[] = [];
 		for(const pkg in this.index.pkgs) {
-			if(this.mayOffer(pkg, name) && this.exportsNameId(pkg, id)) {
+			if(this.mayHoldNameId(pkg, name) && this.mayOffer(pkg, name) && this.exportsNameId(pkg, id)) {
 				found.push(pkg);
 			}
 		}
@@ -699,17 +818,9 @@ export class SigDatabase implements PackageSignatureSource {
 	 * {@link packagesExporting} does, and deriving a whole export view per package to read one name out of it is not
 	 * worth the five arrays and the map it builds.
 	 */
-	private exportsNameId(pkg: string, id: number): boolean {
+	private exportsNameId(pkg: BrandedNamespace, id: number): boolean {
 		const r = this.versionFns(pkg);
 		return r?.fns.idxs.some(i => r.blob.fns[i][0] === id && (r.blob.fns[i][3] & FnProp.Exported) !== 0) ?? false;
-	}
-
-	public classOwner(className: string, version?: string): string | undefined {
-		if(version !== undefined) {
-			return classOwnerAtVersion(this, className, version);
-		}
-		this.classIndex ??= classOwnerIndexFor(this, this.packageNames());
-		return this.classIndex.get(className);
 	}
 
 	/**
@@ -717,7 +828,7 @@ export class SigDatabase implements PackageSignatureSource {
 	 * {@link functions}/{@link functionByName}). The blob comes from {@link blob} every time rather than out of
 	 * {@link versionFnCache}: holding one here would keep it decoded past what {@link setBlobCacheBudget|the shared budget} allows.
 	 */
-	private versionFns(pkg: string, version?: string): { blob: PkgBlob, fns: VersionFns } | undefined {
+	private versionFns(pkg: BrandedNamespace, version?: string): { blob: PkgBlob, fns: VersionFns } | undefined {
 		const bm = this.blobMeta(pkg);
 		if(!bm) {
 			return undefined;
@@ -739,12 +850,12 @@ export class SigDatabase implements PackageSignatureSource {
 		return { blob: bm.blob, fns: SigDatabase.cache(this.versionFnCache, key, { idxs }, SigDatabase.VersionFnCacheCap) };
 	}
 
-	public functions(pkg: string, version?: string): DecodedFunction[] | undefined {
+	public functions(pkg: BrandedNamespace, version?: string): DecodedFunction[] | undefined {
 		const r = this.versionFns(pkg, version);
 		return r?.fns.idxs.map(i => decodeFunction(this.strings, r.blob, i));
 	}
 
-	public functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined {
+	public functionByName(pkg: BrandedNamespace, name: BrandedIdentifier, version?: string): DecodedFunction | undefined {
 		if(!this.mayOffer(pkg, name)) {
 			return undefined;
 		}
@@ -753,7 +864,7 @@ export class SigDatabase implements PackageSignatureSource {
 			return undefined;
 		}
 		if(r.fns.byName === undefined) {
-			const byName = new Map<string, number>();
+			const byName = new Map<BrandedIdentifier, number>();
 			for(const i of r.fns.idxs) {
 				const fn = this.strings.at(r.blob.fns[i][0]);
 				// first record wins, as the linear scan did
@@ -767,65 +878,46 @@ export class SigDatabase implements PackageSignatureSource {
 		return hit !== undefined ? decodeFunction(this.strings, r.blob, hit) : undefined;
 	}
 
-	public transitiveCallees(pkg: string, name: string, version?: string): string[] | undefined {
-		const fns = this.functions(pkg, version);
-		return fns?.some(f => f.name === name) ? transitiveCallees(fns, name) : undefined;
-	}
-
 	/** What `decode` reads off the blob for the asked version, `undefined` when this source carries neither. */
-	private decodedFor<T>(pkg: string, version: string | undefined, decode: (strings: SigDict, blob: Readonly<PkgBlob>, ver: string) => T): T | undefined {
+	private decodedFor<T>(pkg: BrandedNamespace, version: string | undefined, decode: (strings: SigDict, blob: Readonly<PkgBlob>, ver: string) => T): T | undefined {
 		const bm = this.blobMeta(pkg);
 		const ver = bm ? resolveVersion(bm.blob, bm.meta[0], version) : undefined;
 		return bm && ver !== undefined ? decode(this.strings, bm.blob, ver) : undefined;
 	}
 
-	public dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined {
+	public dependencies(pkg: BrandedNamespace, version?: string): ResolvedDependency[] | undefined {
 		return this.decodedFor(pkg, version, decodeDependencies);
 	}
 
-	public classes(pkg: string, version?: string): SigClassInfo[] | undefined {
+	public classes(pkg: BrandedNamespace, version?: string): SigClassInfo[] | undefined {
 		return this.decodedFor(pkg, version, decodeClasses);
 	}
 
+	public nativeRoutines(pkg: BrandedNamespace, version?: string): SigNativeRoutineInfo[] | undefined {
+		return this.decodedFor(pkg, version, decodeNatives);
+	}
+
 	/** whether this is an R-core / base package (its versions are the R releases it shipped with; see {@link SigDbPkgMeta}) */
-	public isBaseR(pkg: string): boolean {
+	public isBaseR(pkg: BrandedNamespace): boolean {
 		return this.index.meta[pkg]?.[3] === 1;
 	}
 
 	/** the download count recorded for the package, `0` when this source does not carry it */
-	public downloads(pkg: string): number {
+	public downloads(pkg: BrandedNamespace): number {
 		return this.index.meta[pkg]?.[2] ?? 0;
 	}
 
-	/** the R versions a base package was part of core, ascending (exactly its stored versions); `undefined` for a non-base package */
-	public coreVersions(pkg: string): RVersion[] | undefined {
-		if(!this.isBaseR(pkg)) {
-			return undefined;
-		}
-		return Object.keys(this.blob(pkg)?.versions ?? {}).map(RVersion.parseOrZero).sort((a, b) => RVersion.compare(a.str, b.str));
+	/** whether the latest version of the package is CRAN-archived (its source tarball then lives under `Archive`) */
+	public archived(pkg: BrandedNamespace): boolean {
+		return this.index.meta[pkg]?.[1] === 1;
 	}
 
-	/** the release date of a package version (defaulting to the newest release), or `undefined` if unknown */
-	public releaseDate(pkg: string, version?: string): Date | undefined {
-		const bm = this.blobMeta(pkg);
-		if(!bm) {
-			return undefined;
-		}
-		const ver = version ?? newestVersion(bm.blob, bm.meta[0]);
-		const day = ver !== undefined ? bm.blob.dates[ver] : undefined;
-		return day !== undefined ? new Date(dayToMillis(day)) : undefined;
+	protected historyBlob(pkg: BrandedNamespace): PkgBlob | undefined {
+		return this.blob(pkg);
 	}
 
-	/** every known release date of a package, in ascending R-version order (empty when no dates were stored) */
-	public releaseDates(pkg: string): VersionRelease[] {
-		return releasesOf(this.blob(pkg));
-	}
-
-	/** the newest version of a package by release date (falling back to the recorded latest, then SemVer order) */
-	public latestVersion(pkg: string): RVersion | undefined {
-		const bm = this.blobMeta(pkg);
-		const ver = bm ? newestVersion(bm.blob, bm.meta[0]) : undefined;
-		return ver !== undefined ? RVersion.parseOrZero(ver) : undefined;
+	protected recordedLatest(pkg: BrandedNamespace): string | undefined {
+		return this.index.meta[pkg]?.[0];
 	}
 
 	/** close the underlying file descriptor (idempotent; safe to call more than once) */
@@ -880,19 +972,18 @@ interface MountedShard {
  * A transparent, read-only view over several {@link SigDatabase} shards described by a {@link SigDbManifest}. When the
  * manifest embeds each shard's index (the default), `openManifest()` reads only that small file to build the routing table.
  */
-export class SigDatabaseSet implements PackageSignatureSource {
+export class SigDatabaseSet extends HistorySource implements PackageSignatureSource {
 	private readonly opened:    (SigDatabase | undefined)[];
 	readonly manifest:          SigDbManifest;
 	/** the directory the manifest's shard/dict paths are relative to */
 	readonly baseDir:           string;
 	private readonly indices:   SigDbIndex[];
 	/** package name to shard indices, ordered by preference (current before full) */
-	private readonly routes:    Map<string, number[]>;
+	private readonly routes:    Map<BrandedNamespace, number[]>;
 	private readonly cacheDir?: string;
-	/** see {@link SigDatabase.classIndex} */
-	private classIndex:         Map<string, string> | undefined;
 
-	private constructor(manifest: SigDbManifest, baseDir: string, indices: SigDbIndex[], routes: Map<string, number[]>, cacheDir?: string) {
+	private constructor(manifest: SigDbManifest, baseDir: string, indices: SigDbIndex[], routes: Map<BrandedNamespace, number[]>, cacheDir?: string) {
+		super();
 		this.manifest = manifest;
 		this.baseDir = baseDir;
 		this.indices = indices;
@@ -908,9 +999,17 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		if(full.format !== SigDbManifestMagic) {
 			throw new Error(`not a ${SigDbManifestMagic} (got ${String(full.format)})`);
 		}
-		const active = selectShards(full.shards, opts.includeShards, opts.excludeShards);
+		const selected = selectShards(full.shards, opts.includeShards, opts.excludeShards);
+		const present = (rel: string): boolean => fs.existsSync(resolveSource(baseDir, rel));
+		const active = selected.filter(s => {
+			const dict = s.dict === undefined ? undefined : full.dicts?.find(d => d.id === s.dict);
+			return present(s.path) && (dict === undefined || present(dict.path));
+		});
+		if(active.length < selected.length) {
+			log.warn(`sigdb: ${manifestFile} lacks the files of ${selected.length - active.length} shard(s) (${selected.filter(s => !active.includes(s)).map(s => s.path).join(', ')}), ignoring them; download the bundle again to restore them`);
+		}
 		if(active.length === 0) {
-			throw new Error('openManifest: no shards left after include/exclude filtering');
+			throw new Error(`openManifest: no shards left in ${manifestFile} after include/exclude filtering and dropping absent ones`);
 		}
 		return { baseDir, manifest: { ...full, shards: active } };
 	}
@@ -918,7 +1017,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	/** build the package to shard routing (current before full) and construct the set from resolved indices */
 	private static assemble(manifest: SigDbManifest, baseDir: string, indices: SigDbIndex[], cacheDir?: string): SigDatabaseSet {
 		const order = manifest.shards.map((_, i) => i).sort((a, b) => tierRank(manifest.shards[a]) - tierRank(manifest.shards[b]));
-		const routes = new Map<string, number[]>();
+		const routes = new Map<BrandedNamespace, number[]>();
 		for(const i of order) {
 			for(const pkg of Object.keys(indices[i].pkgs)) {
 				const list = routes.get(pkg);
@@ -968,7 +1067,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		if(!ref) {
 			throw new Error(`manifest references unknown dictionary '${dictId}'`);
 		}
-		const plain = ensurePlainSync(resolveSource(this.baseDir, ref.path), { cacheDir: this.cacheDir, hash: ref.hash, indexless: true });
+		const plain = ensurePlainSync(resolveSource(this.baseDir, ref.path), { cacheDir: this.cacheDir, hash: ref.hash, indexless: true, bytes: ref.byteCount });
 		let strings: SigDict;
 		const fd = fs.openSync(plain, 'r');
 		try {
@@ -1016,10 +1115,10 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	private async warmShards(need: ReadonlySet<number>): Promise<void> {
 		const dicts = new Set([...need].map(i => this.manifest.shards[i].dict).filter((d): d is string => !!d));
 		const shardJobs = [...need].map(i => ensurePlain(resolveSource(this.baseDir, this.manifest.shards[i].path),
-			{ cacheDir: this.cacheDir, hash: this.manifest.shards[i].hash, index: this.indices[i] }));
+			{ cacheDir: this.cacheDir, hash: this.manifest.shards[i].hash, index: this.indices[i], bytes: this.indices[i]?.byteCount }));
 		const dictJobs = [...dicts].map(id => {
 			const ref = this.manifest.dicts?.find(d => d.id === id);
-			return ref ? ensurePlain(resolveSource(this.baseDir, ref.path), { cacheDir: this.cacheDir, hash: ref.hash, indexless: true }) : Promise.resolve('');
+			return ref ? ensurePlain(resolveSource(this.baseDir, ref.path), { cacheDir: this.cacheDir, hash: ref.hash, indexless: true, bytes: ref.byteCount }) : Promise.resolve('');
 		});
 		await Promise.all([...shardJobs, ...dictJobs]);
 		// open each shard now so later synchronous queries never block
@@ -1029,7 +1128,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	}
 
 	/** the shard indices that can serve this package, preferred order; optionally requiring a specific version */
-	private route(pkg: string, version?: string): number[] {
+	private route(pkg: BrandedNamespace, version?: string): number[] {
 		const candidates = this.routes.get(pkg) ?? [];
 		if(version === undefined) {
 			return candidates;
@@ -1039,7 +1138,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	}
 
 	/** read (once) the blob from the shard with the most complete history: a `full` or `history` tier if present */
-	private historyBlob(pkg: string): PkgBlob | undefined {
+	protected historyBlob(pkg: BrandedNamespace): PkgBlob | undefined {
 		const candidates = this.routes.get(pkg);
 		if(!candidates?.length) {
 			return undefined;
@@ -1048,25 +1147,25 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		return this.shard(full ?? candidates[0]).blob(pkg);
 	}
 
-	public has(pkg: string): boolean {
+	public has(pkg: BrandedNamespace): boolean {
 		return this.routes.has(pkg);
 	}
 
 	/** whether any active shard actually carries the given version of a package (not just the package) */
-	public hasVersion(pkg: string, version: string): boolean {
+	public hasVersion(pkg: BrandedNamespace, version: string): boolean {
 		return this.route(pkg, version).length > 0;
 	}
 
-	public isCranVersion(pkg: string, version: string): boolean {
+	public isCranVersion(pkg: BrandedNamespace, version: string): boolean {
 		return !this.historyBlob(pkg)?.noncran?.includes(version);
 	}
 
-	public sourceOf(pkg: string, version: string): string | undefined {
+	public sourceOf(pkg: BrandedNamespace, version: string): string | undefined {
 		const shard = this.route(pkg, version)[0] ?? this.routes.get(pkg)?.[0];
 		return shard === undefined ? undefined : this.shard(shard).sourceOf(pkg, version);
 	}
 
-	public packageNames(): string[] {
+	public packageNames(): BrandedNamespace[] {
 		return [...this.routes.keys()];
 	}
 
@@ -1094,7 +1193,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	}
 
 	/** the first non-empty result from the shards that can serve `pkg` (in preferred order: current before full) */
-	private firstOf<T>(pkg: string, version: string | undefined, read: (db: SigDatabase) => T | undefined): T | undefined {
+	private firstOf<T>(pkg: BrandedNamespace, version: string | undefined, read: (db: SigDatabase) => T | undefined): T | undefined {
 		for(const i of this.route(pkg, version)) {
 			const r = read(this.shard(i));
 			if(r) {
@@ -1104,81 +1203,54 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		return undefined;
 	}
 
-	public lookup(pkg: string, version?: string): LibraryExports | undefined {
+	public lookup(pkg: BrandedNamespace, version?: string): LibraryExports | undefined {
 		return this.firstOf(pkg, version, db => db.lookup(pkg, version));
 	}
 
-	public packagesExporting(name: string): readonly string[] {
+	public packagesExporting(name: BrandedIdentifier): readonly BrandedNamespace[] {
 		return packagesExportingAcross(name, pkg => this.downloads(pkg), [...this.indices.keys()].map(idx => this.shard(idx)));
 	}
 
-	public classOwner(className: string, version?: string): string | undefined {
-		if(version !== undefined) {
-			return classOwnerAtVersion(this, className, version);
-		}
-		this.classIndex ??= classOwnerIndexFor(this, this.packageNames());
-		return this.classIndex.get(className);
-	}
-
-	public functions(pkg: string, version?: string): DecodedFunction[] | undefined {
+	public functions(pkg: BrandedNamespace, version?: string): DecodedFunction[] | undefined {
 		return this.firstOf(pkg, version, db => db.functions(pkg, version));
 	}
 
-	public functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined {
+	public functionByName(pkg: BrandedNamespace, name: BrandedIdentifier, version?: string): DecodedFunction | undefined {
 		return this.firstOf(pkg, version, db => db.functionByName(pkg, name, version));
 	}
 
-	public transitiveCallees(pkg: string, name: string, version?: string): string[] | undefined {
-		const fns = this.functions(pkg, version);
-		return fns?.some(f => f.name === name) ? transitiveCallees(fns, name) : undefined;
-	}
-
-	public dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined {
+	public dependencies(pkg: BrandedNamespace, version?: string): ResolvedDependency[] | undefined {
 		return this.firstOf(pkg, version, db => db.dependencies(pkg, version));
 	}
 
-	public classes(pkg: string, version?: string): SigClassInfo[] | undefined {
+	public classes(pkg: BrandedNamespace, version?: string): SigClassInfo[] | undefined {
 		return this.firstOf(pkg, version, db => db.classes(pkg, version));
 	}
 
+	public nativeRoutines(pkg: BrandedNamespace, version?: string): SigNativeRoutineInfo[] | undefined {
+		return this.firstOf(pkg, version, db => db.nativeRoutines(pkg, version));
+	}
+
 	/** whether this is an R-core / base package (see {@link SigDatabase.isBaseR}); O(1) via the hoisted metadata */
-	public isBaseR(pkg: string): boolean {
+	public isBaseR(pkg: BrandedNamespace): boolean {
 		const meta = this.manifest.meta?.[pkg];
 		return meta ? meta[3] === 1 : this.route(pkg).some(i => this.shard(i).isBaseR(pkg));
 	}
 
 	/** the download count of the package; O(1) via the hoisted metadata, so no shard has to be unpacked for it */
-	public downloads(pkg: string): number {
+	public downloads(pkg: BrandedNamespace): number {
 		const meta = this.manifest.meta?.[pkg];
 		return meta ? meta[2] : Math.max(0, ...this.route(pkg).map(i => this.shard(i).downloads(pkg)));
 	}
 
-	public coreVersions(pkg: string): RVersion[] | undefined {
-		if(!this.isBaseR(pkg)) {
-			return undefined;
-		}
-		return Object.keys(this.historyBlob(pkg)?.versions ?? {}).map(RVersion.parseOrZero).sort((a, b) => RVersion.compare(a.str, b.str));
+	/** whether the latest version of the package is CRAN-archived (see {@link SigDatabase.archived}); O(1) via the hoisted metadata */
+	public archived(pkg: BrandedNamespace): boolean {
+		const meta = this.manifest.meta?.[pkg];
+		return meta ? meta[1] === 1 : this.route(pkg).some(i => this.shard(i).archived(pkg));
 	}
 
-	/** every known release of a package (version + date), ascending, read once from the most complete shard */
-	public releaseDates(pkg: string): VersionRelease[] {
-		return releasesOf(this.historyBlob(pkg));
-	}
-
-	public releaseDate(pkg: string, version?: string): Date | undefined {
-		const blob = this.historyBlob(pkg);
-		if(!blob) {
-			return undefined;
-		}
-		const ver = version ?? newestVersion(blob, this.manifest.meta?.[pkg]?.[0] ?? '');
-		const day = ver === undefined ? undefined : blob.dates[ver];
-		return day === undefined ? undefined : new Date(dayToMillis(day));
-	}
-
-	public latestVersion(pkg: string): RVersion | undefined {
-		const blob = this.historyBlob(pkg);
-		const ver = blob ? newestVersion(blob, this.manifest.meta?.[pkg]?.[0] ?? '') : undefined;
-		return ver !== undefined ? RVersion.parseOrZero(ver) : undefined;
+	protected recordedLatest(pkg: BrandedNamespace): string {
+		return this.manifest.meta?.[pkg]?.[0] ?? '';
 	}
 
 	/**
@@ -1370,8 +1442,5 @@ export async function verifyShardedDatabase(
 	}
 
 	set.close();
-	return {
-		ok:             errors.length === 0, dictsOk, shards:         shardResults,
-		routedPackages: routed.size, spotChecked, missingRequired, errors
-	};
+	return { ok: errors.length === 0, dictsOk, shards: shardResults, routedPackages: routed.size, spotChecked, missingRequired, errors };
 }

@@ -1,5 +1,4 @@
-import type { RAstNodeBase, Location, NoInfo, WithChildren } from '../model';
-import { RNode } from '../model';
+import { type RAstNodeBase, type Location, type NoInfo, type WithChildren, RNode } from '../model';
 import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 
@@ -27,9 +26,7 @@ export const RExpressionList = {
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RExpressionList<Info> {
 		return node?.type === RType.ExpressionList;
 	},
-	/**
-	 * Type guard for implicit {@link RExpressionList} nodes, i.e., expression lists that are not created by a wrapper like `{}`.
-	 */
+	/** Type guard for implicit {@link RExpressionList} nodes, i.e., expression lists that are not created by a wrapper like `{}`. */
 	isImplicit<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RExpressionList<Info>  {
 		return RExpressionList.is(node) && node.grouping === undefined;
 	},

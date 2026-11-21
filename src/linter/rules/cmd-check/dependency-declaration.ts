@@ -1,11 +1,11 @@
 import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../../linter-format';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation } from '../../../util/range';
-import { Identifier, PkgName } from '../../../dataflow/environments/identifier';
+import { Identifier, PkgName, type BrandedIdentifier, type BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { callsBuiltIn, namesWith } from '../../linter-util';
 import { Enrichment } from '../../../search/search-executor/search-enrichers';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
@@ -13,7 +13,7 @@ import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
 import { callFnProps } from '../../../dataflow/environments/query-fn-props';
 import { CallProps, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import { attachesPackage } from '../../../queries/catalog/dependencies-query/function-info/library-functions';
-import { Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../../queries/catalog/dependencies-query/dependency-values';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { AttachedBasePackageSet, isBaseRPackage } from '../../../util/r-base-packages';
 import { at, printer, type CmdCheckResult, isStandardPackage, packageInfo, projectNodes } from './cmd-check-util';
@@ -22,7 +22,7 @@ import { packageCode } from './package-code';
 import { RLogical } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 export type DependencyDeclarationKind =
@@ -65,7 +65,7 @@ export type DependencyDeclarationKind =
 
 export interface DependencyDeclarationResult extends CmdCheckResult {
 	readonly kind:    DependencyDeclarationKind
-	readonly package: string
+	readonly package: BrandedNamespace
 }
 
 export interface DependencyDeclarationConfig extends MergeableRecord {
@@ -91,13 +91,13 @@ export interface DependencyDeclarationMetadata extends MergeableRecord {
 const PackageName = /^[A-Za-z][A-Za-z0-9.]*[A-Za-z0-9]$/;
 
 /** the packages R attaches by default, which `library` calls may name without a DESCRIPTION entry */
-function isDefaultPackage(pkg: string): boolean {
+function isDefaultPackage(pkg: BrandedNamespace): boolean {
 	return AttachedBasePackageSet.has(pkg) && pkg !== 'methods';
 }
 
 /** the packages a piece of code loads or accesses, read off its syntax as `tools:::.check_packages_used_helper` does */
-function packagesUsedIn(ast: NormalizedAst, loaders: ReadonlySet<string>): { pkg: string, node: RNode<ParentInformation>, how: string }[] {
-	const result: { pkg: string, node: RNode<ParentInformation>, how: string }[] = [];
+function packagesUsedIn(ast: NormalizedAst, loaders: ReadonlySet<BrandedIdentifier>): { pkg: BrandedNamespace, node: RNode<ParentInformation>, how: BrandedIdentifier }[] {
+	const result: { pkg: BrandedNamespace, node: RNode<ParentInformation>, how: BrandedIdentifier }[] = [];
 	for(const node of projectNodes(ast)) {
 		if(RSymbol.is(node)) {
 			const ns = Identifier.getNamespace(node.content);
@@ -118,7 +118,7 @@ function packagesUsedIn(ast: NormalizedAst, loaders: ReadonlySet<string>): { pkg
 			if(RString.is(value)) {
 				result.push({ pkg: value.content.str, node, how: fn });
 			} else if(RSymbol.is(value) && (fn === 'library' || fn === 'require') && (characterOnly === undefined || (RLogical.is(characterOnly) && !characterOnly.content))) {
-				result.push({ pkg: Identifier.getName(value.content), node, how: fn });
+				result.push({ pkg: String(Identifier.getName(value.content)), node, how: fn });
 			}
 		} else if(fn === 'data') {
 			const value = named('package');
@@ -131,7 +131,7 @@ function packagesUsedIn(ast: NormalizedAst, loaders: ReadonlySet<string>): { pkg
 }
 
 /** the packages the tests, vignettes and examples use without the DESCRIPTION declaring them */
-function otherCodeFindings(files: PackageFiles, declared: ReadonlySet<string>, data: ReadonlyFlowrAnalysisProvider): DependencyDeclarationResult[] {
+function otherCodeFindings(files: PackageFiles, declared: ReadonlySet<BrandedNamespace>, data: ReadonlyFlowrAnalysisProvider): DependencyDeclarationResult[] {
 	const results: DependencyDeclarationResult[] = [];
 	for(const code of packageCode(files)) {
 		const kind = `undeclared-in-${code.origin}` as const;
@@ -141,8 +141,8 @@ function otherCodeFindings(files: PackageFiles, declared: ReadonlySet<string>, d
 		} catch{
 			continue;
 		}
-		const reported = new Set<string>();
-		const isDeclared = (pkg: string) => declared.has(pkg) || isBaseRPackage(pkg);
+		const reported = new Set<BrandedNamespace>();
+		const isDeclared = (pkg: BrandedNamespace) => declared.has(pkg) || isBaseRPackage(pkg);
 		for(const { pkg, node, how } of packagesUsedIn(ast, namesWith(data.inspectContext().env.builtInIndex, SemanticCallTag.LoadsPackage))) {
 			if(isDeclared(pkg) || reported.has(pkg) || !PackageName.test(pkg)) {
 				continue;
@@ -187,21 +187,14 @@ export const DEPENDENCY_DECLARATION = {
 		const idMap = ast.idMap;
 		const depends = new Set(pkg.declared.get('Depends'));
 		const imports = new Set(pkg.declared.get('Imports'));
-		const dependsSuggests = new Set([...depends, ...pkg.declared.get('Suggests') ?? [], ...pkg.declared.get('Enhances') ?? [], ...pkg.name ? [pkg.name] : []]);
-		const declared = new Set([...dependsSuggests, ...imports]);
-		const used = new Set<string>();
+		const dependsSuggests = new Set<BrandedNamespace>([...depends, ...pkg.declared.get('Suggests') ?? [], ...pkg.declared.get('Enhances') ?? [], ...pkg.name ? [pkg.name] : []]);
+		const declared = new Set<BrandedNamespace>([...dependsSuggests, ...imports]);
+		const used = new Set<BrandedNamespace>();
 		const ignoreWithin = new Set(config.ignoreWithin);
-		const ignored = (id: NodeId): boolean => {
-			for(let cur = idMap.get(id); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap.get(cur.info.parent)) {
-				if(RFunctionCall.isNamed(cur, ignoreWithin)) {
-					return true;
-				}
-			}
-			return false;
-		};
-		const add = (id: NodeId, kind: DependencyDeclarationKind, name: string, message: string, certain = true) => {
+		const ignored = (id: NodeId): boolean => RNode.findEnclosing(id, idMap, n => RFunctionCall.isNamed(n, ignoreWithin)) !== undefined;
+		function add(id: NodeId, kind: DependencyDeclarationKind, name: BrandedNamespace, message: string, certain = true) {
 			results.push({ ...at(idMap.get(id), certain), involvedId: id, kind, package: name, message });
-		};
+		}
 
 		/* library(), require(), requireNamespace(), ... as the dependencies query resolves them, a package name in a variable included */
 		const loads = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'].library;
@@ -286,7 +279,7 @@ export const DEPENDENCY_DECLARATION = {
 			used.add('methods');
 		}
 		const descLoc = SourceLocation.from([1, 1, 1, 1], rootDescriptionFile(ctx)?.path());
-		const fileFinding = (kind: DependencyDeclarationKind, name: string, message: string) => results.push({
+		const fileFinding = (kind: DependencyDeclarationKind, name: BrandedNamespace, message: string) => results.push({
 			certainty: LintingResultCertainty.Certain, involvedId: undefined, loc: descLoc, kind, package: name, message
 		});
 		/* when flowR could not tell what a load loads, it may use any declared package */

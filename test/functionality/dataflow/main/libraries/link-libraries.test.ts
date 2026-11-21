@@ -3,6 +3,8 @@ import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../../../src/project/flowr-analyzer';
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
+import { VertexType } from '../../../../../src/dataflow/graph/vertex';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../../../../src/dataflow/environments/identifier';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -12,6 +14,7 @@ import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { loadNodesForNamespace } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-library';
 import { EnvType, REnvironment, builtInEnvJsonReplacer } from '../../../../../src/dataflow/environments/environment';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { analyze } from '../../../_helper/analyzer';
 
 
 
@@ -102,7 +105,7 @@ describe('Link libraries', withTreeSitter(ts => {
 		let env = REnvironment.findGlobal(df.environment.current).parent;
 		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace).toBeTruthy();
 		const exportedSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
-		expect(compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
+		expect(compare(new Set<BrandedIdentifier>(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
 		expect(env.n === 'ggplot2' && env.t === EnvType.Imports).toBeTruthy();
 		expect(new Set(env.memory.keys()).size === 0).toBeTruthy();
@@ -118,7 +121,7 @@ describe('Link libraries', withTreeSitter(ts => {
 		let env = REnvironment.findGlobal(df.environment.current).parent;
 		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace).toBeTruthy();
 		const exportedSymbols = ['ggplot', 'aes', 'geom_point', 'print.rel'];
-		expect(compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
+		expect(compare(new Set<BrandedIdentifier>(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
 		expect(env.n === 'ggplot2' && env.t === EnvType.Imports).toBeTruthy();
 		expect(new Set(env.memory.keys()).size === 0).toBeTruthy();
@@ -134,14 +137,14 @@ describe('Link libraries', withTreeSitter(ts => {
 		const df = await analyzer.dataflow();
 		let env = REnvironment.findGlobal(df.environment.current).parent;
 		expect(env.n === 'random1' && env.t === EnvType.Namespace).toBeTruthy();
-		expect(compare(new Set(['test1', 'test2']), new Set(env.memory.keys()))).toBeTruthy();
+		expect(compare(new Set<BrandedIdentifier>(['test1', 'test2']), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
 		expect(env.n === 'random1' && env.t === EnvType.Imports).toBeTruthy();
 		expect(new Set(env.memory.keys()).size === 0).toBeTruthy();
 		env = env.parent;
 		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace).toBeTruthy();
 		const exportedSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
-		expect(compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
+		expect(compare(new Set<BrandedIdentifier>(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
 		expect(env.n === 'ggplot2' && env.t === EnvType.Imports).toBeTruthy();
 		expect(new Set(env.memory.keys()).size === 0).toBeTruthy();
@@ -208,11 +211,10 @@ describe('Link libraries', withTreeSitter(ts => {
 	// R attaches from inside a function to the global search path, and a second `library()` of an already
 	// attached package is a no-op there, so both call sites are provenance for the one search-path entry
 	test('A load inside a function and a later top-level load both count', async() => {
-		const loads = async(code: string) => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-			analyzer.addRequest(code);
+		async function loads(code: string) {
+			const analyzer = await analyze(ts, code);
 			return loadNodesForNamespace((await analyzer.dataflow()).environment, 'pkgA').length;
-		};
+		}
 		expect(await loads('f <- function() library("pkgA")\nf()\nlibrary("pkgA")\npkgA::fa()')).toBe(2);
 		expect(await loads('library("pkgA")\nf <- function() library("pkgA")\nf()\npkgA::fa()')).toBe(2);
 		expect(await loads('f <- function() library("pkgA")\nf()\npkgA::fa()')).toBe(1);
@@ -261,15 +263,15 @@ describe('Link libraries', withTreeSitter(ts => {
 			resolveIdsAsCriterion: true
 		});
 
-	const registerAbc = (a: FlowrAnalyzer): void => {
+	function registerAbc(a: FlowrAnalyzer): void {
 		a.context().deps
 			.addDependency(Package.fromConstants('pkgA', 'export(fa)', ['fa']))
 			.addDependency(Package.fromConstants('pkgB', 'export(fb)', ['fb']))
 			.addDependency(Package.fromConstants('pkgC', 'export(fc)', ['fc']));
-	};
+	}
 
 	/** Builds the expected subgraph for calls that resolve to a package export and back to its `library()` call. */
-	const resolvesTo = (...links: { call: string, pkg: string, fn: string, lib: string, callEdge?: number }[]) => {
+	function resolvesTo(...links: { call: string, pkg: string, fn: string, lib: string, callEdge?: number }[]) {
 		let g = emptyGraph();
 		for(const { call, pkg, fn, lib, callEdge } of links) {
 			const builtIn = NodeId.fromPkgFn(pkg, fn);
@@ -277,7 +279,7 @@ describe('Link libraries', withTreeSitter(ts => {
 				.addEdge(builtIn, lib, EdgeType.Reads | EdgeType.Calls);
 		}
 		return g;
-	};
+	}
 	const abc = { modifyAnalyzer: registerAbc, expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;
 
 	assertDataflow(label('Nested if-else links each call to its package', ['library-loading', 'search-path']), ts,
@@ -308,7 +310,7 @@ describe('Link libraries', withTreeSitter(ts => {
 
 	assertDataflow(label('Transitively loaded library resolves at the call site', ['library-loading', 'search-path']), ts,
 		'g <- function() library(pkgA)\nf <- function() g()\nf()\nfa()',
-		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls }),
+		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' }),
 		abc);
 
 	assertDataflow(label('Recursive library loader terminates and resolves', ['library-loading', 'search-path']), ts,
@@ -319,8 +321,8 @@ describe('Link libraries', withTreeSitter(ts => {
 	assertDataflow(label('Diamond of helpers attaches every package', ['library-loading', 'search-path']), ts,
 		'a <- function() library(pkgA)\nb <- function() library(pkgB)\nf <- function() { a(); b() }\nf()\nfa()\nfb()',
 		resolvesTo(
-			{ call: '5@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls },
-			{ call: '6@fb', pkg: 'pkgB', fn: 'fb', lib: '2@library', callEdge: EdgeType.Calls }),
+			{ call: '5@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' },
+			{ call: '6@fb', pkg: 'pkgB', fn: 'fb', lib: '2@library' }),
 		abc);
 
 	assertDataflow(label('Higher-order library loader propagates', ['library-loading', 'search-path']), ts,
@@ -332,19 +334,19 @@ describe('Link libraries', withTreeSitter(ts => {
 
 	assertDataflow(label('Conditional library in a helper propagates', ['library-loading', 'search-path']), ts,
 		'g <- function(c) { if(c) library(pkgA) }\nf <- function() g(u)\nf()\nfa()',
-		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls }),
+		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' }),
 		abc);
 
 	assertDataflow(label('Branch over library-loading helpers keeps both', ['library-loading', 'search-path']), ts,
 		'a <- function() library(pkgA)\nb <- function() library(pkgB)\nf <- function() if(u) a() else b()\nf()\nfa()\nfb()',
 		resolvesTo(
-			{ call: '5@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls },
-			{ call: '6@fb', pkg: 'pkgB', fn: 'fb', lib: '2@library', callEdge: EdgeType.Calls }),
+			{ call: '5@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' },
+			{ call: '6@fb', pkg: 'pkgB', fn: 'fb', lib: '2@library' }),
 		abc);
 
 	assertDataflow(label('Library in a helper called from a loop propagates', ['library-loading', 'search-path']), ts,
 		'h <- function() library(pkgA)\nf <- function() for(i in 1:3) h()\nf()\nfa()',
-		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls }),
+		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' }),
 		abc);
 
 	assertDataflow(label('Conditional recursion loader terminates and resolves', ['library-loading', 'search-path']), ts,
@@ -410,10 +412,14 @@ describe('Link libraries', withTreeSitter(ts => {
 }));
 
 describe('Dynamic search path', withTreeSitter(ts => {
-	assertDataflow(label('search() is an ordinary call, not linked to library()', ['dynamic-search-path']), ts, 'library(tools)\nn <- search()',
-		emptyGraph().call('2@search', 'search', []),
-		{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
-	);
+	test(label('search() reads the library() before it', ['dynamic-search-path'], ['dataflow']), async() => {
+		const analyzer = await analyze(ts, 'library(tools)\nn <- search()');
+		const { graph } = await analyzer.dataflow();
+		const calls = (name: string) => graph.verticesOfType(VertexType.FunctionCall).filter(([, v]) => Identifier.getName(v.name) === name).map(([id]) => id).toArray();
+		const [library] = calls('library');
+		const [search] = calls('search');
+		expect(Dataflow.sourcesOf(graph, library, EdgeType.Reads)).toContain(search);
+	});
 }));
 
 /** Loads the given `code` (with dummy packages `a`, `b`, `c` registered) and returns its leading library layers as `[name, type]`, nearest first. */
@@ -424,7 +430,7 @@ async function loadedLayers(ts: TreeSitterExecutor, code: string): Promise<[stri
 	}
 	analyzer.addRequest(code);
 	const df = await analyzer.dataflow();
-	const layers: [string | undefined, EnvType | undefined][] = [];
+	const layers: [BrandedNamespace | undefined, EnvType | undefined][] = [];
 	// attached packages sit below the global env
 	for(let env = REnvironment.findGlobal(df.environment.current).parent; env.t !== undefined; env = env.parent) {
 		layers.push([env.n, env.t]);

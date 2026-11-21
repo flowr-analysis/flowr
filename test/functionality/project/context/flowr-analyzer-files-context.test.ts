@@ -4,13 +4,13 @@ import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file'
 
 /* windows joins paths with backslashes, so lookups must not depend on the separator a file was added with */
 describe('file lookup is independent of the path separator', () => {
-	const files = async(...paths: readonly string[]) => {
+	async function files(...paths: readonly string[]) {
 		const analyzer = await new FlowrAnalyzerBuilder().setEngine('tree-sitter').build();
 		for(const p of paths) {
 			analyzer.addFile(new FlowrInlineTextFile(p, 'x'));
 		}
 		return analyzer.inspectContext().files;
-	};
+	}
 	test('forward slashes looked up with backslashes', async() => {
 		const ctx = await files('/pkg/R/survey.csv');
 		assert.isTrue(ctx.hasCached('\\pkg\\R\\survey.csv'));

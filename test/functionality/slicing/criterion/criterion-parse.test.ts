@@ -2,12 +2,12 @@ import { SourceRange } from '../../../../src/util/range';
 import { describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { AstIdMap, RNodeWithParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
+import { analyze } from '../../_helper/analyzer';
 
 /** the node a criterion resolves to, which tells far more about the pick than a bare id */
 function nodeOf(criterion: SlicingCriterion, idMap: AstIdMap): RNodeWithParent | undefined {
@@ -22,8 +22,7 @@ function fullTextOf(criterion: SlicingCriterion, idMap: AstIdMap): string | unde
 }
 
 async function idMapOf(ts: TreeSitterExecutor, code: string): Promise<AstIdMap> {
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-	analyzer.addRequest(requestFromInput(code));
+	const analyzer = await analyze(ts, code);
 	return (await analyzer.normalize()).idMap;
 }
 
@@ -107,6 +106,13 @@ describe('Slicing criteria', withTreeSitter(ts => {
 				expect(nodeOf(line, idMap)?.type, line).toBe(RType.IfThenElse);
 			}
 			expect(fullTextOf('1^', idMap)).toBe('x <- 1');
+		});
+
+		test('a top-level block is found from its braces and its body', async() => {
+			const idMap = await idMapOf(ts, 'x <- 1\n{\n  y <- 2\n}');
+			for(const line of ['2^', '3^', '4^'] as const) {
+				expect(nodeOf(line, idMap)?.type, line).toBe(RType.ExpressionList);
+			}
 		});
 
 		test('the first statement wins when several share the line', async() => {

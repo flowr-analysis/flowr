@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-10-25, 09:29:25 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-11-15, 08:40:19 UTC (v2.17.6), do not edit directly._
 <h2 id="package-metafiles">Package Metafiles&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <a href='https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance'>![cmd-check 56–59](https://img.shields.io/badge/cmd--check-56%E2%80%9359-blueviolet) </a> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='https://github.com/flowr-analysis/flowr/wiki/Linter#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
@@ -15,23 +15,23 @@ This rule ports the following steps of `R CMD check` (see the [conformance table
 This rule is a <code>best-effort</code> rule.
  
 Finds problems in the demo index, `INDEX`, `inst/CITATION`, and relative links in README, NEWS, and vignettes.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-metafiles.ts#L299">src/linter/rules/cmd-check/package-metafiles.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-metafiles.ts#L284">src/linter/rules/cmd-check/package-metafiles.ts</a>._
 
 ### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `package-metafiles` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-metafiles.ts#L39"><code><span title="check inst/CITATION (its syntax, entry types and required fields) and the location of other CITATION files (default true)">citation</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-metafiles.ts#L38"><code><span title="check inst/CITATION (its syntax, entry types and required fields) and the location of other CITATION files (default true)">citation</span></code></a>\
 check `inst/CITATION` (its syntax, entry types and required fields) and the location of other CITATION files (default `true`)\
 _R CMD check [#58](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-58 "checking package subdirectories (CITATION)")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-metafiles.ts#L37"><code><span title="check the INDEX and the demo/00Index of the package (default true)">index</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-metafiles.ts#L36"><code><span title="check the INDEX and the demo/00Index of the package (default true)">index</span></code></a>\
 check the `INDEX` and the `demo/00Index` of the package (default `true`)\
 _R CMD check [#56](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-56 "checking index information"), [#57](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-57 "checking demos")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-metafiles.ts#L43"><code><span title="check that the relative links of the README, NEWS and vignettes point to files of the package (default true)">relativeLinks</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-metafiles.ts#L42"><code><span title="check that the relative links of the README, NEWS and vignettes point to files of the package (default true)">relativeLinks</span></code></a>\
 check that the relative links of the README, NEWS and vignettes point to files of the package (default `true`)\
 _R CMD check [#59](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-59 "checking relative paths in package URLs")_
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-metafiles.ts#L41"><code><span title="report the citation functions superseded by a newer one, which R CMD check accepts (default true)">superseded</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/cmd-check/package-metafiles.ts#L40"><code><span title="report the citation functions superseded by a newer one, which R CMD check accepts (default true)">superseded</span></code></a>\
 report the citation functions superseded by a newer one, which `R CMD check` accepts (default `true`)\
 _R CMD check [#58](https://github.com/flowr-analysis/flowr/wiki/R-CMD-check-Conformance#cmd-check-58 "checking package subdirectories (CITATION)")_
 

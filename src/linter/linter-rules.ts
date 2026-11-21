@@ -1,16 +1,17 @@
+import { LintingRuleTag } from './linter-tags';
 import { DEPRECATED_FUNCTIONS } from './rules/deprecated-functions';
 import type { LintingRule } from './linter-format';
 import { FILE_PATH_VALIDITY } from './rules/file-path-validity';
-import { ABSOLUTE_PATH } from './rules/absolute-path';
-import { UNUSED_DEFINITION } from './rules/unused-definition';
+import { ABSOLUTE_FILE_PATHS } from './rules/absolute-file-paths';
+import { UNUSED_DEFINITIONS } from './rules/unused-definitions';
 import { DEAD_CODE } from './rules/dead-code';
 import { SEEDED_RANDOMNESS } from './rules/seeded-randomness';
 import { NAMING_CONVENTION } from './rules/naming-convention';
-import { DATA_FRAME_ACCESS_VALIDATION } from './rules/dataframe-access-validation';
+import { DATAFRAME_ACCESS_VALIDATION } from './rules/dataframe-access-validation';
 import { USELESS_LOOP } from './rules/useless-loop';
 import { NETWORK_FUNCTIONS } from './rules/network-functions';
-import { STOP_WITH_CALL_ARG } from './rules/stop-with-call-arg';
-import { ROXYGEN_ARGS } from './rules/roxygen-arguments';
+import { STOP_CALL } from './rules/stop-call';
+import { ROXYGEN_ARGUMENTS } from './rules/roxygen-arguments';
 import { PROBLEMATIC_INPUTS } from './rules/problematic-inputs';
 import { SOFTWARE_HAS_LICENSE } from './rules/software-has-license';
 import { SOFTWARE_HAS_TESTS } from './rules/software-has-tests';
@@ -41,6 +42,12 @@ import { PACKAGE_METAFILES } from './rules/cmd-check/package-metafiles';
 import { RD_FILES } from './rules/cmd-check/rd-files';
 import { PACKAGE_DATA } from './rules/cmd-check/package-data';
 import { PACKAGE_RUNTIME } from './rules/cmd-check/package-runtime';
+import { SECRET_EXFILTRATION } from './rules/secret-exfiltration';
+import { PROCESS_STATE_IN_SESSION } from './rules/process-state-in-session';
+import { INTERACTIVE_FUNCTIONS } from './rules/interactive-functions';
+import { CODE_CLONES } from './rules/code-clones';
+import { AUTOLOAD_FILES } from './rules/autoload-files';
+import { CALL_CONTRACTS } from './rules/call-contracts';
 
 /**
  * The registry of currently supported linting rules.
@@ -50,16 +57,16 @@ export const LintingRules = {
 	'deprecated-functions':            DEPRECATED_FUNCTIONS,
 	'file-path-validity':              FILE_PATH_VALIDITY,
 	'seeded-randomness':               SEEDED_RANDOMNESS,
-	'absolute-file-paths':             ABSOLUTE_PATH,
-	'unused-definitions':              UNUSED_DEFINITION,
+	'absolute-file-paths':             ABSOLUTE_FILE_PATHS,
+	'unused-definitions':              UNUSED_DEFINITIONS,
 	'naming-convention':               NAMING_CONVENTION,
 	'network-functions':               NETWORK_FUNCTIONS,
-	'dataframe-access-validation':     DATA_FRAME_ACCESS_VALIDATION,
+	'dataframe-access-validation':     DATAFRAME_ACCESS_VALIDATION,
 	'dead-code':                       DEAD_CODE,
 	'useless-loop':                    USELESS_LOOP,
 	'problematic-inputs':              PROBLEMATIC_INPUTS,
-	'stop-call':                       STOP_WITH_CALL_ARG,
-	'roxygen-arguments':               ROXYGEN_ARGS,
+	'stop-call':                       STOP_CALL,
+	'roxygen-arguments':               ROXYGEN_ARGUMENTS,
 	'software-has-license':            SOFTWARE_HAS_LICENSE,
 	'software-has-tests':              SOFTWARE_HAS_TESTS,
 	'no-leaked-credentials':           NO_LEAKED_CREDENTIALS,
@@ -88,14 +95,38 @@ export const LintingRules = {
 	'package-metafiles':               PACKAGE_METAFILES,
 	'rd-files':                        RD_FILES,
 	'package-data':                    PACKAGE_DATA,
-	'package-runtime':                 PACKAGE_RUNTIME
+	'package-runtime':                 PACKAGE_RUNTIME,
+	'secret-exfiltration':             SECRET_EXFILTRATION,
+	'process-state-in-session':        PROCESS_STATE_IN_SESSION,
+	'code-clones':                     CODE_CLONES,
+	'call-contracts':                  CALL_CONTRACTS,
+	'interactive-functions':           INTERACTIVE_FUNCTIONS,
+	'autoload-files':                  AUTOLOAD_FILES
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules;
+
+const DigitWords = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+
+/**
+ * Where a rule is written, relative to `src/linter/rules` and without extension: the rule `foo-bar` is `FOO_BAR` in `foo-bar.ts`
+ * (in `cmd-check/` for an {@link LintingRuleTag.CmdCheck} rule), with a `FooBarConfig`, and tested in `lint-foo-bar.test.ts` of the same
+ * directory under `test/functionality/linter`. File names hold no digits, so they are spelled out: `s3-method-consistency` is `s-three-method-consistency`.
+ */
+export function lintingRuleFile(name: LintingRuleNames): string {
+	const base = name.replace(/\d/g, digit => '-' + DigitWords[Number(digit)]);
+	return (LintingRules[name].info.tags as readonly LintingRuleTag[]).includes(LintingRuleTag.CmdCheck) ? 'cmd-check/' + base : base;
+}
+
+/** the rule registered under the name, typed by what its name stands for */
+export function getLintingRule<Name extends LintingRuleNames>(name: Name): LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>> {
+	return LintingRules[name] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
+}
 
 export type LintingRuleMetadata<Name extends LintingRuleNames> =
 	typeof LintingRules[Name] extends LintingRule<infer _Result, infer Metadata, infer _Config, infer _Info, infer _Elements> ? Metadata : never;
 export type LintingRuleResult<Name extends LintingRuleNames> =
 	typeof LintingRules[Name] extends LintingRule<infer Result, infer _Metadata, infer _Config, infer _Info, infer _Elements> ? Result : never;
-export type LintingRuleConfig<Name extends LintingRuleNames> =
-	typeof LintingRules[Name] extends LintingRule<infer _Result, infer _Metadata, infer Config, infer _Info, infer _Elements> ? Config : never;
+export type LintingRuleConfig<Name extends LintingRuleNames> = Name extends LintingRuleNames
+	? typeof LintingRules[Name] extends LintingRule<infer _Result, infer _Metadata, infer Config, infer _Info, infer _Elements> ? Config : never
+	: never;

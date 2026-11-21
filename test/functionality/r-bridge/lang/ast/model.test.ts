@@ -7,11 +7,11 @@ describe('Model specific tests', () => {
 		test('deny to merge no ranges', () => {
 			assert.throws(() => SourceRange.merge([]), Error);
 		});
-		const assertMerged = (ranges: SourceRange[], expected: SourceRange, message = ''): void => {
+		function assertMerged(ranges: SourceRange[], expected: SourceRange, message = ''): void {
 			test(JSON.stringify(ranges), () => {
 				assert.deepStrictEqual(SourceRange.merge(ranges), expected, `${message}`);
 			});
-		};
+		}
 		describe('one ranges always returns the same', () => {
 			for(const range of [
 				SourceRange.from(0, 0, 0, 0),

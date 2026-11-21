@@ -33,7 +33,7 @@ interface DataFrameAccess {
 	accessed: string | number
 }
 
-export interface DataFrameAccessValidationResult extends LintingResult {
+export interface DataframeAccessValidationResult extends LintingResult {
 	/** The type of the data frame access ("column" or "row") */
 	readonly type:     'column' | 'row',
 	/** The name or index of the column or row being accessed in the data frame */
@@ -44,12 +44,12 @@ export interface DataFrameAccessValidationResult extends LintingResult {
 	readonly operand?: string,
 }
 
-export interface DataFrameAccessValidationConfig extends MergeableRecord {
+export interface DataframeAccessValidationConfig extends MergeableRecord {
 	/** Whether data frame shapes should be extracted from loaded external data files, such as CSV files (defaults to the option in the flowR config if `undefined`) */
 	readLoadedData?: boolean
 }
 
-export interface DataFrameAccessValidationMetadata extends MergeableRecord {
+export interface DataframeAccessValidationMetadata extends MergeableRecord {
 	/** The number of data frame functions and operations containing inferred column or row accesses */
 	numOperations: number,
 	/** The number of inferred abstract column or row access operations */
@@ -58,7 +58,7 @@ export interface DataFrameAccessValidationMetadata extends MergeableRecord {
 	totalAccessed: number
 }
 
-export const DATA_FRAME_ACCESS_VALIDATION = {
+export const DATAFRAME_ACCESS_VALIDATION = {
 	createSearch:        () => Q.all(),
 	processSearchResult: async(elements, config, data) => {
 		const normalize = await data.normalize();
@@ -102,14 +102,14 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 
 		const operations = accessOperations.entries().flatMap(([, operations]) => operations).toArray();
 
-		const metadata: DataFrameAccessValidationMetadata = {
+		const metadata: DataframeAccessValidationMetadata = {
 			numOperations: accessOperations.size,
 			numAccesses:   operations.length,
 			totalAccessed: arraySum(operations
 				.map(operation => operation.operation === 'accessCols' ? operation.columns?.length ?? 0 : operation.rows?.length ?? 0))
 		};
 
-		const results: DataFrameAccessValidationResult[] = accesses
+		const results: DataframeAccessValidationResult[] = accesses
 			.flatMap(access => findInvalidDataFrameAccesses(access)
 				.map(accessed => ({ nodeId: access.nodeId, operand: access.operand, ...accessed }))
 			)
@@ -145,7 +145,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 		description:   'Finds accesses to columns and rows a data frame does not have.',
 		defaultConfig: () => ({ readLoadedData: false })
 	}
-} as const satisfies LintingRule<DataFrameAccessValidationResult, DataFrameAccessValidationMetadata, DataFrameAccessValidationConfig>;
+} as const satisfies LintingRule<DataframeAccessValidationResult, DataframeAccessValidationMetadata, DataframeAccessValidationConfig>;
 
 function getAccessOperations(
 	elements: FlowrSearchElements<ParentInformation>,

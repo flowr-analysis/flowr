@@ -31,11 +31,7 @@ function normalizeAbstractArgument(x: readonly NamedJsonEntry[], data: Normalize
 			lexeme:   node.lexeme,
 			name:     undefined,
 			value:    node,
-			info:     {
-				fullRange:  node.location,
-				fullLexeme: node.lexeme,
-				adToks:     []
-			}
+			info:     { fullRange: node.location, fullLexeme: node.lexeme, adToks: [] }
 		};
 	}
 }

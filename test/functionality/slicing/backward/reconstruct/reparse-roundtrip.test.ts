@@ -1,10 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import { retrieveNormalizedAst, withShell } from '../../../_helper/shell';
+import { joinedCode, staticSliceOf } from '../../../_helper/analyzer';
 import { label } from '../../../_helper/label';
-import { createSlicePipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
 import { collectAllSlicingCriteria } from '../../../../../src/slicing/criterion/collect-all';
 import { DefaultAllVariablesFilter } from '../../../../../src/slicing/criterion/filters/all-variables';
-import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import * as semver from 'semver';
@@ -21,11 +20,7 @@ describe('Reconstruction re-parse round-trip', { concurrent: false }, withShell(
 		const criteria = [...collectAllSlicingCriteria(ast.ast, DefaultAllVariablesFilter)];
 		expect(criteria.length, 'sample should have at least one slicing criterion').toBeGreaterThan(0);
 		for(const criterion of criteria) {
-			const result = await createSlicePipeline(shell, {
-				context: contextFromInput(input),
-				criterion
-			}).allRemainingSteps();
-			const code = result.reconstruct.code as string;
+			const code = joinedCode((await staticSliceOf(shell, input, criterion)).reconstruct);
 			// R itself must accept the reconstructed slice - otherwise the slice is unusable
 			await expect(
 				shell.parse({ request: 'text', content: code }),

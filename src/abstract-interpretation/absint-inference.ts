@@ -1,5 +1,5 @@
 import { CfgEdge, CfgVertex, type ControlFlowInformation, NoNeighbors, type ReadOnlyControlFlowGraph } from '../control-flow/control-flow-graph';
-import { FunctionSemantics } from '../dataflow/fn/function-semantics';
+import { UnsupportedFunctions } from './unsupported-functions';
 import { type OnCall, SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { visitCfgInOrder } from '../control-flow/simple-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
@@ -10,7 +10,7 @@ import { type DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
 import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexUse, type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition, DfgVertex, VertexType } from '../dataflow/graph/vertex';
 import type { ControlDependency } from '../dataflow/info';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
-import type { NoInfo } from '../r-bridge/lang-4.x/ast/model/model';
+import { type NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
@@ -26,14 +26,13 @@ import { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NormalizedAst, ParentInformation, RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
-import type { RNull } from '../r-bridge/lang-4.x/convert-values';
-import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
+import { type RNull, RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
+import { Bottom } from './domains/lattice';
 import { guard, isNotUndefined } from '../util/assert';
 import { Record } from '../util/record';
 import type { AbsintContext, AbstractSemantics } from './abstract-semantics';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
-import type { MultiValueDomain } from './domains/multi-value-state-domain';
-import { MultiValueStateDomain } from './domains/multi-value-state-domain';
+import { type MultiValueDomain, MultiValueStateDomain } from './domains/multi-value-state-domain';
 import type { AbstractProduct, ProductReduction } from './domains/partial-product-domain';
 import type { StateDomain } from './domains/state-domain';
 
@@ -51,11 +50,13 @@ export type DomainSemantics<Domains extends AbstractProduct> = {
  */
 export interface AbsintAnalysis<Domains extends AbstractProduct> {
 	/** The value abstract domains inferred by the analysis, mapping each domain name to an instance of the respective abstract domain */
-	readonly domains:     Required<Domains>;
+	readonly domains:           Required<Domains>;
 	/** The abstract semantics to apply for each of the abstract domains of the analysis */
-	readonly semantics:   DomainSemantics<Domains>;
+	readonly semantics:         DomainSemantics<Domains>;
 	/** Optional reduction functions of the reduced product domain, refining the inferred abstract values based on the values of the other abstract domains */
-	readonly reductions?: readonly ProductReduction<Partial<Domains>>[];
+	readonly reductions?:       readonly ProductReduction<Partial<Domains>>[];
+	/** Whether a node inferred as Bottom collapses the whole state to Bottom (default), or stays a regular entry, e.g. to mark the findings of a taint analysis */
+	readonly collapseOnBottom?: boolean;
 }
 
 /**
@@ -89,6 +90,22 @@ function stepFrom(graph: ReadOnlyControlFlowGraph, node: NodeId): WideningSearch
 	return { node, successors: [...graph.successors(node)], at: 0 };
 }
 
+/**
+ * What a function run read: per input the value it had, and whether it was assigned, bottom, and how often visited.
+ * The status is part of the key as it decides which definitions a read sees and when a loop widens.
+ */
+interface SummaryKey {
+	readonly values: readonly (AnyAbstractDomain | undefined)[];
+	readonly status: string;
+}
+
+/** A run of a definition: what it read, what its exits changed in the state it started from, and what it left behind. */
+interface FunctionSummary<Domains extends AbstractProduct> {
+	readonly key:   SummaryKey;
+	readonly exits: readonly (ReadonlyMap<NodeId, MultiValueDomain<Partial<Domains>>> | typeof Bottom)[];
+	readonly value: MultiValueDomain<Partial<Domains>> | undefined;
+}
+
 /** Whether two rounds of a fixpoint bound the same values, `undefined` standing for nothing known yet. */
 function sameValues(a: readonly (AnyAbstractDomain | undefined)[], b: readonly (AnyAbstractDomain | undefined)[] | undefined): boolean {
 	return b !== undefined && a.length === b.length
@@ -107,34 +124,22 @@ function sameValues(a: readonly (AnyAbstractDomain | undefined)[], b: readonly (
 export class AbstractInterpreter<Domains extends AbstractProduct, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration>
 	extends SemanticCfgGuidedVisitor<NoInfo, ControlFlowInformation, NormalizedAst, DataflowGraph, Config & { defaultVisitingOrder: 'forward' }> {
 
-	/**
-	 * The abstract interpretation analysis performed by the visitor, defining the abstract domains, their abstract semantics, and the reductions between them.
-	 */
+	/** The abstract interpretation analysis performed by the visitor, defining the abstract domains, their abstract semantics, and the reductions between them. */
 	public readonly analysis: Readonly<AbsintAnalysis<Domains>>;
 
-	/**
-	 * The state abstract domain used by the abstract interpretation visitor.
-	 */
+	/** The state abstract domain used by the abstract interpretation visitor. */
 	protected readonly stateDomain: MultiValueStateDomain<Partial<Domains>>;
 
-	/**
-	 * The abstract trace of the abstract interpretation visitor mapping node IDs to the abstract state at the respective node.
-	 */
+	/** The abstract trace of the abstract interpretation visitor mapping node IDs to the abstract state at the respective node. */
 	protected readonly trace: Map<NodeId, MultiValueStateDomain<Partial<Domains>>> = new Map();
 
-	/**
-	 * The current abstract state domain at the currently processed AST node.
-	 */
+	/** The current abstract state domain at the currently processed AST node. */
 	protected currentState: MultiValueStateDomain<Partial<Domains>>;
 
-	/**
-	 * The current worklist stack of next vertex IDs to visit.
-	 */
+	/** The current worklist stack of next vertex IDs to visit. */
 	private stack: NodeId[] = [];
 
-	/**
-	 * The cached abstract interpretation contexts of the abstract domains of the analysis (see {@link getContext}).
-	 */
+	/** The cached abstract interpretation contexts of the abstract domains of the analysis (see {@link getContext}). */
 	private readonly contexts: Map<keyof Domains, AbsintContext<StateDomain<Domains[keyof Domains]>>> = new Map();
 
 	/**
@@ -159,9 +164,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	 */
 	private readonly lastState: Map<NodeId, MultiValueStateDomain<Partial<Domains>>> = new Map();
 
-	/**
-	 * A set of nodes representing variable definitions that have already been visited but whose assignment has not yet been processed.
-	 */
+	/** A set of nodes representing variable definitions that have already been visited but whose assignment has not yet been processed. */
 	private readonly unassigned: Set<NodeId> = new Set();
 
 	/** The call a function body is currently being interpreted for, mapping the body's entry to it. */
@@ -180,6 +183,15 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	private readonly recursiveCalls: Map<NodeId, NodeId> = new Map();
 
 	/**
+	 * The runs of each definition, so a call reading the same as an earlier one reuses it instead of running the body
+	 * again: calls nested in calls would otherwise run every body once per call path. Dropped when a pass is over.
+	 */
+	private readonly summaries: Map<NodeId, FunctionSummary<Domains>[]> = new Map();
+
+	/** Everything a run of a definition may read: its body, the definitions that reads, and the same for what it calls. */
+	private readonly inputsOf: Map<NodeId, readonly NodeId[]> = new Map();
+
+	/**
 	 * Creates an abstract interpretation visitor performing the given analysis.
 	 * @param config   - The configuration of the visitor (containing the normalized AST, the dataflow graph, and the control flow graph of the program to analyze)
 	 * @param analysis - The abstract interpretation analysis to perform, i.e. the abstract domains, their abstract semantics, and the reductions between them
@@ -188,12 +200,12 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		super({ ...config, defaultVisitingOrder: 'forward' });
 
 		this.analysis = analysis;
-		this.stateDomain = new MultiValueStateDomain(new Map(), analysis.domains, analysis.reductions);
+		this.stateDomain = new MultiValueStateDomain(new Map(), analysis.domains, analysis.reductions, analysis.collapseOnBottom);
 		this.currentState = this.stateDomain.top();
 	}
 
 	/** Applies a handler to the abstract semantics of every domain of the analysis, together with the state view and context of that domain. */
-	private applySemantics(apply: (semantics: DomainSemantics<Domains>[keyof Domains], state: StateDomain<Domains[keyof Domains]>, ctx: AbsintContext<StateDomain<Domains[keyof Domains]>>) => void, state = this.currentState): void {
+	protected applySemantics(apply: (semantics: DomainSemantics<Domains>[keyof Domains], state: StateDomain<Domains[keyof Domains]>, ctx: AbsintContext<StateDomain<Domains[keyof Domains]>>) => void, state = this.currentState): void {
 		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
 			apply(semantics, this.getState(type, state), this.getContext(type));
 		}
@@ -238,13 +250,14 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	 */
 	public getState<Key extends keyof Domains>(type: Key, state = this.currentState): StateDomain<Domains[Key]> {
 		return {
-			domain:   this.analysis.domains[type],
-			get:      id => state.getValue(id, type),
-			has:      id => state.hasValue(id, type),
-			set:      (id, value) => state.setValue(id, type, value),
-			remove:   id => state.removeValue(id, type),
-			entries:  () => state.entries(type) as readonly [NodeId, Domains[Key]][],
-			isBottom: () => state.isBottom()
+			domain:         this.analysis.domains[type],
+			get:            id => state.getValue(id, type),
+			has:            id => state.hasValue(id, type),
+			set:            (id, value) => state.setValue(id, type, value),
+			remove:         id => state.removeValue(id, type),
+			entries:        () => state.entries(type) as readonly [NodeId, Domains[Key]][],
+			isBottom:       () => state.isBottom(),
+			getBottomNodes: () => state.entries(type).filter(([, value]) => value?.isBottom()).map(([id]) => id)
 		};
 	}
 
@@ -384,14 +397,19 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		super.start();
 		this.unassigned.clear();
 		this.lastState.clear();
+		this.dropSummaries();
+	}
+
+	private dropSummaries(): void {
+		this.summaries.clear();
+		this.inputsOf.clear();
 	}
 
 	protected override startVisitor(start: readonly NodeId[]): void {
 		this.stack = Array.from(start);
 		const queued = new Set(this.stack);
 
-		while(this.stack.length > 0) {
-			const current = this.stack.pop() as NodeId;
+		for(let current = this.stack.pop(); current !== undefined; current = this.stack.pop()) {
 			queued.delete(current);
 
 			if(!this.visitNode(current)) {
@@ -417,7 +435,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		// retrieve new abstract state by joining states of predecessor nodes
 		const nodeId = CfgVertex.getId(vertex);
 		const predecessors = this.getPredecessors(nodeId);
-		const predecessorStates = predecessors.map(pred => this.getPredecessorState(pred)).filter(isNotUndefined);
+		const predecessorStates = predecessors.map(pred => this.getPredecessorState(pred, nodeId)).filter(isNotUndefined);
 		this.currentState = AbstractDomain.joinAll(predecessorStates, this.currentState.top());
 
 		const oldState = this.lastState.get(nodeId);
@@ -529,9 +547,9 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		if(target === undefined || source === undefined) {
 			return;
 		}
-		this.unassigned.delete(target);
-
+		/* the source is read before the target counts as assigned, so `x <- x` reads the `x` from before */
 		this.applySemantics((semantics, state, ctx) => semantics.handleAssignmentCall?.(state, call, ctx, target, source));
+		this.unassigned.delete(target);
 		// the assignment target is visited before the assignment, so we update its state with the assigned values
 		this.trace.set(target, this.currentState);
 	}
@@ -632,7 +650,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		}
 	}
 
-	protected handleConditionBranch(state: MultiValueStateDomain<Partial<Domains>>, conditionVertex: DataflowGraphVertexArgument, branch: typeof RTrue | typeof RFalse): MultiValueStateDomain<Partial<Domains>> {
+	protected handleConditionBranch(state: MultiValueStateDomain<Partial<Domains>>, conditionVertex: DataflowGraphVertexArgument, branch: typeof RTrue | typeof RFalse, target?: NodeId): MultiValueStateDomain<Partial<Domains>> {
 		if(DfgVertex.isFunctionCall(conditionVertex) && conditionVertex.args.every(FunctionArgument.isNotEmpty)) {
 			const name = Identifier.getName(conditionVertex.name);
 			const isNot = Identifier.matches(name, ['base', '!']);
@@ -643,15 +661,15 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 				const childVertex = this.getDataflowGraph(conditionVertex.args[0].nodeId);
 
 				if(childVertex !== undefined) {
-					return this.handleConditionBranch(state, childVertex, branch === RTrue ? RFalse : RTrue);
+					return this.handleConditionBranch(state, childVertex, branch === RTrue ? RFalse : RTrue, target);
 				}
 			} else if((isAnd || isOr) && conditionVertex.args.length === 2) {
 				const leftVertex = this.getDataflowGraph(conditionVertex.args[0].nodeId);
 				const rightVertex = this.getDataflowGraph(conditionVertex.args[1].nodeId);
 
 				if(leftVertex !== undefined && rightVertex !== undefined) {
-					const leftState = this.handleConditionBranch(state, leftVertex, branch);
-					const rightState = this.handleConditionBranch(state, rightVertex, branch);
+					const leftState = this.handleConditionBranch(state, leftVertex, branch, target);
+					const rightState = this.handleConditionBranch(state, rightVertex, branch, target);
 
 					if(branch === RTrue && isAnd || branch === RFalse && isOr) {
 						return leftState.meet(rightState);
@@ -663,7 +681,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		}
 		const newState = state.create(state.value);
 
-		this.applySemantics((semantics, state, ctx) => semantics.handleConditionBranch?.(state, conditionVertex, ctx, branch), newState);
+		this.applySemantics((semantics, state, ctx) => semantics.handleConditionBranch?.(state, conditionVertex, ctx, branch, target), newState);
 		return newState;
 	}
 
@@ -705,9 +723,9 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	 * The abstract state one predecessor contributes, joined into the state at the current vertex.
 	 *
 	 * The condition semantics of the analysis are applied at branches: on the then-branch of `if(u) a else b`
-	 * the predecessor is `u` and `branch.when` is `true`, so `u` held.
+	 * the predecessor is `u` and `branch.when` is `true`, so `u` held. `target` is the vertex the branch enters, which tells the arms of a `switch` apart.
 	 */
-	protected getPredecessorState({ id, branch }: AbsintPredecessor): MultiValueStateDomain<Partial<Domains>> | undefined {
+	protected getPredecessorState({ id, branch }: AbsintPredecessor, target?: NodeId): MultiValueStateDomain<Partial<Domains>> | undefined {
 		const predState = this.trace.get(id);
 
 		if(predState === undefined || branch === undefined) {
@@ -715,7 +733,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		}
 		const conditionVertex = this.getDataflowGraph(branch.id);
 
-		return conditionVertex === undefined ? predState : this.handleConditionBranch(predState, conditionVertex, branch.when ? RTrue : RFalse);
+		return conditionVertex === undefined ? predState : this.handleConditionBranch(predState, conditionVertex, branch.when ? RTrue : RFalse, target);
 	}
 
 	protected override visitFunctionCall(call: DataflowGraphVertexFunctionCall): void {
@@ -742,6 +760,27 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	protected getCallTargets(callId: NodeId): readonly NodeId[] {
 		const targets = CfgVertex.getCallTargets(this.getCfgVertex(callId));
 		return targets === undefined ? NoNeighbors : [...targets];
+	}
+
+	/** Interprets function bodies no call reached, from the state at their definition (e.g., a Shiny server). */
+	protected interpretUncalledFunctions(): void {
+		const pending = [...this.config.dfg.verticesOfType(VertexType.FunctionDefinition)].map(([id]) => id);
+		for(let progress = true; progress;) {
+			progress = false;
+			for(const def of pending) {
+				const entry = this.getFunctionEntry(def);
+				if(entry === undefined || this.trace.has(entry) || !this.trace.has(def)) {
+					continue;
+				}
+				progress = true;
+				this.enteredFrom.set(entry, def);
+				const outerStack = this.stack;
+				this.startVisitor([entry]);
+				this.stack = outerStack;
+				this.enteredFrom.delete(entry);
+			}
+		}
+		this.dropSummaries();
 	}
 
 	/** Where a function definition starts, i.e. the first thing that runs when it is called. */
@@ -846,6 +885,14 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 			}
 			const handed = this.parameterValues(def);
 			this.trace.set(callId, inner);
+
+			const key = round === 0 ? this.summaryKey(def, inner) : undefined;
+			const known = key === undefined ? undefined : this.summaries.get(def)?.find(s => s.key.status === key.status && sameValues(s.key.values, key.values));
+			if(known !== undefined) {
+				return { states: known.exits.map(exit => applyExit(inner, exit)), value: known.value };
+			}
+			const before = key === undefined ? undefined : new Map(inner.value === Bottom ? [] : inner.value);
+			const recursiveCallCount = this.recursiveCalls.size;
 			this.enteredFrom.set(entry, callId);
 
 			/* what a recursive call is worth is no part of the state, so the traversal has to be made to re-read */
@@ -880,6 +927,10 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 
 			if(!this.recursive.has(def)) {
 				this.restoreVisits(counts);
+				if(key !== undefined && before !== undefined && this.recursiveCalls.size === recursiveCallCount) {
+					const summary = { key, exits: states.map(state => exitDelta(before, state)), value: left };
+					this.summaries.set(def, [...this.summaries.get(def) ?? [], summary]);
+				}
 				return { states, value: left };
 			} else if(left === undefined) {
 				/* one way out of the recursion says nothing, so neither does the recursion */
@@ -899,6 +950,52 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 				return { states, value: settled };
 			}
 		}
+	}
+
+	/** What a run of `def` starting in `state` reads, `undefined` if the run depends on a recursion and must not be reused. */
+	private summaryKey(def: NodeId, state: MultiValueStateDomain<Partial<Domains>>): SummaryKey | undefined {
+		if(state.isBottom()) {
+			return undefined;
+		}
+		const inputs = this.inputs(def);
+		if(inputs.some(id => this.recursiveCalls.has(id))) {
+			return undefined;
+		}
+		const status = inputs.map(id => {
+			const traced = this.trace.get(id);
+			return `${traced === undefined ? 0 : this.unassigned.has(id) ? 2 : traced.isBottom() ? 3 : 1}${this.visited.get(id) ?? ''}`;
+		}).join(',');
+		return { values: inputs.map(id => state.get(id)), status };
+	}
+
+	/** See {@link inputsOf}, collected over the bodies of `def` and of everything it may call. */
+	private inputs(def: NodeId): readonly NodeId[] {
+		let inputs = this.inputsOf.get(def);
+		if(inputs !== undefined) {
+			return inputs;
+		}
+		const ids = new Set<NodeId>();
+		const defs = [def];
+		const seen = new Set(defs);
+		for(let next = defs.pop(); next !== undefined; next = defs.pop()) {
+			for(const id of RNode.collectAllIds(this.getNormalizedAst(next))) {
+				ids.add(id);
+				for(const origin of Dataflow.origin(this.config.dfg, id) ?? []) {
+					if(origin.type === OriginType.ReadVariableOrigin) {
+						ids.add(origin.id);
+					}
+				}
+				for(const target of this.getCallTargets(id)) {
+					if(!seen.has(target)) {
+						seen.add(target);
+						defs.push(target);
+					}
+				}
+			}
+		}
+		inputs = [...ids];
+		this.inputsOf.set(def, inputs);
+		return inputs;
 	}
 
 	/** What the parameters of a definition are worth in the state they were just bound in. */
@@ -995,7 +1092,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 
 	/** Checks whether a node represents a unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...) */
 	protected isUnsupportedFunctionCall(nodeId: NodeId): boolean {
-		return FunctionSemantics.call.unsupported.isUnsupportedCall(this.getDataflowGraph(nodeId), this.config.dfg);
+		return UnsupportedFunctions.isUnsupportedCall(this.getDataflowGraph(nodeId), this.config.dfg);
 	}
 
 	/**
@@ -1072,4 +1169,30 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	protected shouldWiden(wideningPoint: CfgVertex): boolean {
 		return (this.visited.get(CfgVertex.getId(wideningPoint)) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
 	}
+}
+
+/** What an exit state changed relative to the state the run started in. */
+function exitDelta<Domains extends AbstractProduct>(before: ReadonlyMap<NodeId, MultiValueDomain<Partial<Domains>>>, exit: MultiValueStateDomain<Partial<Domains>>): ReadonlyMap<NodeId, MultiValueDomain<Partial<Domains>>> | typeof Bottom {
+	if(exit.value === Bottom) {
+		return Bottom;
+	}
+	const delta = new Map<NodeId, MultiValueDomain<Partial<Domains>>>();
+	for(const [id, value] of exit.value) {
+		if(before.get(id) !== value) {
+			delta.set(id, value);
+		}
+	}
+	return delta;
+}
+
+/** The exit state of a reused run, for a call starting in `state`. */
+function applyExit<Domains extends AbstractProduct>(state: MultiValueStateDomain<Partial<Domains>>, delta: ReadonlyMap<NodeId, MultiValueDomain<Partial<Domains>>> | typeof Bottom): MultiValueStateDomain<Partial<Domains>> {
+	if(delta === Bottom) {
+		return state.bottom();
+	}
+	const exit = state.create(state.value);
+	for(const [id, value] of delta) {
+		exit.set(id, value);
+	}
+	return exit;
 }

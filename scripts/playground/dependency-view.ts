@@ -3,8 +3,8 @@ import { RNode } from '../../src/r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, NormalizedAst, ParentInformation } from '../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DependencyInfo } from '../../src/queries/catalog/dependencies-query/dependencies-query-format';
-import { Unknown } from '../../src/queries/catalog/dependencies-query/dependencies-query-format';
-import { Identifier } from '../../src/dataflow/environments/identifier';
+import { Unknown } from '../../src/queries/catalog/dependencies-query/dependency-values';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier } from '../../src/dataflow/environments/identifier';
 import { EmptyArgument, RFunctionCall } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RSymbol } from '../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -157,7 +157,7 @@ export interface ViewContext {
 
 const Combinators = new Set(['+', '%>%', '|>']);
 
-function assignedName(ids: AstIdMap, id: NodeId): string | undefined {
+function assignedName(ids: AstIdMap, id: NodeId): BrandedIdentifier | undefined {
 	let node: RNode<ParentInformation> | undefined = ids.get(id);
 	/* flowR may point at the called name instead of the call */
 	const callParent = node?.info.parent === undefined ? undefined : ids.get(node.info.parent);
@@ -204,7 +204,7 @@ function renderFunctionName(fn: Identifier | undefined): string {
 	}
 }
 
-function packageOf(e: DependencyInfo): string | undefined {
+function packageOf(e: DependencyInfo): BrandedNamespace | undefined {
 	try {
 		return Identifier.getNamespace(e.functionName);
 	} catch{
@@ -234,13 +234,12 @@ export function dependencyTree(answer: Readonly<Record<string, readonly Dependen
 	const plots = describePlots((answer.visualize ?? []) as DependencyInfo[], ctx.ast);
 	const ids = ctx.ast.idMap;
 	const locOf = (id: NodeId | undefined) => id === undefined ? undefined : ids.get(id)?.location;
-	const byLocation = (a: NodeId | undefined, b: NodeId | undefined): number => {
+	function byLocation(a: NodeId | undefined, b: NodeId | undefined): number {
 		const la = locOf(a), lb = locOf(b);
 		return la && lb ? la[0] - lb[0] || la[1] - lb[1] : la ? -1 : lb ? 1 : 0;
-	};
-	const groupNode = (key: string, kind: string, label: string, tooltip: string, icon: IconName, children: DepNode[]): DepNode =>
-		({ key, kind, label, description: items(allNodes(children).length), tooltip, icon, colored: true, root: false, children });
-	const guardedName = (e: DependencyInfo): string => {
+	}
+	const groupNode = (key: string, kind: string, label: string, tooltip: string, icon: IconName, children: DepNode[]): DepNode => ({ key, kind, label, description: items(allNodes(children).length), tooltip, icon, colored: true, root: false, children });
+	function guardedName(e: DependencyInfo): string {
 		const plot = plots.get(e);
 		if(plot) {
 			return `${Identifier.getName(e.functionName)} ${plot}`;
@@ -252,15 +251,14 @@ export function dependencyTree(answer: Readonly<Record<string, readonly Dependen
 		const named = Identifier.getName(e.functionName);
 		const pattern = e.argumentId === undefined ? undefined : pathPattern(RArgument.valueOf(ids.get(e.argumentId)));
 		return pattern !== undefined && pattern.includes('<') ? `${named}: ${pattern}` : e.lexemeOfArgument ? `${named}: ${e.lexemeOfArgument}` : named;
-	};
-	const usageName = (e: DependencyInfo): string => {
+	}
+	function usageName(e: DependencyInfo): string {
 		const node = e.nodeId === undefined ? undefined : ids.get(e.nodeId);
 		const fn = Identifier.getName(e.functionName);
 		return (fn === '::' || fn === ':::') && RSymbol.is(node) ? renderFunctionName(node.content) : renderFunctionName(e.functionName);
-	};
-	const displayLabel = (e: DependencyInfo, name: string): string =>
-		plots.has(e) || typeof e.value !== 'string' || e.value === Unknown ? name : shortenPath(name).label;
-	const withDataFlow = (kind: string, e: DependencyInfo, label: string): string => {
+	}
+	const displayLabel = (e: DependencyInfo, name: string): string => plots.has(e) || typeof e.value !== 'string' || e.value === Unknown ? name : shortenPath(name).label;
+	function withDataFlow(kind: string, e: DependencyInfo, label: string): string {
 		if(NoDataFlow.has(kind) || plots.has(e)) {
 			return label;
 		}
@@ -271,9 +269,9 @@ export function dependencyTree(answer: Readonly<Record<string, readonly Dependen
 		}
 		const call = input ? `${label}(${input})` : label;
 		return output ? `${call} → ${output}` : call;
-	};
+	}
 
-	const entry = (kind: string, all: readonly DependencyInfo[], info: DependencyInfo, label: string, link = false): DepNode => {
+	function entry(kind: string, all: readonly DependencyInfo[], info: DependencyInfo, label: string, link = false): DepNode {
 		const cat = categoryInfo(kind);
 		const verb = link ? 'is linked to' : cat.verb;
 		const fn = renderFunctionName(info.functionName);
@@ -313,49 +311,49 @@ export function dependencyTree(answer: Readonly<Record<string, readonly Dependen
 			target:      span ? { file, span } : undefined,
 			implicit:    info.implicit
 		};
-	};
+	}
 
 	/* a call holds the uses inside the function it calls, as `report(x)` holds the `cat()` in it */
-	const viaNested = (group: readonly DependencyInfo[], make: (e: DependencyInfo) => DepNode): DepNode[] => {
+	function viaNested(group: readonly DependencyInfo[], make: (e: DependencyInfo) => DepNode): DepNode[] {
 		const inner = new Set(group.map(e => e.via).filter(v => v !== undefined));
-		const nest = (e: DependencyInfo, seen: ReadonlySet<DependencyInfo>): DepNode => {
+		function nest(e: DependencyInfo, seen: ReadonlySet<DependencyInfo>): DepNode {
 			const made = make(e);
 			const below = group.filter(i => !seen.has(i) && e.via !== undefined && i.nodeId === e.via).map(i => nest(i, new Set([...seen, i])));
 			return below.length === 0 ? made : { ...made, children: [...made.children, ...below] };
-		};
+		}
 		const roots = group.filter(e => e.nodeId === undefined || !inner.has(e.nodeId));
 		return (roots.length > 0 ? roots : group).map(e => nest(e, new Set([e])));
-	};
+	}
 
 	/* what reaches the console is told apart by the code that prints it, `print(x)` or a name echoed on its own */
-	const printed = (e: DependencyInfo): string => {
+	function printed(e: DependencyInfo): string {
 		const node = e.nodeId === undefined ? undefined : ids.get(e.nodeId);
 		const span = RNode.span(node) ?? node?.location;
 		const text = (span && ctx.fileOf(node) === undefined ? ctx.textAt(span) : undefined) ?? node?.lexeme ?? renderFunctionName(e.functionName);
 		const line = text.split('\n')[0].trim();
 		return line.length > 40 ? `${line.slice(0, 39)}…` : line;
-	};
-	const toConsole = (group: readonly DependencyInfo[], kind: string, all: readonly DependencyInfo[], stream: string): DepNode => {
+	}
+	function toConsole(group: readonly DependencyInfo[], kind: string, all: readonly DependencyInfo[], stream: string): DepNode {
 		const children = viaNested(group, e => {
 			const file = ctx.fileOf(e.nodeId === undefined ? undefined : ids.get(e.nodeId));
 			return { ...entry(kind, all, e, printed(e)), description: `${e.implicit ? 'auto-printed ' : ''}in ${file ? `${file} ` : ''}(L. ${locOf(e.nodeId)?.[0] ?? '?'})` };
 		});
 		return groupNode(`console:${stream}${children.map(c => c.key).join('-')}`, kind, stream === 'stderr' ? 'Console (stderr)' : 'Console output', `what the script prints to ${stream}`, 'terminal', children);
-	};
+	}
 
-	const grouped = (kind: string, shown: readonly DependencyInfo[], all: readonly DependencyInfo[]): DepNode[] => {
+	function grouped(kind: string, shown: readonly DependencyInfo[], all: readonly DependencyInfo[]): DepNode[] {
 		/* a call that cannot tell which of the values in its function is its own names none, and shows them all below it
 		   instead, as `save_figure()` holds both files the `ggsave()` in its body may write */
 		const open = (e: DependencyInfo): boolean => e.via !== undefined && (e.value === undefined || e.value === Unknown);
 		const heldBelow = new Set(shown.filter(open).map(e => e.via));
-		const withHeld = (e: DependencyInfo, made: DepNode, seen: ReadonlySet<DependencyInfo>): DepNode => {
+		function withHeld(e: DependencyInfo, made: DepNode, seen: ReadonlySet<DependencyInfo>): DepNode {
 			if(!open(e)) {
 				return made;
 			}
 			const held = shown.filter(i => !seen.has(i) && i.nodeId === e.via)
 				.map(i => withHeld(i, entry(kind, all, i, withDataFlow(kind, i, displayLabel(i, guardedName(i)))), new Set([...seen, i])));
 			return held.length === 0 ? made : { ...made, children: [...made.children, ...held] };
-		};
+		}
 		const groups = new Map<string, DependencyInfo[]>();
 		for(const e of shown.filter(i => i.nodeId !== undefined && !heldBelow.has(i.nodeId)).sort((a, b) => byLocation(a.nodeId, b.nodeId))) {
 			const name = guardedName(e);
@@ -374,7 +372,7 @@ export function dependencyTree(answer: Readonly<Record<string, readonly Dependen
 			const children = viaNested(uses, e => withHeld(e, entry(kind, all, e, withDataFlow(kind, e, byValue ? usageName(e) : guardedName(e))), new Set([e])));
 			return groupNode(`${name}${children.map(c => c.key).join('-')}`, kind, displayLabel(uses[0], name), name, 'folder', children);
 		});
-	};
+	}
 
 	const roots = kinds.map((kind): DepNode => {
 		const cat = categoryInfo(kind);

@@ -8,15 +8,13 @@ import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
 import { Bottom, isBottom, isTop, type Lift, Top, type Value } from '../../../../src/dataflow/eval/values/r-value';
 import { withShell } from '../../_helper/shell';
-import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { intervalFromValues } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
 import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-constants';
 import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
-import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
 import { Resolve } from '../../../../src/dataflow/environments/resolve-helper';
+import { analyze } from '../../_helper/analyzer';
 
 /** Controls which extra results are accepted in addition to an exact match */
 enum Allow {
@@ -75,19 +73,17 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 		const effectiveName = decorateLabelContext(label(name), ['resolve']);
 
 		test(effectiveName, async() => {
-			const context = contextFromInput(code.trim());
-			const dataflow = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				parser: shell,
-				context
-			}).allRemainingSteps();
+			const analyzer = await analyze(shell, code.trim());
+			const dataflow = await analyzer.dataflow();
+			const { idMap } = await analyzer.normalize();
 
-			const resolved = Resolve.toValue(SlicingCriterion.parse(identifier, dataflow.normalize.idMap), {
-				environment: withEnv === With.GraphOnly ? undefined : dataflow.dataflow.environment,
-				graph:       dataflow.dataflow.graph,
-				idMap:       dataflow.normalize.idMap,
+			const resolved = Resolve.toValue(SlicingCriterion.parse(identifier, idMap), {
+				environment: withEnv === With.GraphOnly ? undefined : dataflow.environment,
+				graph:       dataflow.graph,
+				idMap,
 				full:        true,
 				resolve:     FlowrConfig.default().solver.variables,
-				ctx:         context
+				ctx:         analyzer.inspectContext()
 			});
 
 			if((allow & Allow.Top) === Allow.Top && isTop(resolved)) {
@@ -162,7 +158,7 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 		});
 		testWithGraphAndEnvironment('Not yet supported', resolveWith => {
 			// Not yet Supported
-			testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top, resolveWith);
+			testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', setFrom(interval(57)), Allow.Top, resolveWith);
 			testResolve('Super Assign',         '4@x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', set([2]), Allow.Top, resolveWith);
 
 			testResolve('Random Loop',          '4@x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top, Allow.Top, resolveWith);

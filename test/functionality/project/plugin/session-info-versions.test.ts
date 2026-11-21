@@ -34,7 +34,7 @@ function ctxWith(name: string, content: string): FlowrAnalyzerContext {
 describe('sessionInfo() versions', () => {
 	test('registers R and every listed package as exact pins', () => {
 		const ctx = ctxWith('script.R', sessionInfoComment);
-		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
+		const got = ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]);
 		assert.sameDeepMembers(got, [
 			['R', '4.3.1'],
 			['dplyr', '1.1.2'],
@@ -57,7 +57,7 @@ describe('sessionInfo() versions', () => {
 
 	test('the R version line together with a package listing pins both', () => {
 		const ctx = ctxWith('script.R', '# R version 4.4.0 (2024-04-24)\n# other attached packages:\n# [1] dplyr_1.1.2\nx <- 1\n');
-		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
+		const got = ctx.deps.getDependencies().map(d => [String(d.name), d.versionConstraints[0]?.raw]);
 		assert.sameDeepMembers(got, [['R', '4.4.0'], ['dplyr', '1.1.2']]);
 	});
 

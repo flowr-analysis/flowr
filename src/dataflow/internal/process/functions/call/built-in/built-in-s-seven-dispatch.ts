@@ -12,9 +12,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 /** Used to separate S7 dispatch info in identifiers */
 export const S7DispatchSeparator = '﹕s3﹕';
 
-/**
- * Process an S7 generic dispatch call like `S7_dispatch`.
- */
+/** Process an S7 generic dispatch call like `S7_dispatch`. */
 export function processS7Dispatch<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],

@@ -4,7 +4,7 @@ import { label } from '../_helper/label';
 import { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 
-const lexemes = (ast: NormalizedAst): string[] => {
+function lexemes(ast: NormalizedAst): string[] {
 	const out: string[] = [];
 	RProject.visitAst(ast.ast, t => {
 		if(t.lexeme !== undefined) {
@@ -13,7 +13,7 @@ const lexemes = (ast: NormalizedAst): string[] => {
 		return false;
 	});
 	return out;
-};
+}
 
 const program = 'x <- 1\ny <- x + 2\n# a comment\nif(y > 0) {\n  print("hi")\n}\nf <- function(a) a * 2\nz <- f(y)';
 

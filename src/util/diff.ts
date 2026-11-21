@@ -46,16 +46,13 @@ export interface GenericDifferenceInformation<Report extends WriteableDifference
 	readonly config:    GenericDiffConfiguration
 }
 
-
 export interface GenericDiffConfiguration {
 	/**
 	 * The left/first graph may contain more vertices and or edges than the right/second graph.
 	 * However, those which are the same (based on their ids) have to be equal
 	 */
 	readonly rightIsSubgraph?:    boolean
-	/**
-	 * Similar to {@link rightIsSubgraph}, but for the left/first graph.
-	 */
+	/** Similar to {@link rightIsSubgraph}, but for the left/first graph. */
 	readonly leftIsSubgraph?:     boolean
 	/**
 	 * Compare the control flow a dataflow graph carries as well.
@@ -65,10 +62,7 @@ export interface GenericDiffConfiguration {
 	readonly compareControlFlow?: boolean
 }
 
-
-/**
- * Computes the difference of two sets and adds human-readable information to the current report
- */
+/** Computes the difference of two sets and adds human-readable information to the current report */
 export function setDifference<T, Report extends WriteableDifferenceReport = WriteableDifferenceReport>(left: ReadonlySet<T>, right: ReadonlySet<T>, info: GenericDifferenceInformation<Report>): void {
 	const lWithoutR = setMinus(left, right);
 	const rWithoutL = setMinus(right, left);

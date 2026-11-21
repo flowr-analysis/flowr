@@ -1,7 +1,10 @@
 import { FlowrAnalyzerPlugin, PluginType } from '../flowr-analyzer-plugin';
 import { SemVer } from 'semver';
+import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
 import type { PackageSignatureSource } from '../../sigdb/reader';
 import type { FlowrConfig } from '../../../config';
+import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
+import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 /** metadata of a package database a plugin currently has loaded */
 export interface SigDbLoadedInfo {
@@ -31,7 +34,7 @@ export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPl
 	}
 
 	/** Packages known to this plugin that export `name` (empty for plugins without a database). */
-	public packagesExporting(_name: string): readonly string[] {
+	public packagesExporting(_name: BrandedIdentifier): readonly BrandedNamespace[] {
 		return [];
 	}
 
@@ -49,6 +52,15 @@ export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPl
 	public preloadDatabasesSync(): void {}
 
 	/**
+	 * Runs once the code is normalized and before its dataflow is built, the one point where a plugin may wait
+	 * (on the network, say) for what the dataflow will ask of it, as the lookups during the dataflow are synchronous.
+	 * No-op by default.
+	 */
+	public prepare(_ctx: FlowrAnalyzerContext, _ast: NormalizedAst): Promise<void> {
+		return Promise.resolve();
+	}
+
+	/**
 	 * Whether this plugin can resolve the always-available base-R packages (so their exports can be attached
 	 * eagerly for bare base calls). `false` for plugins without a versioned base-R signature source.
 	 */
@@ -57,9 +69,7 @@ export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPl
 	}
 }
 
-/**
- * This is the default no-op implementation of the {@link FlowrAnalyzerPackageVersionsPlugin}.
- */
+/** This is the default no-op implementation of the {@link FlowrAnalyzerPackageVersionsPlugin}. */
 class DefaultFlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name = 'default-package-versions-plugin';
 	public readonly description = 'Does nothing, the default package versions plugin.';

@@ -46,7 +46,6 @@ export function normalizeExpression(data: NormalizerData, entry: JsonEntry): RNo
 		return maybeFunctionDefinition;
 	}
 
-
 	const children = normalizeExpressions(childData, childrenSource);
 
 	const [delimiters, nodes] = partitionArray(children, x => RDelimiter.is(x) || RComment.is(x));
@@ -62,11 +61,7 @@ export function normalizeExpression(data: NormalizerData, entry: JsonEntry): RNo
 			location,
 			children: nodes as RNode[],
 			lexeme:   content,
-			info:     {
-				fullRange:  childData.currentRange,
-				adToks:     delimiters,
-				fullLexeme: childData.currentLexeme
-			}
+			info:     { fullRange: childData.currentRange, adToks: delimiters, fullLexeme: childData.currentLexeme }
 		};
 	}
 }

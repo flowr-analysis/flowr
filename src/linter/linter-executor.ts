@@ -1,5 +1,5 @@
-import { type LintingRuleConfig, type LintingRuleMetadata, type LintingRuleNames, type LintingRuleResult, LintingRules } from './linter-rules';
-import type { LintingResult, LintingResults, LintingRule } from './linter-format';
+import { type LintingRuleConfig, type LintingRuleMetadata, type LintingRuleNames, getLintingRule } from './linter-rules';
+import type { LintingResult, LintingResults } from './linter-format';
 import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { runSearch } from '../search/flowr-search-executor';
 import type { DeepPartial } from 'ts-essentials';
@@ -14,7 +14,8 @@ import { SecureMode } from '../util/secure-mode';
 const RegexRuleOptions: { readonly [N in LintingRuleNames]?: readonly (keyof LintingRuleConfig<N>)[] } = {
 	'absolute-file-paths':   ['absolutePathRegex'],
 	'problematic-inputs':    ['consider', 'pipeCommandFunctions'],
-	'no-leaked-credentials': ['credentialNamePattern', 'credentialValuePattern']
+	'no-leaked-credentials': ['credentialNamePattern', 'credentialValuePattern', 'credentialCallPattern'],
+	'secret-exfiltration':   ['credentialNamePattern', 'credentialValuePattern', 'secretFiles', 'trustedFiles']
 };
 
 /** The given rule config without the {@link RegexRuleOptions} if the secure mode is enabled. */
@@ -28,22 +29,23 @@ function withoutUntrustedRegexes<Name extends LintingRuleNames>(ruleName: Name, 
 
 /** the finding with the file it is in, which a rule pointing at a node of the program leaves to that node */
 function locatedIn<Result extends LintingResult>(found: Result, idMap: AstIdMap): Result {
+	if(found.loc === undefined) {
+		return found;
+	}
 	const file = found.loc[4] ?? idMap.get([found.involvedId ?? []].flat()[0])?.info.file;
 	return file === found.loc[4] ? found : { ...found, loc: [found.loc[0], found.loc[1], found.loc[2], found.loc[3], file] };
 }
 
-/**
- * Executes a specific linting rule on the given analysis provider input.
- */
+/** Executes a specific linting rule on the given analysis provider input. */
 export async function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: ReadonlyFlowrAnalysisProvider, lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>): Promise<LintingResults<Name>> {
 	try {
-		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
+		const rule = getLintingRule(ruleName);
 		const fullConfig = deepMergeObject<LintingRuleConfig<Name>>(rule.info.defaultConfig(input.inspectContext()), withoutUntrustedRegexes(ruleName, lintingRuleConfig));
 
 		const ruleSearch = rule.createSearch(fullConfig, input);
 
 		const searchStart = Date.now();
-		const searchResult = await runSearch(ruleSearch, input);
+		const searchResult = ruleSearch !== undefined ? await runSearch(ruleSearch, input) : undefined as never;
 		const searchTime = Date.now() - searchStart;
 
 		const processStart = Date.now();
@@ -54,19 +56,13 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 		return {
 			...result,
 			results: result.results.map(found => locatedIn(found, idMap)),
-			'.meta': {
-				...(result['.meta'] as LintingRuleMetadata<Name> ?? {}),
-				searchTimeMs:  searchTime,
-				processTimeMs: processTime
-			}
+			'.meta': { ...(result['.meta'] as LintingRuleMetadata<Name> ?? {}), searchTimeMs: searchTime, processTimeMs: processTime }
 		};
 	} catch(e) {
 		/* a project without any code (e.g. a package of data only) has nothing to lint, which is no error of the rule */
 		if(!input.inspectContext().files.hasRequests()) {
 			return { results: [], '.meta': { searchTimeMs: 0, processTimeMs: 0 } } as unknown as LintingResults<Name>;
 		}
-		return {
-			error: e
-		};
+		return { error: e };
 	}
 }

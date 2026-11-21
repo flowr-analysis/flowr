@@ -89,7 +89,7 @@ export const NON_ASCII_CODE = {
 					});
 				}
 			} else if(RSymbol.is(node)) {
-				const characters = nonAsciiCharacters(Identifier.getName(node.content));
+				const characters = nonAsciiCharacters(String(Identifier.getName(node.content)));
 				if(characters.length > 0) {
 					results.push({
 						...at(node),
@@ -124,9 +124,6 @@ export const NON_ASCII_CODE = {
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.CmdCheck, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds non-ASCII characters in R code and the NAMESPACE outside of comments. Offers `\\u` escapes for strings as a quick fix.',
-		defaultConfig: () => ({
-			checkStrings: true,
-			checkSymbols: true
-		})
+		defaultConfig: () => ({ checkStrings: true, checkSymbols: true })
 	}
 } as const satisfies LintingRule<NonAsciiCodeResult, NonAsciiCodeMetadata, NonAsciiCodeConfig>;

@@ -1,7 +1,7 @@
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { FlowrWikiBaseRef, linkFlowRSourceFile } from './doc-util/doc-files';
 import { CmdCheckConformance, CmdCheckSource, type ConformanceEntry, ConformanceLevel, numberedConformance, RPackagesCmdCheck, WritingRExtensionsCmdCheck } from '../linter/rules/cmd-check/conformance';
-import { type LintingRuleNames, LintingRules } from '../linter/linter-rules';
+import { type LintingRuleNames, LintingRules, lintingRuleFile } from '../linter/linter-rules';
 import { codeBlock } from './doc-util/doc-code';
 import { showQuery } from './doc-util/doc-query';
 import { getReplCommand } from './doc-util/doc-cli-option';
@@ -15,8 +15,7 @@ import { joinWithLast } from '../util/text/strings';
 import { LintingResultCertainty, LintingRuleCertainty } from '../linter/linter-format';
 import { LintQuickFixes } from '../linter/linter-fix';
 import type { LinterOutputFormat } from '../linter/linter-output';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import type { KnownParser } from '../r-bridge/parser';
 import { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -64,10 +63,9 @@ const ExampleDescription = 'Package: pkg\nVersion: 1.0\nTitle: A Package\nLicens
 const ExampleRoot = '/pkg';
 
 /** what the wiki shows for each linting rule: its configuration and implementation types, its tests, and an example with findings */
-export const LintingRuleExamples: Readonly<Record<LintingRuleNames, { readonly configType: string, readonly ruleType: string, readonly testfile: string, readonly example: string | PackageExample, readonly config?: object }>> = {
+export const LintingRuleExamples: Readonly<Record<LintingRuleNames, { readonly example: string | PackageExample, readonly config?: object }>> = {
 	'deprecated-functions': {
-		configType: 'DeprecatedFunctionsConfig', ruleType:   'DEPRECATED_FUNCTIONS', testfile:   'lint-deprecated-functions',
-		example:    `
+		example: `
 first <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
 second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
 dplyr::all_equal(first, second)
@@ -77,51 +75,50 @@ theme(panel.grid = element_line(size = 1))
 `
 	},
 	'network-functions': {
-		configType: 'NetworkFunctionsConfig', ruleType:   'NETWORK_FUNCTIONS', testfile:   'lint-network-functions',
-		example:    `
+		example: `
 read.csv("https://example.com/data.csv")
 download.file("https://foo.bar")
 `
 	},
+	'interactive-functions': {
+		example: `
+p <- penguins
+View(p)
+if(interactive()) browser()
+`
+	},
 	'file-path-validity': {
-		configType: 'FilePathValidityConfig', ruleType:   'FILE_PATH_VALIDITY', testfile:   'lint-file-path-validity',
-		example:    { code: 'survey <- read.csv("data/Survey.csv")', files: { 'R/survey.csv': 'id,value\n1,2\n' } }
+		example: { code: 'survey <- read.csv("data/Survey.csv")', files: { 'R/survey.csv': 'id,value\n1,2\n' } }
 	},
 	'absolute-file-paths': {
-		configType: 'AbsoluteFilePathConfig', ruleType:   'ABSOLUTE_PATH', testfile:   'lint-absolute-path',
-		example:    'read.csv("/home/me/project/data/survey.csv")',
-		config:     { useAsWd: '/home/me/project' }
+		example: 'read.csv("/home/me/project/data/survey.csv")',
+		config:  { useAsWd: '/home/me/project' }
 	},
 	'unused-definitions': {
-		configType: 'UnusedDefinitionConfig', ruleType:   'UNUSED_DEFINITION', testfile:   'lint-unused-definition',
-		example:    `
+		example: `
 x <- 42
 y <- 3
 print(x)
 `
 	},
 	'seeded-randomness': {
-		configType: 'SeededRandomnessConfig', ruleType:   'SEEDED_RANDOMNESS', testfile:   'lint-seeded-randomness',
-		example:    'runif(1)'
+		example: 'runif(1)'
 	},
 	'naming-convention': {
-		configType: 'NamingConventionConfig', ruleType:   'NAMING_CONVENTION', testfile:   'lint-naming-convention',
-		example:    `
+		example: `
 testVar <- 5
 testVarTwo <- 5
 other_var <- 5
 `
 	},
 	'dataframe-access-validation': {
-		configType: 'DataFrameAccessValidationConfig', ruleType:   'DATA_FRAME_ACCESS_VALIDATION', testfile:   'lint-dataframe-access-validation',
-		example:    `
+		example: `
 df <- data.frame(id = 1:5, name = 6:10)
 df[6, "value"]
 `
 	},
 	'dead-code': {
-		configType: 'DeadCodeConfig', ruleType:   'DEAD_CODE', testfile:   'lint-dead-code',
-		example:    `
+		example: `
 f <- function(x) {
 	return(x)
 	print("never reached")
@@ -129,150 +126,158 @@ f <- function(x) {
 if(TRUE) 1 else 2
 `
 	},
+	'code-clones': {
+		example: `
+normalize <- function(v) {
+	m <- mean(v)
+	(v - m) / sd(v)
+}
+scale_it <- function(values) {
+	mu <- mean(values)
+	(values - mu) / sd(values)
+}
+`
+	},
 	'useless-loop': {
-		configType: 'UselessLoopConfig', ruleType:   'USELESS_LOOP', testfile:   'lint-useless-loop',
-		example:    'for(i in c(1)) { print(i) }'
+		example: 'for(i in c(1)) { print(i) }'
+	},
+	'call-contracts': {
+		example: 'f <- function(x, n) { stopifnot(length(x) >= n); x }\nf(1:3, 5)\ng <- function(how = c("fast", "exact")) match.arg(how)\ng("slow")\ncombn(4, -1)\nstrsplit(1, "a")'
 	},
 	'stop-call': {
-		configType: 'StopWithCallConfig', ruleType:   'STOP_WITH_CALL_ARG', testfile:   'lint-stop-call',
-		example:    'f <- function(x) stop(x)'
+		example: 'f <- function(x) stop(x)'
 	},
 	'roxygen-arguments': {
-		configType: 'RoxygenArgsConfig', ruleType:   'ROXYGEN_ARGS', testfile:   'lint-roxygen-arguments',
-		example:    '#\' A function with two parameters, but only only one documented\n#\' @param a A variable\nf = function(a, b){return a;}'
+		example: '#\' A function with two parameters, but only only one documented\n#\' @param a A variable\nf = function(a, b){return a;}'
 	},
 	'problematic-inputs': {
-		configType: 'ProblematicInputsConfig', ruleType:   'PROBLEMATIC_INPUTS', testfile:   'lint-problematic-inputs',
-		example:    `
+		example: `
 function(x) {
 	eval(x)
 }
 `
 	},
 	'software-has-license': {
-		configType: 'SoftwareHasLicenseConfig', ruleType:   'SOFTWARE_HAS_LICENSE', testfile:   'lint-software-has-license',
-		example:    'cat("a project without a license")'
+		example: 'cat("a project without a license")'
 	},
 	'software-has-tests': {
-		configType: 'SoftwareHasTestsConfig', ruleType:   'SOFTWARE_HAS_TESTS', testfile:   'lint-software-has-tests',
-		example:    'cat("hello")'
+		example: 'cat("hello")'
 	},
 	'no-leaked-credentials': {
-		configType: 'NoLeakedCredentialsConfig', ruleType:   'NO_LEAKED_CREDENTIALS', testfile:   'lint-no-leaked-credentials',
-		example:    'password <- "s3cr3t"'
+		example: 'password <- "s3cr3t"'
 	},
 	'undefined-symbol': {
-		configType: 'UndefinedSymbolConfig', ruleType:   'UNDEFINED_SYMBOL', testfile:   'lint-undefined-symbol',
-		example:    'undefined_helper(42)'
+		example: 'undefined_helper(42)'
 	},
 	'syntactically-valid': {
-		configType: 'SyntacticallyValidConfig', ruleType:   'SYNTACTICALLY_VALID', testfile:   'lint-syntactically-valid',
-		example:    'x <- c(1, 2'
+		example: 'x <- c(1, 2'
 	},
 	'unclosed-connection': {
-		configType: 'UnclosedConnectionConfig', ruleType:   'UNCLOSED_CONNECTION', testfile:   'lint-unclosed-connection',
-		example:    'con <- file("data.csv")\nreadLines(con)'
+		example: 'con <- file("data.csv")\nreadLines(con)'
 	},
 	'overwritten-file': {
-		configType: 'OverwrittenFileConfig', ruleType:   'OVERWRITTEN_FILE', testfile:   'lint-overwritten-file',
-		example:    'write.csv(cars, "out.csv")\nwrite.csv(iris, "out.csv")'
+		example: 'write.csv(cars, "out.csv")\nwrite.csv(iris, "out.csv")'
 	},
 	'unused-import': {
-		configType: 'UnusedImportConfig', ruleType:   'UNUSED_IMPORT', testfile:   'lint-unused-import',
-		example:    'library(stats)\nprint("no stats function is used")'
+		example: 'library(stats)\nprint("no stats function is used")'
 	},
 	'unescaped-arguments': {
-		configType: 'UnescapedArgumentsConfig', ruleType:   'UNESCAPED_ARGUMENTS', testfile:   'lint-unescaped-arguments',
-		example:    'function(dir) {\n\tsystem(paste0("ls ", dir))\n}'
+		example: 'function(dir) {\n\tsystem(paste0("ls ", dir))\n}'
 	},
 	'namespace-access': {
-		configType: 'NamespaceAccessConfig', ruleType:   'NAMESPACE_ACCESS', testfile:   'lint-namespace-access',
-		example:    'dplyr:::filter(df, x > 1)'
+		example: 'dplyr:::filter(df, x > 1)'
 	},
 	'description-metadata': {
-		configType: 'DescriptionMetadataConfig', ruleType:   'DESCRIPTION_METADATA', testfile:   'cmd-check/lint-description-metadata',
-		example:    { code: 'x <- 1', files: { DESCRIPTION: 'Package: pkg\nVersion: 1.0\nTitle: A Package\nLicense: GPL-3 + file LICENSE\n' } }
+		example: { code: 'x <- 1', files: { DESCRIPTION: 'Package: pkg\nVersion: 1.0\nTitle: A Package\nLicense: GPL-3 + file LICENSE\n' } }
 	},
 	'documentation-mismatch': {
-		configType: 'DocumentationMismatchConfig', ruleType:   'DOCUMENTATION_MISMATCH', testfile:   'cmd-check/lint-documentation-mismatch',
-		example:    { code: 'f <- function(x, y) x + y', files: { DESCRIPTION: ExampleDescription, 'NAMESPACE': 'export(f)\n', 'man/f.Rd': '\\name{f}\n\\alias{f}\n\\title{Add}\n\\usage{f(x)}\n\\arguments{\\item{x}{a number}}\n' } }
+		example: { code: 'f <- function(x, y) x + y', files: { DESCRIPTION: ExampleDescription, 'NAMESPACE': 'export(f)\n', 'man/f.Rd': '\\name{f}\n\\alias{f}\n\\title{Add}\n\\usage{f(x)}\n\\arguments{\\item{x}{a number}}\n' } }
 	},
 	'non-ascii-code': {
-		configType: 'NonAsciiCodeConfig', ruleType:   'NON_ASCII_CODE', testfile:   'cmd-check/lint-non-ascii-code',
-		example:    'escaped <- function() message("Gr\\u00fc\\u00dfe")\nliteral <- function() message("Gr\u00fc\u00dfe")'
+		example: 'escaped <- function() message("Gr\\u00fc\\u00dfe")\nliteral <- function() message("Gr\u00fc\u00dfe")'
 	},
 	'class-string-comparison': {
-		configType: 'ClassStringComparisonConfig', ruleType:   'CLASS_STRING_COMPARISON', testfile:   'cmd-check/lint-class-string-comparison',
-		example:    'f <- function(x) if(class(x) == "data.frame") nrow(x) else length(x)'
+		example: 'f <- function(x) if(class(x) == "data.frame") nrow(x) else length(x)'
 	},
 	'true-false-abbreviation': {
-		configType: 'TrueFalseAbbreviationConfig', ruleType:   'TRUE_FALSE_ABBREVIATION', testfile:   'cmd-check/lint-true-false-abbreviation',
-		example:    'f <- function(x) mean(x, na.rm = T)'
+		example: 'f <- function(x) mean(x, na.rm = T)'
 	},
 	'bogus-return': {
-		configType: 'BogusReturnConfig', ruleType:   'BOGUS_RETURN', testfile:   'cmd-check/lint-bogus-return',
-		example:    'f <- function(x) {\n\tif(is.null(x)) return\n\tx + 1\n}'
+		example: 'f <- function(x) {\n\tif(is.null(x)) return\n\tx + 1\n}'
 	},
 	'package-hooks': {
-		configType: 'PackageHooksConfig', ruleType:   'PACKAGE_HOOKS', testfile:   'cmd-check/lint-package-hooks',
-		example:    '.onLoad <- function(libname, pkgname) {\n\tlibrary(stats)\n\tcat("Loading")\n}\n.onAttach <- function(libname, pkgname) message("Welcome!")'
+		example: '.onLoad <- function(libname, pkgname) {\n\tlibrary(stats)\n\tcat("Loading")\n}\n.onAttach <- function(libname, pkgname) message("Welcome!")'
 	},
 	'global-environment-modification': {
-		configType: 'GlobalEnvironmentModificationConfig', ruleType:   'GLOBAL_ENVIRONMENT_MODIFICATION', testfile:   'cmd-check/lint-global-environment-modification',
-		example:    'cache <- function(v) assign("cached", v, envir = globalenv())\ncount <- function() counter <<- counter + 1'
+		example: 'cache <- function(v) assign("cached", v, envir = globalenv())\ncount <- function() counter <<- counter + 1'
 	},
 	'namespace-tampering': {
-		configType: 'NamespaceTamperingConfig', ruleType:   'NAMESPACE_TAMPERING', testfile:   'cmd-check/lint-namespace-tampering',
-		example:    'patch <- function() assignInNamespace("mean", function(x, ...) 42, "base")'
+		example: 'patch <- function() assignInNamespace("mean", function(x, ...) 42, "base")'
 	},
 	's3-method-consistency': {
-		configType: 'S3MethodConsistencyConfig', ruleType:   'S3_METHOD_CONSISTENCY', testfile:   'cmd-check/lint-s-three-method-consistency',
-		example:    'print.myclass <- function(obj) cat("myclass")\n`size<-` <- function(x, v) { attr(x, "size") <- v; x }'
+		example: 'print.myclass <- function(obj) cat("myclass")\n`size<-` <- function(x, v) { attr(x, "size") <- v; x }'
 	},
 	'foreign-function-calls': {
-		configType: 'ForeignFunctionCallsConfig', ruleType:   'FOREIGN_FUNCTION_CALLS', testfile:   'cmd-check/lint-foreign-function-calls',
-		example:    'f <- function(x) .Call("C_mean", x)'
+		example: 'f <- function(x) .Call("C_mean", x)'
 	},
 	'dependency-declaration': {
-		configType: 'DependencyDeclarationConfig', ruleType:   'DEPENDENCY_DECLARATION', testfile:   'cmd-check/lint-dependency-declaration',
-		example:    { code: 'f <- function(df) {\n\tlibrary(dplyr)\n\ttidyr::drop_na(df)\n}', files: { DESCRIPTION: ExampleDescription } }
+		example: { code: 'f <- function(df) {\n\tlibrary(dplyr)\n\ttidyr::drop_na(df)\n}', files: { DESCRIPTION: ExampleDescription } }
 	},
 	'call-arguments': {
-		configType: 'CallArgumentsConfig', ruleType:   'CALL_ARGUMENTS', testfile:   'cmd-check/lint-call-arguments',
-		example:    'scale_by <- function(x, factor) x * factor\nf <- function(x) scale_by(x, fact = 2, center = TRUE)'
+		example: 'scale_by <- function(x, factor) x * factor\nf <- function(x) scale_by(x, fact = 2, center = TRUE)'
 	},
 	'package-structure': {
-		configType: 'PackageStructureConfig', ruleType:   'PACKAGE_STRUCTURE', testfile:   'cmd-check/lint-package-structure',
-		example:    { code: 'f <- function() 1', files: { DESCRIPTION: ExampleDescription, 'R/a:b.R': 'g <- function() 2\n' } }
+		example: { code: 'f <- function() 1', files: { DESCRIPTION: ExampleDescription, 'R/a:b.R': 'g <- function() 2\n' } }
 	},
 	'compiled-code': {
-		configType: 'CompiledCodeConfig', ruleType:   'COMPILED_CODE', testfile:   'cmd-check/lint-compiled-code',
-		example:    { code: 'f <- function(x) .Call("C_f", x)', files: { DESCRIPTION: ExampleDescription, 'NAMESPACE': 'useDynLib(pkg)\nexport(f)\n', 'src/Makevars': 'PKG_CXXFLAGS = -O3 -Wall -fPIC\n' } }
+		example: { code: 'f <- function(x) .Call("C_f", x)', files: { DESCRIPTION: ExampleDescription, 'NAMESPACE': 'useDynLib(pkg)\nexport(f)\n', 'src/Makevars': 'PKG_CXXFLAGS = -O3 -Wall -fPIC\n' } }
 	},
 	'package-metafiles': {
-		configType: 'PackageMetafilesConfig', ruleType:   'PACKAGE_METAFILES', testfile:   'cmd-check/lint-package-metafiles',
-		example:    { code: 'f <- function() 1', files: { DESCRIPTION: ExampleDescription, 'demo/a.R': 'f()\n', 'demo/b.R': 'f() + 1\n', 'demo/00Index': 'a    A first demo\n' } }
+		example: { code: 'f <- function() 1', files: { DESCRIPTION: ExampleDescription, 'demo/a.R': 'f()\n', 'demo/b.R': 'f() + 1\n', 'demo/00Index': 'a    A first demo\n' } }
 	},
 	'rd-files': {
-		configType: 'RdFilesConfig', ruleType:   'RD_FILES', testfile:   'cmd-check/lint-rd-files',
-		example:    { code: 'f <- function(x) x', files: { DESCRIPTION: ExampleDescription, 'man/f.Rd': '\\name{f}\n\\alias{f}\n\\title{F}\n\\description{D}\n\\details{\n  a \\foo{x}}\n' } }
+		example: { code: 'f <- function(x) x', files: { DESCRIPTION: ExampleDescription, 'man/f.Rd': '\\name{f}\n\\alias{f}\n\\title{F}\n\\description{D}\n\\details{\n  a \\foo{x}}\n' } }
 	},
 	'package-data': {
-		configType: 'PackageDataConfig', ruleType:   'PACKAGE_DATA', testfile:   'cmd-check/lint-package-data',
-		example:    { code: 'f <- function() 1', files: { DESCRIPTION: ExampleDescription, 'data/notes.md': 'what the data means\n' } }
+		example: { code: 'f <- function() 1', files: { DESCRIPTION: ExampleDescription, 'data/notes.md': 'what the data means\n' } }
 	},
 	'package-runtime': {
-		configType: 'PackageRuntimeConfig', ruleType:   'PACKAGE_RUNTIME', testfile:   'cmd-check/lint-package-runtime',
-		example:    { code: 'f <- function() 1', files: { DESCRIPTION: ExampleDescription, 'NAMESPACE': 'export(f)\nexport(g)\nexportPattern("^api_")\n' } }
+		example: { code: 'f <- function() 1', files: { DESCRIPTION: ExampleDescription, 'NAMESPACE': 'export(f)\nexport(g)\nexportPattern("^api_")\n' } }
+	},
+	'secret-exfiltration': {
+		example: `
+key <- Sys.getenv("API_KEY")
+server <- function(input, output, session) {
+  httr2::request("https://api.example.org") |>
+    httr2::req_auth_bearer_token(key)
+  httr::GET(input$url, httr::add_headers(Authorization = key))
+  output$debug <- renderPrint(Sys.getenv())
+  message("calling with ", key)
+  message("key set: ", nzchar(key))
+  httr::GET(paste0("https://api.example.org/?key=", key))
+}
+`,
+		config: { optIn: ['url'] }
+	},
+	'process-state-in-session': {
+		example: `
+counter <- reactiveVal(0)
+addResourcePath("data", "/srv/data")
+server <- function(input, output, session) {
+  user <<- input$name
+  options(digits = input$digits)
+  counter(counter() + 1)
+  output$plot <- renderPlot(plot(load_for(session$user, input$n))) |> bindCache(input$n)
+}
+`
+	},
+	'autoload-files': {
+		example: { code: 'f <- function() 1', files: { '.RProfile': 'system("rm -rf /")' } }
 	}
 };
 
 /** the kinds of issue a rule finds, each rule carries at most one */
-const RuleKinds = [
-	[LintingRuleTag.Bug, 'Bugs'],
-	[LintingRuleTag.Smell, 'Smells'],
-	[LintingRuleTag.Style, 'Style']
-] as const;
+const RuleKinds = [[LintingRuleTag.Bug, 'Bugs'], [LintingRuleTag.Smell, 'Smells'], [LintingRuleTag.Style, 'Style']] as const;
 
 /** the tags of a rule as the wiki shows them: its kind, R CMD check, quick fixes, then the aspects by name */
 function sortedTags(tags: readonly LintingRuleTag[]): LintingRuleTag[] {
@@ -284,7 +289,7 @@ function sortedTags(tags: readonly LintingRuleTag[]): LintingRuleTag[] {
 function rulesOverview(info: TypeElementInSource[]): string {
 	const names = (Object.keys(LintingRules) as LintingRuleNames[]).toSorted((a, b) => LintingRules[a].info.name.localeCompare(LintingRules[b].info.name));
 	const kindOf = (name: LintingRuleNames) => RuleKinds.find(([k]) => (LintingRules[name].info.tags as readonly LintingRuleTag[]).includes(k))?.[0];
-	const row = (name: LintingRuleNames) => {
+	function row(name: LintingRuleNames) {
 		const rule = LintingRules[name].info;
 		const finds = rule.description.split(/\.\s+(?=[A-Z`])/)[0].replace(/^Finds /, '').replace(/\.$/, '');
 		const badges = sortedTags(rule.tags as readonly LintingRuleTag[]).filter(t => !RuleKinds.some(([k]) => k === t)).map(t => makeTagBadge(t, info));
@@ -292,7 +297,7 @@ function rulesOverview(info: TypeElementInSource[]): string {
 		const step = (n: number) => `[${n}](${ConformancePage}#cmd-check-${n})`;
 		const steps = cmdCheckRuns(name).map(r => r.from === r.to ? step(r.from) : `${step(r.from)}–${step(r.to)}`).join(', ');
 		return `| [${rule.name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name))}) | ${finds.replaceAll('|', '\\|')}${steps === '' ? '' : `<br><sub>R CMD check ${steps}</sub>`} | ${badges.join(' ')} |`;
-	};
+	}
 	const groups = [...RuleKinds.map(([kind, title]) => [title, names.filter(n => kindOf(n) === kind)] as const), ['Package Files', names.filter(n => kindOf(n) === undefined)] as const];
 	const anchor = (title: string) => `rules-${title.toLowerCase().replaceAll(' ', '-')}`;
 	const toc = groups.map(([title, rules]) => `[${title}](#${anchor(title)}) (${rules.length})`).join(', ');
@@ -304,22 +309,22 @@ function rulesOverview(info: TypeElementInSource[]): string {
 ${rules.map(row).join('\n')}`).join('\n\n');
 }
 
-function registerRules(knownParser: KnownParser, tagTypes: TypeElementInSource[]) {
-	const ruleExplanations = new Map<LintingRuleNames, () => Promise<string>>();
-
-	for(const [name, { configType, ruleType, testfile, example, config }] of Object.entries(LintingRuleExamples)) {
-		rule(knownParser, name as LintingRuleNames, configType, ruleType, testfile, example, config, tagTypes);
-	}
-
-	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string | PackageExample, config: object | undefined, types: TypeElementInSource[]) {
+/** the page of every rule, keyed by the file it is written to */
+async function getRulesPages(parser: KnownParser, { info: types }: TypeReport): Promise<Record<string, string>> {
+	const result: Record<string, string> = {};
+	for(const [name, { example, config }] of Object.entries(LintingRuleExamples) as [LintingRuleNames, typeof LintingRuleExamples[LintingRuleNames]][]) {
 		const rule = LintingRules[name];
+		/* see lintingRuleFile for the convention */
+		const ruleType = name.toUpperCase().replaceAll('-', '_');
+		const configType = name.split('-').map(part => part[0].toUpperCase() + part.slice(1)).join('') + 'Config';
+		const testfile = lintingRuleFile(name).replace(/[^/]+$/, base => 'lint-' + base);
 		const configKeys = Object.keys(rule.info.defaultConfig(documentedContext)).sort();
 
 		const tags = sortedTags(rule.info.tags).map(t => t === LintingRuleTag.CmdCheck ? cmdCheckBadge(name, types) : makeTagBadge(t, types)).join(' ');
 
 		const certaintyDoc = getDocumentationForType(`LintingRuleCertainty::${rule.info.certainty}`, types, '', { fuzzy: true }).replaceAll('\n', ' ');
 		const certaintyText = textWithTooltip(`<code>${rule.info.certainty}</code>`, certaintyDoc);
-		ruleExplanations.set(name, async() => `
+		result[path.join('wiki', `${getPageNameForLintingRule(name)}.md`)] = `
 
 ${autoGenHeader({ filename: module.filename, purpose: 'linter' })}
 ${section(rule.info.name + `&emsp;<sup>[<a href="${FlowrWikiBaseRef}/Linter">overview</a>]</sup>`, 2, name)}
@@ -355,20 +360,18 @@ ${await exampleQuery(parser, name, example, config)}
 
 More examples are the test cases in ${linkFlowRSourceFile(`test/functionality/linter/${testfile}.test.ts`)}.
 
-		`.trim());
+		`.trim();
 	}
-
-	return ruleExplanations;
+	return result;
 }
 
 /** runs the linter query on a rule's wiki example, refusing an example that shows no finding or an error */
 async function exampleQuery(parser: KnownParser, name: LintingRuleNames, example: string | PackageExample, config: object = {}): Promise<string> {
 	const queries = [{ type: 'linter', rules: [{ name, config: config as never }] }] as const;
-	const shown = typeof example === 'string' ? await showQuery(parser, example, queries, { collapseQuery: true, withJson: false })
+	const shown = typeof example === 'string' ? await showQuery(parser, example, queries, { withJson: false })
 		: await showQuery(parser, `${fileProtocol}${ExampleRoot}/R/code.R`, queries, {
-			collapseQuery: true,
-			withJson:      false,
-			files:         [['R/code.R', example.code] as const, ...Object.entries(example.files)].map(([file, content]) => ({ name: `${ExampleRoot}/${file}`, content }))
+			withJson: false,
+			files:    [['R/code.R', example.code] as const, ...Object.entries(example.files)].map(([file, content]) => ({ name: `${ExampleRoot}/${file}`, content }))
 		});
 	if(shown.includes('_no findings_') || shown.includes('Error during execution of rule') || shown.includes('rules failed to execute')) {
 		throw new Error(`the wiki example of ${name} must show a finding: ${shown}`);
@@ -435,12 +438,10 @@ function cmdCheckStepsOf(name: LintingRuleNames): string {
 ${steps.map(e => `| [${e.number}](${ConformancePage}#cmd-check-${e.number}) | ${cmdCheckStep(e)} | ${cmdCheckCoverage(e)} | ${cmdCheckNote(e)} |`).join('\n')}`;
 }
 
-function getAllLintingRulesWithTag(tag: LintingRuleTag): LintingRuleNames[] {
-	return Object.entries(LintingRules).filter(([_, rule]) => (rule.info.tags as readonly LintingRuleTag[]).includes(tag)).map(([name]) => name as LintingRuleNames);
-}
-
-function getAllLintingRulesWitCertainty(certainty: LintingRuleCertainty): LintingRuleNames[] {
-	return Object.entries(LintingRules).filter(([_, rule]) => rule.info.certainty === certainty).map(([name]) => name as LintingRuleNames);
+/** the rules whose info satisfies `pred`, as `(rules: a, b, and c)` */
+function listRulesWhere(pred: (info: typeof LintingRules[LintingRuleNames]['info']) => boolean): string {
+	const names = (Object.keys(LintingRules) as LintingRuleNames[]).filter(name => pred(LintingRules[name].info));
+	return `(rule${names.length === 1 ? '' : 's'}: ${joinWithLast(names.map(l => linkToRule(l))) || '_none_'})`;
 }
 
 function linkToRule(name: LintingRuleNames): string {
@@ -455,7 +456,7 @@ For example:
 
 ${await (async() => {
 	const code = 'read.csv("/root/x.txt")';
-	const res = await showQuery(knownParser, code, [{ type: 'linter' }], { showCode: false, collapseQuery: true, collapseResult: false });
+	const res = await showQuery(knownParser, code, [{ type: 'linter' }], { showCode: false, collapseResult: false });
 	return `Running ${getReplCommand('query')} with \`@linter ${JSON.stringify(code)}\` analyzes the code and returns any issues found.
 Formatted more nicely, this returns:
 
@@ -464,10 +465,7 @@ ${res}`;
 
 ${section('Linting Rules', 2, 'linting-rules')}
 
-${block({
-	type:    'NOTE',
-	content: `If you want to add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.`
-})}
+${block('NOTE', `If you want to add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.`)}
 
 The following linting rules are available, grouped by the kind of issue they find.
 Badges link to the [tags](#tags), steps of \`R CMD check\` to the [conformance page](${ConformancePage}).
@@ -492,11 +490,8 @@ We use tags to categorize linting rules for users. The following tags are availa
 
 | Tag/Badge&emsp;&emsp; | Description |
 | --- | :-- |
-${Object.entries(LintingRuleTag).map(([name, tag]) => {
-	return `| <a id="${tag}"></a> ${(makeTagBadge(tag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll('\n', ' ')} (rule${getAllLintingRulesWithTag(tag).length === 1 ? '' : 's'}: ${
-		joinWithLast(getAllLintingRulesWithTag(tag).map(l => linkToRule(l))) || '_none_'
-	}) | `;
-}).join('\n')}
+${Object.entries(LintingRuleTag).map(([name, tag]) =>
+	`| <a id="${tag}"></a> ${(makeTagBadge(tag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll('\n', ' ')} ${listRulesWhere(r => (r.tags as readonly LintingRuleTag[]).includes(tag))} | `).join('\n')}
 
 ${section('Certainty', 2, 'certainty')}
 
@@ -506,11 +501,8 @@ ${section('Rule Certainty', 3, 'rule-certainty')}
 
 | Rule Certainty | Description |
 | -------------- | :---------- |
-${Object.entries(LintingRuleCertainty).map(([name, certainty]) => {
-	return `| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingRuleCertainty::' + name, tagTypes.info).replaceAll('\n', ' ')} (rule${getAllLintingRulesWitCertainty(certainty).length === 1 ? '' : 's'}: ${
-		joinWithLast(getAllLintingRulesWitCertainty(certainty).map(l => linkToRule(l))) || '_none_'
-	}) |`;
-}).join('\n')}
+${Object.entries(LintingRuleCertainty).map(([name, certainty]) =>
+	`| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingRuleCertainty::' + name, tagTypes.info).replaceAll('\n', ' ')} ${listRulesWhere(r => r.certainty === certainty)} |`).join('\n')}
 	
 ${section('Result Certainty', 3, 'result-certainty')}
 
@@ -551,24 +543,9 @@ ${numberedConformance().filter(e => e.area === area).map(e =>
 `;
 }
 
-async function getRulesPages(knownParser: KnownParser, tagTypes: TypeReport): Promise<Record<string, string>> {
-	const rules = registerRules(knownParser, tagTypes.info);
-	const result: Record<string, string> = {};
-
-	for(const [name, rule] of rules) {
-		const filepath = path.join('wiki', `${getPageNameForLintingRule(name)}.md`);
-		result[filepath] = await rule();
-	}
-
-	return result;
-}
-
 /** Maps file-names to their content, the 'main' file is named 'main' */
 async function getTexts(parser: KnownParser, ctx: GeneralDocContext): Promise<Record<string, string> & { main: string }> {
-	const tagTypes = getTypesFromFolder({
-		rootFolder:  path.resolve('./src/linter/'),
-		inlineTypes: mermaidHide
-	});
+	const tagTypes = getTypesFromFolder({ rootFolder: path.resolve('./src/linter/'), inlineTypes: mermaidHide });
 
 	return {
 		'main':                                           await getTextMainPage(parser, tagTypes, ctx),
@@ -577,9 +554,7 @@ async function getTexts(parser: KnownParser, ctx: GeneralDocContext): Promise<Re
 	};
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Linter
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Linter */
 export class WikiLinter extends DocMaker<'wiki/Linter.md'> {
 	constructor() {
 		super('wiki/Linter.md', module.filename, 'linter');

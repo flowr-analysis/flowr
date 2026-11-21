@@ -1,5 +1,5 @@
 import { SigDict } from '../../../../../src/project/sigdb/dict';
-import { afterAll, describe, expect, test } from 'vitest';
+import { afterAll, assert, describe, expect, test } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { SigDatabase, SigDatabaseSet, readSignatureDb, verifyShardedDatabase } from '../../../../../src/project/sigdb/reader';
@@ -7,6 +7,7 @@ import { SigDbBuilder, writeSignatureDb, writeShardedDatabase, type ShardSpec } 
 import { writeManifest, SigDbManifestMagic, SigDbManifestSchema, type SigDbManifest } from '../../../../../src/project/sigdb/manifest';
 import { readSigDbIndex, encodeIndex } from '../../../../../src/project/sigdb/index-format';
 import { deriveLibraryExports } from '../../../../../src/project/sigdb/decode';
+import { newestVersion } from '../../../../../src/project/sigdb/sigdb-version';
 import { FnProp, DepType, SigDbMagic, SigDbSchema, SigDbExt, MaxDefaultLength, DefaultCranBase } from '../../../../../src/project/sigdb/schema';
 import { zstdSupported } from '../../../../../src/project/sigdb/codec';
 import { ArgProp } from '../../../../../src/dataflow/environments/built-in-props';
@@ -110,6 +111,20 @@ describe(`sigdb database (schema ${SigDbSchema})`, () => {
 		expect(info?.exported).toEqual(['new']);
 	});
 
+	test('the latest version is the recorded one, not the most recently dated or the highest', () => {
+		const b = new SigDbBuilder();
+		// a GitHub build of the next version, dated after the CRAN release; and an older release without a date
+		b.addPackage('p', { latest: '1.2.1' });
+		b.addVersion('p', '1.2.0', { cran: true, functions: [], date: Date.UTC(2025, 0, 1) });
+		b.addVersion('p', '1.2.1', { cran: true, functions: [] });
+		b.addVersion('p', '1.2.1.9000', { cran: false, functions: [], date: Date.UTC(2026, 2, 1) });
+		const db = b.build(meta);
+		expect(newestVersion(db.blobs[db.pkgs['p']], db.meta['p'][0])).toBe('1.2.1');
+		// without a recorded latest the dates decide, and without dates R's version order
+		expect(newestVersion(db.blobs[db.pkgs['p']], '9.9')).toBe('1.2.1.9000');
+		expect(newestVersion({ ...db.blobs[db.pkgs['p']], dates: {} }, '9.9')).toBe('1.2.1.9000');
+	});
+
 	test('sharing: identical functions across versions pool once; identical packages share a blob', () => {
 		const fn = { name: 'f', props: FnProp.Exported, params: [{ name: 'x', forced: true }], callees: ['g'], file: 'R/f.R', line: 2 };
 		const b = new SigDbBuilder();
@@ -185,6 +200,34 @@ describe(`sigdb database (schema ${SigDbSchema})`, () => {
 			expect(byName.get('lag')?.topic, variant).toBe('lead-lag');
 			expect(byName.get('select')?.topic, variant).toBeUndefined();
 			expect(byName.get('mutate')?.topic, variant).toBeUndefined();
+			rd.close();
+		}
+	});
+
+	test('the origin of a re-export round-trips (surviving the frequency reorder), with and without a topic', async() => {
+		const b = new SigDbBuilder();
+		b.addPackage('p', { latest: '1.0' });
+		const shared = ['common', 'common', 'common'];
+		b.addVersion('p', '1.0', ver([
+			{ name: '%>%', props: FnProp.Exported, params: [], callees: [], reexportOf: 'magrittr' },
+			{ name: 'tibble', props: FnProp.Exported, params: [], callees: shared, topic: 'reexports', reexportOf: 'tibble' },
+			{ name: 'own', props: FnProp.Exported, params: [], callees: shared, topic: 'own-topic' },
+			{ name: 'plain', props: FnProp.Exported, params: [], callees: shared }
+		]));
+		const dir = sigTmpDir('sigdb-reexport-');
+		await writeSignatureDb(path.join(dir, 'db'), b.build(meta));
+		const variants = [`db${SigDbExt}`, `db${SigDbExt}.br`, ...(zstdSupported() ? [`db${SigDbExt}.zst`] : [])];
+		for(const variant of variants) {
+			const rd = await SigDatabase.open(path.join(dir, variant), { cacheDir: sigTmpDir('sigdb-reexport-cache-') });
+			const byName = new Map(rd.functions('p', '1.0')?.map(f => [f.name, f]));
+			expect(byName.get('%>%')?.reexportOf, variant).toBe('magrittr');
+			expect(byName.get('%>%')?.topic, variant).toBeUndefined();
+			expect(byName.get('tibble')?.reexportOf, variant).toBe('tibble');
+			expect(byName.get('tibble')?.topic, variant).toBe('reexports');
+			expect(byName.get('own')?.reexportOf, variant).toBeUndefined();
+			expect(byName.get('own')?.topic, variant).toBe('own-topic');
+			expect(byName.get('plain')?.reexportOf, variant).toBeUndefined();
+			expect(rd.lookup('p', '1.0')?.reexports, variant).toEqual(new Map([['%>%', 'magrittr'], ['tibble', 'tibble']]));
 			rd.close();
 		}
 	});
@@ -558,6 +601,43 @@ describe('sigdb shared-dictionary shards, verification, R-core markers and relea
 			.rejects.toThrow(/no shards left/);
 	});
 
+	test('a shard whose file is gone is dropped instead of failing every lookup routed to it', async() => {
+		const dir = sigTmpDir('sigdb-missing-');
+		const cacheDir = sigTmpDir('sigdb-missing-cache-');
+		const manifestFile = path.join(dir, 'sigs.manifest.json');
+		await writeShardedDatabase(path.join(dir, 'sigs'), builder().buildSharded(meta, specs), manifestFile);
+		const all = await SigDatabaseSet.openManifest(manifestFile, { cacheDir });
+		const gone = all.manifest.shards.find(s => s.id === 'current-top');
+		all.close();
+		assert(gone !== undefined);
+		for(const f of fs.readdirSync(dir).filter(f => f.startsWith(gone.path))) {
+			fs.rmSync(path.join(dir, f));
+		}
+
+		const set = await SigDatabaseSet.openManifest(manifestFile, { cacheDir });
+		expect(set.manifest.shards.map(s => s.id)).not.toContain('current-top');
+		expect(set.lookup('mva')).toBeDefined();
+		set.close();
+	});
+
+	test('a truncated decompressed cache file is decompressed again', async() => {
+		const dir = sigTmpDir('sigdb-trunc-');
+		const cacheDir = sigTmpDir('sigdb-trunc-cache-');
+		const manifestFile = path.join(dir, 'sigs.manifest.json');
+		await writeShardedDatabase(path.join(dir, 'sigs'), builder().buildSharded(meta, specs), manifestFile);
+		const first = await SigDatabaseSet.openManifest(manifestFile, { cacheDir });
+		await first.preload();
+		const expected = first.lookup('hot')?.exported;
+		first.close();
+		for(const f of fs.readdirSync(cacheDir).filter(f => f.endsWith('.sigs.ndjson'))) {
+			fs.truncateSync(path.join(cacheDir, f), 3);
+		}
+
+		const again = await SigDatabaseSet.openManifest(manifestFile, { cacheDir });
+		expect(again.lookup('hot')?.exported).toEqual(expected);
+		again.close();
+	});
+
 	test('verification catches a tampered shard hash', async() => {
 		const dir = sigTmpDir('sigdb-tamper-');
 		const sharded = builder().buildSharded(meta, specs);
@@ -650,7 +730,7 @@ describe('sigdb dependencies and feature selection', () => {
 		], dependencies: [{ name: 'R6', type: DepType.Imports }] });
 		const db = b.build({ ...meta, features: { signatures: false, callGraphs: false, locations: false } });
 		const blob = db.blobs[db.pkgs['p']];
-		expect(db.content.features).toEqual({ signatures: false, callGraphs: false, locations: false, dependencies: true, classes: true });
+		expect(db.content.features).toEqual({ signatures: false, callGraphs: false, locations: false, dependencies: true, classes: true, contracts: true, natives: true });
 		expect(blob.sigs.length).toBe(0);   // no signatures stored
 		expect(blob.cgs.length).toBe(0);    // no call graphs stored
 		const [, sigIdx, cgIdx, bits, fileIdx] = blob.fns[0];

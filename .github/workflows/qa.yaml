@@ -178,7 +178,11 @@ jobs:
   test-mutations:
     needs: [ debug ]
     name: "🧬 Mutation Tests"
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
+    # the release workflow runs them in full for a release commit
+    if: ${{
+              (github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main')
+          && !startsWith(github.event.head_commit.message, '[release:')
+      }}
     runs-on: ubuntu-22.04
     timeout-minutes: 65
     steps:
@@ -209,7 +213,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # a branch checks a fifth of the mutants, other ones on every push, main and the release check all of them
       - name: "🧬 Run Mutation Tests"
+        env:
+          FLOWR_MUTATION_SAMPLE: ${{ (inputs.force-full || github.ref == 'refs/heads/main') && '1' || '0.2' }}
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:mutations -- --run --reporter=default --reporter=json --outputFile.json=coverage/flowr-mutation-test-results.json -- --make-summary"
 
       - name: "⬆️ Upload Test Label Details"
@@ -269,13 +276,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "🧪 Run the Tests"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "test -- --run --allowOnly=false"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:all -- --run --allowOnly=false"
 
 
   performance-test:
     # the upload after it needs the label details of both
     needs: [ test, test-mutations ]
-    name: "⏱️ Performance Test"
     # we do not run if the release workflow runs it with pushing
     if: ${{
               !cancelled()
@@ -287,45 +293,9 @@ jobs:
                 startsWith(github.event.head_commit.message, '[release:patch]')
               )
       }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 75
-    strategy:
-      fail-fast: true
-      matrix:
-        # currently we have a duplication, add your benchmark names here and in `performance-test-upload`
-        name: ['artificial', 'real-world']
-        parser: ["tree-sitter", "r-shell"]
-    steps:
-      - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v6
-        with:
-            submodules: true
-
-      - name: "🌍 Load Versions to Use"
-        run: bash .github/workflows/scripts/global-configuration.sh
-
-      - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.ACTION_NODE_VERSION }}
-          registry-url: "https://registry.npmjs.org/"
-          cache: npm
-
-      - name: "⬇️ Setup R"
-        uses: ./.github/actions/setup-r
-        timeout-minutes: 45
-        with:
-          r-version: ${{ env.ACTION_R_VERSION }}
-
-      - name: "⏱️ Run the performance benchmarks"
-        run: bash .github/workflows/scripts/run-flowr-command.sh test:performance -- 1 1 "${{ matrix.name }}" "${{ matrix.parser }}"
-
-      - name: "⬆️ Upload Benchmark Results"
-        uses: actions/upload-artifact@v6
-        with:
-          name: benchmark-results-${{ matrix.name }}-${{ matrix.parser }}
-          path: test/performance/results/
-          if-no-files-found: error
+    uses: ./.github/workflows/performance-test.yaml
+    with:
+      runs: 1
 
   performance-test-upload:
     name: "⬆️ Upload Performance Test Results"
@@ -361,36 +331,9 @@ jobs:
           merge-multiple: true
           path: test-labels/
 
-      # add new benchmark suites and parsers here and in the matrix of `performance-test`
-      - name: "⬆️ Benchmark (artificial, r-shell)"
-        uses: ./.github/actions/upload-benchmark
+      - name: "⬆️ Benchmarks"
+        uses: ./.github/actions/upload-benchmarks
         with:
-          suite:  artificial
-          parser: r-shell
-          token:  ${{ secrets.GITHUB_TOKEN }}
-          ref:    "refs/heads/main"
-
-      - name: "⬆️ Benchmark (artificial, tree-sitter)"
-        uses: ./.github/actions/upload-benchmark
-        with:
-          suite:  artificial
-          parser: tree-sitter
-          token:  ${{ secrets.GITHUB_TOKEN }}
-          ref:    "refs/heads/main"
-
-      - name: "⬆️ Benchmark (real-world, r-shell)"
-        uses: ./.github/actions/upload-benchmark
-        with:
-          suite:  real-world
-          parser: r-shell
-          token:  ${{ secrets.GITHUB_TOKEN }}
-          ref:    "refs/heads/main"
-
-      - name: "⬆️ Benchmark (real-world, tree-sitter)"
-        uses: ./.github/actions/upload-benchmark
-        with:
-          suite:  real-world
-          parser: tree-sitter
           token:  ${{ secrets.GITHUB_TOKEN }}
           ref:    "refs/heads/main"
 

@@ -171,7 +171,7 @@ export class Frame implements MemoryView {
 
 	public forEach(fn: (defs: IdentifierDefinition[], name: BrandedIdentifier, map: MemoryView) => void, thisArg?: unknown): void {
 		if(this.base === undefined) {
-			this.bindings.forEach(fn as never, thisArg);
+			this.bindings.forEach(fn, thisArg);
 			return;
 		}
 		for(const [name, defs] of this.entries()) {
@@ -231,7 +231,6 @@ export class LazyBindings implements MemoryView {
 	private readonly built = new Map<BrandedIdentifier, IdentifierDefinition[]>();
 
 	/**
-	 * @param names  - the names this binds
 	 * @param bind   - builds the definitions of one name
 	 * @param origin - what, besides the names, decides what `bind` returns, so the bindings can be told apart without building them
 	 */

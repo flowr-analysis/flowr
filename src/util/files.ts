@@ -220,9 +220,7 @@ export const RPath = {
 	}
 } as const;
 
-/**
- * The directory all given paths share, e.g. `/a` for `/a/b.R` and `/a/c/d.R`; `undefined` if they share none.
- */
+/** The directory all given paths share, e.g. `/a` for `/a/b.R` and `/a/c/d.R`; `undefined` if they share none. */
 export function commonDirectory(paths: readonly string[]): string | undefined {
 	if(paths.length === 0) {
 		return undefined;
@@ -241,17 +239,13 @@ export function commonDirectory(paths: readonly string[]): string | undefined {
 	return common.length === 1 && common[0] === '' ? path.sep : common.join(path.sep);
 }
 
-/**
- * The path of `filePath` seen from `root` (`s.R` instead of `/tmp/s.R`), or unchanged if it lies outside of `root`.
- */
+/** The path of `filePath` seen from `root` (`s.R` instead of `/tmp/s.R`), or unchanged if it lies outside of `root`. */
 export function relativeTo(root: string, filePath: string): string {
 	const relative = RPath.of(path.relative(root, filePath));
 	return relative.length > 0 && !relative.startsWith('..') ? relative : filePath;
 }
 
-/**
- * Checks whether the given path-like object is a file that exists on the local filesystem.
- */
+/** Checks whether the given path-like object is a file that exists on the local filesystem. */
 export function isFilePath(p: PathLike) {
 	return fs.existsSync(p) && fs.statSync(p).isFile();
 }

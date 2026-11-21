@@ -1,16 +1,16 @@
 import { EdgeType } from '../../dataflow/graph/edge';
-import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../dataflow/environments/identifier';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
 import { FunctionArgument, type DataflowGraph } from '../../dataflow/graph/graph';
-import { DfgVertex } from '../../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../dataflow/internal/process/functions/call/argument/make-argument';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import type { PotentiallyEmptyRArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument, type RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNull } from '../../r-bridge/lang-4.x/convert-values';
 import type { RParseRequest } from '../../r-bridge/retriever';
 import { assertUnreachable } from '../../util/assert';
@@ -36,13 +36,12 @@ const LineTerminationRegex = /\r\n|\r|\n/;
  */
 export interface FunctionParameterLocation<T = never> {
 	pos:      number,
-	name?:    string
+	name?:    BrandedIdentifier
 	default?: T
 }
 
 /**
  * Escapes a regular expression given as string by escaping all special regular expression characters.
- * @param text        - The text to escape
  * @param allowTokens - Whether to allow and keep unescaped tokens like `\s`, `\t`, or `\n`
  * @returns           The escaped text
  */
@@ -95,7 +94,6 @@ export function filterValidNames(
  * Gets the value of an argument that specified as {@link FunctionParameterLocation}.
  * @param args     - The arguments to get the requested argument from
  * @param argument - The specification of the argument to get the value for
- * @param info     - Argument resolve information
  * @returns        The resolved value of the argument or `undefined`
  */
 export function getArgumentValue<T>(
@@ -123,10 +121,45 @@ export function getEffectiveArgs(
 }
 
 /**
+ * Orders `args` the way R binds them to the formals `params` states: an argument named after a formal goes to the
+ * position of that formal, the unnamed ones fill the other positions in order, and the rest follows. Afterwards the
+ * position of a {@link FunctionParameterLocation} is that of its argument, whichever way the call names them.
+ * @example
+ * ```ts
+ * // subset(TRUE, FALSE, x = df) with x at 0, subset at 1, select at 2
+ * matchedArguments(args, params, info); // [x = df, TRUE, FALSE]
+ * ```
+ */
+export function matchedArguments(
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
+	params: object,
+	info: ResolveInfo
+): readonly PotentiallyEmptyRArgument<ParentInformation>[] {
+	const formals = Object.values(params).filter((p): p is FunctionParameterLocation<unknown> => typeof p === 'object' && p !== null && typeof (p as { pos?: unknown }).pos === 'number');
+	const named = new Map(formals.filter(f => f.name !== undefined && f.pos >= 0).map(f => [f.name, f.pos] as const));
+	const ordered: (PotentiallyEmptyRArgument<ParentInformation> | undefined)[] = [];
+	const rest: PotentiallyEmptyRArgument<ParentInformation>[] = [];
+	for(const arg of args) {
+		const pos = RArgument.isNotEmpty(arg) && arg.name !== undefined ? named.get(Resolve.argument.toName(arg, info)) : undefined;
+		if(pos !== undefined) {
+			ordered[pos] = arg;
+		} else {
+			rest.push(arg);
+		}
+	}
+	const positional = rest.filter(a => RArgument.isEmpty(a) || a.name === undefined);
+	let next = 0;
+	for(let pos = 0; next < positional.length; pos++) {
+		ordered[pos] ??= positional[next++];
+	}
+	/* a formal no argument binds is missing */
+	return [...Array.from(ordered, a => a ?? EmptyArgument), ...rest.filter(a => !positional.includes(a))];
+}
+
+/**
  * Gets an argument specified as {@link FunctionParameterLocation} from a list of arguments.
  * @param args     - The arguments to get the requested argument from
  * @param argument - The specification of the argument to get
- * @param info     - Argument resolve information
  * @returns        An argument matching the specified `argument` or `undefined`
  */
 export function getFunctionArgument(
@@ -164,6 +197,21 @@ export function getFunctionArguments(
 	if(!DfgVertex.isFunctionCall(vertex) || idMap === undefined) {
 		return node.arguments;
 	}
+	return getVertexArguments(vertex, idMap);
+}
+
+/**
+ * Reconstruct the AST-level arguments of a function call vertex from the data flow graph. Unlike
+ * {@link getFunctionArguments}, this works directly on the call vertex, so it also serves calls whose AST node is
+ * not a {@link RFunctionCall} (e.g. binary operators).
+ * @param vertex - The function call vertex to get the arguments for
+ * @param idMap  - The id map to resolve the argument node ids against
+ * @returns The arguments of the function call in the data flow graph
+ */
+export function getVertexArguments(
+	vertex: DataflowGraphVertexFunctionCall,
+	idMap: AstIdMap
+): readonly PotentiallyEmptyRArgument<ParentInformation>[] {
 	return vertex.args
 		.map(arg => FunctionArgument.isEmpty(arg) ? arg : idMap.get(arg.nodeId))
 		.map(arg => RArgument.isEmpty(arg) || RArgument.is(arg) ? arg : toUnnamedArgument(arg, idMap));
@@ -178,11 +226,11 @@ export function getFunctionArguments(
 export function getUnresolvedSymbolsInExpression(
 	expression: PotentiallyEmptyRArgument<ParentInformation> | undefined,
 	dfg?: DataflowGraph
-): BrandedIdentifier[] {
+): string[] {
 	if(expression === undefined || RArgument.isEmpty(expression) || dfg === undefined) {
 		return [];
 	}
-	const unresolvedSymbols: BrandedIdentifier[] = [];
+	const unresolvedSymbols: string[] = [];
 
 	RNode.visitAst(expression, node => {
 		if(RSymbol.is(node)) {
@@ -205,7 +253,6 @@ export function getUnresolvedSymbolsInExpression(
  * Checks whether a list of arguments contains any critical argument.
  * @param args     - The list of arguments to check
  * @param critical - The critical arguments to search for (as string or {@link FunctionParameterLocation}s)
- * @param info     - Argument resolve information
  * @returns        Whether the arguments contain any critical argument
  */
 export function hasCriticalArgument(
@@ -232,7 +279,6 @@ export function hasCriticalArgument(
 
 /**
  * Checks if a given argument has an inferred data frame shape and therefore represents a data frame
- * @param arg - The argument to check
  * @param ctx - The context of the data frame shape analysis
  * @returns   Whether the argument represents a data frame
  */
@@ -244,9 +290,7 @@ export function isDataFrameArgument(arg: RNode<ParentInformation> | PotentiallyE
 	return !RArgument.isEmpty(arg) && ctx.getAbstractValue(arg) !== undefined;
 }
 
-/**
- * Checks whether a node is `NULL` in R (represents a `NULL` symbol).
- */
+/** Checks whether a node is `NULL` in R (represents a `NULL` symbol). */
 export function isRNull(node: RNode<ParentInformation> | undefined):
 	node is RSymbol<ParentInformation, typeof RNull>;
 export function isRNull(node: PotentiallyEmptyRArgument<ParentInformation> | undefined):
@@ -260,16 +304,12 @@ export function isRNull(node: RNode<ParentInformation> | PotentiallyEmptyRArgume
 	return RSymbol.is(node) && node.content === RNull;
 }
 
-/**
- * Checks whether a string is a valid columns name according to the flag `check.names` in R.
- */
+/** Checks whether a string is a valid columns name according to the flag `check.names` in R. */
 export function isValidColName(colname: string | undefined): boolean {
 	return colname !== undefined && ColNamesRegex.test(colname);
 }
 
-/**
- * Parses a text of file parse request using the provided parser function.
- */
+/** Parses a text of file parse request using the provided parser function. */
 export function parseRequestContent(
 	request: RParseRequest,
 	parser: (line: Buffer | string, lineNumber: number) => void,

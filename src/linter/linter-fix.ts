@@ -3,10 +3,9 @@
  * than only something it reports.
  * @module
  */
-import type { LintingResult } from './linter-format';
-import { LintQuickFix, LintingResults } from './linter-format';
+import { type LintingResult, LintQuickFix, LintingResults } from './linter-format';
 import type { LintResultsByRule } from './linter-output';
-import { SourceLocation, SourceRange } from '../util/range';
+import { SourceLocation, SourceRange, type Column, type Line } from '../util/range';
 import { guard, isNotUndefined } from '../util/assert';
 
 /** one fix as an edit of the text: the span it covers, and what stands there instead */
@@ -21,7 +20,7 @@ interface Edit {
  * The offset `line:column` sits at, both counted from one. A place beyond the text is pulled back into it, so a
  * range that outruns its line cuts at the line's end rather than reaching into the ones after it.
  */
-function offsetOf(code: string, lineStarts: readonly number[], line: number, column: number): number {
+function offsetOf(code: string, lineStarts: readonly number[], line: Line, column: Column): number {
 	const at = Math.min(Math.max(line, 1), lineStarts.length);
 	/* the last place on the line is its final character: the break after it separates lines, it is not one */
 	const beyond = at < lineStarts.length ? lineStarts[at] - 1 : code.length;
@@ -53,27 +52,8 @@ function widenToLine(code: string, lineStarts: readonly number[], edit: Edit): E
 export const LintQuickFixes = {
 	/** Every quick fix a lint run offers, grouped by the file it changes. Fixes flowR cannot place are left out. */
 	byFile(this: void, results: LintResultsByRule): Map<string, LintQuickFix[]> {
-		const byFile = new Map<string, LintQuickFix[]>();
-		for(const perRule of Object.values(results)) {
-			if(LintingResults.isError(perRule)) {
-				continue;
-			}
-			for(const result of perRule.results as readonly LintingResult[]) {
-				for(const fix of result.quickFix ?? []) {
-					const file = SourceLocation.getFile(fix.loc);
-					if(file === undefined || !LintQuickFix.isPlaced(fix)) {
-						continue;
-					}
-					const known = byFile.get(file);
-					if(known === undefined) {
-						byFile.set(file, [fix]);
-					} else {
-						known.push(fix);
-					}
-				}
-			}
-		}
-		return byFile;
+		const fixes = Object.values(results).flatMap(perRule => LintingResults.isError(perRule) ? [] : (perRule.results as readonly LintingResult[]).flatMap(result => result.quickFix ?? []));
+		return Map.groupBy(fixes.filter(fix => SourceLocation.getFile(fix.loc) !== undefined && LintQuickFix.isPlaced(fix)), fix => SourceLocation.getFile(fix.loc) as string);
 	},
 	/**
 	 * The content of one file with the given fixes carried out, as {@link LintQuickFixes.byFile} groups them. Of two

@@ -1,8 +1,7 @@
 import { assert, describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { queryCase } from '../_helper/query';
-import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
-import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
+import { type SlicingCriteria, SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 

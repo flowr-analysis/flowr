@@ -1,5 +1,4 @@
-import type { PlaygroundLinkParts } from '../../util/text/playground-link';
-import { Playground } from '../../util/text/playground-link';
+import { type PlaygroundLinkParts, Playground } from '../../util/text/playground-link';
 
 /**
  * A markdown link that opens the playground on exactly this: the script, what the link points at, and

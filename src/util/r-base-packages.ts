@@ -1,7 +1,8 @@
 import { RBasePackageStore } from '../data/r-base-packages.generated';
 import { RBasePrimitives } from '../data/r-base-primitives.generated';
-import { RVersion } from './r-version';
+import { compareRVersions } from './r-version-order';
 import { memoize } from './collections/defaultmap';
+import type { BrandedIdentifier, BrandedNamespace } from '../dataflow/environments/identifier';
 
 /**
  * The base packages R attaches to the search path on startup, so their exports are usable without a `library` call.
@@ -11,9 +12,9 @@ import { memoize } from './collections/defaultmap';
  * A project that changes it says so through `solver.assumeAttachedPackages`; see {@link attachedBasePackages}
  * for the version-aware view, as a release cannot attach a package it did not ship.
  */
-export const AttachedBasePackages: readonly string[] = ['base', 'stats', 'graphics', 'grDevices', 'utils', 'datasets', 'methods'];
+export const AttachedBasePackages: readonly BrandedNamespace[] = ['base', 'stats', 'graphics', 'grDevices', 'utils', 'datasets', 'methods'];
 /** The data sets of `datasets` (R 4.6), always in scope as lazy data, which its namespace does not export. */
-export const BaseDatasets: ReadonlySet<string> = new Set([
+export const BaseDatasets: ReadonlySet<BrandedIdentifier> = new Set([
 	'ability.cov', 'airmiles', 'AirPassengers', 'airquality', 'anscombe', 'attenu', 'attitude', 'austres', 'beaver1', 'beaver2', 'BJsales',
 	'BJsales.lead', 'BOD', 'cars', 'ChickWeight', 'chickwts', 'co2', 'CO2', 'crimtab', 'discoveries', 'DNase', 'esoph', 'euro', 'euro.cross',
 	'eurodist', 'EuStockMarkets', 'faithful', 'fdeaths', 'Formaldehyde', 'freeny', 'freeny.x', 'freeny.y', 'gait', 'HairEyeColor',
@@ -26,18 +27,18 @@ export const BaseDatasets: ReadonlySet<string> = new Set([
 	'UScitiesD', 'USJudgeRatings', 'USPersonalExpenditure', 'uspop', 'VADeaths', 'volcano', 'warpbreaks', 'women', 'WorldPhones', 'WWWusage'
 ]);
 /** {@link AttachedBasePackages} for membership tests, which happen far more often than iteration. */
-export const AttachedBasePackageSet: ReadonlySet<string> = new Set(AttachedBasePackages);
+export const AttachedBasePackageSet: ReadonlySet<BrandedNamespace> = new Set(AttachedBasePackages);
 
 /** clamp `rVersion` to the newest R release the store knows about (so a future R version stays answerable) */
 function effective(rVersion: string): string {
-	return RVersion.compare(rVersion, RBasePackageStore.newestRVersion) > 0 ? RBasePackageStore.newestRVersion : rVersion;
+	return compareRVersions(rVersion, RBasePackageStore.newestRVersion) > 0 ? RBasePackageStore.newestRVersion : rVersion;
 }
 
 /** memoized per assumed R version, so the list is computed at most once per version (never per lookup) */
 const basePackagesAt = memoize((rVersion: string): readonly string[] => {
 	const eff = effective(rVersion);
 	return Object.entries(RBasePackageStore.packages)
-		.filter(([, [first, last]]) => RVersion.compare(first, eff) <= 0 && RVersion.compare(last, eff) >= 0)
+		.filter(([, [first, last]]) => compareRVersions(first, eff) <= 0 && compareRVersions(last, eff) >= 0)
 		.map(([name]) => name);
 });
 
@@ -49,9 +50,9 @@ const basePackagesAt = memoize((rVersion: string): readonly string[] => {
  * The newest release is served from the precomputed {@link RBasePackageStore.current} array.
  * Every other version is computed once and memoized, so this never recomputes on repeated calls.
  */
-export function baseRPackages(rVersion?: string): readonly string[] {
+export function baseRPackages(rVersion?: string): readonly BrandedNamespace[] {
 	// fast path: no version, or the exact newest-release string, avoids the (regex-based) version compare entirely
-	if(rVersion === undefined || rVersion === RBasePackageStore.newestRVersion || RVersion.compare(rVersion, RBasePackageStore.newestRVersion) >= 0) {
+	if(rVersion === undefined || rVersion === RBasePackageStore.newestRVersion || compareRVersions(rVersion, RBasePackageStore.newestRVersion) >= 0) {
 		return RBasePackageStore.current;   // the current base set, precomputed at bundle time
 	}
 	return basePackagesAt(rVersion);
@@ -62,7 +63,7 @@ export function baseRPackages(rVersion?: string): readonly string[] {
  * release did not ship yet, so an assumed R 1.8 does not resolve a name against a package that came later.
  * The order is kept, as it is the search-path order a shared export is decided by.
  */
-export function attachedBasePackages(rVersion?: string): readonly string[] {
+export function attachedBasePackages(rVersion?: string): readonly BrandedNamespace[] {
 	if(rVersion === undefined) {
 		return AttachedBasePackages;
 	}
@@ -71,7 +72,12 @@ export function attachedBasePackages(rVersion?: string): readonly string[] {
 }
 
 /** the base export to owning-package map, materialised once from the grouped store (never per lookup) */
-let exportOwners: Map<string, string> | undefined;
+let exportOwners: Map<BrandedIdentifier, BrandedNamespace> | undefined;
+
+/** whether `name` is a base primitive or internal that the sigdb export lists do not carry */
+export function isBasePrimitive(name: BrandedIdentifier): boolean {
+	return (RBasePrimitives).has(name);
+}
 
 /**
  * The base-R package that exports `name` (e.g. `sd` yields `stats`, `plot` yields `base`), or `undefined`.
@@ -80,7 +86,7 @@ let exportOwners: Map<string, string> | undefined;
  * Base primitives/internals and base data constants (`is.na`, `.Machine`, ...) are not in the sigdb
  * export list, so they are answered from {@link RBasePrimitives} and owned by `base`.
  */
-export function baseRExportOwner(name: string): string | undefined {
+export function baseRExportOwner(name: BrandedIdentifier): BrandedNamespace | undefined {
 	if(exportOwners === undefined) {
 		exportOwners = new Map();
 		for(const [pkg, names] of Object.entries(RBasePackageStore.exportsByPackage)) {
@@ -89,13 +95,13 @@ export function baseRExportOwner(name: string): string | undefined {
 			}
 		}
 	}
-	return exportOwners.get(name) ?? (RBasePrimitives.has(name) ? 'base' : undefined);
+	return exportOwners.get(name) ?? (isBasePrimitive(name) ? 'base' : undefined);
 }
 
 /** whether `name` is an R-core / base package at the assumed R version (see {@link baseRPackages}). */
-export function isBaseRPackage(name: string, rVersion?: string): boolean {
+export function isBaseRPackage(name: BrandedNamespace, rVersion?: string): boolean {
 	// the store is `as const`, so it carries no string index signature; read it as a record for the dynamic lookup
-	const range = (RBasePackageStore.packages as Record<string, readonly [first: string, last: string] | undefined>)[name];
+	const range = (RBasePackageStore.packages as Record<BrandedNamespace, readonly [first: string, last: string] | undefined>)[name];
 	if(range === undefined) {
 		return false;
 	}
@@ -103,5 +109,5 @@ export function isBaseRPackage(name: string, rVersion?: string): boolean {
 		return true;
 	}
 	const eff = effective(rVersion);
-	return RVersion.compare(range[0], eff) <= 0 && RVersion.compare(range[1], eff) >= 0;
+	return compareRVersions(range[0], eff) <= 0 && compareRVersions(range[1], eff) >= 0;
 }

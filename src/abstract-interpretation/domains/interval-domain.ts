@@ -103,10 +103,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	}
 
 	protected widenValue(this: this & IntervalDomain<IntervalValue>, other: IntervalDomain<IntervalValue>): this {
-		return this.create([
-			this.lower <= other.lower ? this.lower : this.minLower(),
-			this.upper >= other.upper ? this.upper : +Infinity
-		]);
+		return this.create([this.lower <= other.lower ? this.lower : this.minLower(), this.upper >= other.upper ? this.upper : +Infinity]);
 	}
 
 	protected narrowValue(this: this & IntervalDomain<IntervalValue>, other: IntervalDomain<IntervalValue>): this {
@@ -216,9 +213,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return this.binaryOp(other, (thisValue, otherValue) => this.create([Math.max(thisValue[0], otherValue[0]), Math.max(thisValue[1], otherValue[1])]));
 	}
 
-	/**
-	 * Extends the lower bound of the current abstract value down to {@link minLower}.
-	 */
+	/** Extends the lower bound of the current abstract value down to {@link minLower}. */
 	public widenDown(): this {
 		if(this.isValue()) {
 			return this.create([this.minLower(), this.upper]);
@@ -226,9 +221,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return this.bottom();
 	}
 
-	/**
-	 * Extends the upper bound of the current abstract value up to +∞.
-	 */
+	/** Extends the upper bound of the current abstract value up to +∞. */
 	public widenUp(): this {
 		if(this.isValue()) {
 			return this.create([this.lower, +Infinity]);

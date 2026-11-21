@@ -1,17 +1,16 @@
 import { assert, describe, test } from 'vitest';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { Documentation } from '../../../../src/r-bridge/roxygen2/documentation-provider';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { withTreeSitter } from '../../_helper/shell';
 import { KnownRoxygenTags } from '../../../../src/r-bridge/roxygen2/roxygen-ast';
 import { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
+import { analyze } from '../../_helper/analyzer';
 
 
 describe('Provide Comments', withTreeSitter(ts => {
 	function check(code: string, requests: Record<SlicingCriterion, Documentation>): void {
 		test.each(Object.entries(requests))('Provide docs for criterion $0', async(request, expect) => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-			analyzer.addRequest(code);
+			const analyzer = await analyze(ts, code);
 			const normalize = await analyzer.normalize();
 			const criterion = SlicingCriterion.parse(request as SlicingCriterion, normalize.idMap);
 			const docs = RNode.documentation(criterion, normalize.idMap);

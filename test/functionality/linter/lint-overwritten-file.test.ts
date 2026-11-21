@@ -9,6 +9,8 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ certainty: LintingResultCertainty.Certain, loc: [2, 1, 2, 21], file: 'a.csv', firstLine: 1 }
 		]);
 		assertLinter('different files are fine', parser, 'write.csv(d, "a.csv")\nwrite.csv(e, "b.csv")', 'overwritten-file', []);
+		/* the write happens in the call the graph makes up for the anonymous function, which has no node of its own */
+		assertLinter('a write in an anonymous function run by lapply', parser, 'invisible(lapply(c("a", "b"), function(n) writeLines(n, paste0(n, ".txt"))))\nx <- readLines("a.txt")', 'overwritten-file', []);
 		assertLinter('appending is no overwrite', parser, 'cat("a", file = "l.txt")\ncat("b", file = "l.txt", append = TRUE)', 'overwritten-file', []);
 		assertLinter('writes into one connection are no overwrite', parser, 'con <- file("o.txt", "w")\nwriteLines("a", con)\nwriteLines("b", con)\nclose(con)', 'overwritten-file', []);
 		assertLinter('a write only in one branch may overwrite', parser, 'write.csv(d, "a.csv")\nif(u) write.csv(e, "a.csv")', 'overwritten-file', [

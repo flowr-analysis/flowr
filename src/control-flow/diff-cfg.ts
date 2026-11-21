@@ -10,7 +10,6 @@ import { type GenericDiffConfiguration, setDifference } from '../util/diff';
 import { CfgEdge, CfgVertex, type ControlFlowGraph } from './control-flow-graph';
 import { arrayEqual } from '../util/collections/arrays';
 
-
 /**
  * Compare two control flow graphs and return a report on the differences.
  * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
@@ -25,7 +24,6 @@ export function diffOfControlFlowGraphs(left: NamedGraph<ControlFlowGraph>, righ
 	diffDataflowGraphs(ctx);
 	return ctx.report;
 }
-
 
 function diffDataflowGraphs(ctx: GraphDiffContext<ControlFlowGraph>): void {
 	diffCfgRootVertices(ctx);

@@ -1,18 +1,16 @@
 import { assert, describe, it } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { getAllLinkedFunctionDefinitions } from '../../../../src/dataflow/internal/linker';
 import { label } from '../../_helper/label';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
+import { analyze } from '../../_helper/analyzer';
 
 describe('Linked Function Definitions', withTreeSitter(ts => {
 	function expectLinkedFns(lab: string, code: string, expect: Record<string, { fns?: string[], bi?: string[] }>) {
 		it(label(lab, [], ['dataflow']), async() => {
-			const a = await new FlowrAnalyzerBuilder().setParser(ts).build();
-			a.addRequest(requestFromInput(code));
+			const a = await analyze(ts, code);
 			const df = await a.dataflow();
 			const idMap = (await a.normalize()).idMap;
 			try {

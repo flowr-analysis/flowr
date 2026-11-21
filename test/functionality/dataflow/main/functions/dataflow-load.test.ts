@@ -6,7 +6,7 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import fs from 'fs';
 import path from 'path';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
-import { getVarsAndTypesFromShell, MissingRealWorldRda, realWorldRdaFiles, SexpToRType } from '../../../project/plugin/load-pipeline/load-pipeline.test';
+import { getVarsAndTypesFromShell, MissingRealWorldRda, realWorldRdaFiles, SexpToRType } from '../../../_helper/rda';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import seedrandom from 'seedrandom';
 import { RandomRCodeGenerator, RObjectType, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
@@ -15,22 +15,21 @@ import { FlowrConfig } from '../../../../../src/config';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SexpType } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
+import { assertCfgSatisfiesProperties } from '../../../../../src/control-flow/cfg-properties';
+import { analyze } from '../../../_helper/analyzer';
 
 function loadedVarsGraph(varsAndTypes: ReadonlyMap<string, string>) {
 	let graph = emptyGraph();
 	for(const [varName, varType] of varsAndTypes) {
 		const syntheticId = `3:loaded:${varName}`;
-		const cds = [{ id: '3', when: true }];
+		const cds = [{ id: 3, when: true }];
 		if(varType === SexpToRType[SexpType.CloSxp] || varType === SexpToRType[SexpType.SpecialSxp] || varType === SexpToRType[SexpType.BuiltInSxp]) {
 			const fdefId = `${syntheticId}:fdef`;
 			graph = graph.defineFunction(fdefId, [], {
-				entryPoint:        fdefId,
-				graph:             new Set(),
-				out:               [],
-				in:                [],
-				unknownReferences: [],
-				hooks:             [],
-				environment:       defaultEnv(),
+				entryPoint:  fdefId,
+				graph:       new Set(),
+				hooks:       [],
+				environment: defaultEnv(),
 			}, { cds });
 			graph = graph.defineVariable(syntheticId, undefined, { cds });
 			graph = graph.definedBy(syntheticId, fdefId);
@@ -45,13 +44,10 @@ function loadedClosureCallGraph(closureName: string) {
 	return emptyGraph()
 		.defineVariable(`3:loaded:${closureName}`, undefined, { cds: [{ id: 3, when: true }] })
 		.defineFunction(`3:loaded:${closureName}:fdef`, [], {
-			entryPoint:        `3:loaded:${closureName}:fdef`,
-			graph:             new Set(),
-			out:               [],
-			in:                [],
-			unknownReferences: [],
-			hooks:             [],
-			environment:       defaultEnv()
+			entryPoint:  `3:loaded:${closureName}:fdef`,
+			graph:       new Set(),
+			hooks:       [],
+			environment: defaultEnv()
 		}, { cds: [{ id: 3, when: true }] })
 		.definedBy(`3:loaded:${closureName}`, `3:loaded:${closureName}:fdef`)
 		.reads(`2@${closureName}`, `3:loaded:${closureName}`);
@@ -176,7 +172,7 @@ describe('load random', withTreeSitter(parser => {
 	const rcg = new RandomRCodeGenerator(rnd);
 	const tempFolder = fs.mkdtempSync(path.resolve(os.tmpdir(), 'flowr-load-test-'));
 
-	const createRda = (types: RObjectType[], filename: string): { file: string, vars: string[] } => {
+	function createRda(types: RObjectType[], filename: string): { file: string, vars: string[] } {
 		const { rCode, vars } = rcg.generateRCodeWithTypes(types);
 		// forward slashes so the path survives interpolation into R strings (`\` is an escape there) on Windows
 		const file = rPath(path.join(tempFolder, filename));
@@ -184,7 +180,7 @@ describe('load random', withTreeSitter(parser => {
 		rShell.run(`${rCode}\nsave(${vars.join(', ')}, file="${file}")`);
 		rShell.close();
 		return { file, vars };
-	};
+	}
 
 	describe('defines variables', () => {
 		const { file, vars } = createRda([
@@ -209,6 +205,14 @@ describe('load random', withTreeSitter(parser => {
 			loadedVarsGraph(varsAndTypes),
 			{ expectIsSubgraph: true }
 		);
+
+		/* the restored names are bound after the call, so control flow reaches every one of them and goes on from the last */
+		it('the restored names are part of the control flow', async() => {
+			const analyzer = await analyze(parser, `load("${file}")\nprint(1)`);
+			const loaded = [...(await analyzer.dataflow()).graph.vertices(true)].filter(([id]) => String(id).includes(':loaded:'));
+			expect(loaded.length).toBeGreaterThan(0);
+			expect(assertCfgSatisfiesProperties(await analyzer.controlflow())).toBe(true);
+		});
 	});
 
 	describe('overwrite behavior', () => {
@@ -319,10 +323,8 @@ describe('load random', withTreeSitter(parser => {
 				parser,
 				`load("${file}")`,
 				emptyGraph()
-					.call('3', 'load', [argumentInCall('1')], { returns: [], reads: [NodeId.toBuiltIn('load')] })
-					.argument('3', '1')
-					.calls('3', NodeId.toBuiltIn('load'))
-					.markIdForUnknownSideEffects('3'),
+					.call(3, 'load', [argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('load')] })
+					.markIdForUnknownSideEffects(3),
 				{
 					expectIsSubgraph:    true,
 					mustNotHaveVertices: new Set([`3:loaded:${firstVar}`])
@@ -348,34 +350,29 @@ describe('file not found', withTreeSitter(parser => {
 		parser,
 		'load("nonexistent.rda")',
 		emptyGraph()
-			.call('3', 'load', [argumentInCall('1')], { returns: [], reads: [NodeId.toBuiltIn('load')] })
-			.argument('3', '1')
-			.calls('3', NodeId.toBuiltIn('load')),
+			.call(3, 'load', [argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn('load')] })
+			.calls(3, NodeId.toBuiltIn('load')),
 		{ expectIsSubgraph: true }
 	);
 }));
 
 describe('no resolvable file argument', withTreeSitter(parser => {
 	assertDataflow(label('load without any file argument is unknown side effect', ['unnamed-arguments']), parser, 'load()', emptyGraph()
-		.call('1', 'load', [], { returns: [], reads: [NodeId.toBuiltIn('load')], origin: [BuiltInProcName.Function] })
-		.calls('1', NodeId.toBuiltIn('load'))
-		.markIdForUnknownSideEffects('1'),
+		.call(1, 'load', [], { returns: [], reads: [NodeId.toBuiltIn('load')], origin: [BuiltInProcName.Function] })
+		.markIdForUnknownSideEffects(1),
 	{ expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('load with only envir argument is unknown side effect', ['unnamed-arguments', 'name-normal']), parser, 'e <- new.env()\nload(envir = e)', emptyGraph()
-		.use('6', 'e', { cds: [{ id: '8', when: true, byPromise: true }] })
-		.reads('6', '0')
-		.use('7', 'envir', { cds: [{ id: '8', when: true, byPromise: true }] })
-		.reads('7', '6')
-		.call('2', 'new.env', [], { returns: [], reads: [NodeId.toBuiltIn('new.env')] })
-		.calls('2', NodeId.toBuiltIn('new.env'))
-		.call('3', '<-', [argumentInCall('0'), argumentInCall('2')], { returns: ['0'], reads: ['2', NodeId.toBuiltIn('<-')], onlyBuiltIn: true })
-		.calls('3', NodeId.toBuiltIn('<-'))
-		.call('8', 'load', [argumentInCall('7', { name: 'envir' })], { returns: [], reads: [NodeId.toBuiltIn('load')], origin: [BuiltInProcName.Function] })
-		.calls('8', NodeId.toBuiltIn('load'))
-		.defineVariable('0', 'e', { definedBy: ['2', '3'] })
-		.markIdForUnknownSideEffects('8'),
+		.use(6, 'e', { cds: [{ id: 8, when: true, byPromise: true }] })
+		.reads(6, 0)
+		.use(7, 'envir', { cds: [{ id: 8, when: true, byPromise: true }] })
+		.reads(7, 6)
+		.call(2, 'new.env', [], { returns: [], reads: [NodeId.toBuiltIn('new.env')] })
+		.call(3, '<-', [argumentInCall(0), argumentInCall(2)], { returns: [0], reads: [2, NodeId.toBuiltIn('<-')], onlyBuiltIn: true })
+		.call(8, 'load', [argumentInCall(7, { name: 'envir' })], { returns: [], reads: [NodeId.toBuiltIn('load')], origin: [BuiltInProcName.Function] })
+		.defineVariable(0, 'e', { definedBy: [2, 3] })
+		.markIdForUnknownSideEffects(8),
 	{ expectIsSubgraph: true }
 	);
 }));

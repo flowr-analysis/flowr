@@ -1,13 +1,12 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
-import { extractCfg, CfgEdge  } from '../../../src/control-flow/control-flow-graph';
+import { extractCfg, CfgEdge } from '../../../src/control-flow/control-flow-graph';
 import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
 import { visitCfgInOrder } from '../../../src/control-flow/simple-visitor';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { FlowrConfig } from '../../../src/config';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
+import { analyze } from '../_helper/analyzer';
 
 /**
  * Programs that put the control flow under pressure: jumps out of nested constructs, arms that never complete,
@@ -46,9 +45,9 @@ const criticalPrograms: Record<string, string> = {
 describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 	describe('holds together for critical programs', () => {
 		test.each(Object.entries(criticalPrograms))('%s', async(_name, code) => {
-			const context = contextFromInput(code, FlowrConfig.default());
-			const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
-			const cfg = extractCfg(result.dataflow);
+			const analyzer = await analyze(parser, code, { config: FlowrConfig.default() });
+			const dataflow = await analyzer.dataflow();
+			const cfg = extractCfg(dataflow);
 			const graph = cfg.graph;
 
 			for(const [from, targets] of graph.edges()) {
@@ -97,9 +96,9 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 		};
 
 		test.each(Object.entries(programs))('%s', async(_name, code) => {
-			const context = contextFromInput(code, FlowrConfig.default());
-			const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
-			const cfg = extractCfg(result.dataflow);
+			const analyzer = await analyze(parser, code, { config: FlowrConfig.default() });
+			const dataflow = await analyzer.dataflow();
+			const cfg = extractCfg(dataflow);
 			const reached = visitCfgInOrder(cfg.graph, cfg.entryPoints, () => { /* only collect */ });
 
 			assert.isTrue(reached.has(cfg.exitPoints[0]), 'the program can still be run to its end');
@@ -114,9 +113,9 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 		['return in a block', 'f <- function() { if(u) { return(1) }\n2 }\nf()'],
 		['nested blocks',    'while(u) { if(v) { { break } } }\nprint(2)']
 	])('no vertex is left beside the control flow (%s)', async(_name, code) => {
-		const context = contextFromInput(code, FlowrConfig.default());
-		const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
-		const cfg = extractCfg(result.dataflow);
+		const analyzer = await analyze(parser, code, { config: FlowrConfig.default() });
+		const dataflow = await analyzer.dataflow();
+		const cfg = extractCfg(dataflow);
 		const orphans = [...cfg.graph.rootIds()].filter(id =>
 			[...cfg.graph.predecessors(id)].length === 0 && [...cfg.graph.successors(id)].length === 0
 			&& !cfg.entryPoints.includes(id) && !cfg.exitPoints.includes(id));
@@ -126,11 +125,11 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 
 	/** The handler of a `tryCatch` is what an error the block raises is for, so the error has to reach it. */
 	test('a caught error reaches the handler', async() => {
-		const context = contextFromInput('tryCatch({ stop("x") }, error = function(e) 1, finally = { cleanup() })\nprint(2)', FlowrConfig.default());
-		const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
-		const cfg = extractCfg(result.dataflow);
+		const analyzer = await analyze(parser, 'tryCatch({ stop("x") }, error = function(e) 1, finally = { cleanup() })\nprint(2)', { config: FlowrConfig.default() });
+		const dataflow = await analyzer.dataflow();
+		const cfg = extractCfg(dataflow);
 		const reached = visitCfgInOrder(cfg.graph, cfg.entryPoints, () => { /* only collect */ });
-		const handlers = [...result.dataflow.graph.verticesOfType(VertexType.FunctionDefinition)].map(([id]) => id);
+		const handlers = [...dataflow.graph.verticesOfType(VertexType.FunctionDefinition)].map(([id]) => id);
 
 		assert.lengthOf(handlers, 1, 'the handler is the only function the program defines');
 		assert.isTrue(reached.has(handlers[0]), 'and the error the block always raises gets to it');
@@ -142,11 +141,11 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 		['a callee never forcing it', 'g <- function(x) 1\nh <- function() { g({ return(1) }); print(2) }', true],
 		['a callee flowR does not know', 'h <- function() { g({ return(1) }); print(2) }', true]
 	] as const)('an unconditional jump within an argument, %s', async(_name, code, alive) => {
-		const context = contextFromInput(code, FlowrConfig.default());
-		const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
-		const cfg = extractCfg(result.dataflow);
+		const analyzer = await analyze(parser, code, { config: FlowrConfig.default() });
+		const dataflow = await analyzer.dataflow();
+		const cfg = extractCfg(dataflow);
 		const reached = visitCfgInOrder(cfg.graph, cfg.entryPoints, () => { /* only collect */ });
-		const follows = [...result.dataflow.graph.verticesOfType(VertexType.FunctionCall)]
+		const follows = [...dataflow.graph.verticesOfType(VertexType.FunctionCall)]
 			.find(([, v]) => Identifier.getName(v.name) === 'print')?.[0];
 
 		assert.isDefined(follows);

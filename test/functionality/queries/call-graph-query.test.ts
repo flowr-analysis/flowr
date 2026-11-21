@@ -1,17 +1,16 @@
 import { assert, describe, test } from 'vitest';
 import { label } from '../_helper/label';
 import { withTreeSitter } from '../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import type { CallGraphQuery } from '../../../src/queries/catalog/call-graph-query/call-graph-query-format';
+import { analyze } from '../_helper/analyzer';
 
 const askForUnreachable: CallGraphQuery = { type: 'call-graph', reportUnreachable: true };
 
 describe('Call Graph Query', withTreeSitter(parser => {
 	/** what the query reports for `code`, with a membership test by criterion so assertions read as source positions */
 	async function unreachableIn(code: string, query: CallGraphQuery = askForUnreachable) {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest(code);
+		const analyzer = await analyze(parser, code);
 		const { idMap } = await analyzer.normalize();
 		const reported = (await analyzer.query([query]))['call-graph'].unreachable;
 		const ids = new Set(reported);

@@ -3,6 +3,7 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { analyze } from '../_helper/analyzer';
 
 /** every node of `code` as `numeric id -> stable id`, from a fresh analysis starting its ids at `startAt` */
 async function stableIds(code: string, startAt: number): Promise<Map<string, string | undefined>> {
@@ -39,8 +40,7 @@ describe('RNode.stableId', () => {
 	});
 
 	test('a node without a location has none', async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
-		analyzer.addRequest('x <- 1\n');
+		const analyzer = await analyze(new TreeSitterExecutor(), 'x <- 1\n');
 		const ast = await analyzer.normalize();
 		const located = [...ast.idMap.values()].filter(n => n.location !== undefined);
 		assert.isTrue(located.every(n => RNode.stableId(n) !== undefined));

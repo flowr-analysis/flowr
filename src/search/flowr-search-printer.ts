@@ -7,14 +7,11 @@ import { ValidVertexTypeReverse, ValidVertexTypes } from '../dataflow/graph/vert
 import { ValidRTypes, ValidRTypesReverse } from '../r-bridge/lang-4.x/ast/model/type';
 import { Mermaid } from '../util/mermaid/mermaid';
 
-
 export interface FlowrSearchMermaidBuilderOptions {
 	header?: string;
 }
 
-/**
- * Converts a {@link FlowrSearchLike} object to a mermaid flowchart.
- */
+/** Converts a {@link FlowrSearchLike} object to a mermaid flowchart. */
 export function flowrSearchToMermaid(search: FlowrSearchLike, conf?: FlowrSearchMermaidBuilderOptions): string {
 	const out = [conf?.header ?? 'flowchart LR'];
 	let count = 0;
@@ -40,9 +37,7 @@ function argsToString(args: Record<string, unknown> | undefined, escape: (s: str
 const argsToMermaidString = (args: Record<string, unknown> | undefined) => argsToString(args, Mermaid.escape);
 const argsToAsciiString = (args: Record<string, unknown> | undefined) => argsToString(args, s => s);
 
-/**
- * Converts a {@link FlowrSearchLike} object to an ASCII representation.
- */
+/** Converts a {@link FlowrSearchLike} object to an ASCII representation. */
 export function flowrSearchToAscii(search: FlowrSearchLike): string {
 	return traverseFlowrSearchBuilderType(
 		search,
@@ -53,7 +48,6 @@ export function flowrSearchToAscii(search: FlowrSearchLike): string {
 	);
 }
 
-
 function argsToCodeString(args: Record<string, unknown> | undefined): string {
 	if(args === undefined) {
 		return '';
@@ -63,9 +57,7 @@ function argsToCodeString(args: Record<string, unknown> | undefined): string {
 		.join(', ');
 }
 
-/**
- * Converts a {@link FlowrSearchLike} object to code that can be used to recreate it.
- */
+/** Converts a {@link FlowrSearchLike} object to code that can be used to recreate it. */
 export function flowrSearchToCode(search: FlowrSearchLike): string {
 	return traverseFlowrSearchBuilderType(
 		search,
@@ -110,5 +102,4 @@ function flowrGeneratorToCode(node: FlowrSearchGeneratorNode): string {
 
 	return `${node.name}(${argsToCodeString(node.args)})`;
 }
-
 

@@ -7,6 +7,7 @@ import { GasFeatureKey, GasLevel } from '../../../../../src/gas';
 import { staticSlice } from '../../../../../src/slicing/static/static-slicer';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { analyze } from '../../../_helper/analyzer';
 
 /** Stands in for an embedder that wants to bound the analysis: it reports the slicer as out of resources. */
 class NoSlicerGasPlugin extends FlowrAnalyzerGasPlugin {
@@ -76,7 +77,15 @@ describe('Slicing under gas', withTreeSitter(ts => {
 			return analyzer;
 		}
 
-		const spend = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+		/** runs `check` with the clock driven by hand, `spend` moving it on, so a slow machine can neither spend the contingent nor run past it for us */
+		function onClock(check: (spend: (ms: number) => void) => void): void {
+			vi.useFakeTimers({ now: Date.now() });
+			try {
+				check(ms => vi.advanceTimersByTime(ms));
+			} finally {
+				vi.useRealTimers();
+			}
+		}
 
 		test('slices after a long analysis still run', async() => {
 			const analyzer = await boundedAnalyzer();
@@ -101,24 +110,27 @@ describe('Slicing under gas', withTreeSitter(ts => {
 		test('resetting restarts the clock the next analysis runs against', async() => {
 			const analyzer = await boundedAnalyzer();
 			const gas = analyzer.context().gas;
-			await spend(50);
-			expect(gas.checkGas(GasFeatureKey.Slicer), 'the base contingent must be spent').toBe(GasLevel.Critical);
-			gas.reset();
-			expect(gas.checkGas(GasFeatureKey.Slicer), 'reset must restart it').toBe(GasLevel.Normal);
+			onClock(spend => {
+				spend(50);
+				expect(gas.checkGas(GasFeatureKey.Slicer), 'the base contingent must be spent').toBe(GasLevel.Critical);
+				gas.reset();
+				expect(gas.checkGas(GasFeatureKey.Slicer), 'reset must restart it').toBe(GasLevel.Normal);
+			});
 		});
 
 		test('adding a file restarts the clock', async() => {
 			const analyzer = await boundedAnalyzer();
-			await spend(50);
-			expect(analyzer.context().gas.checkGas(GasFeatureKey.Slicer)).toBe(GasLevel.Critical);
-			analyzer.addRequest('z <- 3');
-			expect(analyzer.context().gas.checkGas(GasFeatureKey.Slicer), 'new sources mean a new analysis').toBe(GasLevel.Normal);
+			onClock(spend => {
+				spend(50);
+				expect(analyzer.context().gas.checkGas(GasFeatureKey.Slicer)).toBe(GasLevel.Critical);
+				analyzer.addRequest('z <- 3');
+				expect(analyzer.context().gas.checkGas(GasFeatureKey.Slicer), 'new sources mean a new analysis').toBe(GasLevel.Normal);
+			});
 		});
 	});
 
 	test('a per-call bound reaches the slice and ends with the call', async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-		analyzer.addRequest(code);
+		const analyzer = await analyze(ts, code);
 		const bounded = await analyzer.query([{ type: 'static-slice', criteria: ['3@y'], noReconstruction: true }],
 			{ gas: { [GasFeatureKey.Slicer]: { critical: 0 } } });
 		const boundedSlice = Object.values(bounded['static-slice'].results)[0].slice;

@@ -1,7 +1,6 @@
 import { jsonReplacer } from '../../../util/json';
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string';
 
-
 /**
  * Compacts an object into a UTF-16 compressed string.
  * @see {@link uncompact}
@@ -9,7 +8,6 @@ import { compressToUTF16, decompressFromUTF16 } from 'lz-string';
 export function compact(obj: unknown): string {
 	return compressToUTF16(JSON.stringify(obj, jsonReplacer));
 }
-
 
 /**
  * Uncompacts a UTF-16 compressed string into an object.

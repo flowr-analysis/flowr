@@ -6,8 +6,7 @@
 import Joi from 'joi';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SlicingCriteria } from '../../slicing/criterion/parse';
-import { CriteriaParseError, SlicingCriterion } from '../../slicing/criterion/parse';
+import { type SlicingCriteria, CriteriaParseError, SlicingCriterion } from '../../slicing/criterion/parse';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { type InlineFull, type InlineSources, type ReconstructionResult, reconstructToCode } from '../../reconstruct/reconstruct';
 import { buildSourceInlineMap } from '../../reconstruct/inline/source-inline-map';

@@ -3,11 +3,12 @@ import { createWriteStream } from 'fs';
 /* type-only, the package itself is optional and resolved at call time (see `logToFile`) */
 import type { Options, RotatingFileStream } from 'rotating-file-stream';
 
-export const expensiveTrace = (log: Logger<ILogObj> | undefined, supplier: () => string): void => {
+/** Logs the supplied message on trace level, only computing it if that level is enabled. */
+export function expensiveTrace(log: Logger<ILogObj> | undefined, supplier: () => string): void {
 	if(log !== undefined && log.settings.minLevel <= LogLevel.Trace) {
 		log.trace(supplier());
 	}
-};
+}
 
 /** The rotating stream, or `undefined` if the optional dependency is not installed. */
 function rotatingStream(filename: string, options: Options): RotatingFileStream | undefined {
@@ -47,11 +48,7 @@ export class FlowrLogger extends Logger<ILogObj> {
 	 */
 	public logToFile(
 		filename = 'flowr.log',
-		options: Options = {
-			size:     '10M',
-			interval: '1d',
-			compress: 'gzip',
-		}
+		options: Options = { size: '10M', interval: '1d', compress: 'gzip' }
 	): void {
 		const stream = rotatingStream(filename, options) ?? createWriteStream(filename, { flags: 'a' });
 
@@ -99,11 +96,7 @@ function getActiveLog(): FlowrLogger {
 		type:            'pretty',
 		name:            'main',
 		stylePrettyLogs: true,
-		prettyLogStyles: {
-			logLevelName: {
-				'*': ['bold', 'black', 'dim']
-			}
-		}
+		prettyLogStyles: { logLevelName: { '*': ['bold', 'black', 'dim'] } }
 	});
 }
 

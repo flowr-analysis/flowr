@@ -12,8 +12,7 @@ import type { LinkToLastCall } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
 import type { PromotedCallTest, PromotedLinkTo } from './call-context-query-executor';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
-import { CfgVertex } from '../../../control-flow/control-flow-graph';
+import { type ControlFlowGraph, CfgVertex } from '../../../control-flow/control-flow-graph';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
@@ -25,7 +24,7 @@ export enum CallTargets {
 	OnlyGlobal = 'global',
 	/** call targets a function that is defined locally or globally, but must include a global function */
 	MustIncludeGlobal = 'must-include-global',
-	/** call targets a function that is defined locally  */
+	/** call targets a function that is defined locally */
 	OnlyLocal = 'local',
 	/** call targets a function that is defined locally or globally, but must include a local function */
 	MustIncludeLocal = 'must-include-local',
@@ -33,9 +32,7 @@ export enum CallTargets {
 	Any = 'any'
 }
 
-/**
- * Determines whether the given function call node satisfies the specified call target condition.
- */
+/** Determines whether the given function call node satisfies the specified call target condition. */
 export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no' {
 	const outgoing = graph.outgoingEdges(info.id);
 	if(outgoing === undefined) {
@@ -94,9 +91,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
 	}
 }
 
-/**
- * Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types.
- */
+/** Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types. */
 export function getValueOfArgument<Types extends readonly RType[] = readonly RType[]>(
 	graph: DataflowGraph, call: DataflowGraphVertexFunctionCall | undefined, argument: { name?: string, index: number }, additionalAllowedTypes?: Types
 ): (RNodeWithParent & { type: Types[number] }) | undefined {
@@ -166,9 +161,7 @@ function anyCallMatches(knownCalls: KnownCalls, callName: RegExp | PromotedCallT
 	return matched;
 }
 
-/**
- * Synchronous version of {@link identifyLinkToLastCallRelation}.
- */
+/** Synchronous version of {@link identifyLinkToLastCallRelation}. */
 export function identifyLinkToLastCallRelationSync(
 	from: NodeId,
 	cfg: ControlFlowGraph,

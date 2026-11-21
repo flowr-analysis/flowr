@@ -1,17 +1,15 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { label } from '../_helper/label';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { uniqueArray } from '../../../src/util/collections/arrays';
-import { SourceRange } from '../../../src/util/range';
+import { SourceRange, type Line } from '../../../src/util/range';
+import { analyze } from '../_helper/analyzer';
 
 describe('Dependencies query focus', withTreeSitter(parser => {
 	/** the lines of `code` that take part in the dependencies at `focus` */
-	async function focusedLines(code: string, focus: readonly SlicingCriterion[]): Promise<number[] | undefined> {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest(requestFromInput(code));
+	async function focusedLines(code: string, focus: readonly SlicingCriterion[]): Promise<Line[] | undefined> {
+		const analyzer = await analyze(parser, code);
 		const { dependencies } = await analyzer.query([{ type: 'dependencies', focus }]);
 		const { idMap } = await analyzer.normalize();
 		const ids = dependencies['.meta'].focus;

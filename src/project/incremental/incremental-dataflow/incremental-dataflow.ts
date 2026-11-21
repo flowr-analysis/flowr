@@ -8,6 +8,7 @@ import { Environment, REnvironment } from '../../../dataflow/environments/enviro
 import { Frame, LazyBindings } from '../../../dataflow/environments/frame-memory';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RProjectFile } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { DataflowGraph } from '../../../dataflow/graph/graph';
 import { deepCloneSharing } from '../../../util/objects';
 import { activeDataflowBudget } from '../../../gas';
 import type { FlowrConfig } from '../../../config';
@@ -51,6 +52,9 @@ interface AnalysisState {
 	readonly config:         FlowrConfig | undefined;
 }
 
+/** what a graph derives from its vertices and edges on demand, so a copy rebuilds it when it needs it */
+const DroppedGraphCaches: ReadonlySet<string> = new Set(['incomingIndex', 'qualifiedNames', 'targetWalks', 'derived']);
+
 interface ListCheckpoint extends AnalysisState {
 	readonly list: ExpressionListState;
 }
@@ -69,6 +73,18 @@ export interface DataflowSnapshot {
 	readonly checkpoints: readonly ListCheckpoint[];
 	/** the complete dataflow information of an analysis of multiple files */
 	readonly final?:      FinalCheckpoint;
+	/** what the analysis handed out, after the passes that finalize the graph */
+	readonly finalized?:  FinalizedDataflow;
+}
+
+/** A finalized analysis, which an analysis of the same program hands out again as it is, just as a cache hit would. */
+interface FinalizedDataflow {
+	readonly df:         DataflowInformation;
+	/** the nodes the analysis added to the id map, not those later consumers added */
+	readonly addedNodes: readonly (readonly [NodeId, RNodeWithParent])[];
+	readonly addedFiles: readonly RProjectFile<ParentInformation>[];
+	readonly considered: readonly (readonly [path: string, content: string | undefined])[];
+	readonly config:     FlowrConfig | undefined;
 }
 
 function marksOf(environment: Environment): ProgramMarks {
@@ -117,6 +133,8 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 	/** the earlier checkpoints that hold for this analysis too */
 	private carried:               readonly ListCheckpoint[] = [];
 	private applied = false;
+	private readonly previous:     DataflowSnapshot | undefined;
+	private stored:                DataflowSnapshot | undefined;
 
 	constructor(private readonly ast: NormalizedAst, private readonly ctx: FlowrAnalyzerContext, previous: DataflowSnapshot | undefined) {
 		this.files = ast.ast.files.map(f => ({ filePath: f.filePath, root: f.root }));
@@ -127,6 +145,7 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 		this.config = ctx.config;
 		this.keep = ctx.config.incremental.dataflow.checkpoints;
 		this.minimum = ctx.config.incremental.dataflow.minStatements;
+		this.previous = previous;
 		this.update = previous === undefined ? undefined : ctx.inc.determineUpdateTypes(previous.files, ast, ctx);
 		if(previous !== undefined && this.update !== undefined) {
 			this.plan(previous, this.update);
@@ -135,7 +154,11 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 
 	/** Whether the analysis up to the given state would run the same now: with the same configuration, and reading the same files. */
 	private holds(state: AnalysisState): boolean {
-		return state.config === this.config && state.considered.every(([path, content]) => contentOf(this.ctx, path) === content);
+		return state.config === this.config && this.unchangedReads(state.considered);
+	}
+
+	private unchangedReads(considered: AnalysisState['considered']): boolean {
+		return considered.every(([path, content]) => contentOf(this.ctx, path) === content);
 	}
 
 	private plan(previous: DataflowSnapshot, update: IncrementalUpdateResult): void {
@@ -244,15 +267,25 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 		const idMap = data.completeAst.idMap;
 		/* the sourced files are known by identity, a file sourced again is analyzed again */
 		const files = new Set<object>(data.completeAst.ast.files);
-		return deepCloneSharing(state, o =>
-			o === idMap
-			|| files.has(o)
-			|| o === this.config
-			|| o instanceof LazyBindings
-			|| (o instanceof Frame && o.isFrozen)
-			|| (o instanceof Environment && o.builtInEnv === true)
-			|| ('info' in o && typeof o.info === 'object' && o.info !== null && 'id' in o.info && idMap.get(o.info.id as NodeId) === o)
-		);
+		/* a live frame is handed to the copy and forks on its owner's next write, so it costs nothing to copy */
+		const shared = new Set<object>();
+		return deepCloneSharing(state, o => {
+			if(o instanceof Environment && o.builtInEnv !== true) {
+				shared.add(o.shareMemory());
+				return false;
+			}
+			return o === idMap
+				|| files.has(o)
+				|| o === this.config
+				|| o instanceof LazyBindings
+				|| (o instanceof Frame && (o.isFrozen || shared.has(o)))
+				|| (o instanceof Environment && o.builtInEnv === true)
+				|| ('info' in o && typeof o.info === 'object' && o.info !== null && 'id' in o.info && idMap.get(o.info.id as NodeId) === o);
+		}, (owner, key) => typeof key === 'string' && (
+			(owner instanceof DataflowGraph && DroppedGraphCaches.has(key))
+			|| (owner instanceof Environment && (key === 'cache' || key === 'tailCache'))
+			|| (owner instanceof Frame && (key === 'flat' || key === 'flatKeys'))
+		));
 	}
 
 	private restore(state: AnalysisState, data: DataflowProcessorInformation<ParentInformation>): void {
@@ -281,6 +314,46 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 		}
 	}
 
+	/** Hands out the finalized analysis before again if the program did not change, which skips the analysis altogether. */
+	public reuseFinalized(): DataflowInformation | undefined {
+		const finalized = this.previous?.finalized;
+		const unchanged = this.update?.types.every(t => t === IncrementalUpdateType.Nothing || t === IncrementalUpdateType.Comment) === true;
+		if(!unchanged || finalized === undefined || finalized.config !== this.config || !this.unchangedReads(finalized.considered)) {
+			return undefined;
+		}
+		for(const [id, node] of finalized.addedNodes) {
+			this.ast.idMap.set(id, node);
+		}
+		const files = this.ast.ast.files;
+		for(const file of finalized.addedFiles) {
+			if(!files.some(f => f.filePath === file.filePath)) {
+				files.push(file);
+			}
+		}
+		for(const [path] of finalized.considered) {
+			this.ctx.files.addConsideredFile(path);
+		}
+		finalized.df.graph.setIdMap(this.ast.idMap);
+		this.ctx.inc.storeAppliedIncrementalUpdate({ ...this.update, applied: true });
+		this.ctx.inc.storeDataflowSnapshot({ ...this.previous as DataflowSnapshot, files: this.files, finalized });
+		return finalized.df;
+	}
+
+	/** Keeps the finalized `df` for {@link reuseFinalized}, and hands it back. */
+	public finalized(df: DataflowInformation): DataflowInformation {
+		if(this.stored !== undefined) {
+			const requested = new Set(this.files.map(f => f.filePath));
+			this.ctx.inc.storeDataflowSnapshot({ ...this.stored, finalized: {
+				df,
+				addedNodes: [...this.ast.idMap].filter(([id]) => !this.initialNodes.has(id)),
+				addedFiles: this.ast.ast.files.slice(this.initialFiles),
+				considered: this.ctx.files.consideredFilesList().slice(this.initialRead).filter(p => !requested.has(p)).map(p => [p, contentOf(this.ctx, p)] as const),
+				config:     this.ctx.config === this.config ? this.config : undefined
+			} });
+		}
+		return df;
+	}
+
 	/** Keeps what the next analysis may continue from, unless the analysis was cut short. */
 	public end(result: IncrementalDataflowResult): void {
 		if(this.update !== undefined) {
@@ -291,7 +364,8 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 		}
 		const checkpoints = [...this.carried, ...this.recorded].sort((a, b) => a.list.count - b.list.count);
 		const final = this.initialFiles > 1 ? this.copy({ ...this.stateOf(result.dfData, result.df.environment.current, this.initialNodes), df: result.df }, result.dfData) : undefined;
-		this.ctx.inc.storeDataflowSnapshot({ files: this.files, checkpoints, final });
+		this.stored = { files: this.files, checkpoints, final };
+		this.ctx.inc.storeDataflowSnapshot(this.stored);
 	}
 }
 

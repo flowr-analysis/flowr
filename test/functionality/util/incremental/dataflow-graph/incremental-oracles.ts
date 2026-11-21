@@ -57,7 +57,8 @@ const dataflowOracle: Oracle<DataflowInformation> = {
 		}
 		assert.deepStrictEqual(referencesOf(actual), referencesOf(expected), `${context}: top-level references differ`);
 		const keys = (df: DataflowInformation) => [...df.graph.idMap?.keys() ?? []].map(String).sort();
-		assert.deepStrictEqual(keys(actual), keys(expected), `${context}: the nodes of the id maps differ`);
+		const [got, want] = [keys(actual), keys(expected)];
+		assert.deepStrictEqual(got, want, `${context}: the nodes of the id maps differ, missing ${JSON.stringify(want.filter(k => !got.includes(k)))}, extra ${JSON.stringify(got.filter(k => !want.includes(k)))}`);
 		assert.deepStrictEqual(JSON.stringify([...actual.graph.statementOrder ?? []]), JSON.stringify([...expected.graph.statementOrder ?? []]), `${context}: statement orders differ`);
 		assert.deepStrictEqual([...actual.graph.ambientAccessIds()].map(String).sort(), [...expected.graph.ambientAccessIds()].map(String).sort(), `${context}: ambient accesses differ`);
 		assert.deepStrictEqual([...actual.graph.fileWritesPerCall ?? []].map(String).sort(), [...expected.graph.fileWritesPerCall ?? []].map(String).sort(), `${context}: per-call file writes differ`);

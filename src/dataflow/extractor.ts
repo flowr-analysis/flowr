@@ -871,9 +871,14 @@ function extractDataFlowGraph<OtherInfo>(
 		ctx
 	};
 	const session = IncrementalDataflow.begin(completeAst, ctx);
+	const reused = session?.reuseFinalized();
+	if(reused !== undefined) {
+		return reused;
+	}
 	const result = session?.reuse(base) ?? runFullDataflow(files, base, session);
 	session?.end(result);
-	return finalizeDataflow(result.df, result.dfData, completeAst, ctx);
+	const df = finalizeDataflow(result.df, result.dfData, completeAst, ctx);
+	return session?.finalized(df) ?? df;
 }
 
 function runFullDataflow<OtherInfo>(

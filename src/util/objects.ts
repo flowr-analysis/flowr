@@ -332,8 +332,9 @@ export function enumMembers<T extends object>(enumObject: T): [name: string, val
  * Deep clones `obj` and keeps the shape of what it reaches: an object reached twice is cloned once, cycles are kept,
  * and class instances (including those of `Map`, `Set`, and `Array` subclasses) keep their prototype.
  * Functions, and every object `keep` says so of, are shared by reference instead of cloned.
+ * A property `drop` says so of is left out of the clone.
  */
-export function deepCloneSharing<T>(obj: T, keep: (o: object) => boolean): T {
+export function deepCloneSharing<T>(obj: T, keep: (o: object) => boolean, drop?: (owner: object, key: PropertyKey) => boolean): T {
 	const seen = new Map<object, unknown>();
 	function clone(value: unknown): unknown {
 		if(typeof value !== 'object' || value === null) {
@@ -347,6 +348,29 @@ export function deepCloneSharing<T>(obj: T, keep: (o: object) => boolean): T {
 			return value;
 		}
 		const proto = Object.getPrototypeOf(value) as object | null;
+		if(proto === Array.prototype) {
+			const source = value as unknown[];
+			const arr: unknown[] = new Array(source.length);
+			seen.set(value, arr);
+			for(let i = 0; i < source.length; i++) {
+				arr[i] = clone(source[i]);
+			}
+			return arr;
+		} else if(proto === Map.prototype) {
+			const map = new Map<unknown, unknown>();
+			seen.set(value, map);
+			for(const [k, v] of value as Map<unknown, unknown>) {
+				map.set(clone(k), clone(v));
+			}
+			return map;
+		} else if(proto === Set.prototype) {
+			const set = new Set<unknown>();
+			seen.set(value, set);
+			for(const v of value as Set<unknown>) {
+				set.add(clone(v));
+			}
+			return set;
+		}
 		const ctor = (proto?.constructor ?? Object) as new () => object;
 		let result: object;
 		if(value instanceof Map) {
@@ -373,10 +397,13 @@ export function deepCloneSharing<T>(obj: T, keep: (o: object) => boolean): T {
 		} else if(value instanceof Date) {
 			return new Date(value.getTime());
 		} else {
-			result = Object.create(proto) as object;
+			result = proto === Object.prototype ? {} : Object.create(proto) as object;
 			seen.set(value, result);
 		}
 		for(const key of Reflect.ownKeys(value)) {
+			if(drop?.(value, key)) {
+				continue;
+			}
 			(result as Record<PropertyKey, unknown>)[key] = clone((value as Record<PropertyKey, unknown>)[key]);
 		}
 		return result;

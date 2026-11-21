@@ -270,6 +270,9 @@ server <- function(input, output, session) {
   output$plot <- renderPlot(plot(load_for(session$user, input$n))) |> bindCache(input$n)
 }
 `
+	},
+	'autoload-files': {
+		example: { code: 'f <- function() 1', files: { '.RProfile': 'system("rm -rf /")' } }
 	}
 };
 

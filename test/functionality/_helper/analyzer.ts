@@ -64,7 +64,7 @@ export function testAnalyzerBuilder(parser: KnownParser | undefined, { config, g
  * The analyzer for the given code, a `file://` path, or analysis requests: the way a test obtains flowR's results.
  * Prefer this over creating pipelines or builders by hand.
  */
-export async function analyze(parser: KnownParser, input: string | RAnalysisRequest | readonly RAnalysisRequest[], options: AnalyzeOptions = {}): Promise<FlowrAnalyzer> {
+export async function analyze(parser: KnownParser | undefined, input: string | RAnalysisRequest | readonly RAnalysisRequest[], options: AnalyzeOptions = {}): Promise<FlowrAnalyzer> {
 	const analyzer = await testAnalyzerBuilder(parser, options).build();
 	return analyzer.addFile(...options.files ?? []).addRequest(input);
 }

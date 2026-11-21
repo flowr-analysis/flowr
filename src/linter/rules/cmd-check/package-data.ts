@@ -10,7 +10,7 @@ import { FlowrInlineTextFile } from '../../../project/context/flowr-file';
 import { CompressionType, RDAParser } from '../../../project/plugins/file-plugins/files/flowr-rda-file';
 import type { FlowrDescriptionFile } from '../../../project/plugins/file-plugins/files/flowr-description-file';
 import type { PackageEntry } from './package-files';
-import { type FileResult, fileFindings, firstLine, linesOf, MessageAtLocation, onPackageFiles } from './file-checks';
+import { type FileResult, fileFindings, firstLine, linesOf, prettyPrintMessageAtLocation, onPackageFiles } from './file-checks';
 
 export type PackageDataKind =
 	| 'data-directory' | 'lazydata' | 'compact-data' | 'compact-sysdata' | 'compression-depends' | 'serialization-version' | 'undocumented-data';
@@ -192,7 +192,7 @@ export const PACKAGE_DATA = {
 		}
 		return { results, '.meta': { inspectedDataFiles: dataSets.length + entries.filter(e => e.relative === SysData).length, onDisk: pf.onDisk } };
 	}),
-	prettyPrint: MessageAtLocation,
+	prettyPrint: prettyPrintMessageAtLocation(),
 	info:        {
 		name:          'Package Data',
 		tags:          [LintingRuleTag.CmdCheck],

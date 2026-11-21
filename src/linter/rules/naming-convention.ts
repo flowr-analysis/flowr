@@ -200,7 +200,7 @@ export const NAMING_CONVENTION = {
 				const fix = fixCasing(m.name, casing, config.ignorePrefix);
 				/* renaming onto a name already in use would merge two variables */
 				const quickFix = fix !== undefined && !taken.has(fix) ? createNamingConventionQuickFixes(dataflow.graph, id, fix, casing) : undefined;
-				return { ...m, involvedId: id, quickFix } as NamingConventionResult;
+				return { ...m, involvedId: id, quickFix };
 			});
 		return { results, '.meta': { numMatches: symbols.length - results.length, numBreak: results.length } };
 	},

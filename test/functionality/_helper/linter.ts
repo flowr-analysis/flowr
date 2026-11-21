@@ -1,8 +1,8 @@
 import type { BrandedNamespace, BrandedIdentifier } from '../../../src/dataflow/environments/identifier';
 import {
+	type LintingRuleNames,
 	type LintingRuleConfig,
 	type LintingRuleMetadata,
-	type LintingRuleNames,
 	type LintingRuleResult,
 	LintingRules
 } from '../../../src/linter/linter-rules';
@@ -74,7 +74,7 @@ type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : n
  */
 export function assertLinter<Name extends LintingRuleNames>(
 	name: string | TestLabel,
-	parser: KnownParser,
+	parser: KnownParser | undefined,
 	code: string,
 	ruleName: Name,
 	expected: DistributiveOmit<LintingRuleResult<Name>, 'involvedId'>[] | ((df: DataflowInformation, ast: NormalizedAst) => Omit<LintingRuleResult<Name>, 'involvedId'>[]),
@@ -95,7 +95,7 @@ export function assertLinter<Name extends LintingRuleNames>(
  */
 export function assertLinterWithIds<Name extends LintingRuleNames>(
 	name: string | TestLabel,
-	parser: KnownParser,
+	parser: KnownParser | undefined,
 	code: string,
 	ruleName: Name,
 	expected: (Omit<LintingRuleResult<Name>, 'involvedId'> & { involvedId: SlicingCriteria })[] | ((df: DataflowInformation, ast: NormalizedAst) => (Omit<LintingRuleResult<Name>, 'involvedId'> & { involvedId: SlicingCriteria })[]),
@@ -121,7 +121,7 @@ function statedFields(expected: readonly Record<string, unknown>[]): (result: ob
 
 /** Asserts the linting results, comparing only the fields the expected results state (the union over all of them, so state a field for every result or none).*/
 export function assertLinterFields<Name extends LintingRuleNames>(
-	parser: KnownParser,
+	parser: KnownParser | undefined,
 	code: string,
 	ruleName: Name,
 	expected: Record<string, unknown>[],
@@ -135,7 +135,7 @@ export function assertLinterFields<Name extends LintingRuleNames>(
 /** Like {@link assertLinterFields}, with a rule config, and `line` standing for the first line of a result's `loc` */
 export function assertLinterLines<Name extends LintingRuleNames>(
 	name: string | TestLabel,
-	parser: KnownParser,
+	parser: KnownParser | undefined,
 	code: string,
 	ruleName: Name,
 	expected: Record<string, unknown>[],
@@ -162,7 +162,7 @@ export const TestPackageRoot = '/pkg';
  */
 export function assertLinterPackage<Name extends LintingRuleNames>(
 	name: string | TestLabel,
-	parser: KnownParser,
+	parser: KnownParser | undefined,
 	code: string,
 	ruleName: Name,
 	expected: Record<string, unknown>[],
@@ -179,7 +179,7 @@ export function assertLinterPackage<Name extends LintingRuleNames>(
 }
 
 /** Asserts the lines the findings of `rule` start at, as the linter query of a fresh analyzer reports them */
-export function assertLintedLines(name: string, parser: KnownParser, code: string, rule: LintingRuleNames, lines: readonly number[]) {
+export function assertLintedLines(name: string, parser: KnownParser | undefined, code: string, rule: LintingRuleNames, lines: readonly number[]) {
 	test(name, async() => {
 		const analyzer = await analyze(parser, code);
 		const linted = await analyzer.query({ type: 'linter', rules: [rule] });
@@ -193,7 +193,7 @@ export function assertLintedLines(name: string, parser: KnownParser, code: strin
  */
 function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 	name: string | TestLabel,
-	parser: KnownParser,
+	parser: KnownParser | undefined,
 	code: string,
 	ruleName: Name,
 	expected: Result[] | ((df: DataflowInformation, ast: NormalizedAst) => Result[]),

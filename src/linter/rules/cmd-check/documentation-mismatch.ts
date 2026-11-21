@@ -22,7 +22,7 @@ import { type BrandedIdentifier, Identifier } from '../../../dataflow/environmen
 import path from 'path';
 import { rootDescriptionFile } from './package-files';
 import { type CmdCheckResult, formalNames, packageInfo, topLevelDefinitions } from './cmd-check-util';
-import { MessageAtLocation } from './file-checks';
+import { prettyPrintMessageAtLocation } from './file-checks';
 
 /** The sub-check of `R CMD check` a finding belongs to. */
 export type DocumentationMismatchKind =
@@ -305,7 +305,7 @@ export const DOCUMENTATION_MISMATCH = {
 		}
 		return { results, '.meta': { consideredObjects, consideredPages: pages.length } };
 	},
-	prettyPrint: MessageAtLocation,
+	prettyPrint: prettyPrintMessageAtLocation(),
 	info:        {
 		name:          'Documentation Mismatch',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Documentation, LintingRuleTag.Bug],

@@ -13,7 +13,7 @@ import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { firstErrorRow, projectNodes } from './cmd-check-util';
-import { type FileResult, fileFindings, onPackageFiles, KindInFile } from './file-checks';
+import { type FileResult, fileFindings, onPackageFiles, prettyPrintKindInFile } from './file-checks';
 import type { PackageFiles } from './package-files';
 
 /** what is wrong with a package file, named after the `R CMD check` finding it corresponds to */
@@ -301,7 +301,7 @@ export const PACKAGE_METAFILES = {
 		}
 		return { results, '.meta': { checkedFiles: checked } };
 	}),
-	prettyPrint: KindInFile,
+	prettyPrint: prettyPrintKindInFile(),
 	info:        {
 		name:          'Package Metafiles',
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Robustness],

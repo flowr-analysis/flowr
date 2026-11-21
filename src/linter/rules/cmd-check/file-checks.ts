@@ -1,4 +1,4 @@
-import { prettyPrint, LintingResultCertainty } from '../../linter-format';
+import { type LintingPrettyPrintContext, prettyPrint, LintingResultCertainty  } from '../../linter-format';
 import { SourceLocation, type Line } from '../../../util/range';
 import { type CmdCheckResult, type PackageInfo, packageInfo } from './cmd-check-util';
 import { type PackageFiles, packageFiles } from './package-files';
@@ -44,7 +44,11 @@ export function firstLine(pf: PackageFiles, file: string, pattern: RegExp): numb
 }
 
 /** Pretty printing of a file finding as its kind, file and location, in full as its message and location. */
-export const KindInFile = prettyPrint((r: FileResult<string>) => `${r.kind} in ${r.file} at ${SourceLocation.format(r.loc)}`, r => `${r.message} (at ${SourceLocation.format(r.loc)})`);
+export function prettyPrintKindInFile(): { readonly [C in LintingPrettyPrintContext]: (r: FileResult<string>, metadata: unknown) => string } {
+	return prettyPrint(r => `${r.kind} in ${r.file} at ${SourceLocation.format(r.loc)}`, r => `${r.message} (at ${SourceLocation.format(r.loc)})`);
+}
 
 /** Pretty printing of a finding as its message and location. */
-export const MessageAtLocation = prettyPrint((r: { readonly message: string, readonly loc: SourceLocation }) => `${r.message} at ${SourceLocation.format(r.loc)}`);
+export function prettyPrintMessageAtLocation(): { readonly [C in LintingPrettyPrintContext]: (r: { readonly message: string, readonly loc: SourceLocation | undefined }, metadata: unknown) => string } {
+	return prettyPrint(r => `${r.message} at ${SourceLocation.format(r.loc)}`);
+}

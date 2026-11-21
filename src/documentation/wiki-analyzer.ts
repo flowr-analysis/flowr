@@ -508,6 +508,7 @@ With ${ctx.linkConfig('incremental.dataflow.activated')}, the dataflow analysis 
 The ${ctx.link(DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin)} classifies the change (${ctx.link('IncrementalUpdateType')}).
 Unchanged files are reused, and a single file resumes after its last unchanged statement if a checkpoint exists there (see ${ctx.linkConfig('incremental.dataflow.checkpoints')}).
 ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getLastAppliedIncrementalUpdate', { codeFont: true, realNameWrapper: 'i' })} tells you what the last analysis reused.
+The playground and the watch mode of the REPL (\`:query @dataflow watch://file.R\`) turn it on, as they analyze the same files again on every change.
 
 
 ${section('Caching', 2)}

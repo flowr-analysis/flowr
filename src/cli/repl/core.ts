@@ -359,6 +359,10 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 	if(statement.includes(watchProtocol)) {
 		const watchPath = extractWatchPath(statement);
 		const effective = toFileStatement(statement);
+		/* a watched file is analyzed again on every change, which the incremental dataflow analysis continues from the analysis before */
+		if(watchPath !== undefined && !analyzer.inspectContext().config.incremental.dataflow.activated) {
+			analyzer.updateConfig({ incremental: { dataflow: { activated: true } } });
+		}
 		await executeStatement(output, effective, analyzer, allowRSessionAccess, remote);
 		if(watchPath) {
 			try {

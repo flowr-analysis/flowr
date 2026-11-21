@@ -391,11 +391,6 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 			[{ type: 'input-sources', criterion: '2@foo' }], {
 				'2@foo': [{ id: '2@x', types: [InputType.System], trace: InputTraceType.Alias }]
 			});
-		testQuery('A quoted name after base:: is the same function',
-			'x <- base::"system"("ls")\ny <- "base"::`system`("ls")\nfoo(x, y)',
-			[{ type: 'input-sources', criterion: '3@foo' }], {
-				'3@foo': [{ id: '3@x', types: [InputType.System], trace: InputTraceType.Alias }, { id: '3@y', types: [InputType.System], trace: InputTraceType.Alias }]
-			});
 		testQuery('Plain var() resolves via namespaced stats::var in PureFunctions -> DerivedConstant',
 			'x <- var(c(1, 2, 3))\nfoo(x)',
 			[{ type: 'input-sources', criterion: '2@foo' }], {

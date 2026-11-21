@@ -171,7 +171,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	public hasSignatureDatabase(): boolean {
-		return isSigDbEnabled(this.ctx.config) && this.plugins.some(p => p.loadedDatabases().length > 0);
+		return isSigDbEnabled(this.ctx.config) && this.plugins.some(p => p.hasLoadedDatabase());
 	}
 
 	public packagesExporting(name: BrandedIdentifier): readonly BrandedNamespace[] {

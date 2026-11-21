@@ -1,6 +1,7 @@
 import { collapsibleToc, details, section } from '../../doc-util/doc-structure';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { guard } from '../../../util/assert';
+import { compareByCodeUnit } from '../../../util/text/strings';
 
 const FlowrFaqTopics = {
 	'flowr.use':         '✨ Using <i>flowR</i>',
@@ -12,9 +13,7 @@ const FlowrFaqTopics = {
 const FlowrFaqMainTitle = '💮 <i>flowR</i> FAQ';
 
 type Topic = keyof typeof FlowrFaqTopics;
-/**
- * Manage all questions and answers by topic.
- */
+/** Manage all questions and answers by topic. */
 export class FaqStore {
 	private faqs:      DefaultMap<Topic, [question: string, answer: string][]> = new DefaultMap(() => []);
 	private currTopic: Topic | undefined = undefined;
@@ -37,8 +36,7 @@ export class FaqStore {
 
 	private printAllTopics(topicsRegex: RegExp): string {
 		const topics = Array.from(this.faqs.keys())
-			.filter(topic => topicsRegex.test(topic))
-			.sort((a, b) => a.localeCompare(b));
+			.filter(topic => topicsRegex.test(topic)).sort(compareByCodeUnit);
 		let output = '';
 		for(const topic of topics) {
 			const faqs = this.faqs.get(topic).sort(
@@ -59,16 +57,9 @@ export class FaqStore {
 	toMarkdown(): string {
 		return `
 ${collapsibleToc({
-	[FlowrFaqMainTitle]: {
-		[FlowrFaqTopics['flowr.development']]: {},
-		[FlowrFaqTopics['flowr.use']]:         {}
-	},
-	['🇷 R FAQ']: {
-		[FlowrFaqTopics['r.packages']]: {}
-	},
-	['💻 Editor FAQ']: {
-		[FlowrFaqTopics['editor.configs']]: {}
-	}
+	[FlowrFaqMainTitle]: { [FlowrFaqTopics['flowr.development']]: {}, [FlowrFaqTopics['flowr.use']]: {} },
+	['🇷 R FAQ']:         { [FlowrFaqTopics['r.packages']]: {} },
+	['💻 Editor FAQ']:    { [FlowrFaqTopics['editor.configs']]: {} }
 })}
 
 ${section(FlowrFaqMainTitle, 2)}

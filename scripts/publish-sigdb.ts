@@ -1,7 +1,7 @@
 // Publish the sigdb shards to the GitHub Release `sigdb-v<version>` and/or the GHCR data image, then regenerate
 // the committed `sigdb.remote.json` so its hashes match the upload (commit it afterwards). DRY RUN by default.
-//   npm run publish:sigdb                          # dry run
-//   npm run publish:sigdb -- --confirm             # publish both (--target=release|ghcr for one)
+//   npm run sigdb:publish                          # dry run
+//   npm run sigdb:publish -- --confirm             # publish both (--target=release|ghcr for one)
 // Env: FLOWR_SIGDB_IMAGE (default ghcr.io/flowr-analysis/flowr-sigdb), GH_REPO.
 
 import fs from 'fs';
@@ -42,7 +42,7 @@ function haveTool(cmd: string): boolean {
 /** regenerate the committed link file (hashes match the upload) and return the downloadable shard paths */
 async function bundleAssets(tag: string): Promise<string[]> {
 	if(!fs.existsSync(bundleDir)) {
-		throw new Error(`no sigdb bundle at ${bundleDir} -- generate it first (crawlr dump:sigs, then copy into src/data/sigdb)`);
+		throw new Error(`no sigdb bundle at ${bundleDir} -- generate it first with the extractor, then copy into src/data/sigdb`);
 	}
 	// the pointer is written for the same tag we upload the assets to, so the two can never drift
 	const { downloadable } = await writeRemotePointer({ bundleDir, skipVerification: true, tag });

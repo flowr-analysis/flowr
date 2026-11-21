@@ -10,14 +10,9 @@ import { DfEdge } from './edge';
 export function df2quads(graph: DataflowGraph, config: QuadSerializationConfiguration): string {
 	return graph2quads({
 		rootIds:  Array.from(graph.rootIds()),
-		vertices: Array.from(graph.vertices(true)
-			.map(([, v]) => v)),
-		edges: graph.edges().flatMap(([fromId, targets]) =>
-			Array.from(targets).map(([toId, info]) => ({
-				from: fromId,
-				to:   toId,
-				type: Array.from(DfEdge.typesToNames(info)),
-			}))
+		vertices: Array.from(graph.vertices(true).map(([, v]) => v)),
+		edges:    graph.edges().flatMap(([fromId, targets]) =>
+			Array.from(targets).map(([toId, info]) => ({ from: fromId, to: toId, type: Array.from(DfEdge.typesToNames(info)) }))
 		).toArray()
 	},
 	config

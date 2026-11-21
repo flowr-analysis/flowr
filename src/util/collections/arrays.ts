@@ -1,27 +1,29 @@
 import { guard } from '../assert';
 import type { AnyArray, Tail } from 'ts-essentials';
 
-/**
- * Returns the tail of an array (all elements except the first one).
- */
+/** Returns the tail of an array (all elements except the first one). */
 export type TailOfArray<T extends unknown[]> = T extends [infer _, ...infer Rest] ? Rest : never;
 
-/**
- * Returns the union of types in an array, but the first one, uses U as a fallback if the array is empty.
- */
+/** Returns the union of types in an array, but the first one, uses U as a fallback if the array is empty. */
 export type TailTypesOrUndefined<T extends AnyArray, U = undefined> = T extends [] ?
 	U : T extends [unknown] ? U : Tail<T>[number];
 
-/**
- * Returns the union of types in an array, but the first and the second one, uses U as a fallback if the array is empty.
- */
+/** Returns the union of types in an array, but the first and the second one, uses U as a fallback if the array is empty. */
 export type Tail2TypesOrUndefined<T extends AnyArray, U = undefined> = T extends [] ?
 	U : T extends [unknown] ? U : T extends [unknown, unknown] ? U : Tail<Tail<T>>[number];
 
-/**
- * Returns the last element of an array
- */
+/** Returns the last element of an array */
 export type LastOfArray<T extends AnyArray> = T extends [...infer _, infer L] ? L : never;
+
+/**
+ * Whether `value` is an array, narrowing a `readonly T[]` as such rather than to `any[]`.
+ *
+ * `Array.isArray` is declared as `arg is any[]`, which a `readonly T[] | Something` union does not survive:
+ * the array branch loses its element type and the other branch is not narrowed at all. This keeps both.
+ */
+export function isArray<T>(value: readonly T[] | unknown): value is readonly T[] {
+	return Array.isArray(value);
+}
 
 /**
  * Splits the array every time the given predicate fires.
@@ -76,7 +78,6 @@ export function partitionArray<T>(arr: readonly T[], predicate: (elem: T) => boo
 
 /**
  * Generate all permutations of the given array using Heap's algorithm (with its non-recursive variant).
- * @param arr - The array to permute
  * @see getUniqueCombinationsOfSize
  */
 export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
@@ -143,9 +144,7 @@ export function *getUniqueCombinationsOfSize<T>(array: T[], minSize = 0, maxSize
 	yield* p([], 0, true);
 }
 
-/**
- * Returns the sum of all elements in the given array
- */
+/** Returns the sum of all elements in the given array */
 export function arraySum(arr: readonly number[]): number {
 	let sum = 0;
 	for(let i = 0, n = arr.length; i < n; i++) {
@@ -154,20 +153,7 @@ export function arraySum(arr: readonly number[]): number {
 	return sum;
 }
 
-/**
- * Converts an array into a bag data-structure (in the form of a map mapping the entries/keys to their counts)
- */
-export function array2bag<T>(arr: T[]): Map<T, number> {
-	const result = new Map<T, number>();
-	for(const elem of arr) {
-		result.set(elem, (result.get(elem) ?? 0) + 1);
-	}
-	return result;
-}
-
-/**
- * Compares two arrays for equality, using the given comparison function for the elements.
- */
+/** Compares two arrays for equality, using the given comparison function for the elements. */
 export function arrayEqual<T>(
 	a: readonly T[] | undefined,
 	b: readonly T[] | undefined,
@@ -192,10 +178,9 @@ export function arrayEqual<T>(
  *
  * If the number of elements to sample is greater or equal to the number of elements in the list, the list is returned as is.
  * If the number of elements to sample is less than or equal to 0, an empty list is returned.
- * @param list - list of elements
  * @param sampleCount - number of elements to sample
- * @param rounding - rounding mode to use for the index calculation
- * @returns - a list of elements equidistantly sampled from the input list
+ * @param rounding    - rounding mode to use for the index calculation
+ * @returns           - a list of elements equidistantly sampled from the input list
  */
 export function equidistantSampling<T>(list: readonly T[], sampleCount: number, rounding: 'floor' | 'ceil' = 'ceil'): T[] {
 	if(sampleCount >= list.length) {
@@ -228,19 +213,24 @@ export function cartesianProduct<T>(...arrays: T[][]): T[][] {
 
 /** merge two arrays, removing duplicates */
 export function uniqueArrayMerge<T>(left: readonly T[], right: readonly T[]): T[] {
-	return Array.from(new Set<T>(left).union(new Set<T>(right)));
+	return uniqueArray([...left, ...right]);
 }
 
-/**
- * Returns a duplicate-free array.
- */
+/** Returns a duplicate-free array. */
 export function uniqueArray<T>(a: Iterable<T>): T[] {
 	return Array.from(new Set(a));
 }
 
-/**
- * Groups the elements of the given array by the key returned by the given key function.
- */
+/** Returns the elements of the given array without those whose key an earlier element already has. */
+export function uniqueArrayBy<T, K>(a: readonly T[], keyFn: (elem: T) => K): T[] {
+	const seen = new Set<K>();
+	return a.filter(e => {
+		const key = keyFn(e);
+		return !seen.has(key) && seen.add(key) !== undefined;
+	});
+}
+
+/** Groups the elements of the given array by the key returned by the given key function. */
 export function arraysGroupBy<T, K>(arr: readonly T[], keyFn: (elem: T) => K): Map<K, T[]> {
 	return Map.groupBy(arr, keyFn);
 }

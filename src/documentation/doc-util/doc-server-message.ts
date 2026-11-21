@@ -5,7 +5,7 @@ import type { FlowrMessage, IdMessageBase, MessageDefinition } from '../../cli/r
 import { type FakeServer, type FakeSocket, withSocket } from '../../../test/functionality/_helper/net';
 import { jsonWithLimit } from './doc-code';
 import { guard } from '../../util/assert';
-import { printAsMs } from '../../util/text/time';
+import { docTook } from './doc-timings';
 import type { KnownParser } from '../../r-bridge/parser';
 
 export interface ServerMessageDescription {
@@ -22,16 +22,12 @@ export interface ServerMessageDescription {
 
 const messages: ServerMessageDescription[] = [];
 
-/**
- * Documents a server message for later printing.
- */
+/** Documents a server message for later printing. */
 export function documentServerMessage(description: ServerMessageDescription): void {
 	messages.push(description);
 }
 
-/**
- * Visualizes all documented server messages in markdown format.
- */
+/** Visualizes all documented server messages in markdown format. */
 export async function printServerMessages(treeSitter: KnownParser): Promise<string> {
 	let text = '<ul>';
 	for(const message of messages) {
@@ -40,9 +36,7 @@ export async function printServerMessages(treeSitter: KnownParser): Promise<stri
 	return text + '</ul>';
 }
 
-/**
- * Executes the given function within a server context.
- */
+/** Executes the given function within a server context. */
 export async function inServerContext<T>(shell: KnownParser, fn: (socket: FakeSocket, server: FakeServer) => Promise<T> | T): Promise<T> {
 	return withSocket(shell, async(socket, server) => {
 		return fn(socket, server);
@@ -73,7 +67,7 @@ export interface MessagePingPongDocumentationArguments {
 function explainMsg(msg: IdMessageBase, type: 'request' | 'response', desc = '', open = false): string {
 	const bold: (s: string) => string = open ? s => `<b>${s}</b>` : s => s;
 	return `
-<li> ${bold( '<code>' + msg.type + `</code> (${type})`)}
+<li> ${bold('<code>' + msg.type + `</code> (${type})`)}
 <details${open ? ' open' : ''}> 
 
 <summary> Show Details </summary>
@@ -116,9 +110,7 @@ function explainPingPong(
 	return result + '</ol>';
 }
 
-/**
- * Documents a ping-pong message exchange with the server.
- */
+/** Documents a ping-pong message exchange with the server. */
 export async function documentServerMessageResponse({
 	shell, title, messageType, messages
 }: MessagePingPongDocumentationArguments): Promise<string> {
@@ -153,7 +145,7 @@ ${
 	explainPingPong(messages, response)
 }
 
-The complete round-trip took ${printAsMs(end - start)} (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip${docTook(end - start)} covers validating the messages as well as starting and stopping the internal mock server.
 
 </details>
 `;

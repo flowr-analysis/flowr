@@ -3,12 +3,7 @@
  * @module
  */
 import type { OptionDefinition } from 'command-line-usage';
-import {
-	benchmarkHelperOptions,
-	benchmarkOptions,
-	slicerOptions,
-	summarizerOptions
-} from './options';
+import { benchmarkHelperOptions, benchmarkOptions, slicerOptions, summarizerOptions } from './options';
 import type { MergeableRecord } from '../../util/objects';
 import { asOptionName } from '../repl/commands/repl-commands';
 
@@ -19,7 +14,6 @@ interface BaseScriptInformation extends MergeableRecord {
 	target:       string
 	/** description of the tool for the user */
 	description:  string
-	/** example usage */
 	usageExample: string
 	/** command line options that are available */
 	options:      OptionDefinition[]
@@ -36,9 +30,7 @@ export interface HelperScriptInformation extends BaseScriptInformation {
 
 export type ScriptInformation = MasterScriptInformation | HelperScriptInformation;
 
-/**
- * We hold `_scripts` internally, as the modifiable variant and export the readonly scripts
- */
+/** We hold `_scripts` internally, as the modifiable variant and export the readonly scripts */
 const _scripts = {
 	'slicer': {
 		toolName:     'slicer',
@@ -63,7 +55,7 @@ const _scripts = {
 		usageExample:  'benchmark-single "example.R" --output "example.json"',
 		options:       benchmarkHelperOptions,
 		type:          'helper script',
-		masterScripts: [ 'benchmark' ]
+		masterScripts: ['benchmark']
 	},
 	'summarizer': {
 		toolName:     'summarizer',
@@ -77,9 +69,7 @@ const _scripts = {
 
 export const scripts = _scripts as Record<keyof typeof _scripts, ScriptInformation>;
 
-/**
- * Given a set of option definitions and previously provided arguments, determine which options can still be added.
- */
+/** Given a set of option definitions and previously provided arguments, determine which options can still be added. */
 export function getValidOptionsForCompletion(options: readonly OptionDefinition[], prevArgs: readonly string[]): string[] {
 	return options.filter(o => canAddOption(o, prevArgs)).flatMap(o => {
 		const args = [asOptionName(o.name)];

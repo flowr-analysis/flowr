@@ -4,6 +4,10 @@
  * operates on these lives in `./sigdb` (which re-exports this module, so `./sigdb` stays the single entry point).
  */
 
+import type { ArgProps } from '../../dataflow/environments/built-in-props';
+import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
+import type { StatedGuards } from '../../dataflow/fn/guards/built-in-guards';
+
 /** The definition location of the binding, with a file path usually relative to the package project root. */
 export interface SigDefinitionLocation {
 	readonly file: string
@@ -14,10 +18,10 @@ export interface SigDefinitionLocation {
 export interface LibraryExports {
 	/** R version identifier (see `RVersion.parse`) */
 	readonly version:    string;
-	readonly exported:   readonly string[];
+	readonly exported:   readonly BrandedIdentifier[];
 	/** defined-but-not-exported identifiers (only available when internal names are stored, which we usually avoid in the db) */
-	readonly internal:   readonly string[];
-	readonly deprecated: readonly string[];
+	readonly internal:   readonly BrandedIdentifier[];
+	readonly deprecated: readonly BrandedIdentifier[];
 	/**
 	 * S3 classes this package version OWNS: it registers at least one S3 method for the class (its NAMESPACE's
 	 * `S3method(generic, class)`) AND exports a same-named constructor function. See {@link FnProp.S3Owner}.
@@ -30,32 +34,41 @@ export interface LibraryExports {
 	/** package documentation url base in case this package is found at a different endpoint */
 	readonly cranUrl?:   string;
 	/** definition location per identifier, if the database carries them */
-	readonly locations?: ReadonlyMap<string, SigDefinitionLocation>;
+	readonly locations?: ReadonlyMap<BrandedIdentifier, SigDefinitionLocation>;
+	/** the package each re-exported name comes from (`importFrom(magrittr, "%>%")` plus `export("%>%")`), if the database carries it */
+	readonly reexports?: ReadonlyMap<BrandedIdentifier, BrandedNamespace>;
 }
 
 export const SigDbMagic = 'flowr-sigdb';
 export const SigDbSchema = 5;
 /** default CRAN source-package base URL, used to build a version's tarball link */
 export const DefaultCranBase = 'https://cran.r-project.org/src/contrib/';
-/**
- * Parameter default expressions longer than this are stored truncated (with a `…` marker): flowR only needs a
- * short lexeme preview of a default, not the whole expression, so a small cap keeps the dictionary compact.
- */
+/** parameter default expressions longer than this are stored truncated (with a `…` marker): a short lexeme preview keeps the dictionary compact */
 export const MaxDefaultLength = 10;
 /** file extension of the (uncompressed) bundle */
 export const SigDbExt = '.sigs.ndjson';
 
 /** function-level boolean properties, packed into {@link SigFn}'s bitfield */
 export const enum FnProp {
+	/** the package exports the name, so a caller reaches it without `:::` */
 	Exported         = 1 << 0,
+	/** takes a function as an argument or returns one */
 	HigherOrder      = 1 << 1,
+	/** calls itself, directly or through other functions of the package */
 	Recursive        = 1 << 2,
+	/** calls something deprecated, so it may stop working once that goes */
 	CallsDeprecated  = 1 << 3,
+	/** may raise an error, so a caller cannot count on a value back */
 	CanThrow         = 1 << 4,
+	/** marked as deprecated by the package itself */
 	Deprecated       = 1 << 5,
+	/** calls into R's internal code, like `.Internal` or `.Call`, which no R source shows */
 	CallsInternal    = 1 << 6,
+	/** may answer differently for the same arguments, like random draws or the clock */
 	NonDeterministic = 1 << 7,
+	/** the package has no manual page for the name */
 	NoDoc            = 1 << 8,
+	/** an implementation of a generic for one class, like `print.data.frame` */
 	S3Method         = 1 << 9,
 	/**
 	 * An exported function that is also an S3 class this package OWNS: it is a same-named constructor for a
@@ -79,7 +92,16 @@ export const enum FnProp {
 	 * ggplot2's `class_gg`). Only the extractor can tell: an entry without a definition location may equally be
 	 * a function built at load time, an S4 generic or a `Vectorize` result, which has no source to point at.
 	 */
-	Value            = 1 << 13
+	Value            = 1 << 13,
+	/**
+	 * The definition is a generic others dispatch on (S3 `UseMethod`, S4 `setGeneric`/`standardGeneric`, S7
+	 * `new_generic`). The call graph only shows this for an S3 generic with a bundled body, never for S4/S7.
+	 */
+	Generic          = 1 << 14,
+	/** runs code concurrently: it reaches a call flowR knows does (`future::future`), or a native routine that forks or starts threads */
+	Concurrent       = 1 << 15,
+	/** computes a result and nothing else (flowR's `CallProp.Pure`): every call it makes does so, a native routine one only if {@link NativeFlag.Pure} */
+	Pure             = 1 << 16
 }
 
 /** the {@link FnProp} bit to its name (for decoding); integer keys iterate in ascending bit order */
@@ -97,31 +119,97 @@ export const FnPropNames: Readonly<Record<FnProp, string>> = {
 	[FnProp.S3Owner]:          's3-owner',
 	[FnProp.S4Owner]:          's4-owner',
 	[FnProp.S4Method]:         's4-method',
-	[FnProp.Value]:            'value'
+	[FnProp.Value]:            'value',
+	[FnProp.Generic]:          'generic',
+	[FnProp.Concurrent]:       'concurrent',
+	[FnProp.Pure]:             'pure'
 };
 
-/** parameter flags, packed into {@link SigParam}'s flag int */
-export const enum ParamFlag {
-	/** forced: the argument is always evaluated (crawlr `always-read`) */
-	Forced  = 1 << 0,
-	/** the argument has no default value (crawlr `missing`) */
-	Missing = 1 << 1
-}
-
 /**
- * One parameter of a signature (position implied by array order): just `nameIdx`, or `[nameIdx, flags]`,
- * or `[nameIdx, flags, defaultIdx]`. All indices point into the global string dictionary.
+ * One parameter of a signature (position implied by array order): `nameIdx`, `[nameIdx, props]`, or
+ * `[nameIdx, props, defaultIdx]` (indices into the global dictionary). `props` is the {@link ArgProp} bitfield,
+ * whose two lowest bits are the pre-existing `Forced`/`NoDefault`, so old bundles read the same.
  */
-export type SigParam = number | [nameIdx: number, flags: number] | [nameIdx: number, flags: number, defaultIdx: number];
+export type SigParam = number | [nameIdx: number, props: number] | [nameIdx: number, props: number, defaultIdx: number];
 /** a full signature: the ordered parameter list */
 export type Sig = SigParam[];
 /**
  * One function record `[nameIdx, sigIdx, cgIdx, propBits, fileIdx, line]` (`sigIdx`/`cgIdx`/`fileIdx` are -1 when
- * absent), with an optional trailing `topicIdx` (the Rd help topic, present only when it differs from the name).
- * The trailing element is additive: readers that stop at `line` ignore it, so older bundles stay readable.
+ * absent), with an optional trailing `topicIdx` (the Rd help topic, -1 when it equals the name) and, after it, an
+ * optional `reexportIdx` (the package a re-export comes from).
+ * The trailing elements are additive: readers that stop at `line` ignore them, so older bundles stay readable.
  */
 export type SigFn = [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number]
-	| [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number, topicIdx: number];
+	| [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number, topicIdx: number]
+	| [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number, topicIdx: number, reexportIdx: number];
+
+/** the object system a class record belongs to, mirroring {@link ClassSystem} in a single on-disk byte */
+export const enum SigClassSystem { S4 = 0, RefClass = 1, S7 = 2, R6 = 3 }
+/** the {@link SigClassSystem} values in order, with their names (for decoding) */
+export const SigClassSystemNames = ['s4', 'rc', 's7', 'r6'] as const;
+
+/** class-level boolean properties, packed into {@link SigClass}'s bitfield */
+export const enum ClassProp {
+	/** the class cannot be instantiated: `representation("VIRTUAL")`, `contains = "VIRTUAL"`, or S7 `abstract = TRUE` */
+	Virtual = 1 << 0,
+	/** the record is a `setClassUnion`, so its {@link SigClass} supers are the classes it *unites* (its subclasses), not the ones it extends. Always {@link ClassProp.Virtual} too. */
+	Union   = 1 << 1,
+	/** the package does not define the class, it only extends or relates it (a `setIs`, or a `contains` naming another package's class) */
+	Foreign = 1 << 2
+}
+
+/**
+ * One declared member of a class (an S4 slot, an S7 property, an RC field, an R6 entry): just `nameIdx` when
+ * the declaration states no type, `[nameIdx, typeIdx]` when it does. Both index the global dictionary.
+ */
+export type SigSlot = number | [nameIdx: number, typeIdx: number];
+
+/**
+ * One class record `[nameIdx, system, propBits, supers, slots]` (`supers`: dictionary indices of the direct
+ * superclasses, in declaration order), with an optional trailing `pkgIdx` naming the package that *defines* the
+ * class when that is not the one carrying the record (see {@link ClassProp.Foreign}); additive, so older readers stay working.
+ */
+export type SigClass = [nameIdx: number, system: SigClassSystem, props: number, supers: number[], slots: SigSlot[]]
+	| [nameIdx: number, system: SigClassSystem, props: number, supers: number[], slots: SigSlot[], pkgIdx: number];
+
+/** the language a native routine is written in, one on-disk number (`0` = not known) */
+export const enum NativeLang { Unknown = 0, C = 1, Cxx = 2, Fortran = 3, Rust = 4 }
+/** the {@link NativeLang} values in order, with their names (for decoding) */
+export const NativeLangNames = [undefined, 'c', 'c++', 'fortran', 'rust'] as const;
+/** the interface a routine is registered for (`R_registerRoutines`), one on-disk number (`0` = not registered) */
+export const enum NativeIface { None = 0, Call = 1, C = 2, Fortran = 3, External = 4 }
+/** the {@link NativeIface} values in order, with the R function calling through them (for decoding) */
+export const NativeIfaceNames = [undefined, '.Call', '.C', '.Fortran', '.External'] as const;
+
+/** routine-level flags of a {@link SigNative}, above the 3 bits of {@link NativeLang} and the 3 bits of {@link NativeIface} */
+export const enum NativeFlag {
+	/**
+	 * Everything the routine calls was resolved: no call through a pointer, no callee outside the package
+	 * that the analyzer's API table does not know, no translation unit that failed to parse. Only then does
+	 * a fact missing from {@link SigNativeRoutineInfo.facts} mean the routine does not have it.
+	 */
+	Closed    = 1 << 6,
+	/** closed, no fact but `error:*`/`warning:*`, no parameter written or escaping, no global written */
+	Pure      = 1 << 7,
+	/** registered, but the analyzer found no definition of the routine in the package's sources */
+	Undefined = 1 << 8
+}
+
+/**
+ * One argument of a native routine: `[nameIdx, props]` or `[nameIdx, props, typeIdx]` (the declared C type). `props` are the
+ * {@link ArgProps} R functions use: `Value` (read), `Written` (may be written, also when it reaches code the analyzer cannot see
+ * into), `Atomic` (has to be an atomic vector) and `Guarded` (the routine fails on some values, see {@link SigNativeRoutineInfo.guards}).
+ */
+export type SigNativeParam = [nameIdx: number, props: ArgProps] | [nameIdx: number, props: ArgProps, typeIdx: number];
+
+/**
+ * One native routine record `[nameIdx, flags, symbolIdx, fileIdx, line, arity, rNames, params, facts, contractIdx?, endLine?, column?]`. `flags`
+ * packs {@link NativeLang} (bits 0-2), {@link NativeIface} (bits 3-5) and {@link NativeFlag}; `symbolIdx`/`fileIdx`
+ * are -1 when absent, `arity` is the registered argument count (-1 = any or not registered); `rNames`, `facts`
+ * are dictionary indices (ascending), `params` in declaration order; `contractIdx` indexes {@link PkgBlob.contracts} (-1 for none);
+ * `endLine` and `column` complete the location of the definition (-1 when not known).
+ */
+export type SigNative = [nameIdx: number, flags: number, symbolIdx: number, fileIdx: number, line: number, arity: number, rNames: number[], params: SigNativeParam[], facts: number[], contractIdx?: number, endLine?: number, column?: number];
 
 /** the kind of a package dependency (mirrors the DESCRIPTION fields) */
 export const enum DepType { Depends = 0, Imports = 1, LinkingTo = 2, Suggests = 3, Enhances = 4 }
@@ -137,32 +225,51 @@ export type SigDep = [nameIdx: number, type: DepType] | [nameIdx: number, type: 
  * consecutive pool slots, which brotli collapses on disk. See {@link PkgBlobTuple} for the on-disk order.
  */
 export interface PkgBlob {
-	sigs:          Sig[];
-	cgs:           number[][];
-	fns:           SigFn[];
+	sigs:              Sig[];
+	cgs:               number[][];
+	fns:               SigFn[];
 	/** version name to a delta-encoded ascending list of indices into {@link PkgBlob.fns} */
-	versions:      Record<string, number[]>;
+	versions:          Record<string, number[]>;
 	/** the subset of {@link PkgBlob.versions} that are not from CRAN (usually empty, so left undefined in memory) */
-	noncran?:      string[];
+	noncran?:          string[];
 	/** pool of unique dependency lists (shared across a package's versions) */
-	deps:          SigDep[][];
+	deps:              SigDep[][];
 	/** version name to an index into {@link PkgBlob.deps} (absent when the version declares no dependencies) */
-	depsByVersion: Record<string, number>;
+	depsByVersion:     Record<string, number>;
 	/** version name to its release date as **days since the Unix epoch** (absent when the date is unknown) */
-	dates:         Record<string, number>;
+	dates:             Record<string, number>;
+	/**
+	 * Version name to a dictionary index naming the repository it came from (`cran`, `bioc`, ...).
+	 * Absent in bundles written before this field, where {@link PkgBlob.noncran} is all there is.
+	 */
+	sources?:          Record<string, number>;
+	/** pool of unique class records (shared across a package's versions), absent when the bundle stores none */
+	classes?:          SigClass[];
+	/** version name to a delta-encoded ascending list of indices into {@link PkgBlob.classes} */
+	classesByVersion?: Record<string, number[]>;
+	/** pool of unique contracts (shared across a package's versions), absent when the bundle stores none */
+	contracts?:        StatedGuards[];
+	/**
+	 * Index into {@link PkgBlob.fns} to an index into {@link PkgBlob.contracts}, only for the functions with a contract.
+	 * A function's contract is part of its pooled record, so two versions only share a slot if their contracts agree.
+	 */
+	contractOf?:       Record<number, number>;
+	/** pool of unique native routine records (shared across a package's versions), absent when the bundle stores none */
+	natives?:          SigNative[];
+	/** version name to a delta-encoded ascending list of indices into {@link PkgBlob.natives} */
+	nativesByVersion?: Record<string, number[]>;
 }
-/** on-disk tuple form of a {@link PkgBlob}: `[sigs, cgs, fns, versions, noncran, deps, depsByVersion, dates]` */
-export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>, string[], SigDep[][], Record<string, number>, Record<string, number>?];
+/** On-disk tuple form of a {@link PkgBlob}, field order, ending `nativesByVersion`; trailing elements are additive. */
+export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>, string[], SigDep[][], Record<string, number>, Record<string, number>?, Record<string, number>?, SigClass[]?, Record<string, number[]>?, StatedGuards[]?, Record<number, number>?, SigNative[]?, Record<string, number[]>?];
 
 /**
- * Per-package metadata. The optional 4th element marks an **R-core / base package** (`base`, `stats`,
- * `parallel`, the historical `mva`/`nls`/…): for these the version keys are the R releases during which
- * the package shipped with core R, so the set of versions is exactly the R versions it was part of core.
+ * Per-package metadata. The optional 4th element marks an **R-core / base package**: for these the version keys
+ * are the R releases the package shipped with core R, so the set of versions is exactly its core-R history.
  */
 export type SigDbPkgMeta = [latest: string, archived: number, downloads: number, core?: number];
 
 /** Every package the database knows, mapped from its name to its {@link SigDbPkgMeta}. */
-export type SigDbPkgMetaIndex = Record<string, SigDbPkgMeta>;
+export type SigDbPkgMetaIndex = Record<BrandedNamespace, SigDbPkgMeta>;
 
 /**
  * Temporal tier of a bundle's packages:
@@ -206,29 +313,32 @@ export interface SigDb {
 	/** unique per-package blobs */
 	blobs:     PkgBlob[];
 	/** package name to its index into {@link SigDb.blobs} */
-	pkgs:      Record<string, number>;
+	pkgs:      Record<BrandedNamespace, number>;
 	/** package name to its {@link SigDbPkgMeta} */
 	meta:      SigDbPkgMetaIndex;
 }
 
 export interface SigParamInfo {
 	readonly name:     string;
-	readonly forced?:  boolean;
-	/** the argument has no default value */
-	readonly missing?: boolean;
+	/** bitfield of {@link ArgProp}: what the extractor could tell about the parameter, the rest unset */
+	readonly props?:   ArgProps;
 	readonly default?: string;
 }
 export interface SigFunctionInfo {
-	readonly name:    string;
+	readonly name:        string;
 	/** bitfield of {@link FnProp} (must set {@link FnProp.Exported} for exported functions) */
-	readonly props:   number;
-	readonly params:  readonly SigParamInfo[];
+	readonly props:       number;
+	readonly params:      readonly SigParamInfo[];
 	/** named callees (order/duplication irrelevant; deduped + sorted internally) */
-	readonly callees: readonly string[];
-	readonly file?:   string;
-	readonly line?:   number;
+	readonly callees:     readonly string[];
+	readonly file?:       string;
+	readonly line?:       number;
 	/** the Rd help topic (man-page name) documenting this function, when it differs from {@link name} */
-	readonly topic?:  string;
+	readonly topic?:      string;
+	/** the package this name is re-exported from: the package defines nothing of the name, it imports and exports it */
+	readonly reexportOf?: string;
+	/** what a call has to fulfill to return normally, as flowR infers it from the definition; absent when nothing sensible is known */
+	readonly guards?:     StatedGuards;
 }
 /** one declared package dependency, e.g. `{ name: 'testthat', type: Suggests, constraint: '>= 2.1.0' }` */
 export interface SigDependencyInfo {
@@ -239,17 +349,95 @@ export interface SigDependencyInfo {
 }
 export interface SigVersionInfo {
 	readonly cran:          boolean;
+	/** the repository it came from (`cran`, `bioc`, ...); {@link SigVersionInfo.cran} only says whether it is CRAN */
+	readonly source?:       string;
 	readonly functions:     readonly SigFunctionInfo[];
 	/** declared dependencies of this version (Depends/Imports/LinkingTo/Suggests/Enhances) */
 	readonly dependencies?: readonly SigDependencyInfo[];
 	/** release date as milliseconds since the Unix epoch (stored at day granularity, used to find the newest release) */
 	readonly date?:         number;
+	/** the classes this version declares and the relations it states between them */
+	readonly classes?:      readonly SigClassInfo[];
+	/** the native (C, C++, Fortran) routines the package's compiled code offers R, as tools read them off `src/` */
+	readonly natives?:      readonly SigNativeRoutineInfo[];
+}
+
+/** One argument of a native routine, as the analyzer read it off the routine's source. */
+export interface SigNativeParamInfo {
+	readonly name:   string;
+	/** the declared C type (`SEXP`, `double *`); absent for Fortran or when not known */
+	readonly type?:  string;
+	/** what the routine does with the argument, see {@link SigNativeParam} */
+	readonly props?: ArgProps;
 }
 
 /**
- * Which information to store in a bundle (default: everything). Turning a feature off shrinks the
- * database -- e.g. an exports-and-dependencies-only bundle omits the (largest) call graphs and signatures.
- * The export view (exported/internal/deprecated) is always available.
+ * One native routine of a package version: where it is, how R reaches it, and the facts the C/Fortran tools
+ * found for it. Facts are tool findings with a fixed vocabulary (`parallel:openmp`, `rng:r`, `io:file`,
+ * `process:exit`, `error:r`, `hw:simd`, `platform:_WIN32`, `global:write`, ...; see sigdb-build's `docs/native-routines.md`), each
+ * one positive evidence. An absent fact means "not found"; it means "does not happen" only when {@link closed}
+ * holds, and never for `error:*`/`warning:*` (R's allocators may always raise).
+ */
+export interface SigNativeRoutineInfo {
+	/** the name R calls it by: the registered name, or, unregistered, the symbol the R code names */
+	readonly name:       string;
+	/** the interface the routine is registered for, absent when it is not registered */
+	readonly iface?:     typeof NativeIfaceNames[number];
+	/** the linker symbol of the definition (`qpgen2_` for Fortran), when it differs from {@link name} */
+	readonly symbol?:    string;
+	readonly lang?:      typeof NativeLangNames[number];
+	readonly file?:      string;
+	readonly line?:      number;
+	/** where the routine's name starts on {@link line}, 1-based */
+	readonly column?:    number;
+	/** the last line of the definition */
+	readonly endLine?:   number;
+	/** the registered argument count; absent when not registered or registered as "any" (-1) */
+	readonly arity?:     number;
+	/** the R names binding the routine in the namespace (`useDynLib(pkg, .registration = TRUE, .fixes = "C_")` binds `C_foo`) */
+	readonly rNames?:    readonly string[];
+	readonly params?:    readonly SigNativeParamInfo[];
+	/** the facts the analyzers found, see the interface comment */
+	readonly facts?:     readonly string[];
+	/** the analyzer resolved every callee, so an absent fact is absent (see {@link NativeFlag.Closed}) */
+	readonly closed?:    boolean;
+	/** see {@link NativeFlag.Pure} */
+	readonly pure?:      boolean;
+	/** what a call has to hand the routine for it not to fail, over the names of its {@link params} */
+	readonly guards?:    StatedGuards;
+	/** registered but not defined in the package's sources (see {@link NativeFlag.Undefined}) */
+	readonly undefined?: boolean;
+}
+
+/**
+ * One class of a package version: what its declaration states, plus which package defines it -- structure
+ * `s4Classes` (a flat name list) has no room for, so a consumer can tell an owned class from an inherited one.
+ */
+export interface SigClassInfo {
+	readonly name:     string;
+	readonly system:   typeof SigClassSystemNames[number];
+	/** the direct superclasses, in declaration order; for a {@link SigClassInfo.union} the united members instead */
+	readonly supers:   readonly string[];
+	/** the declared members, in declaration order */
+	readonly slots:    readonly SigSlotInfo[];
+	/** the class cannot be instantiated (see {@link ClassProp.Virtual}) */
+	readonly virtual?: boolean;
+	/** the record is a class union, so {@link SigClassInfo.supers} are its members (see {@link ClassProp.Union}) */
+	readonly union?:   boolean;
+	/** The package defining the class, when not the one carrying the record (see {@link ClassProp.Foreign}); absent when self-defined. */
+	readonly package?: BrandedNamespace;
+}
+
+/** one declared member of a {@link SigClassInfo}: an S4 slot, an S7 property, an RC field, or an R6 entry */
+export interface SigSlotInfo {
+	readonly name:  string;
+	/** the class the declaration states for the member (`"numeric"`, `class_numeric`); absent when it states none */
+	readonly type?: string;
+}
+
+/**
+ * Which information to store in a bundle (default: everything); turning a feature off shrinks the database. The
+ * export view (exported/internal/deprecated) is always available.
  */
 export interface SigDbFeatures {
 	/** parameter lists (names, forced/optional, defaults) -- default true */
@@ -260,4 +448,10 @@ export interface SigDbFeatures {
 	locations?:    boolean;
 	/** per-version declared dependencies -- default true */
 	dependencies?: boolean;
+	/** per-version class relations (superclasses, slots, unions) -- default true */
+	classes?:      boolean;
+	/** per-function contracts (what a call has to fulfill to return normally, see {@link SigFunctionInfo.guards}) -- default true */
+	contracts?:    boolean;
+	/** per-version native routines and their tool-derived facts (see {@link SigVersionInfo.natives}) -- default true */
+	natives?:      boolean;
 }

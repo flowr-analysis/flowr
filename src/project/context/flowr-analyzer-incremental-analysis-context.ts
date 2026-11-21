@@ -1,42 +1,22 @@
 import type Parser from 'web-tree-sitter';
-import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
-import { InvalidationEventType } from '../cache/flowr-cache';
+import { type InvalidationEvent, type InvalidationEventReceiver, InvalidationEventType } from '../cache/flowr-cache';
 import { assertUnreachable, guard } from '../../util/assert';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { FilePath } from './flowr-file';
 import type { ParseStepOutput } from '../../r-bridge/parser';
 import fs from 'fs';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { IncrementalUpdateResult } from '../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
-import { FlowrAnalyzerIncrementalDataflowUpdateTypePlugin } from '../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
-import type { ExitPoint } from '../../dataflow/info';
-import type { IdentifierReference } from '../../dataflow/environments/identifier';
-import type { HookInformation } from '../../dataflow/hooks';
+import { type AnalyzedFile, type IncrementalUpdateResult, FlowrAnalyzerIncrementalDataflowUpdateTypePlugin } from '../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
+import type { DataflowSnapshot } from '../incremental/incremental-dataflow/incremental-dataflow';
 
-
-interface PersistedDataflowGraphEntry {
-	readonly graph:             Buffer;
-	readonly environment:       Buffer;
-	readonly entryPoint:        NodeId;
-	readonly cfgEntry?:         NodeId;
-	readonly exitPoints:        readonly ExitPoint[];
-	readonly in:                readonly IdentifierReference[];
-	readonly out:               readonly IdentifierReference[];
-	readonly unknownReferences: readonly IdentifierReference[];
-	readonly hooks:             readonly HookInformation[];
-}
 
 export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
-	/**
-	 * The name of this context.
-	 */
+	/** The name of this context. */
 	readonly name: string;
 
 	getOldParseResultOf(filePath: FilePath): Parser.Tree | undefined;
 	getOldContentOf(filePath: FilePath): string | undefined;
-	getPersistedDataflowGraphOf(nodeId: NodeId, hash: string): PersistedDataflowGraphEntry | undefined;
-	getOldNormalizedAst(): NormalizedAst | undefined;
+	/** How the last incremental dataflow analysis classified the change, and whether it reused anything for it. */
 	getLastAppliedIncrementalUpdate(): IncrementalUpdateResult | undefined;
 }
 
@@ -51,26 +31,20 @@ export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
  */
 type ShouldReparseTest = (filePath: FilePath, ctx: FlowrAnalyzerContext) => boolean;
 
-/**
- * Information to carry over for future incremental builds
- */
+/** Information to carry over for future incremental builds */
 export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAnalyzerIncrementalAnalysisContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-incremental-analysis-context';
 
-	private readonly context:             FlowrAnalyzerContext;
-	/**
-	 * The files that have been changed since the last analysis mapping to their old content.
-	 */
+	/** The files that have been changed since the last analysis mapping to their old content. */
 	private changedFilesWithOldContent:   Map<FilePath, string | undefined> = new Map();
 	private oldParseResults:              Map<FilePath, Parser.Tree> = new Map();
-	private oldNormalizedAst:             NormalizedAst | undefined = undefined;
-	private persistedDataflowGraphs:      Map<string, PersistedDataflowGraphEntry> = new Map();
+	/** what the last dataflow analysis kept for the next one, a single snapshot whose size the checkpoint configuration bounds */
+	private dataflowSnapshot:             DataflowSnapshot | undefined = undefined;
 	private readonly lastKnownMtime:      Map<FilePath, number> = new Map();
 	private lastAppliedIncrementalUpdate: IncrementalUpdateResult | undefined = undefined;
 	private readonly updateTypePlugin:    FlowrAnalyzerIncrementalDataflowUpdateTypePlugin;
 
-	constructor(context: FlowrAnalyzerContext, updateTypePlugins: readonly FlowrAnalyzerIncrementalDataflowUpdateTypePlugin[] = []) {
-		this.context = context;
+	constructor(updateTypePlugins: readonly FlowrAnalyzerIncrementalDataflowUpdateTypePlugin[] = []) {
 		guard(updateTypePlugins.length <= 1, () => `at most one incremental-dataflow-update-type plugin may be registered, got ${updateTypePlugins.length}`);
 		this.updateTypePlugin = updateTypePlugins[0] ?? FlowrAnalyzerIncrementalDataflowUpdateTypePlugin.defaultPlugin();
 	}
@@ -78,9 +52,21 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	public reset(): void {
 		this.changedFilesWithOldContent = new Map();
 		this.oldParseResults = new Map();
-		this.oldNormalizedAst = undefined;
-		this.persistedDataflowGraphs = new Map();
+		this.dataflowSnapshot = undefined;
 		this.lastAppliedIncrementalUpdate = undefined;
+	}
+
+	public fork(source: FlowrAnalyzerIncrementalAnalysisContext): void {
+		for(const [path, content] of source.changedFilesWithOldContent) {
+			this.changedFilesWithOldContent.set(path, content);
+		}
+		for(const [path, tree] of source.oldParseResults) {
+			this.oldParseResults.set(path, tree);
+		}
+		for(const [path, mtime] of source.lastKnownMtime) {
+			this.lastKnownMtime.set(path, mtime);
+		}
+		/* the dataflow snapshot is continued in place, so a fork starts its dataflow analysis from scratch */
 	}
 
 	handleFileInvalidate(filePath: FilePath, oldContent: string | undefined): void {
@@ -118,7 +104,7 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 
 				const mtimeChanged = !(lastMtime !== undefined && lastMtime === currentMtime);
 
-				if(mtimeChanged){
+				if(mtimeChanged) {
 					ctx.inc.setLastKnownMtime(filePath, currentMtime);
 				}
 
@@ -158,15 +144,20 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 			: checks.every(check => check(filePath, ctx));
 	}
 
-	handleShouldReparseDataflow(ctx: FlowrAnalyzerContext): boolean {
-		return ctx.config.incremental.dataflow.activated;
+	/** Classifies how the files of `current` differ from the `previous` ones, using whichever {@link FlowrAnalyzerIncrementalDataflowUpdateTypePlugin} is active. */
+	determineUpdateTypes(previous: readonly AnalyzedFile[], current: NormalizedAst, ctx: FlowrAnalyzerContext): IncrementalUpdateResult {
+		return this.updateTypePlugin.processor(ctx, { previous, current });
 	}
 
-	/**
-	 * Classifies how `oldAst` and `newAst` differ, using whichever {@link FlowrAnalyzerIncrementalDataflowUpdateTypePlugin} is active.
-	 */
-	determineUpdateTypes(oldAst: NormalizedAst | undefined, newAst: NormalizedAst, ctx: FlowrAnalyzerContext): IncrementalUpdateResult {
-		return this.updateTypePlugin.processor(ctx, { oldNormalizedAst: oldAst, newNormalizedAst: newAst });
+	/** Hands out what the last dataflow analysis kept, which the caller continues in place. */
+	public takeDataflowSnapshot(): DataflowSnapshot | undefined {
+		const snapshot = this.dataflowSnapshot;
+		this.dataflowSnapshot = undefined;
+		return snapshot;
+	}
+
+	public storeDataflowSnapshot(snapshot: DataflowSnapshot): void {
+		this.dataflowSnapshot = snapshot;
 	}
 
 	receive(event: InvalidationEvent): void {
@@ -202,14 +193,6 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 		return this.changedFilesWithOldContent.get(filePath);
 	}
 
-	public storeOldNormalizedAst(ast: NormalizedAst): void {
-		this.oldNormalizedAst = { ...ast, ast: { ...ast.ast, files: ast.ast.files.slice() } };
-	}
-
-	public getOldNormalizedAst(): NormalizedAst | undefined {
-		return this.oldNormalizedAst;
-	}
-
 	public storeAppliedIncrementalUpdate(update: IncrementalUpdateResult): void {
 		this.lastAppliedIncrementalUpdate = update;
 	}
@@ -228,13 +211,5 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 
 	public setLastKnownMtime(filePath: FilePath, mtimeMs: number): void {
 		this.lastKnownMtime.set(filePath, mtimeMs);
-	}
-
-	public storePersistedDataflowGraph(nodeId: NodeId, hash: string, entry: PersistedDataflowGraphEntry): void {
-		this.persistedDataflowGraphs.set(`${nodeId}:${hash}`, entry);
-	}
-
-	public getPersistedDataflowGraphOf(nodeId: NodeId, hash: string): PersistedDataflowGraphEntry | undefined {
-		return this.persistedDataflowGraphs.get(`${nodeId}:${hash}`);
 	}
 }

@@ -1,7 +1,4 @@
-/**
- * The names of all value-solver handlers a built-in function may declare with
- * {@link BuiltInFunctionDefinition#evalHandler}, see {@link BuiltInEvalHandlerMapper} for the implementations.
- */
+/** The names of all value-solver handlers a built-in function may declare with {@link BuiltInFunctionDefinition#evalHandler}, see {@link BuiltInEvalHandlerMapper} for the implementations. */
 export enum BuiltInEvalName {
 	/** `c(...)`, see {@link resolveAsVector} */
 	Vector = 'eval:vector',
@@ -15,6 +12,12 @@ export enum BuiltInEvalName {
 	Logical = 'eval:logical',
 	/** every string function, from `paste` to `basename`, see {@link resolveAsStringFn} */
 	StringFn = 'eval:string-fn',
-	/** the grouping `(`, see {@link resolveAsGroup} */
-	Group = 'eval:group'
+	/** the groupings `(` and `{`, see {@link resolveAsGroup} */
+	Group = 'eval:group',
+	/** the by-name lookups, from `get` to `match.fun`, see {@link resolveAsGet} */
+	Get = 'eval:get',
+	/** the element and field accesses `x[[i]]` and `x$f`, see {@link resolveAsElement} */
+	Element = 'eval:element',
+	/** `list(...)`, see {@link resolveAsList} */
+	List = 'eval:list'
 }

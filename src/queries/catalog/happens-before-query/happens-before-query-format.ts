@@ -1,11 +1,43 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import { queryHeader } from '../../query-print';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { executeHappensBefore } from './happens-before-query-executor';
-import type { SlicingCriterion } from '../../../slicing/criterion/parse';
-import type { Ternary } from '../../../util/logic';
+import { metaSince } from '../../query-meta';
+import { Ternary } from '../../../util/logic';
+import { log } from '../../../util/log';
+import { happensBefore } from '../../../control-flow/happens-before';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
+
+/**
+ * Execute happens-before queries on the given analyzer.
+ * This checks, whether for two given slicing criteria `a` and `b`, `a` happens before `b` in the control flow graph.
+ */
+export async function executeHappensBefore({ analyzer }: BasicQueryData, queries: readonly HappensBeforeQuery[]): Promise<HappensBeforeQueryResult> {
+	const start = Date.now();
+	const results: Record<string, Ternary> = {};
+	const ast = await analyzer.normalize();
+	const cfg = await analyzer.controlflow(undefined);
+	for(const query of queries) {
+		const { a, b } = query;
+		const fingerprint = HappensBeforeKey.of(a, b);
+		if(fingerprint in results) {
+			log.warn('Duplicate happens-before query', query, 'ignoring');
+		}
+
+		try {
+			const resolvedA = SlicingCriterion.parse(a, ast.idMap);
+			const resolvedB = SlicingCriterion.parse(b, ast.idMap);
+
+			results[fingerprint] = happensBefore(cfg.graph, resolvedA, resolvedB);
+		} catch(e) {
+			log.error('Error while executing happens-before query', query, e);
+			results[fingerprint] = Ternary.Maybe;
+		}
+	}
+
+	return { ...metaSince(start), results };
+}
 
 export interface HappensBeforeQuery extends BaseQueryFormat {
 	readonly type: 'happens-before';
@@ -20,6 +52,7 @@ export interface HappensBeforeQueryResult extends BaseQueryResult {
 /**
  * How an answer of the {@link HappensBeforeQuery} is keyed: the two criteria it was asked about, so that both
  * the executor writing an answer and anyone reading one spell the key the same way.
+ * @helper api
  */
 export const HappensBeforeKey = {
 	name: 'HappensBeforeKey',
@@ -37,9 +70,10 @@ export const HappensBeforeKey = {
 export const HappensBeforeQueryDefinition = {
 	title:           'Happens-Before Query',
 	executor:        executeHappensBefore,
+	perQueryResults: true,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'happens-before'>['happens-before'];
-		result.push(`Query: ${bold('happens-before', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('happens-before', formatter, out['.meta'].timing));
 		for(const [fingerprint, value] of Object.entries(out.results)) {
 			const { a, b } = HappensBeforeKey.criteria(fingerprint);
 			result.push(`   ╰ ${bold(a, formatter)} happens before ${bold(b, formatter)}: ${value}`);
@@ -50,6 +84,5 @@ export const HappensBeforeQueryDefinition = {
 		type: Joi.string().valid('happens-before').required().description('The type of the query.'),
 		a:    Joi.string().required().description('The first slicing criterion.'),
 		b:    Joi.string().required().description('The second slicing criterion.')
-	}).description('Happens-Before tracks whether a always happens before b.'),
-	flattenInvolvedNodes: () => []
+	}).description('Happens-Before tracks whether a always happens before b.')
 } as const satisfies SupportedQuery<'happens-before'>;

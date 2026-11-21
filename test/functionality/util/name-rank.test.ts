@@ -4,11 +4,11 @@ import { rankName } from '../../../src/util/text/name-rank';
 
 /** The order the signature browser lists its hits in and the playground offers its completions in. */
 describe('Name ranking', () => {
-	const beats = (name: string, better: Parameters<typeof rankName>[0], worse: Parameters<typeof rankName>[0]): void => {
+	function beats(name: string, better: Parameters<typeof rankName>[0], worse: Parameters<typeof rankName>[0]): void {
 		test(label(name, ['name-normal'], ['other']), () => {
 			assert.isAbove(rankName(better), rankName(worse), `${better.name} should be offered before ${worse.name}`);
 		});
-	};
+	}
 
 	beats('a plain name before the S3 method of it',
 		{ name: 'print', needle: 'pri', known: true }, { name: 'print.foo', needle: 'pri', s3: true });
@@ -29,6 +29,8 @@ describe('Name ranking', () => {
 		{ name: 'merge', needle: 'mer', baseR: true, base: true }, { name: 'merge', needle: 'mer' });
 	beats('a function before a lone value',
 		{ name: 'count', needle: 'cou' }, { name: 'count', needle: 'cou', variable: true });
+	beats('a name the script defines before one flowR knows',
+		{ name: 'year1', needle: 'yea', local: true, variable: true }, { name: 'year', needle: 'yea', known: true, baseR: true });
 	beats('the closer fuzzy match first',
 		{ name: 'select', needle: 'slt', rank: 0 }, { name: 'select', needle: 'slt', rank: 3 });
 

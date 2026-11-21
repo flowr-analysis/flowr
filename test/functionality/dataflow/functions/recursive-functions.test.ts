@@ -1,11 +1,9 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { isFunctionRecursive } from '../../../../src/dataflow/fn/recursive-function';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { CallGraph } from '../../../../src/dataflow/graph/call-graph';
+import { analyze } from '../../_helper/analyzer';
 
 describe('is-recursive-function', withTreeSitter(ts => {
 	function testRec(
@@ -19,14 +17,13 @@ describe('is-recursive-function', withTreeSitter(ts => {
 		for(const [exp, crit] of [[true, expect.pos], [false, expect.neg]] as const) {
 			for(const c of crit ?? []) {
 				test(`${label} (expect ${c} to be ${exp ? 'rec' : 'not rec'})`, async() => {
-					const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
-					analyzer.addRequest(requestFromInput(code));
+					const analyzer = await analyze(ts, code);
 					const idMap = (await analyzer.normalize()).idMap;
 					const id = SlicingCriterion.tryParse(c, idMap);
 					// move up the error message :sparkles:
 					assert.isDefined(id, `could not resolve criterion ${c}`);
 					try {
-						assert.strictEqual(isFunctionRecursive(id, await analyzer.callGraph()), exp);
+						assert.strictEqual(CallGraph.isRecursive(id, await analyzer.callGraph()), exp);
 					} catch(e) {
 						console.error(`Error while testing criterion ${c} in code:\n${code}`);
 						console.log('CG', CallGraph.visualize.mermaid.url(await analyzer.callGraph()));

@@ -24,7 +24,6 @@ import { RArgument } from '../nodes/r-argument';
 import type { RParameter } from '../nodes/r-parameter';
 import { assertUnreachable } from '../../../../../util/assert';
 
-
 /**
  * Called during the down-pass, will pe propagated to children and used in the up-pass (see {@link StatefulFoldFunctions}).
  * <p>
@@ -58,7 +57,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 		foldLineDirective: (comment: RLineDirective<Info>, down: Down) => Up;
 	};
 	/** The `otherwise` argument is `undefined` if the `else` branch is missing */
-	foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down ) => Up;
+	foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down) => Up;
 	foldExprList:   (exprList: RExpressionList<Info>, grouping: [start: Up, end: Up] | undefined, expressions: Up[], down: Down) => Up;
 	functions: {
 		foldFunctionDefinition: (definition: RFunctionDefinition<Info>, params: Up[], body: Up, down: Down) => Up;
@@ -71,9 +70,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 	}
 }
 
-/**
- * Folds in old functional-fashion over the AST structure but allowing for a down function which can pass context to child nodes.
- */
+/** Folds in old functional-fashion over the AST structure but allowing for a down function which can pass context to child nodes. */
 export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, folds: DeepReadonly<StatefulFoldFunctions<Info, Down, Up>>): Up {
 	const type = ast.type;
 	down = folds.down(ast, down);

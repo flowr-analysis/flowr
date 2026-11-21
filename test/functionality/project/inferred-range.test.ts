@@ -11,8 +11,7 @@ function contextWith(...packages: Package[]): FlowrAnalyzerContext {
 	return ctx;
 }
 
-const range = (comparator: string | undefined, version: string) =>
-	Package.parsePkgVersionRange(comparator, version) as NonNullable<ReturnType<typeof Package.parsePkgVersionRange>>;
+const range = (comparator: string | undefined, version: string) => Package.parsePkgVersionRange(comparator, version) as NonNullable<ReturnType<typeof Package.parsePkgVersionRange>>;
 
 describe('Inferred dependency range', () => {
 	test('a declared range is what the dependency can be', () => {

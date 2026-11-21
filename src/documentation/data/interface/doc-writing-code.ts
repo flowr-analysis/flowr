@@ -13,19 +13,11 @@ async function staticSliceExample() {
 		.setEngine('tree-sitter')
 		.build();
 	analyzer.addRequest('x <- 1\ny <- x\nx');
-	const result = await analyzer.query([
-		{
-			type:     'static-slice',
-			criteria: ['3@x']
-		}
-	]);
-	//console.log(result['static-slice']);
-	return result;
+	const { slice, reconstruct } = await analyzer.query({ type: 'static-slice', criteria: ['3@x'] });
+	return { slice, reconstruct };
 }
 
-/**
- * Explain how to write code using flowR
- */
+/** Explain how to write code using flowR */
 export function explainWritingCode(_shell: RShell, ctx: GeneralDocContext): string {
 	return `_flowR_ can be used as a ${ctx.linkPage('flowr:npm', 'module')} and offers several main classes and interfaces that are interesting for extension writers 
 (see the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} or the ${ctx.linkPage('wiki/Core')} wiki page for more information).
@@ -33,6 +25,8 @@ export function explainWritingCode(_shell: RShell, ctx: GeneralDocContext): stri
 ### Creating Analyses with _flowR_
 
 Nowadays, instances of the ${ctx.link(FlowrAnalyzer)} should be used as central frontend to get analysis results from _flowR_.
+The entry points an analysis is written against are re-exported from the package root (\`import { FlowrAnalyzerBuilder } from '@eagleoutice/flowr'\`);
+everything else stays reachable under its own path, as in \`@eagleoutice/flowr/dataflow/graph/graph\`.
 For example, a program slice can be created like this:
 
 ${
@@ -84,15 +78,12 @@ The ${ctx.link(RShell)} class allows interfacing with the \`R\`&nbsp;ecosystem i
 Please have a look at ${ctx.linkPage('wiki/Engines', 'flowR\'s Engines')} for more information on alternatives (for example, the ${ctx.link(TreeSitterExecutor)}).
 
 ${
-	block({
-		type:    'IMPORTANT',
-		content: `
+	block('IMPORTANT', `
 Each ${ctx.link(RShell)} controls a new instance of the R&nbsp;interpreter, 
-make sure to call ${codeInline(ctx.linkM(RShell, 'close', { codeFont: false, realNameWrapper: 'i' }) + '()')} when you are done.`
-	})
+make sure to call ${codeInline(ctx.linkM(RShell, 'close', { codeFont: false, realNameWrapper: 'i' }) + '()')} when you are done.`)
 }
 
-You can start a new "session" simply by constructing a new object with ${codeInline('new ' + ctx.link(RShell, { codeFont: false }) + '()')}.
+You can start a new "session" by constructing a new object with ${codeInline('new ' + ctx.link(RShell, { codeFont: false }) + '()')}.
 
 However, there are several options that may be of interest 
 (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system).

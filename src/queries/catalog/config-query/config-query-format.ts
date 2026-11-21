@@ -1,17 +1,57 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { executeConfigQuery } from './config-query-executor';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
+import { queryHeader } from '../../query-print';
 import { bold, italic, voidFormatter, type OutputFormatter } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { FlowrConfig } from '../../../config';
 import { jsonReplacer } from '../../../util/json';
 import type { DeepPartial } from 'ts-essentials';
 import type { ParsedQueryLine, Query, SupportedQuery } from '../../query';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import { type CommandCompletions, describeCompletion } from '../../../cli/repl/core';
+import { type CommandCompletions, describeCompletion } from '../../../cli/repl/completion';
 import { descriptionPathInfo, type SchemaPathInfo, descriptionPathKeys, descriptionPaths, firstUnknownSchemaSegment } from '../../../util/schema';
 import type { ProjectKind } from '../../../project/context/project-kind';
-import { matchByPrefixOrSubsequence } from '../../../util/text/strings';
+import { escapeRegex, matchByPrefixOrSubsequence } from '../../../util/text/strings';
+import { log } from '../../../util/log';
+import { isNotUndefined } from '../../../util/assert';
+
+/** Executes the given configuration queries using the provided analyzer. */
+export function executeConfigQuery({ analyzer }: BasicQueryData, queries: readonly ConfigQuery[]): Promise<ConfigQueryResult> {
+	if(queries.some(q => q.reset)) {
+		analyzer.resetConfig();
+	}
+
+	const updates = queries.map(q => q.update).filter(isNotUndefined);
+	if(updates.length > 1) {
+		log.warn('Config query usually expects only up to one update, but got', updates.length);
+	}
+
+	// validate here too (not only in the repl parser), so a programmatic / JSON-API update cannot merge an unknown
+	// key or a wrong-typed value; the update then lands via `updateConfig`, which invalidates the analysis cache
+	for(const given of updates) {
+		const err = validateConfigUpdate(given);
+		if(err !== undefined) {
+			log.warn(`ignoring invalid config update: ${err}`);
+			continue;
+		}
+		// queries may come from clients of the server, so they must not choose what flowR executes, loads, or downloads
+		const update = structuredClone(given);
+		const dropped = FlowrConfig.dropUntrusted(update);
+		if(dropped.length > 0) {
+			log.warn(`ignoring untrusted options in config update: ${dropped.join(', ')}`);
+		}
+		analyzer.updateConfig(update);
+	}
+
+	const specialization = analyzer.inspectContext().configSpecialization();
+	return Promise.resolve({
+		'.meta': {
+			/* there is no sense in measuring a get */
+			timing: 0
+		},
+		config: analyzer.flowrConfig,
+		...(specialization ? { specialization } : {})
+	});
+}
 
 export interface ConfigQuery extends BaseQueryFormat {
 	readonly type:     'config';
@@ -113,7 +153,7 @@ function configGlobMatcher(pattern: string): (path: readonly string[]) => boolea
 		if(segments[i] === '**') {
 			regex += last ? '[^.]+(?:\\.[^.]+)*' : '(?:[^.]+\\.)*';
 		} else {
-			regex += segments[i].split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^.]*') + (last ? '' : '\\.');
+			regex += segments[i].split('*').map(part => escapeRegex(part)).join('[^.]*') + (last ? '' : '\\.');
 		}
 	}
 	const matches = new RegExp(regex + '$');
@@ -323,7 +363,7 @@ export const ConfigQueryDefinition = {
 	executor:        executeConfigQuery,
 	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[], queries: readonly Query[]) => {
 		const out = queryResults as ConfigQueryResult;
-		result.push(`Query: ${bold('config', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('config', formatter, out['.meta'].timing));
 		const configQueries = queries.filter(q => q.type === 'config');
 		const inspects = configQueries.filter(q => q.inspect).map(q => q.inspect as readonly string[]);
 		if(configQueries.some(q => q.reset)) {
@@ -368,6 +408,5 @@ export const ConfigQueryDefinition = {
 		update:  Joi.object().optional().description('An optional partial configuration to update the current configuration with before returning it. Only the provided fields will be updated, all other fields will remain unchanged.'),
 		inspect: Joi.array().items(Joi.string()).optional().description('An optional `.`-separated path (as a string array) to read a single configuration value instead of returning the whole configuration.'),
 		reset:   Joi.boolean().optional().description('If true, discard every prior update and revert to the config the analyzer was created with, before returning it.')
-	}).description('The config query retrieves the current configuration of the flowR instance and optionally also updates it.'),
-	flattenInvolvedNodes: () => []
+	}).description('The config query retrieves the current configuration of the flowR instance and optionally also updates it.')
 } as const satisfies SupportedQuery<'config'>;

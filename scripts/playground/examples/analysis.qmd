@@ -1,0 +1,26 @@
+---
+title: "Cars"
+execute:
+  echo: false
+---
+
+## Stopping distance
+
+```{r}
+#| label: fit
+fit <- lm(dist ~ speed, data = cars)
+slope <- coef(fit)[["speed"]]
+```
+
+```{r}
+#| label: show
+#| eval: false
+summary(fit)
+```
+
+```{r}
+#| label: plot
+plot(cars)
+abline(fit)
+cat("each mph adds", round(slope, 2), "ft\n")
+```

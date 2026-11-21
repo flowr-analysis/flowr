@@ -31,14 +31,14 @@ body:
       options:
 # START::Versions
         - <Older> (please consider updating)
-        - v2.13.14 (Aug 11, 2026)
-        - v2.13.15 (Aug 14, 2026)
-        - v2.13.16 (Aug 14, 2026)
-        - v2.14.0 (Aug 18, 2026)
-        - v2.14.1 (Aug 18, 2026)
-        - v2.14.2 (Aug 21, 2026)
-        - v2.14.3 (Aug 21, 2026)
-        - v2.14.4 (Aug 22, 2026)
+        - v2.17.2 (Nov 5, 2026)
+        - v2.17.3 (Nov 6, 2026)
+        - v2.17.4 (Nov 7, 2026)
+        - v2.17.5 (Nov 8, 2026)
+        - v2.17.6 (Nov 13, 2026)
+        - v2.17.7 (Nov 15, 2026)
+        - v2.17.8 (Nov 18, 2026)
+        - v2.17.9 (Nov 21, 2026)
         - Unknown
         - Unreleased/Dev 
 # END::Versions

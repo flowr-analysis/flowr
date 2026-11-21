@@ -3,9 +3,7 @@ import { scripts } from './common/scripts-info';
 
 let _scriptsText: string | undefined;
 
-/**
- * Returns a comma-separated list of all available master scripts.
- */
+/** Returns a comma-separated list of all available master scripts. */
 export function getScriptsText() {
 	if(_scriptsText === undefined) {
 		_scriptsText = Array.from(Object.entries(scripts).filter(([, { type }]) => type === 'master script'), ([k]) => k).join(', ');
@@ -16,11 +14,12 @@ export function getScriptsText() {
 export const flowrMainOptionDefinitions = [
 	{ name: 'config-file', type: String, description: 'The name of the configuration file to use', multiple: false },
 	{
-		name:        'config-json',
-		type:        String,
-		description: 'The flowR configuration to use, as a JSON string',
+		name:        'trust-config',
+		type:        Boolean,
+		description: 'Keep the security-sensitive options (e.g., the R executable) of the flowr.json found in the working directory or a parent. Only use this for projects you trust.',
 		multiple:    false
 	},
+	{ name: 'config-json', type: String, description: 'The flowR configuration to use, as a JSON string', multiple: false },
 	{
 		name:        'execute',
 		alias:       'e',
@@ -29,12 +28,7 @@ export const flowrMainOptionDefinitions = [
 		typeLabel:   '{underline command}',
 		multiple:    false
 	},
-	{
-		name:        'help',
-		alias:       'h',
-		type:        Boolean,
-		description: 'Print this usage guide (or the guide of the corresponding script)'
-	},
+	{ name: 'help', alias: 'h', type: Boolean, description: 'Print this usage guide (or the guide of the corresponding script)' },
 	{
 		name:        'no-ansi',
 		type:        Boolean,
@@ -59,6 +53,12 @@ export const flowrMainOptionDefinitions = [
 		multiple:    false
 	},
 	{
+		name:        'secure',
+		type:        Boolean,
+		description: 'Run in secure mode for analyzing untrusted code: flowR does not start R (or any other process), does not access the network, does not search for project configs, and ignores security-sensitive options in every config. Cannot be disabled once enabled. Can also be enabled with the environment variable {italic FLOWR_SECURE_MODE=1}.',
+		multiple:    false
+	},
+	{
 		name:        'r-session-access',
 		type:        Boolean,
 		description: 'Allow to access the underlying R session when using flowR (security warning: this allows the execution of arbitrary R code!)'
@@ -78,12 +78,7 @@ export const flowrMainOptionDefinitions = [
 		type:        Boolean,
 		description: 'Do not drop into a repl, but instead start a server on the given port (default: 1042) and listen for messages.'
 	},
-	{
-		name:        'verbose',
-		alias:       'v',
-		type:        Boolean,
-		description: 'Run with verbose logging (will be passed to the corresponding script)'
-	},
+	{ name: 'verbose', alias: 'v', type: Boolean, description: 'Run with verbose logging (will be passed to the corresponding script)' },
 	{
 		name:        'version',
 		alias:       'V',
@@ -92,10 +87,12 @@ export const flowrMainOptionDefinitions = [
 	},
 	{ name: 'ws', type: Boolean, description: 'If the server flag is set, use websocket for messaging' },
 	{
-		name:        'engine.r-shell.disabled',
-		type:        Boolean,
-		description: 'Disable the R shell engine'
+		name:        'ws-allow-origin',
+		type:        String,
+		description: 'An origin (e.g., {italic https://example.org}) whose web pages may connect to the websocket server, in addition to local pages and clients that are no browser. Can be given multiple times, {italic *} allows all origins.',
+		multiple:    true
 	},
+	{ name: 'engine.r-shell.disabled', type: Boolean, description: 'Disable the R shell engine' },
 	{
 		name:        'engine.r-shell.r-path',
 		type:        String,
@@ -103,10 +100,12 @@ export const flowrMainOptionDefinitions = [
 		multiple:    false
 	},
 	{
-		name:        'engine.tree-sitter.disabled',
+		name:        'engine.r-shell.pipe-bind',
 		type:        Boolean,
-		description: 'Disable the tree-sitter engine'
+		description: 'Enable R\'s experimental pipe-bind operator "=>" by setting _R_USE_PIPEBIND_ for the R session.',
+		multiple:    false
 	},
+	{ name: 'engine.tree-sitter.disabled', type: Boolean, description: 'Disable the tree-sitter engine' },
 	{
 		name:        'engine.tree-sitter.wasm-path',
 		type:        String,

@@ -1,5 +1,4 @@
-import type { RAstNodeBase, Location, NoInfo } from '../model';
-import { RNode } from '../model';
+import { type RAstNodeBase, type Location, type NoInfo, RNode } from '../model';
 import { RType } from '../type';
 import type { RParameter } from './r-parameter';
 import type { AstIdMap, ParentInformation } from '../processing/decorate';
@@ -22,6 +21,7 @@ export interface RFunctionDefinition<Info = NoInfo> extends RAstNodeBase<Info>, 
 
 /**
  * Helper for working with {@link RFunctionDefinition} AST nodes.
+ * @helper ast
  */
 export const RFunctionDefinition = {
 	...RNode,

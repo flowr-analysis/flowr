@@ -1,3 +1,4 @@
+import { RString } from '../../../../model/nodes/r-string';
 import type { NormalizerData } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
 import { retrieveMetaStructure } from '../../normalize-meta';
@@ -9,15 +10,13 @@ import type { RSymbol } from '../../../../model/nodes/r-symbol';
 import { RawRType, RType } from '../../../../model/type';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
-import { startAndEndsWith } from '../../../../../../../util/text/strings';
-
 
 /**
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.
  * Probably directly called by the function call parser as otherwise, we do not expect to find arguments.
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param objs - Either `[expr]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
- * @returns The parsed argument or `undefined` if the given object is not an argument.
+ * @returns    The parsed argument or `undefined` if the given object is not an argument.
  */
 export function tryToNormalizeArgument(data: NormalizerData, objs: readonly NamedJsonEntry[]): RArgument | undefined {
 	if(objs.length < 1 || objs.length > 3) {
@@ -37,13 +36,9 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 		name =    {
 			type:    RType.Symbol,
 			location,
-			content: symbolOrExpr.name === RawRType.StringConst ? content.slice(1, -1) : (startAndEndsWith(content, '`') ? content.slice(1, -1) : content),
+			content: RString.unquote(content),
 			lexeme:  content,
-			info:    {
-				fullRange:  location,
-				adToks:     [],
-				fullLexeme: content
-			}
+			info:    { fullRange: location, adToks: [], fullLexeme: content }
 		};
 		parsedValue = parseWithValue(data, objs);
 	} else {
@@ -59,15 +54,11 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 		lexeme: content,
 		name,
 		value:  parsedValue ?? undefined,
-		info:   {
-			fullRange:  location,
-			fullLexeme: content,
-			adToks:     []
-		}
+		info:   { fullRange: location, fullLexeme: content, adToks: [] }
 	};
 }
 
-function parseWithValue(data: NormalizerData, objs: readonly NamedJsonEntry[]): RNode | RDelimiter | undefined | null{
+function parseWithValue(data: NormalizerData, objs: readonly NamedJsonEntry[]): RNode | RDelimiter | undefined | null {
 	guard(objs[1].name === RawRType.EqualSub, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`);
 	const snd = objs[2];
 	guard(objs.length === 2 || snd.name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression or undefined (for 'x=') but: ${JSON.stringify(objs)}`);

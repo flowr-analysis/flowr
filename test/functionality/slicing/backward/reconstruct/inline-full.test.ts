@@ -8,7 +8,7 @@ import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-fi
 import { PluginType } from '../../../../../src/project/plugins/flowr-analyzer-plugin';
 import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
 import { type InlineFull, reconstructToCode } from '../../../../../src/reconstruct/reconstruct';
-import { SourceInlineMap } from '../../../../../src/reconstruct/inline/source-inline-map';
+import { buildSourceInlineMap } from '../../../../../src/reconstruct/inline/source-inline-map';
 import { FlowrConfig } from '../../../../../src/config';
 import {
 	FlowrAnalyzerLoadingOrderImplicitSourcesPlugin
@@ -32,7 +32,7 @@ async function inlineFull(context: FlowrAnalyzerContext, mode: InlineFull = true
 	return reconstructToCode(res.normalize, {
 		nodes:      new Set(res.normalize.idMap.keys()),
 		inlineFull: mode,
-		sourceMap:  SourceInlineMap.build(res.normalize, res.dataflow.graph)
+		sourceMap:  buildSourceInlineMap(res.normalize, res.dataflow.graph)
 	}).code;
 }
 

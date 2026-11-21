@@ -3,14 +3,8 @@ import { linkToQueryOfName } from './doc-util/doc-query';
 import { block, details, section } from './doc-util/doc-structure';
 import { getCfg, printCfgCode } from './doc-util/doc-cfg';
 import { visitCfgInOrder, visitCfgInReverseOrder } from '../control-flow/simple-visitor';
-import {
-	type ControlFlowInformation,
-	CfgVertexType,
-	ControlFlowGraph,
-	CfgVertex
-} from '../control-flow/control-flow-graph';
+import { type ControlFlowInformation, CfgVertexType, ControlFlowGraph, CfgVertex, extractCfg } from '../control-flow/control-flow-graph';
 import { simplifyControlFlowInformation } from '../control-flow/cfg-simplification';
-import { extractCfg } from '../control-flow/control-flow-graph';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { convertCfgToBasicBlocks } from '../control-flow/cfg-to-basic-blocks';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -21,7 +15,7 @@ import { assertCfgSatisfiesProperties } from '../control-flow/cfg-properties';
 import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor';
 import { SyntaxAwareCfgGuidedVisitor } from '../control-flow/syntax-cfg-guided-visitor';
 import { diffOfControlFlowGraphs } from '../control-flow/diff-cfg';
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { cfgVisitorConfig, DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
@@ -30,12 +24,12 @@ import { NewIssueUrl } from './doc-util/doc-issue';
 import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import { prefixLines } from './doc-util/doc-general';
 import { codeBlock } from './doc-util/doc-code';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { enumMembers } from '../util/objects';
+import type { KnownParser } from '../r-bridge/parser';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -49,7 +43,6 @@ const CfgLongExample = `f <- function(a, b = 3) {
 }
 
 print(f(21) + f(42))`.trim();
-
 
 function sampleCollectNumbers(cfg: ControlFlowInformation, ast: NormalizedAst): RNumberValue[] {
 	const numbers: RNumberValue[] = [];
@@ -131,6 +124,15 @@ class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 	}
 }
 
+/** the numbers collected (or a visitor collects) on the cfg of `x - 1 + 2L * 3`, as a markdown list */
+async function collectedNumbers(parser: KnownParser, collect: (cfg: Awaited<ReturnType<typeof getCfg>>) => RNumberValue[] | { start(): void, getNumbers(): RNumberValue[] }): Promise<string> {
+	const collected = collect(await getCfg(parser, 'x - 1 + 2L * 3'));
+	if(!Array.isArray(collected)) {
+		collected.start();
+	}
+	return (Array.isArray(collected) ? collected : collected.getNumbers()).map(n => '\n- `' + JSON.stringify(n) + '`').join('');
+}
+
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph
  */
@@ -145,17 +147,14 @@ _flowR_ produces three main perspectives of the program: 1)&nbsp;a ${ctx.linkPag
 2)&nbsp;a ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, and 3)&nbsp;a control flow graph&nbsp;(CFG).
 flowR uses this CFG interweaved with its data flow analysis and for some of its queries (e.g., to link to the last call in a ${linkToQueryOfName('call-context')}).
 
-Please note that the control flow graph is a view on the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')},
+The control flow graph is a view on the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')},
 similar to the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')}.
 
 ${
-	block({
-		type:    'TIP',
-		content: `If you want to investigate the Control Flow Graph,
+	block('TIP', `If you want to investigate the Control Flow Graph,
 you can use the ${getReplCommand('controlflow*')} command in the REPL (see the ${ctx.linkPage('wiki/Interface', 'Interface wiki page')} for more information).
 By default, this view does _not_ use basic blocks as, for example, R allows unconditional jumps to occur in spots where conventional languages would assume expressions (e.g., if-conditions).
-Yet, by using ${getReplCommand('controlflowbb*')} you can inspect the CFG with basic blocks (although you have to keep in mind that now, there can be a value flow between basic blocks)`
-	})
+Yet, by using ${getReplCommand('controlflowbb*')} you can inspect the CFG with basic blocks (although you have to keep in mind that now, there can be a value flow between basic blocks)`)
 }
 
 For readability, we structure this wiki page into various segments:
@@ -172,11 +171,8 @@ For readability, we structure this wiki page into various segments:
 	- [Working With Exit Points](#cfg-exit-points)
 
 ${
-	block({
-		type:    'TIP',
-		content: `FlowR provides you with various helper objects to work with the CFG, such as ${ctx.link('CfgEdge', undefined, { type: 'variable' })} and ${ctx.link('CfgVertex', undefined, { type: 'variable' })}, 
-		which you can use to easily access the properties of the CFG and its vertices and edges.`
-	})
+	block('TIP', `FlowR provides you with various helper objects to work with the CFG, such as ${ctx.link('CfgEdge', undefined, { type: 'variable' })} and ${ctx.link('CfgVertex', undefined, { type: 'variable' })}, 
+		which you can use to easily access the properties of the CFG and its vertices and edges.`)
 }
 
 ${section('Initial Overview', 2, 'cfg-overview')}
@@ -189,10 +185,7 @@ The corresponding CFG is a directed, labeled graph with two kinds of edges: flow
 
 ${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart LR\n', ctx })}
 
-${block({
-	type:    'IMPORTANT',
-	content: 'Edges are in flow order: an edge from `a` to `b` means that `b` is evaluated after `a`. Use `outgoingEdges` (or `successors`) to ask what may run next and `ingoingEdges` (or `predecessors`) to ask what ran before. The [visitors](#cfg-working) can walk either way.'
-})}
+${block('IMPORTANT', 'Edges are in flow order: an edge from `a` to `b` means that `b` is evaluated after `a`. Use `outgoingEdges` (or `successors`) to ask what may run next and `ingoingEdges` (or `predecessors`) to ask what ran before. The [visitors](#cfg-working) can walk either way.')}
 
 Every vertex of the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} is a vertex here as well, carrying the same id
 and hence linking back to the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}.
@@ -265,14 +258,11 @@ point at which the construct is left. That is why there are no separate marker v
 In mermaid visualizations, we use rectangles for statements and rounded rectangles for expressions.
 Blocks are visualized as boxes around the contained vertices.
 
-${block({
-	type:    'NOTE',
-	content: `
+${block('NOTE', `
 	Every CFG vertex has a ${ctx.link('NodeId')} that links it to the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} (although basic blocks will find no counterpart as they are a structuring element of the CFG).
 	Additionally, it may provide information on the called functions (in case that the current element is a function call).
 	Additionally, a function definition names the vertices of its body as children, which is the only way into that region.
-		`.trim()
-})}
+		`.trim())}
 
 ${section('CFG Edges', 3, 'cfg-structure-edges')}
 
@@ -281,7 +271,7 @@ There are two kinds, told apart by the ${ctx.link('CfgEdgeType')} enum.
 
 ${section('Flow Edges', 4, 'cfg-flow-edge')}
 
-A flow edge says that the target simply runs next. In \`x; y\` there is one from \`x\` to \`y\`:
+A flow edge says that the target runs next. In \`x; y\` there is one from \`x\` to \`y\`:
 
 ${await printCfgCode(shell, 'x; y', { showCode: false, prefix: 'flowchart LR\n', ctx })}
 
@@ -308,7 +298,7 @@ ${await (async() => {
 })()}
 <br/>
 
-Please note that repeat loops have no control edges, as they repeat their body unconditionally.
+Repeat loops have no control edges, as they repeat their body unconditionally.
 Additionally, the control flow graph does not have to be connected. If you use a repeat without any exit condition,
 the loop is never left, so its vertex is not reachable from the entry:
 
@@ -357,7 +347,7 @@ ${await printDfGraphForCode(shell, 'print(3)', { showCode: true, ctx })}
 
 ${section('Adding Basic Blocks', 3, 'cfg-basic-blocks')}
 
-As mentioned in the introduction, our control flow graph does not use basic blocks by default and hence simply links all vertices independent of whether they have (un-)conditional jumps or not.
+As mentioned in the introduction, our control flow graph does not use basic blocks by default and hence links all vertices independent of whether they have (un-)conditional jumps or not.
 On the upside, this tells us the execution order (and, in case of promises, forcing order) of involved expressions and seamlessly handles cases like
 \`x <- return(3)\`.  On the downside, this makes it hard to apply classical control flow graph algorithms and, in general, makes the graph much harder to read.
 Yet, we can request basic blocks or transform an existing CFG into basic blocks using the ${ctx.link(convertCfgToBasicBlocks)} function.
@@ -414,11 +404,7 @@ ${ctx.code(sampleCollectNumbers)}
 
 Calling it with the CFG and AST of the expression \`x - 1 + 2L * 3\` yields the following elements (in this order):
 
-${await (async() => {
-	const res = await getCfg(shell, 'x - 1 + 2L * 3');
-	const collected = sampleCollectNumbers(res.info, res.ast);
-	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
-})()}
+${await collectedNumbers(shell, res => sampleCollectNumbers(res.info, res.ast))}
 
 A more useful appearance of these visitors occurs with ${ctx.link(happensBefore)} which uses the CFG to determine whether the execution
 of one vertex always, maybe, or never happens before another vertex (see the corresponding ${linkToQueryOfName('happens-before', 'query documentation')} for more information).
@@ -439,8 +425,7 @@ In general, we check for a hammock graph (given that the program contains no def
 
 ${section('Sophisticated CFG Traversal', 3, 'cfg-traversal')}
 
-The [simple traversal](#cfg-simple-traversal) functions are great for simple tasks, but very unhandy when you want to do something more sophisticated
-that incorporates language semantics such as function calls. Hence, we provide a series of incrementally more sophisticated (but complex)
+The [simple traversal](#cfg-simple-traversal) functions are unhandy once you need language semantics such as function calls. Hence, we provide a series of incrementally more sophisticated (but complex)
 visitors that incorporate various alternative perspectives:
 
 - [Basic CFG Visitor](#cfg-traversal-basic):\\
@@ -469,13 +454,7 @@ ${ctx.code(CollectNumbersVisitor)}
 Instead of directly calling ${ctx.link(visitCfgInOrder)} we pass the \`forward\` visiting order to the constructor of the visitor.
 Executing it with the CFG and AST of the expression \`x - 1 + 2L * 3\`, causes the following numbers to be collected:
 
-${await (async() => {
-	const res = await getCfg(shell, 'x - 1 + 2L * 3');
-	const visitor = new CollectNumbersVisitor(res.info, res.ast);
-	visitor.start();
-	const collected = visitor.getNumbers();
-	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
-})()}
+${await collectedNumbers(shell, res => new CollectNumbersVisitor(res.info, res.ast))}
 
 
 ${section('Syntax-Aware CFG Visitor', 4, 'cfg-traversal-syntax')}
@@ -488,13 +467,7 @@ ${ctx.code(CollectNumbersSyntaxVisitor)}
 
 And again, executing it with the CFG and AST of the expression \`x - 1 + 2L * 3\`, causes the following numbers to be collected:
 
-${await (async() => {
-	const res = await getCfg(shell, 'x - 1 + 2L * 3');
-	const visitor = new CollectNumbersSyntaxVisitor(res.info, res.ast);
-	visitor.start();
-	const collected = visitor.getNumbers();
-	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
-})()}
+${await collectedNumbers(shell, res => new CollectNumbersSyntaxVisitor(res.info, res.ast))}
 
 ${section('Dataflow-Aware CFG Visitor', 4, 'cfg-traversal-dfg')}
 
@@ -508,13 +481,7 @@ ${ctx.code(CollectNumbersDataflowVisitor)}
 
 Again, executing it with the CFG and Dataflow of the expression \`x - 1 + 2L * 3\`, causes the following numbers to be collected:
 
-${await (async() => {
-	const res = await getCfg(shell, 'x - 1 + 2L * 3');
-	const visitor = new CollectNumbersDataflowVisitor(cfgVisitorConfig({ controlFlow: res.info, defaultVisitingOrder: 'forward' }));
-	visitor.start();
-	const collected = visitor.getNumbers();
-	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
-})()}
+${await collectedNumbers(shell, res => new CollectNumbersDataflowVisitor(cfgVisitorConfig({ controlFlow: res.info, defaultVisitingOrder: 'forward' })))}
 
 ${section('Semantic CFG Visitor', 4, 'cfg-traversal-semantic')}
 
@@ -522,10 +489,7 @@ The ${ctx.link(SemanticCfgGuidedVisitor)} class is flowR's most advanced visitor
 The main idea is simple, it provides special handlers for assignments, conditionals, and other R semantics but still follows
 the structure of the CFG.
 
-${block({
-	type:    'NOTE',
-	content: `This visitor is still in the design phase so please open up a [new issue](${NewIssueUrl}) if you have any suggestions or find any bugs.`
-})}
+${block('NOTE', `This visitor is still in the design phase so please open up a [new issue](${NewIssueUrl}) if you have any suggestions or find any bugs.`)}
 
 To explore what it is capable of, let's create a visitor that prints all values that are used in assignments:
 
@@ -570,7 +534,7 @@ so the vertex of an expression *is* its exit point &dash; there are no separate 
 ${details('Example: Where an if joins again', await (async function() {
 	const expr = 'if(u) 3 else 2';
 	const cfg = await getCfg(shell, expr);
-	const [ifVertexId, ifVertex] = [...cfg.info.graph.vertices()].filter(([n]) => cfg.ast.idMap.get(n)?.lexeme === 'if')[0];
+	const [ifVertexId, ifVertex] = [...cfg.info.graph.vertices()].filter(([n]) => NodeId.recoverName(n, cfg.ast.idMap) === 'if')[0];
 	guard(CfgVertex.isStatement(ifVertex) || CfgVertex.isExpression(ifVertex));
 
 	return `${await printCfgCode(shell, expr, { showCode: true, prefix: 'flowchart LR\n', ctx })}
@@ -583,10 +547,7 @@ point at which the statement is left, whichever branch ran.
 Hence, the vertex of an expression names all of its exits, which is what keeps the graph a hammock graph without
 any auxiliary vertices.
 
-${block({
-	type:    'WARNING',
-	content: 'Using basic blocks, this works just the same. However, please keep in mind that the vertex a control statement joins on does not have to be part of the same basic block as the branches leading to it.'
-})}
+${block('WARNING', 'Using basic blocks, this works just the same. However, please keep in mind that the vertex a control statement joins on does not have to be part of the same basic block as the branches leading to it.')}
 
 `;
 	}

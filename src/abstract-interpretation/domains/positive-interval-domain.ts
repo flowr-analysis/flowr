@@ -1,4 +1,3 @@
-import { AbstractDomain } from './abstract-domain';
 import { IntervalDomain } from './interval-domain';
 import { Bottom } from './lattice';
 
@@ -46,40 +45,12 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift>
 		return this.create(PosIntervalTop) as this & PosIntervalDomain<PosIntervalTop>;
 	}
 
-	protected widenValue(this: this & PosIntervalDomain<PosIntervalValue>, other: PosIntervalDomain<PosIntervalValue>): this {
-		return this.create([
-			this.lower <= other.lower ? this.lower : 0,
-			this.upper >= other.upper ? this.upper : +Infinity
-		]);
-	}
-
-	protected narrowValue(this: this & PosIntervalDomain<PosIntervalValue>, other: PosIntervalDomain<PosIntervalValue>): this {
-		if(Math.max(this.lower, other.lower) > Math.min(this.upper, other.upper)) {
-			return this.bottom();
-		}
-		return this.create([
-			this.lower === 0 ? other.lower : this.lower,
-			this.upper === +Infinity ? other.upper : this.upper
-		]);
+	protected minLower(): number {
+		return 0;
 	}
 
 	public subtract(other: this | PosIntervalLift): this {
-		const otherValue = other instanceof AbstractDomain ? other.value : other;
-
-		if(this.isValue() && otherValue !== Bottom) {
-			return this.create([Math.max(this.lower - otherValue[0], 0), Math.max(this.upper - otherValue[1], 0)]);
-		}
-		return this.bottom();
-	}
-
-	/**
-	 * Extends the lower bound of the current abstract value down to 0.
-	 */
-	public widenDown(): this {
-		if(this.isValue()) {
-			return this.create([0, this.upper]);
-		}
-		return this.bottom();
+		return this.binaryOp(other, (thisValue, otherValue) => this.create([Math.max(thisValue[0] - otherValue[0], 0), Math.max(thisValue[1] - otherValue[1], 0)]));
 	}
 
 	public isTop(): this is this & PosIntervalDomain<PosIntervalTop> {

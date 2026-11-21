@@ -2,34 +2,34 @@ import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RComment } from '../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../util/assert';
-import type { SourceRange } from '../../util/range';
+import { SourceRange, type Line } from '../../util/range';
 import type { AutoSelectPredicate } from './auto-select-defaults';
 import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
-function getLoc({ location, info: { fullRange } }: RNode): SourceRange {
-	const loc = location ?? fullRange;
+function rangeOf(node: RNode): SourceRange {
+	const loc = SourceRange.ownFromNode(node);
 	guard(loc !== undefined, 'TODO: support location-less nodes!');
 	return loc;
 }
 
-type MagicCommentConsumer = (n: RComment, stack: number[]) => number[] | undefined;
+type MagicCommentConsumer = (n: RComment, stack: Line[]) => Line[] | undefined;
 
 const magicCommentIdMapper: Record<string, MagicCommentConsumer> = {
 	'include_next_line': (n: RComment) => {
-		return [getLoc(n)[0] + 1];
+		return [rangeOf(n)[0] + 1];
 	},
 	'include_this_line': (n: RComment) => {
-		return [getLoc(n)[0]];
+		return [rangeOf(n)[0]];
 	},
-	'include_start': (n: RComment, stack: number[]) => {
-		stack.push(getLoc(n)[0] + 1);
+	'include_start': (n: RComment, stack: Line[]) => {
+		stack.push(rangeOf(n)[0] + 1);
 		return undefined;
 	},
-	'include_end': (n: RComment, stack: number[]) => {
-		const to = getLoc(n)[0];
-		guard(stack.length >= 1, `mismatched magic start and end at ${to}`);
-		const from = stack.pop() as number;
-		const ret = new Array<number>(to - from - 1);
+	'include_end': (n: RComment, stack: Line[]) => {
+		const to = rangeOf(n)[0];
+		const from = stack.pop();
+		guard(from !== undefined, `mismatched magic start and end at ${to}`);
+		const ret = new Array<Line>(to - from - 1);
 		for(let i = from; i < to; i++) {
 			ret[i - from] = i;
 		}
@@ -54,11 +54,11 @@ const commentTriggerRegex = /# flowr@(\w+)/;
  *              {@link doNotAutoSelect}.
  */
 export function makeMagicCommentHandler(and?: AutoSelectPredicate): AutoSelectPredicate {
-	let lines: Set<number> | undefined = undefined;
+	let lines: Set<Line> | undefined = undefined;
 	return (node: RNode<ParentInformation>, normalizedAst: NormalizedAst) => {
 		if(!lines) {
-			lines = new Set<number>();
-			const startLineStack: number[] = [];
+			lines = new Set<Line>();
+			const startLineStack: Line[] = [];
 			RProject.visitAst(normalizedAst.ast, n => {
 				const comments = n.info.adToks;
 				if(!comments) {
@@ -75,14 +75,14 @@ export function makeMagicCommentHandler(and?: AutoSelectPredicate): AutoSelectPr
 					const ls = idMapper(c, startLineStack);
 					if(ls !== undefined) {
 						for(const l of ls) {
-							(lines as Set<number>).add(l);
+							(lines as Set<Line>).add(l);
 						}
 					}
 				}
 			});
 			guard(startLineStack.length === 0, `mismatched magic start and end at end of file (${JSON.stringify(startLineStack)})`);
 		}
-		const loc = node.location ?? node.info.fullRange;
+		const loc = SourceRange.ownFromNode(node);
 
 		if(loc && lines.has(loc[0])) {
 			return true;
@@ -90,5 +90,4 @@ export function makeMagicCommentHandler(and?: AutoSelectPredicate): AutoSelectPr
 		return and?.(node, normalizedAst) ?? false;
 	};
 }
-
 

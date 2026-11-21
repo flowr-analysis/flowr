@@ -1,3 +1,4 @@
+import { withoutTimings } from '../doc-util/doc-timings';
 import type { PathLike } from 'fs';
 import type { GeneralDocContext } from './doc-context';
 import type { RShell } from '../../r-bridge/shell';
@@ -7,17 +8,11 @@ import type { AsyncOrSync } from 'ts-essentials';
 export interface DocMakerArgs {
 	/** Overwrite existing wiki files, even if nothing changes */
 	readonly force?:     boolean;
-	/**
-	 * The general documentation context to use for generating links and headers
-	 */
+	/** The general documentation context to use for generating links and headers */
 	readonly ctx:        GeneralDocContext;
-	/**
-	 * The RShell engine to use for R code execution and retrieval
-	 */
+	/** The RShell engine to use for R code execution and retrieval */
 	readonly shell:      RShell,
-	/**
-	 * The TreeSitter engine to use for R code parsing
-	 */
+	/** The TreeSitter engine to use for R code parsing */
 	readonly treeSitter: TreeSitterExecutor
 }
 
@@ -32,9 +27,24 @@ export enum WikiChangeType {
 	Identical
 }
 
-/** Strips `\r` so generated files stay consistent regardless of OS/checkout settings. */
+/** Runs of blank lines render as one, so a page carries one; what is inside a code fence is content and stays. */
+function collapseBlankLines(text: string): string {
+	const out: string[] = [];
+	let inFence = false;
+	for(const line of text.split('\n')) {
+		if(/^\s*(?:`{3,}|~{3,})/.test(line)) {
+			inFence = !inFence;
+		} else if(!inFence && line.trim() === '' && out[out.length - 1]?.trim() === '') {
+			continue;
+		}
+		out.push(line);
+	}
+	return out.join('\n');
+}
+
+/** Strips `\r`, the blank lines that render as one, and the measurements of {@link withoutTimings} so a regenerated page only differs when its content does. */
 export function normalizeLineEndings(text: string): string {
-	return text.replace(/\r\n/g, '\n');
+	return withoutTimings(collapseBlankLines(text.replace(/\r\n/g, '\n')));
 }
 
 export interface DocMakerLike<Target extends string = string> {
@@ -44,15 +54,13 @@ export interface DocMakerLike<Target extends string = string> {
 	getWrittenSubfiles(): Set<string>;
 }
 
-
 /** url-encoded home paths like `%2Fhome%2Fuser%2Fgit%2F` or `C%3A%5CUsers%5Cuser%5C` */
 const UrlEncodedHomePath = /(?:[a-z]%3A)?(%2F|%5C)(?:home|users)\1(?:[\w.%-]+\1)*/gi;
 
 const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	// mute signature database load time variance in wiki table (before the `ms` rule, which would eat half of it)
 	[/≈\s*<?[\d.]+\s*[µm]s/g, ''],
-	// eslint-disable-next-line no-irregular-whitespace -- we may produce it in output
-	[/\d+(\.\d+)?( |\s*)?ms/g, ''],
+	[/\d+(\.\d+)?(\u2009|\s*)?ms/g, ''],
 	[/tmp[%A-Za-z0-9-]+/g, ''],
 	[/"?(timing|searchTimeMs|processTimeMs|id|tsId)"?:\s*\d+(\.\d)?,?/g, ''],
 	[/"format":"compact"[^\n\r]*/giu, ''],
@@ -98,23 +106,17 @@ export abstract class DocMaker<Target extends string> implements DocMakerLike<Ta
 		this.printHeader = printHeader;
 	}
 
-	/**
-	 * Gets the target path where the wiki file will be generated.
-	 */
+	/** Gets the target path where the wiki file will be generated. */
 	public getTarget(): Target {
 		return this.target;
 	}
 
-	/**
-	 * Gets the name of the producer of this wiki file.
-	 */
+	/** Gets the name of the producer of this wiki file. */
 	public getProducer(): string {
 		return this.filename;
 	}
 
-	/**
-	 * Gets the set of subfiles written during the last `make` call.
-	 */
+	/** Gets the set of subfiles written during the last `make` call. */
 	public getWrittenSubfiles(): Set<string> {
 		return this.writtenSubfiles;
 	}
@@ -136,9 +138,7 @@ export abstract class DocMaker<Target extends string> implements DocMakerLike<Ta
 		return this.writtenSubfiles.size > 0;
 	}
 
-	/**
-	 * Please note that for subfiles you have to always add your own header
-	 */
+	/** Please note that for subfiles you have to always add your own header */
 	protected writeSubFile(path: PathLike, data: string): boolean {
 		if(!this.currentArgs) {
 			throw new Error('DocMaker: writeSubFile called outside of make()');
@@ -152,9 +152,7 @@ export abstract class DocMaker<Target extends string> implements DocMakerLike<Ta
 		return false;
 	}
 
-	/**
-	 * Normalizes the given wiki text for comparison.
-	 */
+	/** Normalizes the given wiki text for comparison. */
 	protected normalizeText(text: string): string {
 		// drop first two meta lines
 		let result = text.split('\n').slice(2).join('\n');
@@ -164,9 +162,7 @@ export abstract class DocMaker<Target extends string> implements DocMakerLike<Ta
 		return result.trim();
 	}
 
-	/**
-	 * Determines the type of change between the old and new text.
-	 */
+	/** Determines the type of change between the old and new text. */
 	protected didUpdate(path: PathLike, newText: string, oldText: string | undefined): WikiChangeType {
 		if(oldText === newText) {
 			return WikiChangeType.Identical;

@@ -1,7 +1,6 @@
-import Parser from 'web-tree-sitter';
-import type { Query, QueryCapture } from 'web-tree-sitter';
+import Parser, { type Query, type QueryCapture } from 'web-tree-sitter';
 import type { RParseRequest } from '../../retriever';
-import type { SyncParser, TreeSitterInformation } from '../../parser';
+import { type SyncParser, type TreeSitterInformation, ParserName } from '../../parser';
 import type { TreeSitterEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
 import fs from 'fs';
@@ -9,24 +8,31 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analy
 import type { FlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { computeReparseInfo } from '../../../project/incremental/incremental-parse/incremental-parse';
 
-export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm';
-export const DEFAULT_TREE_SITTER_WASM_PATH = './node_modules/web-tree-sitter/tree-sitter.wasm';
+/** Resolves the file through the installed package so it does not depend on the working directory, and keeps the relative path where there is no package to resolve (a bundle). */
+function resolveWasm(request: string, fallback: string): string {
+	try {
+		return require.resolve(request);
+	} catch{
+		return fallback;
+	}
+}
+
+export const DEFAULT_TREE_SITTER_R_WASM_PATH = resolveWasm('@davisvaughan/tree-sitter-r/tree-sitter-r.wasm', './node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm');
+export const DEFAULT_TREE_SITTER_WASM_PATH = resolveWasm('web-tree-sitter/tree-sitter.wasm', './node_modules/web-tree-sitter/tree-sitter.wasm');
 
 const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });
 
-/**
- * Synchronous and (way) faster alternative to the {@link RShell} using tree-sitter.
- */
+/** Synchronous and (way) faster alternative to the {@link RShell} using tree-sitter. */
 export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
-	public readonly name = 'tree-sitter';
+	public readonly name = ParserName.TreeSitter;
 	private readonly parser: Parser;
 	public readonly incremental = true;
 	private static language: Parser.Language;
 
 	/**
 	 * Initializes the underlying tree-sitter parser. This only needs to be called once globally.
-	 * @param config - The configuration for the tree-sitter engine, which can include paths to the wasm files.
-	 * @param overrideWasmPath - The path to the tree-sitter-r wasm file, which takes precedence over the config and default paths if set.
+	 * @param config                     - The configuration for the tree-sitter engine, which can include paths to the wasm files.
+	 * @param overrideWasmPath           - The path to the tree-sitter-r wasm file, which takes precedence over the config and default paths if set.
 	 * @param overrideTreeSitterWasmPath - The path to the tree-sitter wasm file, which takes precedence over the config and default paths if set.
 	 */
 	public static async initTreeSitter(config?: TreeSitterEngineConfig, overrideWasmPath?: string, overrideTreeSitterWasmPath?: string): Promise<void> {
@@ -59,7 +65,7 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
 	public information(analyzer: ReadonlyFlowrAnalysisProvider): TreeSitterInformation {
 		return {
-			name:            'tree-sitter',
+			name:            ParserName.TreeSitter,
 			grammarVersion:  this.treeSitterVersion(),
 			treeSitterQuery: async(source: Query | string, force?: boolean) => {
 				return this.query(source, ...(await analyzer.parse(force)).files.map(p => p.parsed) as Parser.Tree[]);
@@ -101,6 +107,16 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		const previousTree = reparseInfo.previousTree;
 		previousTree.edit(reparseInfo.editRegion);
 		return this.parser.parse(sourceCode, previousTree);
+	}
+
+	/** Parses code that belongs to no analysis, like the sources of a package, without incremental reparsing. */
+	public parseCode(code: string): Parser.Tree {
+		return this.parser.parse(code);
+	}
+
+	/** Whether {@link initTreeSitter} has loaded the R grammar, which every parser needs. */
+	public static isInitialized(): boolean {
+		return TreeSitterExecutor.language !== undefined;
 	}
 
 	public createQuery(source: string): Query {

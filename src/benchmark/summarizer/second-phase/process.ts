@@ -1,4 +1,4 @@
-import type { Reduction, SummarizedDfShapeStats, SummarizedSlicerStats, TimePerToken, UltimateSlicerStats } from '../data';
+import type { SummarizedDfShapeStats, SummarizedSlicerStats, UltimateSlicerStats } from '../data';
 import { summarizeSummarizedReductions, summarizeSummarizedMeasurement, summarizeSummarizedTimePerToken, summarizeTimePerToken } from '../first-phase/process';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { type SummarizedMeasurement, summarizeMeasurement } from '../../../util/summarizer';
@@ -6,8 +6,7 @@ import { guard, isNotUndefined } from '../../../util/assert';
 import {
 	type BenchmarkMemoryMeasurement,
 	type SlicerStatsDataflow,
-	type SlicerStatsInput
-	,
+	type SlicerStatsInput,
 	AdditionalSlicerMeasurements,
 	CommonSlicerMeasurements,
 	PerSliceMeasurements
@@ -15,41 +14,50 @@ import {
 import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
 import { arraySum } from '../../../util/collections/arrays';
 
-/**
- * This big function summarizes multiple summarized stats into one ultimate stat.
- */
+/** The keys `keys` of `T`, which have to be all of them. */
+function allKeys<T>(): <const K extends readonly (keyof T)[]>(keys: [keyof T] extends [K[number]] ? K : never) => K {
+	return keys => keys;
+}
+const InputKeys = allKeys<SlicerStatsInput>()(['numberOfLines', 'numberOfNonEmptyLines', 'numberOfCharacters', 'numberOfCharactersNoComments', 'numberOfNonWhitespaceCharacters',
+	'numberOfNonWhitespaceCharactersNoComments', 'numberOfRTokens', 'numberOfRTokensNoComments', 'numberOfNormalizedTokens', 'numberOfNormalizedTokensNoComments']);
+const DataflowKeys = allKeys<SlicerStatsDataflow>()(['numberOfNodes', 'numberOfFunctionDefinitions', 'numberOfCalls', 'numberOfEdges', 'numberOfControlFlowEdges', 'sizeOfObject']);
+
+/** Each of the fields `keys` of the objects `of` summarized by `summarize`. */
+function summarizeFields<O, K extends keyof O, R>(of: readonly O[], keys: readonly K[], summarize: (values: O[K][]) => R): Record<K, R> {
+	return Object.fromEntries(keys.map(k => [k, summarize(of.map(o => o[k]))])) as Record<K, R>;
+}
+
+/** The fields of a data frame shape summary in the order they are written, `perOperationNumber` aside; a few are summed or are summaries already. */
+const DfShapeKeys = allKeys<Omit<SummarizedDfShapeStats, 'perOperationNumber'>>()([
+	'numberOfDataFrameFiles', 'numberOfNonDataFrameFiles', 'numberOfResultConstraints', 'numberOfResultingValues', 'numberOfResultingBottom',
+	'numberOfResultingTop', 'numberOfEmptyNodes', 'numberOfOperationNodes', 'numberOfValueNodes', 'sizeOfInfo', 'numberOfEntriesPerNode',
+	'numberOfOperations', 'numberOfTotalConstraints', 'numberOfTotalExact', 'numberOfTotalValues', 'numberOfTotalBottom', 'numberOfTotalTop',
+	'inferredColNames', 'approxRangeColNames', 'numberOfColNamesExact', 'numberOfColNamesValues', 'numberOfColNamesBottom', 'numberOfColNamesInfinite',
+	'numberOfColNamesTop', 'inferredColCount', 'approxRangeColCount', 'numberOfColCountExact', 'numberOfColCountValues', 'numberOfColCountBottom',
+	'numberOfColCountInfinite', 'numberOfColCountTop', 'inferredRowCount', 'approxRangeRowCount', 'numberOfRowCountExact', 'numberOfRowCountValues',
+	'numberOfRowCountBottom', 'numberOfRowCountInfinite', 'numberOfRowCountTop'
+]);
+const SummedShapeKeys: ReadonlySet<string> = new Set(['numberOfDataFrameFiles', 'numberOfNonDataFrameFiles']);
+const SummaryShapeKeys: ReadonlySet<string> = new Set(['numberOfEntriesPerNode', 'inferredColNames', 'approxRangeColNames', 'inferredColCount', 'approxRangeColCount', 'inferredRowCount', 'approxRangeRowCount']);
+
+/** The data frame shapes summarized field by field, the measured fields by `measure`, `undefined` if no run has one. */
+function summarizeShapes<T, S>(shapes: readonly (SummarizedDfShapeStats<T> | undefined)[], measure: (values: T[]) => S, rest: Pick<SummarizedDfShapeStats<S>, 'perOperationNumber'>): SummarizedDfShapeStats<S> | undefined {
+	const present = shapes.filter(isNotUndefined);
+	if(present.length === 0) {
+		return undefined;
+	}
+	function field(k: typeof DfShapeKeys[number]) {
+		const values = present.map(p => p[k]).filter(isNotUndefined);
+		return SummedShapeKeys.has(k) ? arraySum(values as number[]) : SummaryShapeKeys.has(k) ? summarizeSummarizedMeasurement(values as SummarizedMeasurement[]) : measure(values as T[]);
+	}
+	return { ...Object.fromEntries(DfShapeKeys.map(k => [k, field(k)])), ...rest } as SummarizedDfShapeStats<S>;
+}
+
+/** This big function summarizes multiple summarized stats into one ultimate stat. */
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => []);
 	const perSliceMeasurements = new DefaultMap<PerSliceMeasurements, SummarizedMeasurement[]>(() => []);
 	const additionalMeasurements = new DefaultMap<AdditionalSlicerMeasurements, number[]>(() => []);
-	const retrieveTimesPer100Lines: number[] = [];
-	const normalizeTimesPer100Lines: number[] = [];
-	const dataflowTimesPer100Lines: number[] = [];
-	const totalCommonTimesPer100Lines: number[] = [];
-	const controlFlowTimesPer100Lines: number[] = [];
-	const sliceTimesPer100Lines: SummarizedMeasurement[] = [];
-	const reconstructTimesPer100Lines: SummarizedMeasurement[] = [];
-	const totalPerSliceTimesPer100Lines: SummarizedMeasurement[] = [];
-	const sliceTimesPerToken: TimePerToken[] = [];
-	const reconstructTimesPerToken: TimePerToken[] = [];
-	const totalPerSliceTimesPerToken: TimePerToken[] = [];
-	const retrieveTimesPerToken: TimePerToken<number>[] = [];
-	const normalizeTimesPerToken: TimePerToken<number>[] = [];
-	const dataflowTimesPerToken: TimePerToken<number>[] = [];
-	const totalCommonTimesPerToken: TimePerToken<number>[] = [];
-	const controlFlowTimePerToken: TimePerToken<number>[] = [];
-	const callGraphTimePerToken: TimePerToken<number>[] = [];
-	const dataFrameShapeTimePerToken: TimePerToken<number>[] = [];
-	const memory = new DefaultMap<CommonSlicerMeasurements, BenchmarkMemoryMeasurement[]>(() => []);
-	const reductions: Reduction<SummarizedMeasurement>[] = [];
-	const reductionsNoFluff: Reduction<SummarizedMeasurement>[] = [];
-	const inputs: SlicerStatsInput[] = [];
-	const dataflows: SlicerStatsDataflow[] = [];
-	const dataFrameShapes: SummarizedDfShapeStats[] = [];
-	let failedToRepParse = 0;
-	let timesHitThreshold = 0;
-	let totalSlices = 0;
-
 	for(const stat of stats) {
 		for(const [k, v] of stat.commonMeasurements) {
 			commonMeasurements.get(k).push(Number(v));
@@ -60,52 +68,19 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		for(const [k, v] of stat.additionalMeasurements ?? []) {
 			additionalMeasurements.get(k).push(Number(v));
 		}
-		retrieveTimesPer100Lines.push(stat.retrieveTimePer100Lines);
-		normalizeTimesPer100Lines.push(stat.normalizeTimePer100Lines);
-		dataflowTimesPer100Lines.push(stat.dataflowTimePer100Lines);
-		totalCommonTimesPer100Lines.push(stat.totalCommonTimePer100Lines);
-		if(stat.controlFlowTimePer100Lines !== undefined) {
-			controlFlowTimesPer100Lines.push(stat.controlFlowTimePer100Lines);
-		}
-		sliceTimesPer100Lines.push(stat.perSliceMeasurements.sliceTimePer100Lines);
-		reconstructTimesPer100Lines.push(stat.perSliceMeasurements.reconstructTimePer100Lines);
-		totalPerSliceTimesPer100Lines.push(stat.perSliceMeasurements.totalPerSliceTimePer100Lines);
-		sliceTimesPerToken.push(stat.perSliceMeasurements.sliceTimePerToken);
-		reconstructTimesPerToken.push(stat.perSliceMeasurements.reconstructTimePerToken);
-		totalPerSliceTimesPerToken.push(stat.perSliceMeasurements.totalPerSliceTimePerToken);
-		retrieveTimesPerToken.push(stat.retrieveTimePerToken);
-		normalizeTimesPerToken.push(stat.normalizeTimePerToken);
-		dataflowTimesPerToken.push(stat.dataflowTimePerToken);
-		totalCommonTimesPerToken.push(stat.totalCommonTimePerToken);
-
-		if(stat.controlFlowTimePerToken !== undefined) {
-			controlFlowTimePerToken.push(stat.controlFlowTimePerToken);
-		}
-		if(stat.callGraphTimePerToken !== undefined) {
-			callGraphTimePerToken.push(stat.callGraphTimePerToken);
-		}
-		if(stat.dataFrameShapeTimePerToken !== undefined) {
-			dataFrameShapeTimePerToken.push(stat.dataFrameShapeTimePerToken);
-		}
-		for(const [k, v] of stat.memory) {
-			memory.get(k).push(v);
-		}
-		reductions.push(stat.perSliceMeasurements.reduction);
-		reductionsNoFluff.push(stat.perSliceMeasurements.reductionNoFluff);
-		inputs.push(stat.input);
-		dataflows.push(stat.dataflow);
-
-		if(stat.dataFrameShape !== undefined) {
-			dataFrameShapes.push(stat.dataFrameShape);
-		}
-		failedToRepParse += stat.perSliceMeasurements.failedToRepParse;
-		totalSlices += stat.perSliceMeasurements.numberOfSlices;
-		timesHitThreshold += stat.perSliceMeasurements.timesHitThreshold;
 	}
+	const perSlice = stats.map(s => s.perSliceMeasurements);
+	function optional<T, R>(values: readonly (T | undefined)[], summarize: (present: T[]) => R): R | undefined {
+		const present = values.filter(isNotUndefined);
+		return present.length > 0 ? summarize(present) : undefined;
+	}
+	const inputs = stats.map(s => s.input);
+	const dataflows = stats.map(s => s.dataflow);
+	const sum = (f: (s: SummarizedSlicerStats['perSliceMeasurements']) => number) => arraySum(perSlice.map(f));
 
 	return {
 		totalRequests:      stats.length,
-		totalSlices:        totalSlices,
+		totalSlices:        sum(p => p.numberOfSlices),
 		commonMeasurements: new Map(
 			[...commonMeasurements.entries()].map(([k, v]) => [k, summarizeMeasurement(v)])
 		),
@@ -115,100 +90,42 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		additionalMeasurements: new Map(
 			[...additionalMeasurements.entries()].map(([k, v]) => [k, summarizeMeasurement(v)])
 		),
-		sliceTimePerToken:            summarizeSummarizedTimePerToken(sliceTimesPerToken),
-		reconstructTimePerToken:      summarizeSummarizedTimePerToken(reconstructTimesPerToken),
-		totalPerSliceTimePerToken:    summarizeSummarizedTimePerToken(totalPerSliceTimesPerToken),
-		retrieveTimePerToken:         summarizeTimePerToken(retrieveTimesPerToken),
-		normalizeTimePerToken:        summarizeTimePerToken(normalizeTimesPerToken),
-		dataflowTimePerToken:         summarizeTimePerToken(dataflowTimesPerToken),
-		totalCommonTimePerToken:      summarizeTimePerToken(totalCommonTimesPerToken),
-		controlFlowTimePerToken:      controlFlowTimePerToken.length > 0 ? summarizeTimePerToken(controlFlowTimePerToken) : undefined,
-		callGraphTimePerToken:        callGraphTimePerToken.length > 0 ? summarizeTimePerToken(callGraphTimePerToken) : undefined,
-		dataFrameShapeTimePerToken:   dataFrameShapeTimePerToken.length > 0 ? summarizeTimePerToken(dataFrameShapeTimePerToken) : undefined,
-		retrieveTimePer100Lines:      summarizeMeasurement(retrieveTimesPer100Lines),
-		normalizeTimePer100Lines:     summarizeMeasurement(normalizeTimesPer100Lines),
-		dataflowTimePer100Lines:      summarizeMeasurement(dataflowTimesPer100Lines),
-		totalCommonTimePer100Lines:   summarizeMeasurement(totalCommonTimesPer100Lines),
-		controlFlowTimePer100Lines:   controlFlowTimesPer100Lines.length > 0 ? summarizeMeasurement(controlFlowTimesPer100Lines) : undefined,
-		sliceTimePer100Lines:         summarizeSummarizedMeasurement(sliceTimesPer100Lines),
-		reconstructTimePer100Lines:   summarizeSummarizedMeasurement(reconstructTimesPer100Lines),
-		totalPerSliceTimePer100Lines: summarizeSummarizedMeasurement(totalPerSliceTimesPer100Lines),
-		failedToRepParse,
-		timesHitThreshold,
-		reduction:                    summarizeSummarizedReductions(reductions),
-		reductionNoFluff:             summarizeSummarizedReductions(reductionsNoFluff),
-		input:                        {
-			numberOfLines:                             summarizeMeasurement(inputs.map(i => i.numberOfLines)),
-			numberOfNonEmptyLines:                     summarizeMeasurement(inputs.map(i => i.numberOfNonEmptyLines)),
-			numberOfCharacters:                        summarizeMeasurement(inputs.map(i => i.numberOfCharacters)),
-			numberOfCharactersNoComments:              summarizeMeasurement(inputs.map(i => i.numberOfCharactersNoComments)),
-			numberOfNonWhitespaceCharacters:           summarizeMeasurement(inputs.map(i => i.numberOfNonWhitespaceCharacters)),
-			numberOfNonWhitespaceCharactersNoComments: summarizeMeasurement(inputs.map(i => i.numberOfNonWhitespaceCharactersNoComments)),
-			numberOfRTokens:                           summarizeMeasurement(inputs.map(i => i.numberOfRTokens)),
-			numberOfRTokensNoComments:                 summarizeMeasurement(inputs.map(i => i.numberOfRTokensNoComments)),
-			numberOfNormalizedTokens:                  summarizeMeasurement(inputs.map(i => i.numberOfNormalizedTokens)),
-			numberOfNormalizedTokensNoComments:        summarizeMeasurement(inputs.map(i => i.numberOfNormalizedTokensNoComments))
-		},
-		dataflow: {
-			numberOfNodes:               summarizeMeasurement(dataflows.map(d => d.numberOfNodes)),
-			numberOfFunctionDefinitions: summarizeMeasurement(dataflows.map(d => d.numberOfFunctionDefinitions)),
-			numberOfCalls:               summarizeMeasurement(dataflows.map(d => d.numberOfCalls)),
-			numberOfEdges:               summarizeMeasurement(dataflows.map(d => d.numberOfEdges)),
-			numberOfControlFlowEdges:    summarizeMeasurement(dataflows.map(d => d.numberOfControlFlowEdges ?? 0)),
-			sizeOfObject:                summarizeMeasurement(dataflows.map(d => d.sizeOfObject)),
-		},
-		controlFlow: stats.some(s => s.controlFlow !== undefined) ? {
+		sliceTimePerToken:            summarizeSummarizedTimePerToken(perSlice.map(p => p.sliceTimePerToken)),
+		reconstructTimePerToken:      summarizeSummarizedTimePerToken(perSlice.map(p => p.reconstructTimePerToken)),
+		totalPerSliceTimePerToken:    summarizeSummarizedTimePerToken(perSlice.map(p => p.totalPerSliceTimePerToken)),
+		retrieveTimePerToken:         summarizeTimePerToken(stats.map(s => s.retrieveTimePerToken)),
+		normalizeTimePerToken:        summarizeTimePerToken(stats.map(s => s.normalizeTimePerToken)),
+		dataflowTimePerToken:         summarizeTimePerToken(stats.map(s => s.dataflowTimePerToken)),
+		totalCommonTimePerToken:      summarizeTimePerToken(stats.map(s => s.totalCommonTimePerToken)),
+		controlFlowTimePerToken:      optional(stats.map(s => s.controlFlowTimePerToken), summarizeTimePerToken),
+		callGraphTimePerToken:        optional(stats.map(s => s.callGraphTimePerToken), summarizeTimePerToken),
+		dataFrameShapeTimePerToken:   optional(stats.map(s => s.dataFrameShapeTimePerToken), summarizeTimePerToken),
+		retrieveTimePer100Lines:      summarizeMeasurement(stats.map(s => s.retrieveTimePer100Lines)),
+		normalizeTimePer100Lines:     summarizeMeasurement(stats.map(s => s.normalizeTimePer100Lines)),
+		dataflowTimePer100Lines:      summarizeMeasurement(stats.map(s => s.dataflowTimePer100Lines)),
+		totalCommonTimePer100Lines:   summarizeMeasurement(stats.map(s => s.totalCommonTimePer100Lines)),
+		controlFlowTimePer100Lines:   optional(stats.map(s => s.controlFlowTimePer100Lines), summarizeMeasurement),
+		sliceTimePer100Lines:         summarizeSummarizedMeasurement(perSlice.map(p => p.sliceTimePer100Lines)),
+		reconstructTimePer100Lines:   summarizeSummarizedMeasurement(perSlice.map(p => p.reconstructTimePer100Lines)),
+		totalPerSliceTimePer100Lines: summarizeSummarizedMeasurement(perSlice.map(p => p.totalPerSliceTimePer100Lines)),
+		failedToRepParse:             sum(p => p.failedToRepParse),
+		timesHitThreshold:            sum(p => p.timesHitThreshold),
+		reduction:                    summarizeSummarizedReductions(perSlice.map(p => p.reduction)),
+		reductionNoFluff:             summarizeSummarizedReductions(perSlice.map(p => p.reductionNoFluff)),
+		input:                        summarizeFields(inputs, InputKeys, summarizeMeasurement),
+		dataflow:                     summarizeFields(dataflows.map(d => ({ ...d, numberOfControlFlowEdges: d.numberOfControlFlowEdges ?? 0 })), DataflowKeys, summarizeMeasurement),
+		controlFlow:                  stats.some(s => s.controlFlow !== undefined) ? {
 			numberOfVertices: summarizeMeasurement(stats.map(s => s.controlFlow?.numberOfVertices).filter(isNotUndefined)),
 			numberOfEdges:    summarizeMeasurement(stats.map(s => s.controlFlow?.numberOfEdges).filter(isNotUndefined)),
 			sizeOfObject:     summarizeMeasurement(stats.map(s => s.controlFlow?.sizeOfObject).filter(isNotUndefined))
 		} : undefined,
-		dataFrameShape: stats.some(s => s.dataFrameShape !== undefined) ? {
-			numberOfDataFrameFiles:    arraySum(stats.map(s => s.dataFrameShape?.numberOfDataFrameFiles).filter(isNotUndefined)),
-			numberOfNonDataFrameFiles: arraySum(stats.map(s => s.dataFrameShape?.numberOfNonDataFrameFiles).filter(isNotUndefined)),
-			numberOfResultConstraints: summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultConstraints).filter(isNotUndefined)),
-			numberOfResultingValues:   summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultingValues).filter(isNotUndefined)),
-			numberOfResultingBottom:   summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultingBottom).filter(isNotUndefined)),
-			numberOfResultingTop:      summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultingTop).filter(isNotUndefined)),
-			numberOfEmptyNodes:        summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfEmptyNodes).filter(isNotUndefined)),
-			numberOfOperationNodes:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfOperationNodes).filter(isNotUndefined)),
-			numberOfValueNodes:        summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfValueNodes).filter(isNotUndefined)),
-			sizeOfInfo:                summarizeMeasurement(stats.map(s => s.dataFrameShape?.sizeOfInfo).filter(isNotUndefined)),
-			numberOfEntriesPerNode:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfEntriesPerNode).filter(isNotUndefined)),
-			numberOfOperations:        summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfOperations).filter(isNotUndefined)),
-			numberOfTotalConstraints:  summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalConstraints).filter(isNotUndefined)),
-			numberOfTotalExact:        summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalExact).filter(isNotUndefined)),
-			numberOfTotalValues:       summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalValues).filter(isNotUndefined)),
-			numberOfTotalBottom:       summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalBottom).filter(isNotUndefined)),
-			numberOfTotalTop:          summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalTop).filter(isNotUndefined)),
-			inferredColNames:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.inferredColNames).filter(isNotUndefined)),
-			approxRangeColNames:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.approxRangeColNames).filter(isNotUndefined)),
-			numberOfColNamesExact:     summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesExact).filter(isNotUndefined)),
-			numberOfColNamesValues:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesValues).filter(isNotUndefined)),
-			numberOfColNamesBottom:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesBottom).filter(isNotUndefined)),
-			numberOfColNamesInfinite:  summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesInfinite).filter(isNotUndefined)),
-			numberOfColNamesTop:       summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesTop).filter(isNotUndefined)),
-			inferredColCount:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.inferredColCount).filter(isNotUndefined)),
-			approxRangeColCount:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.approxRangeColCount).filter(isNotUndefined)),
-			numberOfColCountExact:     summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountExact).filter(isNotUndefined)),
-			numberOfColCountValues:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountValues).filter(isNotUndefined)),
-			numberOfColCountBottom:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountBottom).filter(isNotUndefined)),
-			numberOfColCountInfinite:  summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountInfinite).filter(isNotUndefined)),
-			numberOfColCountTop:       summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountTop).filter(isNotUndefined)),
-			inferredRowCount:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.inferredRowCount).filter(isNotUndefined)),
-			approxRangeRowCount:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.approxRangeRowCount).filter(isNotUndefined)),
-			numberOfRowCountExact:     summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountExact).filter(isNotUndefined)),
-			numberOfRowCountValues:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountValues).filter(isNotUndefined)),
-			numberOfRowCountBottom:    summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountBottom).filter(isNotUndefined)),
-			numberOfRowCountInfinite:  summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountInfinite).filter(isNotUndefined)),
-			numberOfRowCountTop:       summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountTop).filter(isNotUndefined)),
-			perOperationNumber:        new Map(DataFrameOperationNames.map(n => [n, summarizeMeasurement(stats.map(s => s.dataFrameShape?.perOperationNumber.get(n) ?? 0))]))
-		} : undefined
+		dataFrameShape: summarizeShapes(stats.map(s => s.dataFrameShape), summarizeMeasurement, {
+			perOperationNumber: new Map(DataFrameOperationNames.map(n => [n, summarizeMeasurement(stats.map(s => s.dataFrameShape?.perOperationNumber.get(n) ?? 0))]))
+		})
 	};
 }
 
-/**
- * This big function summarizes multiple ultimate stats into one.
- */
+/** This big function summarizes multiple ultimate stats into one. */
 export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): UltimateSlicerStats {
 	return {
 		// these should be deterministic, so we don't technically need to use max, but we do just in case something unexpected happens :)
@@ -239,102 +156,45 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 		totalPerSliceTimePer100Lines: summarizeSummarizedMeasurement(stats.map(s => s.totalPerSliceTimePer100Lines).filter(isNotUndefined)),
 		reduction:                    summarizeSummarizedReductions(stats.map(s => s.reduction)),
 		reductionNoFluff:             summarizeSummarizedReductions(stats.map(s => s.reductionNoFluff)),
-		input:                        {
-			numberOfLines:                             summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfLines)),
-			numberOfNonEmptyLines:                     summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonEmptyLines)),
-			numberOfCharacters:                        summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfCharacters)),
-			numberOfCharactersNoComments:              summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfCharactersNoComments)),
-			numberOfNonWhitespaceCharacters:           summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonWhitespaceCharacters)),
-			numberOfNonWhitespaceCharactersNoComments: summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonWhitespaceCharactersNoComments)),
-			numberOfRTokens:                           summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfRTokens)),
-			numberOfRTokensNoComments:                 summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfRTokensNoComments)),
-			numberOfNormalizedTokens:                  summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNormalizedTokens)),
-			numberOfNormalizedTokensNoComments:        summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNormalizedTokensNoComments))
-		},
-		dataflow: {
-			numberOfNodes:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfNodes)),
-			numberOfFunctionDefinitions: summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfFunctionDefinitions)),
-			numberOfCalls:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfCalls)),
-			numberOfEdges:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfEdges)),
-			numberOfControlFlowEdges:    summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfControlFlowEdges)),
-			sizeOfObject:                summarizeSummarizedMeasurement(stats.map(s => s.dataflow.sizeOfObject)),
-		},
-		controlFlow: stats.some(s => s.controlFlow !== undefined) ? {
+		input:                        summarizeFields(stats.map(s => s.input), InputKeys, summarizeSummarizedMeasurement),
+		dataflow:                     summarizeFields(stats.map(s => s.dataflow), DataflowKeys, summarizeSummarizedMeasurement),
+		controlFlow:                  stats.some(s => s.controlFlow !== undefined) ? {
 			numberOfVertices: summarizeSummarizedMeasurement(stats.map(s => s.controlFlow?.numberOfVertices).filter(isNotUndefined)),
 			numberOfEdges:    summarizeSummarizedMeasurement(stats.map(s => s.controlFlow?.numberOfEdges).filter(isNotUndefined)),
 			sizeOfObject:     summarizeSummarizedMeasurement(stats.map(s => s.controlFlow?.sizeOfObject).filter(isNotUndefined))
 		} : undefined,
-		dataFrameShape: stats.some(s => s.dataFrameShape !== undefined) ? {
-			numberOfDataFrameFiles:    arraySum(stats.map(s => s.dataFrameShape?.numberOfDataFrameFiles).filter(isNotUndefined)),
-			numberOfNonDataFrameFiles: arraySum(stats.map(s => s.dataFrameShape?.numberOfNonDataFrameFiles).filter(isNotUndefined)),
-			numberOfResultConstraints: summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultConstraints).filter(isNotUndefined)),
-			numberOfResultingValues:   summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultingValues).filter(isNotUndefined)),
-			numberOfResultingBottom:   summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultingBottom).filter(isNotUndefined)),
-			numberOfResultingTop:      summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfResultingTop).filter(isNotUndefined)),
-			numberOfEmptyNodes:        summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfEmptyNodes).filter(isNotUndefined)),
-			numberOfOperationNodes:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfOperationNodes).filter(isNotUndefined)),
-			numberOfValueNodes:        summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfValueNodes).filter(isNotUndefined)),
-			sizeOfInfo:                summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.sizeOfInfo).filter(isNotUndefined)),
-			numberOfEntriesPerNode:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfEntriesPerNode).filter(isNotUndefined)),
-			numberOfOperations:        summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfOperations).filter(isNotUndefined)),
-			numberOfTotalConstraints:  summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalConstraints).filter(isNotUndefined)),
-			numberOfTotalExact:        summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalExact).filter(isNotUndefined)),
-			numberOfTotalValues:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalValues).filter(isNotUndefined)),
-			numberOfTotalBottom:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalBottom).filter(isNotUndefined)),
-			numberOfTotalTop:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalTop).filter(isNotUndefined)),
-			inferredColNames:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.inferredColNames).filter(isNotUndefined)),
-			approxRangeColNames:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.approxRangeColNames).filter(isNotUndefined)),
-			numberOfColNamesExact:     summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesExact).filter(isNotUndefined)),
-			numberOfColNamesValues:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesValues).filter(isNotUndefined)),
-			numberOfColNamesBottom:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesBottom).filter(isNotUndefined)),
-			numberOfColNamesInfinite:  summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesInfinite).filter(isNotUndefined)),
-			numberOfColNamesTop:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColNamesTop).filter(isNotUndefined)),
-			inferredColCount:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.inferredColCount).filter(isNotUndefined)),
-			approxRangeColCount:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.approxRangeColCount).filter(isNotUndefined)),
-			numberOfColCountExact:     summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountExact).filter(isNotUndefined)),
-			numberOfColCountValues:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountValues).filter(isNotUndefined)),
-			numberOfColCountBottom:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountBottom).filter(isNotUndefined)),
-			numberOfColCountInfinite:  summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountInfinite).filter(isNotUndefined)),
-			numberOfColCountTop:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfColCountTop).filter(isNotUndefined)),
-			inferredRowCount:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.inferredRowCount).filter(isNotUndefined)),
-			approxRangeRowCount:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.approxRangeRowCount).filter(isNotUndefined)),
-			numberOfRowCountExact:     summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountExact).filter(isNotUndefined)),
-			numberOfRowCountValues:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountValues).filter(isNotUndefined)),
-			numberOfRowCountBottom:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountBottom).filter(isNotUndefined)),
-			numberOfRowCountInfinite:  summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountInfinite).filter(isNotUndefined)),
-			numberOfRowCountTop:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfRowCountTop).filter(isNotUndefined)),
-			perOperationNumber:        new Map(DataFrameOperationNames.map(n => [n, summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.perOperationNumber.get(n)).filter(isNotUndefined))]))
-		} : undefined
+		dataFrameShape: summarizeShapes(stats.map(s => s.dataFrameShape), summarizeSummarizedMeasurement, {
+			perOperationNumber: new Map(DataFrameOperationNames.map(n => [n, summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.perOperationNumber.get(n)).filter(isNotUndefined))]))
+		})
 	};
 }
 
-/**
- * Processes the next summary line.
- */
+/** Restores the maps and bigints of serialized measurements. */
+export function restoreMeasurementMaps(stats: object) {
+	const { memory, commonMeasurements, additionalMeasurements } = stats as {
+		memory:                 [CommonSlicerMeasurements, BenchmarkMemoryMeasurement][],
+		commonMeasurements:     [CommonSlicerMeasurements, string][],
+		additionalMeasurements: [AdditionalSlicerMeasurements, string][] | undefined
+	};
+	const bigints = <K>(entries: readonly (readonly [K, string])[]) => new Map(entries.map(([k, v]) => {
+		guard(v.endsWith('n'), 'Expected a bigint');
+		return [k, BigInt(v.slice(0, -1))] as const;
+	}));
+	return {
+		memory:                 new Map(memory),
+		commonMeasurements:     bigints(commonMeasurements),
+		additionalMeasurements: bigints(additionalMeasurements ?? [])
+	};
+}
+
+/** Processes the next summary line. */
 export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicerStats[]): void {
 	let got = JSON.parse(line.toString()) as { summarize: SummarizedSlicerStats };
 	got = {
 		summarize: {
 			...got.summarize,
 			// restore maps
-			memory: new Map(
-				(got.summarize.memory as unknown as [CommonSlicerMeasurements, BenchmarkMemoryMeasurement][])
-					.map(([k, v]) => [k, v])
-			),
-			commonMeasurements: new Map(
-				(got.summarize.commonMeasurements as unknown as [CommonSlicerMeasurements, string][])
-					.map(([k, v]) => {
-						guard(v.endsWith('n'), 'Expected a bigint');
-						return [k, BigInt(v.slice(0, -1))];
-					})
-			),
-			additionalMeasurements: new Map(
-				(got.summarize.additionalMeasurements as unknown as [AdditionalSlicerMeasurements, string][] ?? [])
-					.map(([k, v]) => {
-						guard(v.endsWith('n'), 'Expected a bigint');
-						return [k, BigInt(v.slice(0, -1))];
-					})
-			),
+			...restoreMeasurementMaps(got.summarize),
 			perSliceMeasurements: {
 				...got.summarize.perSliceMeasurements,
 				// restore maps
@@ -349,9 +209,7 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 	allSummarized.push(got.summarize);
 }
 
-/**
- * Processes the next ultimate summary line.
- */
+/** Processes the next ultimate summary line. */
 export function processNextUltimateSummary(line: Buffer, allSummarized: UltimateSlicerStats[]): void {
 	let got = JSON.parse(line.toString()) as UltimateSlicerStats;
 	got = {

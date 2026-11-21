@@ -1,15 +1,14 @@
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
+import { isArray } from '../../../../src/util/collections/arrays';
 import { type DataflowGraphCluster, type DataflowGraphClusters, findAllClusters } from '../../../../src/dataflow/cluster';
 import { SlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
-import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { deterministicCountingIdGenerator } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { withShell } from '../../_helper/shell';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { assert, describe, test } from 'vitest';
-import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
+import { analyze } from '../../_helper/analyzer';
 
 describe('Graph Clustering', () => {
 	describe('Simple Graph Tests', () => {
@@ -34,23 +33,20 @@ describe('Graph Clustering', () => {
 	describe('Code Snippets', { concurrent: false }, withShell(shell => {
 		function check(name: string, code: string, clusters: readonly (SlicingCriteria | { members: SlicingCriteria, hasUnknownSideEffects: boolean })[]): void {
 			test(`${name} [${code.split('\n').join('\\n')}]`, async() => {
-				const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-					parser:  shell,
-					context: contextFromInput(code),
-					getId:   deterministicCountingIdGenerator(0)
-				}).allRemainingSteps();
-
-				const graph = info.dataflow.graph;
+				const analyzer = await analyze(shell, code, { getId: deterministicCountingIdGenerator(0) });
+				const dataflow = await analyzer.dataflow();
+				const normalize = await analyzer.normalize();
+				const graph = dataflow.graph;
 
 				// resolve all criteria
 				const resolved = clusters.map<DataflowGraphCluster>(c => {
-					const { members, hasUnknownSideEffects } = Array.isArray(c) ? {
+					const { members, hasUnknownSideEffects } = isArray<SlicingCriterion>(c) ? {
 						members:               c,
 						hasUnknownSideEffects: false
 					} : c;
 					return {
 						startNode: '',
-						members:   members.map(s => SlicingCriterion.parse(s, graph.idMap ?? info.normalize.idMap)),
+						members:   members.map(s => SlicingCriterion.parse(s, graph.idMap ?? normalize.idMap)),
 						hasUnknownSideEffects
 					};
 				});
@@ -58,7 +54,7 @@ describe('Graph Clustering', () => {
 				try {
 					compareClusters(actual, resolved);
 				} catch(e) {
-					console.log(Dataflow.visualize.mermaid.url(info.dataflow));
+					console.log(Dataflow.visualize.mermaid.url(dataflow));
 					throw e;
 				}
 			});
@@ -123,7 +119,7 @@ describe('Graph Clustering', () => {
 				['3@x']
 			]);
 			check('sub-function cluster', 'f <- function() { x <- 3\n4 }\nx', [
-				['1@f', '1:3', '1:6', '2:1', '$7' ],
+				['1@f', '1:3', '1:6', '2:1', '$7'],
 				['1@x', '1:21', '1:24'],
 				['3@x']
 			]);

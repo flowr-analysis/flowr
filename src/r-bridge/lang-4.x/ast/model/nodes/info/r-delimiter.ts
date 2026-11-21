@@ -1,5 +1,4 @@
-import type { RawRType } from '../../type';
-import { RType } from '../../type';
+import { type RawRType, RType } from '../../type';
 import type { Location } from '../../model';
 import type { MergeableRecord } from '../../../../../../util/objects';
 
@@ -15,6 +14,7 @@ export interface RDelimiter extends MergeableRecord, Location {
 
 /**
  * Helper for working with {@link RDelimiter} AST nodes.
+ * @helper ast
  */
 export const RDelimiter = {
 	name: 'RDelimiter',

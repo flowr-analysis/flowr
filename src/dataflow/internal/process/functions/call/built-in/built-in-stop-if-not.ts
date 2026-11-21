@@ -1,20 +1,18 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { ControlDependency, DataflowInformation, ExitPoint } from '../../../../../info';
-import { ExitPointType } from '../../../../../info';
+import { type ControlDependency, type DataflowInformation, type ExitPoint, ExitPointType } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type PotentiallyEmptyRArgument, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isNotUndefined } from '../../../../../../util/assert';
-import { Identifier } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * Processes a built-in 'stopifnot' function call.
@@ -44,7 +42,7 @@ export function processStopIfNot<OtherInfo>(
 
 	// R only allows ... or exprs or exprObject, not all, but we over-approximate and collect all, given that they are after '...'
 	// we can safely extract named args by full name
-	const argMap = new DefaultMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>(() => []);
+	const argMap = new DefaultMap<BrandedIdentifier, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>(() => []);
 	for(const arg of args) {
 		const name = (RArgument.isEmpty(arg) ? undefined : arg.name)?.content;
 		if(name === 'exprObject' || name === 'exprs' || name === 'local') {
@@ -63,15 +61,8 @@ export function processStopIfNot<OtherInfo>(
 		const alwaysTrue = localVal?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 		if(!alwaysTrue) {
 			dataflowLogger.warn(`stopifnot (${Identifier.toString(name.content)}) with non-true 'local' argument is not yet supported, over-approximate`);
-			const cds = (data.cds ?? []).concat(Array.from(ids).map(r => ({
-				id:   r,
-				when: false
-			})));
-			(res.exitPoints as ExitPoint[]).push({
-				type:   ExitPointType.Error,
-				nodeId: rootId,
-				cds:    cds
-			});
+			const cds = (data.cds ?? []).concat(Array.from(ids).map(r => ({ id: r, when: false })));
+			(res.exitPoints as ExitPoint[]).push({ type: ExitPointType.Error, nodeId: rootId, cds: cds });
 			return res;
 		}
 	}
@@ -82,14 +73,7 @@ export function processStopIfNot<OtherInfo>(
 		const alwaysFalse = val?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
 		if(alwaysFalse) {
 			// we know that this fails *always*
-			(res.exitPoints as ExitPoint[]).push(data.cds ? {
-				type:   ExitPointType.Error,
-				nodeId: rootId,
-				cds:    data.cds
-			} : {
-				type:   ExitPointType.Error,
-				nodeId: rootId
-			});
+			(res.exitPoints as ExitPoint[]).push(data.cds ? { type: ExitPointType.Error, nodeId: rootId, cds: data.cds } : { type: ExitPointType.Error, nodeId: rootId });
 			return res;
 		}
 		const alwaysTrue = val?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
@@ -106,16 +90,12 @@ export function processStopIfNot<OtherInfo>(
 		return res;
 	}
 
-	(res.exitPoints as ExitPoint[]).push({
-		type:   ExitPointType.Error,
-		nodeId: rootId,
-		cds:    (data.cds ?? []).concat(cds)
-	});
+	(res.exitPoints as ExitPoint[]).push({ type: ExitPointType.Error, nodeId: rootId, cds: (data.cds ?? []).concat(cds) });
 	return res;
 }
 
 /** Generator so we can early exit on first always-false */
-function* collectIdsForControl<OtherInfo>(argMap: DefaultMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
+function* collectIdsForControl<OtherInfo>(argMap: DefaultMap<BrandedIdentifier, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	yield* argMap.get('...')
 		.map(a => RArgument.isEmpty(a) ? undefined : a.value?.info.id)
 		.filter(isNotUndefined)

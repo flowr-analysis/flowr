@@ -1,5 +1,4 @@
-import type { Leaf, Location, NoInfo } from '../model';
-import { RNode } from '../model';
+import { type Leaf, type Location, type NoInfo, RNode } from '../model';
 import { RType } from '../type';
 import { RNa, RNull } from '../../../convert-values';
 import type { Identifier } from '../../../../../dataflow/environments/identifier';
@@ -17,14 +16,15 @@ export interface RSymbol<Info = NoInfo, T extends Identifier = Identifier> exten
 
 /**
  * Helper for working with {@link RSymbol} AST nodes.
+ * @helper ast
  */
 export const RSymbol = {
 	...RNode,
 	name: 'RSymbol',
 	/**
 	 * Type guard for {@link RSymbol} nodes.
-	 * @see {@link RSymbol.isSpecial} - to check whether a symbol is a special symbol like `NA` or `NULL`
 	 * @lintIgnore node-is node-is-optional
+	 * @see {@link RSymbol.isSpecial} - to check whether a symbol is a special symbol like `NA` or `NULL`
 	 */
 	is<OtherInfo = NoInfo>(this: void, node: RNode<OtherInfo> | undefined): node is RSymbol<OtherInfo> {
 		return node?.type === RType.Symbol;

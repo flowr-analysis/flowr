@@ -93,6 +93,10 @@
        {
            "tagName": "@note",
            "syntaxKind": "block"
+       },
+       {
+           "tagName": "@helper",
+           "syntaxKind": "block"
        }
    ]
 }

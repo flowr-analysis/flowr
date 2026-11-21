@@ -1,9 +1,7 @@
 import { FlowrAnalyzerPackageVersionsPlugin } from './flowr-analyzer-package-versions-plugin';
 import { DescriptionFile } from '../file-plugins/flowr-analyzer-description-file-plugin';
 import { SemVer } from 'semver';
-import type { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
-
 
 /**
  * This plugin extracts package versions from R `DESCRIPTION` files.
@@ -20,12 +18,7 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 			return;
 		}
 
-		this.retrieveVersionsFromField(ctx, deps.depends() ?? []);
-		this.retrieveVersionsFromField(ctx, deps.imports() ?? []);
-	}
-
-	private retrieveVersionsFromField(ctx: FlowrAnalyzerContext, pkgs: readonly Package[]): void {
-		for(const pkg of pkgs) {
+		for(const pkg of [...deps.depends() ?? [], ...deps.imports() ?? []]) {
 			ctx.deps.addDeclaredDependency(pkg);
 		}
 	}

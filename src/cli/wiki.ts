@@ -6,16 +6,15 @@ import type { DocMakerArgs, DocMakerLike, DocMakerOutputArgs } from '../document
 import fs from 'fs';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-import type { OptionDefinition } from 'command-line-usage';
-import commandLineUsage from 'command-line-usage';
+import commandLineUsage, { type OptionDefinition } from 'command-line-usage';
 import commandLineArgs from 'command-line-args';
 import { flowrVersion } from '../util/version';
 import { WikiFaq } from '../documentation/wiki-faq';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../util/text/ansi';
 import {
-	DocCapabilities,
 	WikiCore, WikiDataflowGraph,
 	WikiEngine,
+	WikiHelperObjects,
 	WikiInterface, WikiLintingAndTesting,
 	WikiNormalizedAst,
 	WikiQuery,
@@ -42,6 +41,7 @@ export const AllWikiDocuments = [
 	new WikiOnboarding(),
 	new WikiAnalyzer(),
 	new WikiEngine(),
+	new WikiHelperObjects(),
 	new WikiNormalizedAst(),
 	new WikiCore(),
 	new WikiSetup(),
@@ -54,8 +54,7 @@ export const AllWikiDocuments = [
 	new WikiCreateLintingRules(),
 	new WikiSignatureDatabase(),
 	new IssueLintingRule(),
-	new DocReadme(),
-	new DocCapabilities()
+	new DocReadme()
 ] as const satisfies DocMakerLike[];
 
 export type ValidWikiDocumentTargets = ReturnType<typeof AllWikiDocuments[number]['getTarget']>;
@@ -71,9 +70,21 @@ function sortByLeastRecentChanged(wikis: DocMakerLike[]): DocMakerLike[] {
 	});
 }
 
-/**
- * Updates and optionally re-creates all flowR wikis.
- */
+const GitHubPageCharacterLimit = 450_000;
+
+function warnIfNearGitHubLimit(file: string): void {
+	let size: number;
+	try {
+		size = fs.readFileSync(file, 'utf-8').length;
+	} catch{
+		return;
+	}
+	if(size > GitHubPageCharacterLimit) {
+		console.warn(ansiFormatter.format(`  [${file}] has ${size} characters, which is over the ${GitHubPageCharacterLimit} GitHub renders a wiki page up to; split it or trim it`, { style: FontStyles.Bold, color: Colors.Yellow, effect: ColorEffect.Foreground }));
+	}
+}
+
+/** Updates and optionally re-creates all flowR wikis. */
 export async function makeAllWikis(force: boolean, filter: string[] | undefined) {
 	const setupStart = new Date();
 	console.log('Setting up wiki generation...');
@@ -125,6 +136,9 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 				changedWikis.add(out);
 				console.log(`    - Also updated: ${out}`);
 			}
+			for(const out of [doc.getTarget(), ...doc.getWrittenSubfiles()]) {
+				warnIfNearGitHubLimit(out);
+			}
 		}
 	} catch(error) {
 		console.error('Error while generating documents:', error);
@@ -159,18 +173,8 @@ if(require.main === module) {
 			header:  `flowR (version ${flowrVersion().toString()})`,
 			content: 'Documentation (wiki, issue, ...) generator for flowR'
 		},
-		{
-			header:  'Synopsis',
-			content: [
-				'$ wiki {bold --help}',
-				'$ wiki {bold --force}',
-				'$ wiki {bold --filter} {italic "dataflow"}'
-			]
-		},
-		{
-			header:     'Options',
-			optionList: wikiOptions
-		}
+		{ header: 'Synopsis', content: ['$ wiki {bold --help}', '$ wiki {bold --force}', '$ wiki {bold --filter} {italic "dataflow"}'] },
+		{ header: 'Options', optionList: wikiOptions }
 	];
 
 	setMinLevelOfAllLogs(LogLevel.Fatal);

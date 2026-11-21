@@ -54,7 +54,7 @@ function wrapAfter(prefix: string, content: string): string {
 	return prefix + lines.map((l, i) => i === 0 ? l : pad + l).join('\n');
 }
 
-function printHelpForScript(script: [string, ReplBaseCommand], f: OutputFormatter, starredVersion?: ReplBaseCommand): string {
+function scriptHelpText(script: [string, ReplBaseCommand], f: OutputFormatter, starredVersion?: ReplBaseCommand): string {
 	let content = script[1].description;
 	if(starredVersion) {
 		content += ` ${italic(`(star: ${starredVersion.description})`, f)}`;
@@ -67,11 +67,11 @@ function printHelpForScript(script: [string, ReplBaseCommand], f: OutputFormatte
 }
 
 function printFamilyVariants(children: string[], cmds: Record<string, ReplCommand | ReplCodeCommand>, f: OutputFormatter): string {
-	const variant = (name: string) => {
+	function variant(name: string) {
 		const aliases = cmds[name].aliases;
 		const suffix = aliases.length > 0 ? ' ' + italic(`(${aliases.map(a => ':' + a).join(', ')})`, f) : '';
 		return cmd(':' + name + (cmds[name + '*'] ? '[*]' : ''), f) + suffix;
-	};
+	}
 	return wrapAfter(`     ${italic('variants:', f)} `, children.map(variant).join(', '));
 }
 
@@ -91,7 +91,7 @@ function printCommandHelp(formatter: OutputFormatter) {
 
 	const lines: string[] = [];
 	for(const entry of bases.filter(([name]) => shortestPrefixCommand(name) === name).sort((a, b) => a[0].localeCompare(b[0]))) {
-		lines.push(printHelpForScript(entry, formatter, cmds[entry[0] + '*']));
+		lines.push(scriptHelpText(entry, formatter, cmds[entry[0] + '*']));
 		const variants = children.get(entry[0]);
 		if(variants) {
 			lines.push(printFamilyVariants(variants.sort(), cmds, formatter));
@@ -105,7 +105,7 @@ export const helpCommand: ReplCommand = {
 	isCodeCommand: false,
 	script:        false,
 	usageExample:  ':help',
-	aliases:       [ 'h', '?' ],
+	aliases:       ['h', '?'],
 	fn:            ({ output }) => {
 		initCommandMapping();
 		output.stdout(`
@@ -138,9 +138,7 @@ You are running flowR ${bold('v' + flowrVersion().toString(), output.formatter)}
 	}
 };
 
-/**
- * All commands that should be available in the REPL.
- */
+/** All commands that should be available in the REPL. */
 const _commands = {
 	'help':            helpCommand,
 	'quit':            quitCommand,
@@ -178,7 +176,6 @@ function hasModule(path: string): boolean {
 	}
 }
 
-
 /**
  * The args a master script is forked with: `remainingLine` tokenized, plus `--config-json <analyzer.flowrConfig>`
  * so it sees the repl's current (possibly `:query \@config`-edited) config -- unless the script does not support
@@ -192,9 +189,7 @@ export function masterScriptArgs(remainingLine: string, config: FlowrConfig, scr
 	return args;
 }
 
-/**
- * Retrieve all REPL commands (including those generated from master scripts)
- */
+/** Retrieve all REPL commands (including those generated from master scripts) */
 export function getReplCommands(): Record<string, ReplCommand | ReplCodeCommand> {
 	if(commandsInitialized) {
 		return _commands;
@@ -205,6 +200,8 @@ export function getReplCommands(): Record<string, ReplCommand | ReplCodeCommand>
 				description,
 				aliases:       [],
 				script:        true,
+				// master scripts run as separate processes with client-controlled arguments (e.g., output files)
+				localOnly:     true,
 				usageExample:  `:${script} --help`,
 				isCodeCommand: false,
 				fn:            async({ output, remainingLine, analyzer }) => {
@@ -230,10 +227,7 @@ export function getReplCommands(): Record<string, ReplCommand | ReplCodeCommand>
 	return _commands;
 }
 
-
-/**
- * The names of all commands including their aliases (but without the leading `:`)
- */
+/** The names of all commands including their aliases (but without the leading `:`) */
 export function getCommandNames(): string[] {
 	if(commandNames === undefined) {
 		initCommandMapping();
@@ -272,10 +266,8 @@ export function getCommand(command: string): ReplCodeCommand | ReplCommand | und
 	return getReplCommands()[(commandMapping as Record<string, string>)[command] as keyof typeof _commands];
 }
 
-/**
- * Formats the given argument name as a command line option (with single or double dashes).
- */
-export function asOptionName(argument: string): string{
+/** Formats the given argument name as a command line option (with single or double dashes). */
+export function asOptionName(argument: string): string {
 	if(argument.length == 1) {
 		return `-${argument}`;
 	} else {
@@ -283,12 +275,9 @@ export function asOptionName(argument: string): string{
 	}
 }
 
-
 let _longestCommandName: number | undefined = undefined;
 
-/**
- * Retrieve the length of the longest command name (including star and brackets if applicable)
- */
+/** Retrieve the length of the longest command name (including star and brackets if applicable) */
 export function longestCommandName(): number {
 	if(_longestCommandName === undefined) {
 		_longestCommandName = Array.from(Object.keys(getReplCommands()), k => k.endsWith('*') ? k.length + 3 : k.length).reduce((p, n) => Math.max(p, n), 0);

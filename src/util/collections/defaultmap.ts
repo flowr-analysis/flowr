@@ -17,10 +17,7 @@ export class DefaultMap<K, V = K> {
 		this.internal = map;
 	}
 
-	/**
-	 * Sets a value for a given key.
-	 * As you provide value, this does not invoke the generator!
-	 */
+	/** Sets a value for a given key. As you provide value, this does not invoke the generator! */
 	public set(k: K, v: V): this {
 		this.internal.set(k, v);
 		return this;
@@ -41,9 +38,7 @@ export class DefaultMap<K, V = K> {
 		}
 	}
 
-	/**
-	 * Iterates over all entries that have been set (explicitly or by the generator)
-	 */
+	/** Iterates over all entries that have been set (explicitly or by the generator) */
 	public entries(): MapIterator<[K, V]> {
 		return this.internal.entries();
 	}
@@ -64,4 +59,33 @@ export class DefaultMap<K, V = K> {
 	public size(): number {
 		return this.internal.size;
 	}
+}
+
+/**
+ * `fn`, answered once per key and remembered from then on -- an answer of `undefined` included, which is
+ * what separates this from a {@link DefaultMap} generator.
+ * For a recursive `fn`, `reentry` is the answer for a key asked again while its own answer is worked out,
+ * like `false` for whether a call `f <- function() f()` returns a data frame.
+ */
+export function memoize<K, V>(fn: (key: K) => V, reentry?: { readonly answer: V }): (key: K) => V {
+	const known = new Map<K, V>();
+	return key => {
+		if(!known.has(key)) {
+			if(reentry !== undefined) {
+				known.set(key, reentry.answer);
+			}
+			known.set(key, fn(key));
+		}
+		return known.get(key) as V;
+	};
+}
+
+/** The value of `key` in `map`, created by `create` and stored first if there is none (an `undefined` value counts as none). */
+export function getOrSet<K, V>(map: { get(key: K): V | undefined, set(key: K, value: V): unknown }, key: K, create: () => V): V {
+	let value = map.get(key);
+	if(value === undefined) {
+		value = create();
+		map.set(key, value);
+	}
+	return value;
 }

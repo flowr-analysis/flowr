@@ -5,15 +5,11 @@ import { bottomTopGuard } from '../general';
 /**
  * Creates an abstract vector from abstract values
  * @param elements - elements that the vector should contain
- * @returns abstract ValueVector
+ * @returns        abstract ValueVector
  */
 export function vectorFrom<V extends Lift<Value[]>>(elements: V): ValueVector<V> {
 	guard(isTop(elements) || isBottom(elements) || Array.isArray(elements), 'Expected array of values');
-	return {
-		type:          'vector',
-		elements,
-		elementDomain: Top
-	};
+	return { type: 'vector', elements, elementDomain: Top };
 }
 
 /**

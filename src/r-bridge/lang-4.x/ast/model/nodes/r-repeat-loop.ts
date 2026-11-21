@@ -1,5 +1,4 @@
-import type { RAstNodeBase, Location, NoInfo } from '../model';
-import { RNode } from '../model';
+import { type RAstNodeBase, type Location, type NoInfo, RNode } from '../model';
 import { RType } from '../type';
 import type { RExpressionList } from './r-expression-list';
 
@@ -15,6 +14,7 @@ export interface RRepeatLoop<Info = NoInfo> extends RAstNodeBase<Info>, Location
 
 /**
  * Helper for working with {@link RRepeatLoop} AST nodes.
+ * @helper ast
  */
 export const RRepeatLoop = {
 	...RNode,

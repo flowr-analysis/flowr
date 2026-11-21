@@ -9,16 +9,10 @@ function singleOutgoingFd(outgoing: ReadonlyMap<NodeId, CfgEdge> | undefined): N
 	}
 
 	const next = outgoing.entries().next().value;
-	if(CfgEdge.isFlowDependency(next?.[1])) {
-		return next[0];
-	} else {
-		return undefined;
-	}
+	return CfgEdge.isFlowDependency(next?.[1]) ? next[0] : undefined;
 }
 
-/**
- * Take a control flow information of a graph without any basic blocks and convert it to a graph with basic blocks.
- */
+/** Take a control flow information of a graph without any basic blocks and convert it to a graph with basic blocks. */
 export function convertCfgToBasicBlocks(cfInfo: ControlFlowInformation): ControlFlowInformation {
 	const newCfg = wrapEveryVertexInBasicBlock(cfInfo.graph);
 	if(!newCfg) {
@@ -54,14 +48,8 @@ export function convertCfgToBasicBlocks(cfInfo: ControlFlowInformation): Control
 		return cfInfo;
 	}
 
-	return {
-		...cfInfo,
-		graph:       newCfg,
-		entryPoints: findEntries as NodeId[],
-		exitPoints:  findExits as NodeId[],
-	};
+	return { ...cfInfo, graph: newCfg, entryPoints: findEntries as NodeId[], exitPoints: findExits as NodeId[] };
 }
-
 
 /** only returns undefined when the cfg already contains basic blocks */
 function wrapEveryVertexInBasicBlock(existing: ControlFlowGraph): ControlFlowGraph | undefined {

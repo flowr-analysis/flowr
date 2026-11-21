@@ -1,22 +1,75 @@
 import Joi from 'joi';
-import type { AbsintVisitorConfiguration, AbstractInterpretationVisitor, DomainOfVisitor } from '../../../abstract-interpretation/absint-visitor';
-import { DataFrameShapeInferenceVisitor } from '../../../abstract-interpretation/data-frame/shape-inference';
-import { AbstractDomain, type AnyAbstractDomain } from '../../../abstract-interpretation/domains/abstract-domain';
-import { Bottom, BottomSymbol, TopSymbol } from '../../../abstract-interpretation/domains/lattice';
-import type { StateAbstractDomain } from '../../../abstract-interpretation/domains/state-abstract-domain';
-import type { ValueDomain } from '../../../abstract-interpretation/domains/state-domain-like';
+import { queryHeader } from '../../query-print';
+import { DataFrameShapeAnalysis } from '../../../abstract-interpretation/data-frame/shape-inference';
+import { AbstractDomain } from '../../../abstract-interpretation/domains/abstract-domain';
+import { BottomSymbol, TopSymbol } from '../../../abstract-interpretation/domains/lattice';
+import type { MultiValueDomain, MultiValueStateDomain } from '../../../abstract-interpretation/domains/multi-value-state-domain';
+import type { AbstractProduct } from '../../../abstract-interpretation/domains/partial-product-domain';
+import type { StateDomain } from '../../../abstract-interpretation/domains/state-domain';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { CommandCompletions } from '../../../cli/repl/core';
-import { queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import type { CommandCompletions } from '../../../cli/repl/completion';
+import { lastCriterionFragment, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import type { FlowrConfig } from '../../../config';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { SlicingCriterion, type SlicingCriteria } from '../../../slicing/criterion/parse';
+import { isNotUndefined } from '../../../util/assert';
 import { Record } from '../../../util/record';
-import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { type BasicQueryData, type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { executeAbsintQuery } from './absint-query-executor';
+import { AbstractInterpreter, type AbsintAnalysis } from '../../../abstract-interpretation/absint-inference';
+import { log } from '../../../util/log';
+import { metaSince } from '../../query-meta';
+
+/** Executes the given abstract interpretation queries using the provided analyzer. */
+export async function executeAbsintQuery<AbsintType extends AbsintQueryType>({ analyzer }: BasicQueryData, queries: readonly AbsintQuery<AbsintType>[]): Promise<AbsintQueryResult<AbsintType>> {
+	if(queries.length === 0 || queries.some(query => query.inference !== queries[0].inference)) {
+		throw new Error('The inference types of bundled abstract interpretation queries must be the same.');
+	}
+	if(queries.length > 1 && queries.some(query => query.criteria === undefined)) {
+		log.warn('The abstract interpretation query expects only up to one query without slicing criteria, but got', queries.length);
+		queries = [{ type: 'absint', inference: queries[0].inference }];
+	}
+
+	const inference = AbsintQueryInferences[queries[0].inference];
+	const ast = await analyzer.normalize();
+	const dfg = (await analyzer.dataflow()).graph;
+	const cfg = await analyzer.controlflow();
+
+	const start = Date.now();
+	const analysis = inference.create() as unknown as AbsintAnalysis<AbsintQueryDomains<AbsintType>>;
+	const interpreter = new AbstractInterpreter({ controlFlow: cfg, dfg, normalizedAst: ast, ctx: analyzer.inspectContext() }, analysis);
+	interpreter.start();
+
+	if(queries.length === 1 && queries[0].criteria === undefined) {
+		const state = ('domain' in inference ? interpreter.getEndState(inference.domain) : interpreter.getEndState()) as AbsintQueryStateDomain<AbsintType>;
+
+		return { ...metaSince(start), result: state };
+	}
+	const result = new Map<SlicingCriterion, AbsintQueryDomain<AbsintType> | undefined>();
+
+	for(const query of queries) {
+		if(query.criteria === undefined) {
+			log.warn('Missing criterion in abstract interpretation query');
+			continue;
+		}
+		for(const criterion of query.criteria) {
+			if(result.has(criterion)) {
+				log.warn('Duplicate criterion in abstract interpretation query:', query.criteria);
+				continue;
+			}
+			try {
+				const nodeId = SlicingCriterion.parse(criterion, ast.idMap);
+				const value = ('domain' in inference ? interpreter.getAbstractValue(nodeId, inference.domain) : interpreter.getAbstractValue(nodeId)) as AbsintQueryDomain<AbsintType>;
+				result.set(criterion, value);
+			} catch(err) {
+				console.error(err instanceof Error ? err.message : err);
+			}
+		}
+	}
+
+	return { ...metaSince(start), result: result };
+}
 
 export interface AbsintQuery<AbsintType extends AbsintQueryType = AbsintQueryType> extends BaseQueryFormat {
 	readonly type:      'absint';
@@ -28,16 +81,32 @@ export interface AbsintQueryResult<AbsintType extends AbsintQueryType = AbsintQu
 	result: AbsintQueryStateDomain<AbsintType> | Map<SlicingCriterion, AbsintQueryDomain<AbsintType> | undefined>
 }
 
+/**
+ * An abstract interpretation analysis supported by the abstract interpretation query,
+ * consisting of a factory creating the analysis and the name of the abstract domain of the analysis to return the inferred values for.
+ */
+interface AbsintQueryInference<Domains extends AbstractProduct = AbstractProduct> {
+	/** Creates the abstract interpretation analysis to perform */
+	readonly create:  () => AbsintAnalysis<Domains>;
+	/** The name of the abstract domain of the analysis to return the inferred abstract values for */
+	readonly domain?: keyof Domains & string;
+}
+
 export const AbsintQueryInferences = {
-	'df-shape': config => new DataFrameShapeInferenceVisitor(config)
-} satisfies Record<string, (config: AbsintVisitorConfiguration) => AbstractInterpretationVisitor<StateAbstractDomain<AnyAbstractDomain>>>;
+	'df-shape': { create: () => new DataFrameShapeAnalysis({ trackOperations: false }), domain: 'dataFrame' }
+} as const satisfies Record<string, AbsintQueryInference>;
 
 export type AbsintQueryType = keyof typeof AbsintQueryInferences;
 
-export type AbsintQueryStateDomain<AbsintType extends AbsintQueryType = AbsintQueryType> = DomainOfVisitor<ReturnType<typeof AbsintQueryInferences[AbsintType]>>;
+/** The abstract domains of the analysis performed by an abstract interpretation query */
+export type AbsintQueryDomains<AbsintType extends AbsintQueryType = AbsintQueryType> =
+	ReturnType<typeof AbsintQueryInferences[AbsintType]['create']> extends AbsintAnalysis<infer Domains> ? Domains : never;
 
-export type AbsintQueryDomain<AbsintType extends AbsintQueryType = AbsintQueryType> = ValueDomain<AbsintQueryStateDomain<AbsintType>>;
+export type AbsintQueryStateDomain<AbsintType extends AbsintQueryType = AbsintQueryType> =
+	typeof AbsintQueryInferences[AbsintType] extends { domain: string } ? StateDomain<AbsintQueryDomains<AbsintType>[typeof AbsintQueryInferences[AbsintType]['domain']]> : MultiValueStateDomain<Partial<AbsintQueryDomains<AbsintType>>>;
 
+export type AbsintQueryDomain<AbsintType extends AbsintQueryType = AbsintQueryType> =
+	typeof AbsintQueryInferences[AbsintType] extends { domain: string } ? AbsintQueryDomains<AbsintType>[typeof AbsintQueryInferences[AbsintType]['domain']] : MultiValueDomain<Partial<AbsintQueryDomains<AbsintType>>>;
 
 function absintQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
 	if(line.length === 0 || (line.length === 1 && !startingNewArg)) {
@@ -50,6 +119,11 @@ function absintQueryCompleter(line: readonly string[], startingNewArg: boolean, 
 		if(criteria !== undefined && criteria.length > 0 && criteria.every(SlicingCriterion.isValid)) {
 			return { completions: [';', ') '], argumentPart: '' };
 		}
+		const fragment = lastCriterionFragment(line[1]);
+
+		if(/^\d+$/.test(fragment)) {
+			return { completions: [`${fragment}@`, `${fragment}:`, `${fragment}~`], argumentPart: fragment };
+		}
 	} else if((line.length === 2 && startingNewArg) || (line.length === 3 && line[2].length === 0)) {
 		return { completions: ['""', fileProtocol] };
 	} else if((line.length === 2 && fileProtocol.startsWith(line[1])) || (line.length === 3 && fileProtocol.startsWith(line[2]))) {
@@ -59,28 +133,19 @@ function absintQueryCompleter(line: readonly string[], startingNewArg: boolean, 
 }
 
 function absintQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'absint'> {
-	const type = line[0].toLowerCase();
+	const type = (line[0] ?? '').toLowerCase();
 
-	if(!Object.hasOwn(AbsintQueryInferences, type)) {
-		output.stderr(output.formatter.format(`Invalid inference type "${type}", must be one of ${Record.keys(AbsintQueryInferences).map(type => `"${type}"`).join(', ')}`, { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		return { query: [] };
+	if(!Record.has(AbsintQueryInferences, type)) {
+		return invalidQueryLine(output, `Invalid inference type "${type}", must be one of ${Record.keys(AbsintQueryInferences).map(type => `"${type}"`).join(', ')}`);
 	}
 	const criteria = sliceCriteriaParser(line[1]);
 
 	if(criteria !== undefined && !criteria.every(SlicingCriterion.isValid)) {
-		output.stderr(output.formatter.format(`Invalid slicing criteria "${line[1]}"`, { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		return { query: [] };
+		return invalidQueryLine(output, `Invalid slicing criteria "${line[1]}"`);
 	}
 	const code = queryLineCode(line, criteria ? 2 : 1);
 
-	return {
-		query: {
-			type:      'absint',
-			inference: type as AbsintQueryType,
-			criteria:  criteria
-		},
-		rCode: code
-	};
+	return { query: { type: 'absint', inference: type, criteria: criteria }, rCode: code };
 }
 
 export const AbsintQueryDefinition = {
@@ -88,41 +153,52 @@ export const AbsintQueryDefinition = {
 	executor:        executeAbsintQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'absint'>['absint'];
-		const domains = out.result instanceof AbstractDomain ? out.result.value : out.result;
-		result.push(`Query: ${bold('absint', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('absint', formatter, out['.meta'].timing));
 
-		if(domains === Bottom) {
-			result.push(`   ╰ state: ${BottomSymbol}`);
-			return true;
-		} else if(out.result instanceof AbstractDomain && out.result.isTop()) {
-			result.push(`   ╰ state: ${TopSymbol}`);
-			return true;
+		if(out.result instanceof AbstractDomain) {
+			if(out.result.isBottom()) {
+				result.push(`   ╰ state: ${BottomSymbol}`);
+				return true;
+			} else if(out.result.isTop()) {
+				result.push(`   ╰ state: ${TopSymbol}`);
+				return true;
+			}
 		}
-		result.push(...domains.entries().take(20).map(([key, domain]) => {
+		const entries = out.result instanceof Map ? out.result.entries().toArray() : out.result.entries();
+
+		result.push(...entries.slice(0, 51).map(([key, domain]) => {
 			const criterion = SlicingCriterion.isValid(key) ? key : SlicingCriterion.fromId(key);
 			return `   ╰ ${criterion}: ${domain?.toString()}`;
 		}));
 
-		if(domains.size > 20) {
+		if(entries.length > 50) {
 			result.push('   ╰ ... (see JSON)');
 		}
 		return true;
 	},
-	jsonFormatter: (queryResults: BaseQueryResult) => {
-		const { result: domains, ...out } = queryResults as QueryResults<'absint'>['absint'];
-		const state = domains instanceof AbstractDomain ? domains.value : domains;
-		const json = state === Bottom ? state.description : Object.fromEntries(state.entries().map(([key, domain]) => [key, domain?.toJSON() ?? null]));
-		const result = { domains: json, ...out } as object;
+	jsonFormatter: (queryResults: BaseQueryResult): object => {
+		const { result, ...out } = queryResults as QueryResults<'absint'>['absint'];
 
-		return result;
+		if(result instanceof AbstractDomain && result.isNotValue()) {
+			return { result: result.toJSON(), ...out };
+		}
+		const entries = result instanceof Map ? result.entries().toArray() : result.entries();
+		const json = Object.fromEntries(entries.map(([key, domain]) => [key, domain?.toJSON() ?? null]));
+
+		return { result: json, ...out };
 	},
 	completer: absintQueryCompleter,
 	fromLine:  absintQueryLineParser,
-	syntax:    '@absint <inference-type> [(<criteria>)] <code | file://path>',
+	syntax:    '@absint <inference> [(<crit>;...)] <code | file://path>',
 	schema:    Joi.object({
 		type:      Joi.string().valid('absint').required().description('The type of the query.'),
 		inference: Joi.string().valid(...Record.keys(AbsintQueryInferences)).required().description('The type of abstract interpretation inference.'),
 		criteria:  Joi.array().items(Joi.string()).optional().description('The slicing criteria of the nodes to get the inferred abstract values for.')
 	}).description('The abstract interpretation query retrieves inferred abstract values'),
-	flattenInvolvedNodes: () => []
+	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
+		const out = queryResults as QueryResults<'absint'>['absint'];
+		const entries = out.result instanceof Map ? out.result.entries().toArray() : out.result.entries();
+
+		return entries.filter(([, value]) => isNotUndefined(value)).map(([key]) => key);
+	},
 } as const satisfies SupportedQuery<'absint'>;

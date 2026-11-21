@@ -3,36 +3,65 @@ import type { FlowrAnalyzer } from '../../../../../src/project/flowr-analyzer';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { diffGraphsToMermaidUrl } from '../../../../../src/util/mermaid/dfg';
 import { guard } from '../../../../../src/util/assert';
-import type { Query, SupportedQueryTypes } from '../../../../../src/queries/query';
-import { executeQueries } from '../../../../../src/queries/query';
+import { type Query, type SupportedQueryTypes, executeQueries } from '../../../../../src/queries/query';
 import { jsonReplacer } from '../../../../../src/util/json';
+import type { DataflowInformation } from '../../../../../src/dataflow/info';
 
 /**
- * Oracle that can be used to define in what way incremental dataflows should be compared in tests.
- * For example, `:dataflow` will compare an incremental and non-incremental dataflow result based on the dataflow, while `query:dependencies` calls the dependencies' query and compares the results of the (non-)incremental analysis.
+ * Compares an incremental analysis against a full one.
+ * For example, `:dataflow` compares the dataflow graphs (and what the analysis reads and writes at the top level),
+ * while `query:dependencies` compares the results of the dependencies query.
  */
 export interface Oracle<T = unknown> {
 	readonly name: string;
 	run(analyzer: FlowrAnalyzer): Promise<T>;
-	assertMatches(incremental: T, full: T): void;
+	/** fails with `context` in the message if the incremental result differs from the full one */
+	assertMatches(incremental: T, full: T, context: string): void;
 }
 
 function stripMeta(value: unknown): unknown {
-	return JSON.parse(JSON.stringify(value, (key, v) => key === '.meta' ? undefined : jsonReplacer(key, v)));
+	return JSON.parse(JSON.stringify(value, (key, v) => key === '.meta' ? undefined : jsonReplacer(key, v))) as unknown;
 }
 
-const dataflowOracle: Oracle<Awaited<ReturnType<FlowrAnalyzer['dataflow']>>> = {
+/** The paths at which the two values differ, to name what differs in a large query result. */
+function differingPaths(a: unknown, b: unknown, at = '', out: string[] = []): string[] {
+	if(out.length >= 10 || JSON.stringify(a) === JSON.stringify(b)) {
+		return out;
+	}
+	if(typeof a === 'object' && typeof b === 'object' && a !== null && b !== null && !Array.isArray(a) && !Array.isArray(b)) {
+		for(const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
+			differingPaths((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key], `${at}.${key}`, out);
+		}
+	} else {
+		out.push(`${at}: ${JSON.stringify(a)?.slice(0, 300)} vs. ${JSON.stringify(b)?.slice(0, 300)}`);
+	}
+	return out;
+}
+
+function referencesOf(df: DataflowInformation) {
+	const ids = (refs: readonly { nodeId: unknown }[]) => refs.map(r => String(r.nodeId)).sort();
+	return { in: ids(df.in), out: ids(df.out), unknown: ids(df.unknownReferences), exit: df.exitPoints.map(e => `${e.type}:${String(e.nodeId)}`).sort() };
+}
+
+const dataflowOracle: Oracle<DataflowInformation> = {
 	name: ':dataflow',
 	run:  analyzer => analyzer.dataflow(),
-	assertMatches(actual, expected) {
+	assertMatches(actual, expected, context) {
 		const report = Dataflow.diffGraphs(
-			{ name: 'expected', graph: expected.graph },
-			{ name: 'actual', graph: actual.graph }
+			{ name: 'full', graph: expected.graph },
+			{ name: 'incremental', graph: actual.graph }
 		);
 		if(!report.isEqual()) {
-			const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected.graph }, { label: 'actual', graph: actual.graph }, '');
-			assert.fail(`dataflow graphs differ:\n${report.comments()?.join('\n')}\ndiff: ${diff}`);
+			const diff = diffGraphsToMermaidUrl({ label: 'full', graph: expected.graph }, { label: 'incremental', graph: actual.graph }, '');
+			assert.fail(`${context}: dataflow graphs differ:\n${report.comments()?.join('\n')}\ndiff: ${diff}`);
 		}
+		assert.deepStrictEqual(referencesOf(actual), referencesOf(expected), `${context}: top-level references differ`);
+		const keys = (df: DataflowInformation) => [...df.graph.idMap?.keys() ?? []].map(String).sort();
+		assert.deepStrictEqual(keys(actual), keys(expected), `${context}: the nodes of the id maps differ`);
+		assert.deepStrictEqual(JSON.stringify([...actual.graph.statementOrder ?? []]), JSON.stringify([...expected.graph.statementOrder ?? []]), `${context}: statement orders differ`);
+		assert.deepStrictEqual([...actual.graph.ambientAccessIds()].map(String).sort(), [...expected.graph.ambientAccessIds()].map(String).sort(), `${context}: ambient accesses differ`);
+		assert.deepStrictEqual([...actual.graph.fileWritesPerCall ?? []].map(String).sort(), [...expected.graph.fileWritesPerCall ?? []].map(String).sort(), `${context}: per-call file writes differ`);
+		assert.deepStrictEqual([...actual.graph.unknownSideEffects].map(String).sort(), [...expected.graph.unknownSideEffects].map(String).sort(), `${context}: unknown side effects differ`);
 	}
 };
 
@@ -40,24 +69,20 @@ const RegisteredOracles: Record<string, Oracle> = {
 	dataflow: dataflowOracle
 };
 
-/**
- * Calls the specified oracle.
- * See {@link RegisteredOracles}.
- */
+/** Resolves `:<name>` to a {@link RegisteredOracles|registered oracle} and `query:<type>` to a comparison of that query's results. */
 export function resolveOracle(spec: string): Oracle {
 	if(spec.startsWith('query:')) {
 		const type = spec.slice('query:'.length) as SupportedQueryTypes;
 		return {
 			name: spec,
-			run:  analyzer => executeQueries({ analyzer }, [{ type } as Query] as Query[]),
-			assertMatches(incremental, full) {
-				assert.deepEqual(stripMeta(incremental), stripMeta(full), `${spec} results differ between full and incremental analysis`);
+			run:  analyzer => executeQueries({ analyzer }, [{ type } as Query]),
+			assertMatches(incremental, full, context) {
+				const [got, expected] = [stripMeta(incremental), stripMeta(full)];
+				assert.deepEqual(got, expected, `${context}: ${spec} results differ between full and incremental analysis at\n${differingPaths(got, expected).join('\n')}\n`);
 			}
 		};
 	}
-
 	guard(spec.startsWith(':'), `Unknown oracle spec "${spec}" (expected ":<name>" or "query:<type>")`);
-
 	const name = spec.slice(1);
 	const oracle = RegisteredOracles[name];
 	guard(oracle !== undefined, `Unknown oracle ":${name}", known: ${Object.keys(RegisteredOracles).map(n => `:${n}`).join(', ')}`);

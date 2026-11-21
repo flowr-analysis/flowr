@@ -1,5 +1,5 @@
-import type { RAstNodeBase, Location, NoInfo } from '../model';
-import { RNode } from '../model';
+import { Identifier, type BrandedIdentifier } from '../../../../../dataflow/environments/identifier';
+import { type RAstNodeBase, type Location, type NoInfo, RNode } from '../model';
 import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { RArgument } from './r-argument';
@@ -21,7 +21,6 @@ export interface RNamedFunctionCall<Info = NoInfo> extends RAstNodeBase<Info>, L
 	readonly arguments: readonly PotentiallyEmptyRArgument<Info>[];
 }
 
-
 /**
  * Direct calls of functions like `(function(x) { x })(3)`.
  * @see RNamedFunctionCall
@@ -38,9 +37,29 @@ export interface RUnnamedFunctionCall<Info = NoInfo> extends RAstNodeBase<Info>,
 
 export type RFunctionCall<Info = NoInfo> = RNamedFunctionCall<Info> | RUnnamedFunctionCall<Info>;
 
+/** Helper for working with {@link RFunctionCall} AST nodes. */
+declare const calledNameChecked: unique symbol;
+
+/** A named call that also passed a check of its name, which says nothing about the named calls that did not. */
+export type RNamedFunctionCallOf<Info = NoInfo> = RNamedFunctionCall<Info> & { readonly [calledNameChecked]: true };
+
 /**
- * Helper for working with {@link RFunctionCall} AST nodes.
+ * Type guard for {@link RNamedFunctionCall} nodes, optionally only for calls of the given function name.
+ * A name is matched like {@link Identifier.matches} does: a plain `'foo'` holds for `foo()` and `pkg::foo()` alike,
+ * a namespaced `Identifier.make('foo', 'pkg')` only for `pkg::foo()`. A set holds plain names, compared without namespace.
  */
+function isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RNamedFunctionCall<Info>;
+function isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined, name: Identifier | ReadonlySet<BrandedIdentifier>): node is RNamedFunctionCallOf<Info>;
+function isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined, name?: Identifier | ReadonlySet<BrandedIdentifier>): boolean {
+	if(!RFunctionCall.is(node) || node.named !== true) {
+		return false;
+	} else if(name === undefined) {
+		return true;
+	}
+	const called = node.functionName.content;
+	return Identifier.is(name) ? Identifier.matches(name, called) : name.has(Identifier.getName(called));
+}
+
 export const RFunctionCall = {
 	...RNode,
 	name: 'RFunctionCall',
@@ -51,28 +70,25 @@ export const RFunctionCall = {
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RFunctionCall<Info> {
 		return node?.type === RType.FunctionCall;
 	},
-	/**
-	 * Type guard for {@link RNamedFunctionCall} nodes.
-	 */
-	isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RNamedFunctionCall<Info> {
-		return RFunctionCall.is(node) && node.named === true;
+	isNamed,
+	/** The name of the function a named call calls, `undefined` for anything else. */
+	calledName<Info = NoInfo>(this: void, node: RNode<Info> | undefined): Identifier | undefined {
+		return RFunctionCall.isNamed(node) ? node.functionName.content : undefined;
 	},
-	/**
-	 * Type guard for {@link RUnnamedFunctionCall} nodes.
-	 */
+	/** Type guard for {@link RUnnamedFunctionCall} nodes. */
 	isUnnamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RUnnamedFunctionCall<Info> {
 		return RFunctionCall.is(node) && !node.named;
 	},
 	/**
 	 * Bind a call's `arguments` to the formal `paramNames`, R's argument matching.
 	 *
-	 * Kept here rather than forwarding to {@link MatchArgs.toNames}: this module is loaded before the dataflow
+	 * Kept here rather than forwarding to {@link FunctionSemantics.call.match.toNames}: this module is loaded before the dataflow
 	 * layer exists, so importing the wall from here would drag it into the AST model at load time.
-	 * @useInstead {@link MatchArgs.toNames}
+	 * @useInstead {@link FunctionSemantics.call.match.toNames}
 	 */
-	matchArgsToParams<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly string[]): ReadonlyMap<string, RArgument<Info>> {
+	matchArgsToParams<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly BrandedIdentifier[]): ReadonlyMap<BrandedIdentifier, RArgument<Info>> {
 		const matched = matchArgumentsToParameters(args.map(a => a === EmptyArgument ? undefined : a.name?.content), paramNames);
-		const bound = new Map<string, RArgument<Info>>();
+		const bound = new Map<BrandedIdentifier, RArgument<Info>>();
 		for(let i = 0; i < args.length; i++) {
 			const arg = args[i], param = matched[i];
 			if(arg !== EmptyArgument && param !== undefined) {

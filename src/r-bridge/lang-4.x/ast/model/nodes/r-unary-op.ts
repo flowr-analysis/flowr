@@ -1,12 +1,8 @@
-import type { RAstNodeBase, Location, NoInfo } from '../model';
-import { RNode } from '../model';
+import { type RAstNodeBase, type Location, type NoInfo, RNode } from '../model';
 import { RType } from '../type';
-import type { OperatorInformationValue } from '../operators';
-import { OperatorDatabase } from '../operators';
+import { BuiltInOperators, type OperatorFacts } from '../../../../../dataflow/environments/default-builtin-config/base-operators';
 
-/**
- * Unary operations like `+` and `-`
- */
+/** Unary operations like `+` and `-` */
 export interface RUnaryOp<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	readonly type: RType.UnaryOp;
 	operator:      string;
@@ -15,6 +11,7 @@ export interface RUnaryOp<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 
 /**
  * Helper for working with {@link RUnaryOp} AST nodes.
+ * @helper ast
  */
 export const RUnaryOp = {
 	...RNode,
@@ -26,10 +23,8 @@ export const RUnaryOp = {
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RUnaryOp<Info> {
 		return node?.type === RType.UnaryOp;
 	},
-	/**
-	 * Get the operator information for a binary operator node.
-	 */
-	getOperatorInfo<Info = NoInfo>(node: RUnaryOp<Info>): OperatorInformationValue | undefined {
-		return OperatorDatabase[node.operator];
+	/** Get the operator information for a binary operator node. */
+	getOperatorInfo<Info = NoInfo>(node: RUnaryOp<Info>): OperatorFacts | undefined {
+		return BuiltInOperators.byName[node.operator];
 	}
 } as const;

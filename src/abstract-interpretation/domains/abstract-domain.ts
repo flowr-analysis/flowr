@@ -2,9 +2,7 @@
 import { guard } from '../../util/assert';
 import { type Lattice, Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 
-/**
- * The default limit of inferred constraints in {@link AbstractDomain|AbstractDomains}.
- */
+/** The default limit of inferred constraints in {@link AbstractDomain|AbstractDomains}. */
 export const DEFAULT_INFERENCE_LIMIT = 50;
 
 /**
@@ -72,9 +70,7 @@ implements Lattice<Value, Top, Bot, Lift> {
 
 	protected abstract joinValue(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): this;
 
-	/**
-	 * Joins the current abstract value with multiple other abstract values.
-	 */
+	/** Joins the current abstract value with multiple other abstract values. */
 	public joinAll(values: readonly this[]): this {
 		let result = this.create(this.value);
 
@@ -101,9 +97,7 @@ implements Lattice<Value, Top, Bot, Lift> {
 
 	protected abstract meetValue(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): this;
 
-	/**
-	 * Meets the current abstract value with multiple other abstract values.
-	 */
+	/** Meets the current abstract value with multiple other abstract values. */
 	public meetAll(values: readonly this[]): this {
 		let result = this.create(this.value);
 
@@ -113,9 +107,7 @@ implements Lattice<Value, Top, Bot, Lift> {
 		return result;
 	}
 
-	/**
-	 * Widens the current abstract value with another abstract value as a sound over-approximation of the join (least upper bound) for fixpoint iteration acceleration.
-	 */
+	/** Widens the current abstract value with another abstract value as a sound over-approximation of the join (least upper bound) for fixpoint iteration acceleration. */
 	public widen(other: this): this {
 		if(this.isTop() || other.isTop()) {
 			return this.top();
@@ -131,9 +123,7 @@ implements Lattice<Value, Top, Bot, Lift> {
 
 	protected widenValue?(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): this;
 
-	/**
-	 * Narrows the current abstract value with another abstract value as a sound over-approximation of the meet (greatest lower bound) to refine the value after widening.
-	 */
+	/** Narrows the current abstract value with another abstract value as a sound over-approximation of the meet (greatest lower bound) to refine the value after widening. */
 	public narrow(other: this): this {
 		if(this.isTop()) {
 			return this.create(other.value);
@@ -166,7 +156,7 @@ implements Lattice<Value, Top, Bot, Lift> {
 	public merge(other: this, merge: (first: Value | Top | Bot, second: Value | Top | Bot) => Value | Top | Bot): this;
 	public merge(other: this, merge: (first: Value, second: Value) => Value | Top | Bot, bottomDefault?: (other: Value | Top | Bot) => Value | Top | Bot, topDefault?: (other: Value | Top | Bot) => Value | Top | Bot): this {
 		if(bottomDefault !== undefined) {
-			if(this.isBottom() ) {
+			if(this.isBottom()) {
 				return this.create(bottomDefault(other.value));
 			} else if(other.isBottom()) {
 				return this.create(bottomDefault(this.value));
@@ -240,9 +230,7 @@ implements Lattice<Value, Top, Bot, Lift> {
 		return values[0]?.meetAll(values.slice(1)) ?? defaultValue;
 	}
 
-	/**
-	 * Converts an element of an abstract domain into a string.
-	 */
+	/** Converts an element of an abstract domain into a string. */
 	public static toString(this: void, value: AnyAbstractDomain | unknown): string {
 		if(value instanceof Map) {
 			return `{${value.entries().map(([key, value]) => `${AbstractDomain.toString(key)} -> ${AbstractDomain.toString(value)}`).toArray().join(', ')}}`;
@@ -262,9 +250,7 @@ implements Lattice<Value, Top, Bot, Lift> {
 	}
 }
 
-/**
- * A type representing any abstract domain without additional information.
- */
+/** A type representing any abstract domain without additional information. */
 export type AnyAbstractDomain = AbstractDomain<unknown, unknown, unknown>;
 
 /**

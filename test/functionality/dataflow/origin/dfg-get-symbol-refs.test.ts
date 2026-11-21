@@ -1,17 +1,17 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { getAllRefsToSymbol } from '../../../../src/dataflow/origin/dfg-get-symbol-refs';
 import { SlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
-import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
+import { analyze } from '../../_helper/analyzer';
 
 describe('Get Symbol Refs Test', { concurrent: false }, withTreeSitter(shell => {
 	function testCode(name: string, criterion: SlicingCriterion, code: string, expected: SlicingCriteria | undefined) {
 		test(name, async() => {
-			const { dataflow, normalize } =
-				await createDataflowPipeline(shell, { context: contextFromInput(code.trim()) }).allRemainingSteps();
+			const analyzer = await analyze(shell, code.trim());
+			const dataflow = await analyzer.dataflow();
+			const normalize = await analyzer.normalize();
 
-			const refs = getAllRefsToSymbol(dataflow.graph, SlicingCriterion.parse(criterion, normalize.idMap));
+			const refs = Dataflow.refsToSymbol(dataflow.graph, SlicingCriterion.parse(criterion, normalize.idMap));
 			if(expected !== undefined) {
 				const expectedIds = expected.map(c => SlicingCriterion.parse(c, normalize.idMap));
 				assert.deepEqual(refs, expectedIds);

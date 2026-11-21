@@ -14,8 +14,8 @@ import { RComment } from '../../../../model/nodes/r-comment';
 
 /**
  * Returns an expression list if there are multiple children, otherwise returns the single child directly with no expr wrapper
- * @param data - The data used by the parser (see {@link NormalizerData})
- * @param entry  - The JSON object to extract the meta-information from
+ * @param data  - The data used by the parser (see {@link NormalizerData})
+ * @param entry - The JSON object to extract the meta-information from
  */
 export function normalizeExpression(data: NormalizerData, entry: JsonEntry): RNode {
 
@@ -46,7 +46,6 @@ export function normalizeExpression(data: NormalizerData, entry: JsonEntry): RNo
 		return maybeFunctionDefinition;
 	}
 
-
 	const children = normalizeExpressions(childData, childrenSource);
 
 	const [delimiters, nodes] = partitionArray(children, x => RDelimiter.is(x) || RComment.is(x));
@@ -62,11 +61,7 @@ export function normalizeExpression(data: NormalizerData, entry: JsonEntry): RNo
 			location,
 			children: nodes as RNode[],
 			lexeme:   content,
-			info:     {
-				fullRange:  childData.currentRange,
-				adToks:     delimiters,
-				fullLexeme: childData.currentLexeme
-			}
+			info:     { fullRange: childData.currentRange, adToks: delimiters, fullLexeme: childData.currentLexeme }
 		};
 	}
 }

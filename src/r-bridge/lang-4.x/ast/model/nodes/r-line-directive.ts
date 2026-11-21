@@ -1,10 +1,7 @@
-import type { Leaf, Location, NoInfo } from '../model';
-import { RNode } from '../model';
+import { type Leaf, type Location, type NoInfo, RNode } from '../model';
 import { RType } from '../type';
 
-/**
- * Special comment to signal line mappings (e.g., in generated code) to the interpreter.
- */
+/** Special comment to signal line mappings (e.g., in generated code) to the interpreter. */
 export interface RLineDirective<Info = NoInfo> extends Location, Leaf<Info> {
 	readonly type: RType.LineDirective;
 	line:          number;
@@ -13,6 +10,7 @@ export interface RLineDirective<Info = NoInfo> extends Location, Leaf<Info> {
 
 /**
  * Helper for working with {@link RLineDirective} AST nodes.
+ * @helper ast
  */
 export const RLineDirective = {
 	...RNode,

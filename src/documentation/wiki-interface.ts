@@ -1,3 +1,4 @@
+import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RShell } from '../r-bridge/shell';
 import { linkToQueryOfName } from './doc-util/doc-query';
 import { FlowrGithubBaseRef, getFileContentFromRoot } from './doc-util/doc-files';
@@ -6,7 +7,7 @@ import { printServerMessages } from './doc-util/doc-server-message';
 import { documentAllServerMessages } from './data/server/doc-data-server-messages';
 import { codeBlock } from './doc-util/doc-code';
 import type { FileAnalysisRequestMessage } from '../cli/repl/server/messages/message-analysis';
-import { fileProtocol, removeRQuotes } from '../r-bridge/retriever';
+import { fileProtocol } from '../r-bridge/retriever';
 import { watchProtocol } from '../cli/repl/path-input';
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
@@ -18,8 +19,7 @@ import { markdownFormatter } from '../util/text/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { block } from './doc-util/doc-structure';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import type { KnownParser } from '../r-bridge/parser';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { explainWritingCode } from './data/interface/doc-writing-code';
@@ -30,19 +30,16 @@ async function explainServer(parser: KnownParser, ctx: GeneralDocContext): Promi
 	documentAllServerMessages(ctx);
 
 	return `
-As explained in the ${ctx.linkPage('wiki/Overview', 'Overview')}, you can simply run the [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)&nbsp;server by adding the ${getCliLongOptionOf('flowr', 'server', true)} flag (and, due to the interactive mode, exit with the conventional <kbd>CTRL</kbd>+<kbd>C</kbd>).
+As explained in the ${ctx.linkPage('wiki/Overview', 'Overview')}, you can run the [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)&nbsp;server by adding the ${getCliLongOptionOf('flowr', 'server', true)} flag (and, due to the interactive mode, exit with the conventional <kbd>CTRL</kbd>+<kbd>C</kbd>).
 Currently, every connection is handled by the same underlying \`${RShell.name}\` - so the server is not designed to handle many clients at a time.
 Additionally, the server is not well guarded against attacks (e.g., you can theoretically spawn an arbitrary number of&nbsp;${RShell.name} sessions on the target machine).
 
 Every message has to be given in a single line (i.e., without a newline in-between) and end with a newline character. Nevertheless, we will pretty-print example given in the following segments for the ease of reading.
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 The default ${getCliLongOptionOf('flowr', 'server', false)} uses a simple [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)
-connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the ${getCliLongOptionOf('flowr', 'ws', false)} flag (i.e., ${multipleCliOptions('flowr', 'server', 'ws')}) when starting _flowR_ from the command line.`
-	})
+connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the ${getCliLongOptionOf('flowr', 'ws', false)} flag (i.e., ${multipleCliOptions('flowr', 'server', 'ws')}) when starting _flowR_ from the command line.`)
 }
 
 ${await printServerMessages(parser)}
@@ -71,7 +68,7 @@ ${codeBlock('shell', 'nc 127.0.0.1 1042')}
 
 Within the started session, type the following message (as a single line) and press enter to see the response:
 
-${codeBlock('json', removeRQuotes(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage)))}
+${codeBlock('json', RString.unquote(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage)))}
 
 </details>
 </li>
@@ -89,7 +86,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect(('127.0.0.1', 1042))
     print(s.recv(4096))  # for the hello message
 
-    s.send(b'${removeRQuotes(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage))}\\n')
+    s.send(b'${RString.unquote(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage))}\\n')
 
     print(s.recv(65536))  # for the response (please use a more sophisticated mechanism)
 `)}
@@ -102,7 +99,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 `;
 }
 
-
 async function explainRepl(parser: KnownParser, ctx: GeneralDocContext): Promise<string> {
 	return `
 > [!NOTE]
@@ -110,7 +106,7 @@ async function explainRepl(parser: KnownParser, ctx: GeneralDocContext): Promise
 > Please be aware that this introduces a security risk and note that this relies on the ${ctx.linkPage('wiki/Engines', '`r-shell` engine')} .
 
 Although primarily meant for users to explore,
-there is nothing which forbids simply calling _flowR_ as a subprocess to use standard-in, -output, and -error
+there is nothing which forbids calling _flowR_ as a subprocess to use standard-in, -output, and -error
 for communication (although you can access the REPL using the server as well,
 with the [REPL Request](#message-request-repl-execution) message).
 
@@ -137,17 +133,14 @@ ${printReplHelpAsMarkdownTable()}
 </details>
 
 ${
-	block({
-		type:    'TIP',
-		content: `
+	block('TIP', `
 As indicated by the examples before, all REPL commands that operate on code keep track of the state.
 Hence, if you run a command like ${getReplCommand('dataflow*')} without providing R code,
 the REPL will re-use the R code provided in a previous command.
 Likewise, doing this will benefit from incrementality!
 If you request the dataflow graph with \`:df* x <- 2 * y\` and then want to see the parsed AST with \`:parse\`,
 the REPL will re-use previously obtained information and not re-parse the code again.
-		`
-	})
+		`)
 }
 
 Generally, many commands offer shortcut versions in the REPL. Many queries, for example, offer a shortened format (see the example below).
@@ -226,6 +219,10 @@ function explainConfigFile(ctx: GeneralDocContext): string {
 When running _flowR_, you may want to specify some behaviors with a dedicated configuration file.
 By default, flowR looks for a file named \`${defaultConfigFile}\` in the current working directory (or any higher directory).
 You can also specify a different file with ${getCliLongOptionOf('flowr', 'config-file')} or pass the configuration inline using ${getCliLongOptionOf('flowr', 'config-json')}.
+A \`${defaultConfigFile}\` found this way belongs to the analyzed project, so flowR ignores its options that decide what flowR executes or loads
+(${FlowrConfig.securitySensitivePaths().filter(p => p[0] !== 'specializeConfig').map(p => `\`${p.join('.')}\``).join(', ')}),
+unless you pass ${getCliLongOptionOf('flowr', 'trust-config')}.
+To analyze code you do not trust, use the secure mode (${getCliLongOptionOf('flowr', 'secure')}, see the [security policy](https://github.com/flowr-analysis/flowr/blob/main/.github/SECURITY.md)).
 To inspect the current configuration, you can run flowr with the ${getCliLongOptionOf('flowr', 'verbose')} flag, or use the \`config\` ${ctx.linkPage('wiki/Query API', 'Query')}.
 Within the REPL this works by running the following:
 
@@ -239,6 +236,7 @@ The schema below documents every option; the ones you most likely want are:
 - ${ctx.linkConfig('ignoreLoadCalls')}: ignore load calls when analyzing the code, i.e., ignore the loading of r-data files.
 - ${ctx.linkConfig('semantics.environment.overwriteBuiltIns')}: overwrite _flowR_'s handling of built-in functions, or clear the preset definitions entirely.
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
+- ${ctx.linkConfig('semantics.ambient.drawingWritesDevice')}: whether calls drawing on a graphics device (e.g., \`plot\`) count as writing the device in the ambient state queries.
 - ${ctx.linkConfig('solver.variables')}: how to resolve variables and their values (${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}).
 - ${ctx.linkConfig('engines')} and ${ctx.linkConfig('defaultEngine')}: the engines used to interact with R code, see the ${ctx.linkPage('wiki/Engines', 'Engines wiki page')}.
 - ${ctx.linkConfig('project.implicitSources')}: the files a framework loads without any \`source()\` call, in the order in which they are
@@ -262,31 +260,17 @@ ${codeBlock('json', JSON.stringify(
 			semantics:         {
 				environment: {
 					overwriteBuiltIns: {
-						definitions: [
-							{ type: 'function', names: ['foo'], processor: BuiltInProcName.Assignment, config: {} }
-						]
+						definitions: [{ type: 'function', names: ['foo'], processor: BuiltInProcName.Assignment, config: {} }]
 					}
 				}
 			},
-			defaultPlugins: ['file:description', 'versions:description'],
-			repl:           {
-				quickStats:      false,
-				dfProcessorHeat: false,
-				hints:           true,
-				plugins:         ['flowr:default']
-			},
-			project: {
-				resolveUnknownPathsOnDisk: true,
-				implicitSources:           ['global.R', 'app.R']
-			},
-			linter: {
-				disabledRules: []
-			},
-			specializeConfig: {
-				[ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } }
-			},
-			engines: [{ type: 'r-shell' }],
-			solver:  {
+			defaultPlugins:   ['file:description', 'versions:description'],
+			repl:             { quickStats: false, dfProcessorHeat: false, hints: true, plugins: ['flowr:default'] },
+			project:          { resolveUnknownPathsOnDisk: true, implicitSources: ['global.R', 'app.R'] },
+			linter:           { disabledRules: [] },
+			specializeConfig: { [ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } } },
+			engines:          [{ type: 'r-shell' }],
+			solver:           {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
@@ -298,44 +282,24 @@ ${codeBlock('json', JSON.stringify(
 					searchPath:            []
 				},
 				instrument: {},
-				slicer:     {
-					threshold: 50
-				}
+				slicer:     { threshold: 50 }
 			},
 			abstractInterpretation: {
 				wideningThreshold: 4,
 				followCalls:       true,
-				dataFrame:         {
-					maxColNames:    20,
-					readLoadedData: {
-						readExternalFiles: true,
-						maxReadLines:      1_000_000
-					}
-				}
+				dataFrame:         { maxColNames: 20, readLoadedData: { readExternalFiles: true, maxReadLines: 1_000_000 } }
 			},
 			incremental: {
 				alwaysIncremental: false,
 				parsing:           {
 					activated:  false,
-					heuristics: {
-						activated:       true,
-						mtime:           true,
-						linesFrom:       500,
-						bytesFrom:       50_000,
-						alwaysWithEdits: false,
-						minFiles:        1,
-					},
+					heuristics: { activated: true, mtime: true, linesFrom: 500, bytesFrom: 50_000, alwaysWithEdits: false, minFiles: 1 },
 				},
-				dataflow: {
-					activated: false,
-				},
+				dataflow: FlowrConfig.default().incremental.dataflow,
 			},
 			gas: {
-				thresholds: {
-					memory: { problematic: 0.7,     critical: 0.9 },
-					timeMs: { problematic: 100_000, critical: 120_000 }
-				},
-				features: {}
+				thresholds: { memory: { problematic: 0.7,     critical: 0.9 }, timeMs: { problematic: 100_000, critical: 120_000 } },
+				features:   {}
 			}
 		} satisfies FlowrConfig,
 		null, 2))
@@ -356,7 +320,7 @@ ${codeBlock('json', JSON.stringify(
   | Type            | Description                                                                                                                                                                                                                                                                                              | Example                                                                                                    |
   | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
   | \`constant\`    | Additionally allows for a \`value\` this should resolve to.                                                                                                                                                                                                                                                | \`{ type: 'constant', names: ['NULL', 'NA'],  value: null }\`                                                |
-  | \`function\`    | Is a rather flexible way to define and bind built-in functions. For the time, we do not have extensive documentation to cover all the cases, so please either consult the sources with the \`default-builtin-config.ts\` or open a [new issue](${NewIssueUrl}). | \`{ type: 'function', names: ['next'], processor: '${BuiltInProcName.Default}', config: { cfg: ExitPointType.Next } }\` |
+  | \`function\`    | Is a rather flexible way to define and bind built-in functions. For the time, we do not have extensive documentation to cover all the cases, so please either consult the sources with the \`default-builtin-config/\` folder or open a [new issue](${NewIssueUrl}). | \`{ type: 'function', names: ['next'], processor: '${BuiltInProcName.Default}', config: { cfg: ExitPointType.Next } }\` |
   | \`replacement\` | A comfortable way to specify replacement functions like \`$<-\` or \`names<-\`. \`suffixes\` describes the... suffixes to attach automatically. | \`{ type: 'replacement', suffixes: ['<-', '<<-'], names: ['[', '[['] }\` |
 
 
@@ -373,9 +337,7 @@ ${describeSchema(FlowrConfig.Schema, markdownFormatter)}
 	`;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Interface
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Interface */
 export class WikiInterface extends DocMaker<'wiki/Interface.md'> {
 	constructor() {
 		super('wiki/Interface.md', module.filename, 'interface');

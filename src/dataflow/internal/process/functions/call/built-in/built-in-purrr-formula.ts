@@ -1,50 +1,39 @@
-import { MatchArgs } from '../../../../../graph/match-args';
+import {
+	Identifier,
+	ReferenceType,
+	type BrandedIdentifier,
+	type InGraphIdentifierDefinition
+} from '../../../../../environments/identifier';
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { getAllFunctionCallTargets } from '../../../../linker';
 import { Dataflow } from '../../../../../graph/df-helper';
-import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
 import { convertFnArguments } from '../common';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EdgeType } from '../../../../../graph/edge';
-import { unpackNonameArg } from '../argument/unpack-argument';
 import { dataflowLogger } from '../../../../../logger';
-import type { DataflowGraph } from '../../../../../graph/graph';
-import { FunctionArgument } from '../../../../../graph/graph';
-import { UseVertex, FunctionCallVertex } from '../../../../../graph/vertex';
+import { type DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
+import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
+import { isNotUndefined } from '../../../../../../util/assert';
+import { ClosureRefs } from '../../../../linker';
 
 interface BuiltInPurrrFormulaConfiguration {
-	/**
-	 * Maps the created variable/variable to bind in the formula, to the argument that produces it.
-	 * For example:
-	 * ```ts
-	 * {
-	 *      '.x': { index: 0, name: '.x' },
-	 *      '.y': { index: 1, name: '.y' }
-	 * }
-	 * ```
-	 */
-	args:       Record<string, { index: number, name: string }>,
-	/**
-	 * This represents the special argument that represents the formula.
-	 * We map all additional arguments that are not in `ignore` to this list.
-	 */
-	'.f':       { index: number; name: string };
+	/** Maps the created variable/variable to bind in the formula, to the argument that produces it. */
+	args:       Record<BrandedIdentifier, { index: number, name: BrandedIdentifier }>,
+	/** This represents the special argument that represents the formula. We map all additional arguments that are not in `ignore` to this list. */
+	'.f':       { index: number; name: BrandedIdentifier };
 	/** arguments to additionally ignore when mapping the formulae */
-	ignore?:    string[];
-	/**
-	 * if given, this is a name that indexes into the 'args' map and indicates whatever this function is to return
-	 */
+	ignore?:    BrandedIdentifier[];
+	/** if given, this is a name that indexes into the 'args' map and indicates whatever this function is to return */
 	returnArg?: string;
 }
 
@@ -74,7 +63,7 @@ function linkOnSymbol<OtherInfo>(rootId: NodeId, filteredArgs: readonly Function
 			// we may find a candidate in the first check
 			if(RFunctionDefinition.is(linked)) {
 				try {
-					return MatchArgs.onCallAndLink(filteredArgs, linked.parameters, graph);
+					return FunctionSemantics.call.match.onCallAndLink(filteredArgs, linked.parameters, graph);
 				} catch(e) {
 					dataflowLogger.warn('Failed to link arguments to parameters for purr formula (symbol target), some bindings may be missing', { error: e });
 				}
@@ -85,9 +74,7 @@ function linkOnSymbol<OtherInfo>(rootId: NodeId, filteredArgs: readonly Function
 	}
 }
 
-/**
- * Support for R's purr formula: `map(df, ~ .x + 1)`.
- */
+/** Support for R's purr formula: `map(df, ~ .x + 1)`. */
 export function processPurrrFormula<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -97,7 +84,7 @@ export function processPurrrFormula<OtherInfo>(
 ): DataflowInformation {
 	const { information, callArgs } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.PurrrFormula });
 
-	const params: Record<string, string> = {};
+	const params: Record<BrandedIdentifier, BrandedIdentifier> = {};
 	for(const key of Object.keys(config.args)) {
 		params[config.args[key].name] = config.args[key].name;
 	}
@@ -105,7 +92,7 @@ export function processPurrrFormula<OtherInfo>(
 	params[config['.f'].name] = config['.f'].name;
 	params['...'] = '...';
 
-	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
+	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
 
 	const formulaArgId = argMaps.get(config['.f'].name)?.[0];
 	if(!formulaArgId) {
@@ -113,7 +100,7 @@ export function processPurrrFormula<OtherInfo>(
 		return information;
 	}
 	const formulaArg = RArgument.getWithId(args, formulaArgId);
-	const formulaNode = formulaArg ? unpackNonameArg(formulaArg) : undefined;
+	const formulaNode = formulaArg ? RArgument.unnamedValueOf(formulaArg) : undefined;
 	if(!formulaNode) {
 		return information;
 	}
@@ -132,26 +119,39 @@ export function processPurrrFormula<OtherInfo>(
 	if(RFunctionDefinition.is(formulaNode)) {
 		const fdef = formulaNode as RFunctionDefinition<ParentInformation & OtherInfo>;
 		information.graph.addEdge(rootId, fdef.info.id, EdgeType.Calls);
+		/* the call runs the definition here, so what its body reads is resolved here */
+		const called = information.graph.getVertex(fdef.info.id);
+		if(DfgVertex.isFunctionDefinition(called)) {
+			ClosureRefs.resolveOpenIngoing(information.graph, rootId, called, data.environment);
+		}
 		try {
-			argToParamMap = MatchArgs.onCallAndLink(filteredCallArgs, fdef.parameters, information.graph);
-		} catch(e){
+			argToParamMap = FunctionSemantics.call.match.onCallAndLink(filteredCallArgs, fdef.parameters, information.graph);
+		} catch(e) {
 			dataflowLogger.warn('Failed to link arguments to parameters for purr formula, some bindings may be missing', { error: e });
 		}
 	} else if(RSymbol.is(formulaNode)) {
 		linkOnSymbol(rootId, filteredCallArgs, formulaNode, information.graph, data);
+		/* like `lapply`, a named function handed over is called with the remaining arguments */
+		if(Resolve.byNameAndType(formulaNode.content, data.environment, ReferenceType.Function)?.length) {
+			const id = formulaNode.info.id;
+			information.graph.updateToFunctionCall({ tag: VertexType.FunctionCall, id, name: formulaNode.content, args: filteredCallArgs, environment: data.environment, onlyBuiltin: false, cds: data.cds, origin: [BuiltInProcName.Function] });
+			for(const arg of filteredCallArgs.map(FunctionArgument.getId).filter(isNotUndefined)) {
+				information.graph.addEdge(id, arg, EdgeType.Argument);
+			}
+		}
 	} else {
 		try {
 			Dataflow.visitDfg(information.graph, formulaNode.info.id, (vtx) => {
-				if(FunctionCallVertex.is(vtx)) {
+				if(DfgVertex.isFunctionCall(vtx)) {
 					information.graph.addEdge(rootId, vtx.id, EdgeType.Calls);
 
-					const targets = getAllFunctionCallTargets(vtx.id, information.graph, vtx.environment);
+					const targets = Dataflow.callTargetsOf(vtx.id, information.graph, vtx.environment);
 					for(const t of targets) {
 						information.graph.addEdge(rootId, t, EdgeType.Calls);
 						const linked = data.completeAst.idMap.get(t) as RFunctionDefinition<ParentInformation> | undefined;
 						if(linked && RFunctionDefinition.is(linked)) {
 							try {
-								const map = MatchArgs.onCallAndLink(filteredCallArgs, linked.parameters, information.graph);
+								const map = FunctionSemantics.call.match.onCallAndLink(filteredCallArgs, linked.parameters, information.graph);
 								for(const [argId, paramId] of map.entries()) {
 									if(!argToParamMap.has(argId)) {
 										argToParamMap.set(argId, paramId);
@@ -162,8 +162,8 @@ export function processPurrrFormula<OtherInfo>(
 							}
 						}
 					}
-					return !vtx.origin.includes(BuiltInProcName.List);
-				} else if(UseVertex.is(vtx)) {
+					return !DfgVertex.hasOrigin(vtx, BuiltInProcName.List);
+				} else if(DfgVertex.isUse(vtx)) {
 					const node = data.completeAst.idMap.get(vtx.id);
 					if(RSymbol.is(node)) {
 						linkOnSymbol(rootId, filteredCallArgs, node, information.graph, data);
@@ -176,22 +176,22 @@ export function processPurrrFormula<OtherInfo>(
 		}
 	}
 
-	const ignore = new Set(config.ignore ?? []);
+	const ignore = new Set<BrandedIdentifier>(config.ignore ?? []);
 	RNode.visitAst<ParentInformation & OtherInfo>(formulaNode, (node) => {
 		if(RSymbol.is(node)) {
 			const sym = node;
-			const name = sym.content as unknown as string;
+			const name = Identifier.getName(sym.content);
 			if(ignore.has(name)) {
 				return false;
 			}
-			const mappingKey = config.args[name]?.name;
+			const mappingKey = Object.hasOwn(config.args, name) ? config.args[name].name : undefined;
 			if(mappingKey) {
 				const pid = (argMaps.get(mappingKey) ?? [])[0];
 				if(!pid) {
 					return false;
 				}
 				const arg = RArgument.getWithId(args, pid);
-				const producedNode = arg ? unpackNonameArg(arg) : undefined;
+				const producedNode = arg ? RArgument.unnamedValueOf(arg) : undefined;
 				if(!producedNode) {
 					return false;
 				}
@@ -205,12 +205,11 @@ export function processPurrrFormula<OtherInfo>(
 		return false;
 	});
 
-
 	if(config.returnArg) {
 		const returnArgId = argMaps.get(config.returnArg)?.[0];
 		if(returnArgId) {
 			const returnArg = RArgument.getWithId(args, returnArgId);
-			const producedNode = returnArg ? unpackNonameArg(returnArg) : undefined;
+			const producedNode = returnArg ? RArgument.unnamedValueOf(returnArg) : undefined;
 			if(producedNode) {
 				information.graph.addEdge(rootId, producedNode.info.id, EdgeType.Returns);
 			}

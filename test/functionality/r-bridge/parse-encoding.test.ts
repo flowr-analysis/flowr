@@ -13,13 +13,13 @@ describe('parse-data reader tolerates locale-dependent R string escapes', () => 
 		return roots[0]?.text;
 	}
 
-	test(label('octal byte escapes decode to UTF-8', [], ['other']), () => {
+	test(label('octal byte escapes decode to UTF-8', ['source-encoding'], ['parse']), () => {
 		// exactly what R emits under a C locale for the string "Côte ’q’" (ô = C3 B4, ’ = E2 80 99)
 		const data = '[1,6,1,21,4,0,"STR_CONST",true,"\\"C\\303\\264te \\342\\200\\231q\\342\\200\\231\\""]';
 		expect(textOf(data)).toBe('"Côte ’q’"');
 	});
 
-	test(label('hex byte escapes decode to UTF-8', [], ['other']), () => {
+	test(label('hex byte escapes decode to UTF-8', ['source-encoding'], ['parse']), () => {
 		const data = '[1,1,1,4,1,0,"STR_CONST",true,"\\"C\\xc3\\xb4te\\""]';
 		expect(textOf(data)).toBe('"Côte"');
 	});

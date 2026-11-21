@@ -1,11 +1,12 @@
-import type { RoxygenBlock, RoxygenTag } from './roxygen-ast';
-import { isKnownRoxygenText, KnownRoxygenTags } from './roxygen-ast';
+import { type RoxygenBlock, type RoxygenTag, isKnownRoxygenText, KnownRoxygenTags } from './roxygen-ast';
 import type { RNode } from '../lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../lang-4.x/ast/model/processing/decorate';
 import { RComment } from '../lang-4.x/ast/model/nodes/r-comment';
-import { isNotUndefined } from '../../util/assert';
 import { splitAtEscapeSensitive } from '../../util/text/args';
 import { SourceRange } from '../../util/range';
+
+/** the prefix roxygen2 reads a documentation comment by: any number of `#` followed by `'` */
+const RoxygenPrefix = /^#+'/;
 
 function prepareCommentContext(commentText: readonly string[]): string[] {
 	const contents = [];
@@ -14,10 +15,9 @@ function prepareCommentContext(commentText: readonly string[]): string[] {
 		if(trimmed.length === 0) {
 			continue;
 		} else if(!trimmed.startsWith('#')) {
-			// we are done with the roxygen comment
 			break;
 		}
-		contents.push((trimmed.startsWith('#\'') ? trimmed.slice(2) : trimmed.slice(1)).trimEnd());
+		contents.push((RoxygenPrefix.test(trimmed) ? trimmed.replace(RoxygenPrefix, '') : trimmed.slice(1)).trimEnd());
 	}
 	return contents;
 }
@@ -33,27 +33,23 @@ function prepareCommentContext(commentText: readonly string[]): string[] {
 export function parseRoxygenCommentsOfNode(node: RNode<ParentInformation>, idMap?: AstIdMap): RoxygenBlock | undefined {
 	let comments: RComment<ParentInformation>[] | undefined;
 	let cur: RNode<ParentInformation> | undefined = node;
+	/* only roxygen comments document, and the root of a file holds what belongs to no statement in particular */
 	do{
-		comments = cur?.info.adToks
-			?.filter(RComment.is).filter(r => isNotUndefined(r.lexeme)) as RComment<ParentInformation>[] | undefined;
+		comments = cur?.info.parent === undefined ? undefined : cur.info.adToks
+			?.filter(RComment.is).filter(r => RoxygenPrefix.test(r.lexeme ?? '')) as RComment<ParentInformation>[] | undefined;
 		cur = cur?.info.parent ? idMap?.get(cur.info.parent) : undefined;
 	} while((comments === undefined || comments.length === 0) && cur !== undefined);
 	if(comments === undefined || comments.length === 0) {
 		return undefined;
 	}
-	const commentContent = comments.map(c => c.lexeme);
 	return {
 		type:        'roxygen-block',
-		tags:        parseRoxygenComment(commentContent),
+		tags:        parseRoxygenComment(comments.map(c => c.lexeme)),
 		attachedTo:  cur?.info.id,
 		requestNode: node.info.id,
-		range:       [
-			...SourceRange.merge(comments.map(c => c.location)),
-			comments.find(c => c.info.file)?.info.file
-		]
+		range:       [...SourceRange.merge(comments.map(c => c.location)), comments.find(c => c.info.file)?.info.file]
 	};
 }
-
 
 interface RoxygenParseContext {
 	lines: string[];
@@ -68,12 +64,7 @@ type TagLine = [tag: string, remTagLine?: string];
  * @see {@link parseRoxygenCommentsOfNode} - to parse comments attached to a node
  */
 export function parseRoxygenComment(commentText: readonly string[]): RoxygenTag[] {
-	const contents = prepareCommentContext(commentText);
-	const state: RoxygenParseContext = {
-		lines: contents,
-		tags:  [],
-		idx:   0
-	};
+	const state: RoxygenParseContext = { lines: prepareCommentContext(commentText), tags: [], idx: 0 };
 	let tag = val(state, [KnownRoxygenTags.Text]);
 	while(tag) {
 		tag = parseRoxygenTag(state, tag);
@@ -114,47 +105,36 @@ function collectUntilNextTag(state: RoxygenParseContext): [got: string[], tag: T
 	return [collected, undefined];
 }
 
-function addTag(state: RoxygenParseContext, tag: RoxygenTag): void {
-	state.tags.push(tag);
-}
-
-function val(state: RoxygenParseContext, tagName: TagLine, lineToVal: (lines: readonly string[]) => unknown | undefined = l => l.join('\n').trim()): TagLine | undefined {
+function val(state: RoxygenParseContext, [name, rest]: TagLine, lineToVal: (lines: readonly string[]) => unknown | undefined = l => l.join('\n').trim()): TagLine | undefined {
 	const [lines, nextTag] = collectUntilNextTag(state);
-
-	if(tagName[1]) {
-		lines.unshift(tagName[1]);
+	if(rest) {
+		lines.unshift(rest);
 	}
-	if(tagName[0] !== KnownRoxygenTags.Text || lines.length > 0) {
-		const n = tagName[0];
-		if(isKnownRoxygenText(n)) {
-			const val: undefined | unknown = lineToVal(lines);
-			addTag(state, (val !== undefined ? {
-				type:  n,
-				value: val
-			} : { type: n }) as RoxygenTag);
-		} else {
-			addTag(state, {
-				type:  KnownRoxygenTags.Unknown,
-				value: {
-					tag:     n,
-					content: lines.join(' ')
-				}
-			});
-		}
-
+	if(name === KnownRoxygenTags.Text && lines.length === 0) {
+		return nextTag;
+	}
+	if(isKnownRoxygenText(name)) {
+		const value = lineToVal(lines);
+		state.tags.push((value === undefined ? { type: name } : { type: name, value }) as RoxygenTag);
+	} else {
+		state.tags.push({ type: KnownRoxygenTags.Unknown, value: { tag: name, content: lines.join(' ') } });
 	}
 	return nextTag;
 }
 
 const spaceVals = (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => splitAtEscapeSensitive(l.join(' ')));
-const flagVal =  (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, () => undefined);
+const flagVal = (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, () => undefined);
 
-const section = (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => {
-	return { title: l[0].trim(), content: l.slice(1).join('\n').trim() };
-});
+const section = (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => ({ title: l[0].trim(), content: l.slice(1).join('\n').trim() }));
 
+/** Parses a tag line into its first word (or backtick-quoted name) and the rest, stored under the given names. */
 export const firstAndRest = (firstName: string, secondName: string) => (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => {
-	const vals = splitAtEscapeSensitive(l.join('\n'));
+	const text = l.join('\n').trim();
+	const quoted = /^`([^`]*)`/.exec(text);
+	if(quoted) {
+		return { [firstName]: quoted[1], [secondName]: text.slice(quoted[0].length).trim() };
+	}
+	const vals = splitAtEscapeSensitive(text);
 	return { [firstName]: vals[0], [secondName]: vals.slice(1).join(' ').trim() };
 });
 const firstAndArrayRest = (firstName: string, secondName: string) => (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => {
@@ -223,17 +203,10 @@ const TagMap = {
 	[KnownRoxygenTags.Name]:              val,
 	[KnownRoxygenTags.DocType]:           val,
 	[KnownRoxygenTags.Author]:            val,
-	[KnownRoxygenTags.Unknown]:           (s, t) => val(s, t, l => ({
-		tag:     t[0],
-		content: l.join(' ')
-	}))
+	[KnownRoxygenTags.Unknown]:           (s, t) => val(s, t, l => ({ tag: t[0], content: l.join(' ') }))
 } as const satisfies Record<KnownRoxygenTags, (state: RoxygenParseContext, tagName: TagLine) => TagLine | undefined>;
 
 /** returns the next tag */
 function parseRoxygenTag(state: RoxygenParseContext, tagName: TagLine | undefined): TagLine | undefined {
-	if(tagName === undefined) {
-		return undefined;
-	}
-	const parser = TagMap[tagName[0] as KnownRoxygenTags] ?? val;
-	return parser(state, tagName);
+	return tagName === undefined ? undefined : (TagMap[tagName[0] as KnownRoxygenTags] ?? val)(state, tagName);
 }

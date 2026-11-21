@@ -1,14 +1,15 @@
 import { assert, describe, test } from 'vitest';
-import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
+import { analyze } from '../../../_helper/analyzer';
+import { assertDataflow, assumedPackagesOf, assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
-import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../../src/r-bridge/retriever';
 import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { Q } from '../../../../../src/search/flowr-search-builder';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
+
+assumeLoadedPackages('rlang');
 
 interface DFConstraints {
 	hasVertices:         SlicingCriterion[];
@@ -18,9 +19,9 @@ interface DFConstraints {
 describe('Dataflow, Handle Exceptions', withTreeSitter(ts  => {
 	function checkDfContains(code: string, constraints: DFConstraints): void {
 		const effName = label(code, ['exceptions-and-errors'], ['dataflow']);
+		const assumed = assumedPackagesOf(undefined);
 		test(effName, async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-			analyzer.addRequest(requestFromInput(code));
+			const analyzer = await analyze(ts, code, { assumeLoaded: assumed });
 			const df = await analyzer.dataflow();
 			try {
 				for(const [coll, shouldHave] of [[constraints.hasVertices, true], [constraints.doesNotHaveVertices, false]] as const) {
@@ -62,6 +63,30 @@ indirect()
 3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
 		}
 	});
+	describe('A call throws where it is written', () => {
+		/* the callee only tells us that it always throws once we link it, so the constructs around the call have
+		 * to be honored just like they are for a `stop` written in that very place */
+		const alwaysThrows = 'indirect <- function() { stop() }';
+		const bothBranchesThrow = 'indirect <- function(k) { if(k) stop("a") else stop("b") }';
+		describe('Passed on', () => {
+			for(const [def, call] of [[alwaysThrows, 'indirect()'], [alwaysThrows, 'print(indirect())'], [bothBranchesThrow, 'indirect(u)']] as const) {
+				checkDfContains(`1\n${def}\n${call}\n3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
+			}
+		});
+		describe('Stopped on the way', () => {
+			for(const [def, call] of [
+				[alwaysThrows, 'try(indirect(), silent=TRUE)'],
+				[alwaysThrows, 'tryCatch(indirect(), error=function(e) 0)'],
+				[alwaysThrows, 'try({ indirect() })'],
+				[alwaysThrows, 'if(u) indirect()'],
+				[alwaysThrows, 'for(i in v) indirect()'],
+				[alwaysThrows, 'while(u) indirect()'],
+				[bothBranchesThrow, 'try(indirect(u), silent=TRUE)']
+			] as const) {
+				checkDfContains(`1\n${def}\n${call}\n3`, { hasVertices: ['1@1', '4@3'], doesNotHaveVertices: [] });
+			}
+		});
+	});
 	describe('Exceptions with try and tryCatch', () => {
 		describe('try', () => {
 			checkDfContains('1\ntry({ stop("error") })\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
@@ -99,8 +124,7 @@ indirect()
 					'tryCatch(x, error=function(e) {})',
 					emptyGraph()
 						.addEdge('1@tryCatch', '$10', EdgeType.Reads | EdgeType.Calls | EdgeType.Argument)
-						.addEdge('$10', '1@function', EdgeType.Reads | EdgeType.Calls)
-					,
+						.addEdge('$10', '1@function', EdgeType.Reads | EdgeType.Calls),
 					{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 				);
 				assertDataflow(label('Call edges for error with fn', ['exceptions-and-errors', 'call-normal']), ts,
@@ -108,8 +132,7 @@ indirect()
 					emptyGraph()
 						.addEdge('2@tryCatch', '$10', EdgeType.Reads | EdgeType.Calls | EdgeType.Argument)
 						.addEdge('$10', '2@f', EdgeType.Reads | EdgeType.Calls)
-						.addEdge('2@f', '1@function', EdgeType.Calls)
-					,
+						.addEdge('2@f', '1@function', EdgeType.Calls),
 					{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 				);
 				assertDataflow(label('Call edges with may built-in', ['exceptions-and-errors', 'call-normal', 'built-in']), ts,
@@ -118,8 +141,7 @@ indirect()
 						.addEdge('2@tryCatch', '$13', EdgeType.Reads | EdgeType.Calls | EdgeType.Argument)
 						.addEdge('$13', '2@sum', EdgeType.Reads | EdgeType.Calls)
 						.calls('2@sum', '1@function')
-						.addEdge('2@sum', NodeId.toBuiltIn('sum'), EdgeType.Calls | EdgeType.Reads)
-					,
+						.addEdge('2@sum', NodeId.toBuiltIn('sum'), EdgeType.Calls | EdgeType.Reads),
 					{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 				);
 			});

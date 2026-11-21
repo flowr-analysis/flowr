@@ -1,16 +1,12 @@
 import type { FlowrSearchElement, FlowrSearchElements } from '../flowr-search';
-import type {
-	NormalizedAst,
-	ParentInformation,
-	RNodeWithParent
-} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../dataflow/info';
 import { type MergeableRecord, deepMergeObject } from '../../util/objects';
-import { FunctionCallVertex } from '../../dataflow/graph/vertex';
+import { DfgVertex } from '../../dataflow/graph/vertex';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { guard, isNotUndefined } from '../../util/assert';
 import { type Origin, OriginType } from '../../dataflow/origin/dfg-get-origin';
-import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
 import { type CfgSimplificationPassName, cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
@@ -18,30 +14,33 @@ import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role'
 import type { AsyncOrSync, DeepWritable } from 'ts-essentials';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
-import {
-	identifyLinkToLastCallRelationSync
-} from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { identifyLinkToLastCallRelationSync } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { KnownRoxygenTags, RoxygenTag } from '../../r-bridge/roxygen2/roxygen-ast';
 import { FlowrSearchBuilder } from '../flowr-search-builder';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
+/** The search element of the node `id` belongs to (see {@link NodeId.nodeOf}), `undefined` if there is none. */
+function elementOf(id: NodeId, idMap: AstIdMap<ParentInformation>): FlowrSearchElement<ParentInformation> | undefined {
+	const node = NodeId.nodeOf(id, idMap);
+	return node === undefined ? undefined : { node };
+}
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
-	/**
-	 * A function that is applied to each element of the search to enrich it with additional data.
-	 */
+	/** A function that is applied to each element of the search to enrich it with additional data. */
 	readonly enrichElement?: (element: FlowrSearchElement<ParentInformation>, search: FlowrSearchElements<ParentInformation>, analyzer: ReadonlyFlowrAnalysisProvider, args: ElementArguments | undefined, previousValue: ElementContent | undefined) => AsyncOrSync<ElementContent>
 	readonly enrichSearch?:  (search: FlowrSearchElements<ParentInformation>, data: ReadonlyFlowrAnalysisProvider, args: SearchArguments | undefined, previousValue: SearchContent | undefined) => AsyncOrSync<SearchContent>
-	/**
-	 * The mapping function used by the {@link Mapper.Enrichment} mapper.
-	 */
+	/** The mapping function used by the {@link Mapper.Enrichment} mapper. */
 	readonly mapper?:        (content: ElementContent) => FlowrSearchElement<ParentInformation>[]
 }
 export type EnrichmentElementContent<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer EC, infer _EA, infer _SC, infer _SA> ? EC : never;
 export type EnrichmentElementArguments<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _EC, infer EA, infer _SC, infer _SA> ? EA : never;
 export type EnrichmentSearchContent<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _EC, infer _EA, infer SC, infer _SA> ? SC : never;
+/** the registered enrichment, typed by what its name stands for */
+export function getEnrichment<E extends Enrichment>(enrichment: E): EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>, EnrichmentSearchContent<E>, EnrichmentSearchArguments<E>> {
+	return Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>, EnrichmentSearchContent<E>, EnrichmentSearchArguments<E>>;
+}
 export type EnrichmentSearchArguments<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _EC, infer _EA, infer _SC, infer SA> ? SA : never;
 
 /**
@@ -81,9 +80,7 @@ export interface LastCallSearchContent extends CallTargetsSearchContent {
 }
 
 export interface CfgInformationElementContent extends MergeableRecord {
-	/**
-	 * Whether the current node is a root node in the CFG, which is a node that is not contained inside of a function definition.
-	 */
+	/** Whether the current node is a root node in the CFG, which is a node that is not contained inside of a function definition. */
 	isRoot:       boolean
 	/**
 	 * Whether the current node is reachable from the root of the CFG.
@@ -92,9 +89,7 @@ export interface CfgInformationElementContent extends MergeableRecord {
 	isReachable?: boolean
 }
 export interface CfgInformationSearchContent extends MergeableRecord {
-	/**
-	 * The CFG attached to the search, extracted using {@link extractCfg}.
-	 */
+	/** The CFG attached to the search, extracted using {@link extractCfg}. */
 	cfg:             ControlFlowInformation
 	/**
 	 * The nodes the control flow reaches, together with the syntax that holds them.
@@ -112,7 +107,7 @@ export interface CfgInformationArguments extends MergeableRecord {
 	/** Whether to recalculate the CFG information if it already exists on the current search. Defaults to `false`. */
 	forceRefresh?:         boolean
 	/** The simplification passes that should be run on the extracted CFG. Defaults to the entries of {@link DefaultCfgSimplificationOrder}. */
-	simplificationPasses?: CfgSimplificationPassName[]
+	simplificationPasses?: readonly CfgSimplificationPassName[]
 	/** Whether to check nodes for reachability, and subsequently set {@link CfgInformationSearchContent.reachableNodes} and {@link CfgInformationElementContent.isReachable}. Defaults to `false`. */
 	checkReachable?:       boolean
 }
@@ -151,10 +146,15 @@ const StructuralRoles: ReadonlySet<RoleInParent> = new Set([
 function collectAliveNodes(ast: NormalizedAst, reachable: ReadonlySet<NodeId>): ReadonlySet<NodeId> {
 	const alive = new Set<NodeId>();
 	for(const id of reachable) {
-		let node = ast.idMap.get(id);
-		while(node !== undefined && !alive.has(node.info.id)) {
+		for(let node = ast.idMap.get(id); node !== undefined && !alive.has(node.info.id); node = RNode.directParent(node, ast.idMap)) {
 			alive.add(node.info.id);
-			node = node.info.parent === undefined ? undefined : ast.idMap.get(node.info.parent);
+		}
+	}
+	/* a node the analysis made up for a call (the variables `load` restores) is no code of its own, it runs with the call */
+	for(const [id, node] of ast.idMap) {
+		const parent = node.info.parent === undefined || !alive.has(node.info.parent) ? undefined : ast.idMap.get(node.info.parent);
+		if(parent !== undefined && !alive.has(id) && !RNode.directChildren(parent).includes(node)) {
+			alive.add(id);
 		}
 	}
 	return alive;
@@ -169,10 +169,36 @@ function collectAliveNodes(ast: NormalizedAst, reachable: ReadonlySet<NodeId>): 
 function isReachedByControlFlow(node: RNodeWithParent, alive: ReadonlySet<NodeId>): boolean {
 	if(alive.has(node.info.id)) {
 		return true;
-	} else if(StructuralRoles.has(node.info.role)) {
-		return node.info.parent !== undefined && alive.has(node.info.parent);
 	}
-	return false;
+	return StructuralRoles.has(node.info.role) && node.info.parent !== undefined && alive.has(node.info.parent);
+}
+
+/**
+ * One entry per distinct call target. A call to a package export is modelled by the built-in flowR states for
+ * the very same name, so the export and that built-in reach us as two targets naming one function: the
+ * qualified identifier wins, as it is the one that says where the function came from.
+ */
+function dedupeCallTargets(
+	targets: readonly (FlowrSearchElement<ParentInformation> | string)[]
+): (FlowrSearchElement<ParentInformation> | string)[] {
+	const byName = new Map<string, number>();
+	const out: (FlowrSearchElement<ParentInformation> | string)[] = [];
+	for(const target of targets) {
+		if(typeof target !== 'string') {
+			out.push(target);
+			continue;
+		}
+		const id = Identifier.parse(target);
+		const bare = String(Identifier.getName(id));
+		const at = byName.get(bare);
+		if(at === undefined) {
+			byName.set(bare, out.length);
+			out.push(target);
+		} else if(Identifier.getNamespace(id) !== undefined) {
+			out[at] = target;
+		}
+	}
+	return out;
 }
 
 /**
@@ -181,50 +207,27 @@ function isReachedByControlFlow(node: RNodeWithParent, alive: ReadonlySet<NodeId
  */
 export const Enrichments = {
 	[Enrichment.CallTargets]: {
-		enrichSearch: async(_search, data, _args, prev) => prev ?? {
-			dfg: await data.dataflow(),
-			ast: await data.normalize()
-		},
+		enrichSearch:  async(_search, data, _args, prev) => prev ?? { dfg: await data.dataflow(), ast: await data.normalize() },
 		enrichElement: async(e, s, analyzer, args, prev) => {
-			// we don't resolve aliases here yet!
 			const content: CallTargetsContent = { targets: [] };
 			const shared = s.enrichmentContent(Enrichment.CallTargets) as CallTargetsSearchContent | undefined;
 			const df = shared?.dfg ?? await analyzer.dataflow();
 			const n = shared?.ast ?? await analyzer.normalize();
 			const callVertex = df.graph.getVertex(e.node.info.id);
-			if(FunctionCallVertex.is(callVertex)) {
-				const origins = Dataflow.origin(df.graph, callVertex.id);
-				if(!origins || origins.length === 0) {
-					const name = recoverName(callVertex.id, n.idMap);
-					// we don't have origin information here, so pass undefined
-					content.targets = [qualifyIdentifier(undefined, name)] as (FlowrSearchElement<ParentInformation> | string)[];
+			if(DfgVertex.isFunctionCall(callVertex)) {
+				const origins = Dataflow.origin(df.graph, callVertex.id) ?? [];
+				// find call targets in user code (which have ids!)
+				const targets = origins.map(targetOf).filter(isNotUndefined);
+				if(targets.length > 0) {
+					content.targets = targets;
 				} else {
-					// find call targets in user code (which have ids!)
-					content.targets = origins.map(o => {
-						switch(o.type) {
-							case OriginType.FunctionCallOrigin: {
-								if(NodeId.isBuiltIn(o.id)) {
-									// a built-in target (e.g. a materialized package export from `library()`) has no
-									// user-code node, so surface it as a built-in identifier (see `onlyBuiltin` below)
-									const name = recoverName(o.id, n.idMap);
-									return qualifyIdentifier([o], name) ?? String(o.id);
-								} else {
-									return { node: n.idMap.get(o.id) as RNodeWithParent } satisfies FlowrSearchElement<ParentInformation>;
-								}
-							}
-							case OriginType.BuiltInFunctionOrigin:
-								return qualifyIdentifier([o], o.fn.name);
-							default:
-								return undefined;
-						}
-					}).filter(isNotUndefined);
-					if(content.targets.length === 0) {
-						const name = recoverName(callVertex.id, n.idMap);
-						content.targets = [qualifyIdentifier(origins, name)] as (FlowrSearchElement<ParentInformation> | string)[];
-					}
+					const name = NodeId.recoverName(callVertex.id, n.idMap);
+					content.targets = [qualifyIdentifier(origins, name)] as (FlowrSearchElement<ParentInformation> | string)[];
 				}
 			}
-
+			/* a package export and the built-in flowR models it with are one target seen twice, so keep the
+			   qualified identifier and drop the bare name for it */
+			content.targets = dedupeCallTargets(content.targets);
 			// keep only calls whose targets are all built-in; library/package exports arrive as an identifier
 			// targets and count as built-in, a target with a `node` is user code and disqualifies the call
 			if(args?.onlyBuiltin && content.targets.some(t => typeof t !== 'string')) {
@@ -236,6 +239,25 @@ export const Enrichments = {
 			}
 			return content;
 
+			function targetOf(o: Origin): FlowrSearchElement<ParentInformation> | string | undefined {
+				switch(o.type) {
+					case OriginType.FunctionCallOrigin:
+						if(NodeId.isBuiltIn(o.id)) {
+							// a built-in target (e.g. a materialized package export from `library()`) has no
+							// user-code node, so surface it as a built-in identifier (see `onlyBuiltin` above)
+							return qualifyIdentifier([o], NodeId.recoverName(o.id, n.idMap)) ?? String(o.id);
+						}
+						return elementOf(o.id, n.idMap);
+					case OriginType.BuiltInFunctionOrigin: {
+						/* an alias (`s <- system; s()`) calls the built-in it is linked to rather than its own name */
+						const linked = NodeId.isBuiltIn(o.proc) ? NodeId.toPkgFn(o.proc)?.[1] ?? NodeId.fromBuiltIn(o.proc) : undefined;
+						return qualifyIdentifier([o], linked === undefined || linked === Identifier.getName(o.fn.name) ? o.fn.name : linked);
+					}
+					default:
+						return undefined;
+				}
+			}
+
 			function qualifyIdentifier(origins: readonly Origin[] | undefined, name?: Identifier) {
 				if(args?.qualifyNames === undefined || args.qualifyNames) {
 					const qualified = Identifier.toQualified(origins, name);
@@ -243,7 +265,7 @@ export const Enrichments = {
 						return Identifier.toString(qualified);
 					}
 				}
-				return name as string;
+				return name === undefined ? undefined : Identifier.toString(name);
 			}
 		},
 		// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
@@ -261,7 +283,7 @@ export const Enrichments = {
 			const shared = s.enrichmentContent(Enrichment.LastCall) as LastCallSearchContent | undefined;
 			const df = (shared?.dfg ?? await analyzer.dataflow()).graph;
 			const vertex = df.getVertex(e.node.info.id);
-			if(FunctionCallVertex.is(vertex)) {
+			if(DfgVertex.isFunctionCall(vertex)) {
 				const n = shared?.ast ?? await analyzer.normalize();
 				const cfg = (shared?.cfg ?? await analyzer.controlflow(undefined)).graph;
 				for(const arg of args) {
@@ -271,7 +293,10 @@ export const Enrichments = {
 						type:     'link-to-last-call',
 					});
 					for(const lastCall of lastCalls) {
-						content.linkedIds.push({ node: n.idMap.get(lastCall) as RNodeWithParent });
+						const linked = elementOf(lastCall, n.idMap);
+						if(linked !== undefined) {
+							content.linkedIds.push(linked);
+						}
 					}
 				}
 			}
@@ -290,22 +315,13 @@ export const Enrichments = {
 			};
 		},
 		enrichSearch: async(_search, data, args, prev) => {
-			args = {
-				forceRefresh:         false,
-				checkReachable:       false,
-				simplificationPasses: DefaultCfgSimplificationOrder,
-				...args
-			};
+			args = { forceRefresh: false, checkReachable: false, simplificationPasses: DefaultCfgSimplificationOrder, ...args };
 
 			// short-circuit if we already have a cfg stored (and the reachability info if requested)
 			if(!args.forceRefresh && prev?.cfg && (!args.checkReachable || prev.reachableNodes)) {
 				return prev;
 			}
-
-			const content: CfgInformationSearchContent = {
-				...prev,
-				cfg: await data.controlflow(args.simplificationPasses),
-			};
+			const content: CfgInformationSearchContent = { ...prev, cfg: await data.controlflow(args.simplificationPasses) };
 			if(args.checkReachable) {
 				content.reachableNodes = cfgFindAllReachable(content.cfg);
 				content.aliveNodes = collectAliveNodes(await data.normalize(), content.reachableNodes);
@@ -316,11 +332,7 @@ export const Enrichments = {
 	[Enrichment.Roxygen]: {
 		enrichSearch:  async(_search, data, _args, prev) => prev ?? { ast: await data.normalize() },
 		enrichElement: async(e, search, analyzer, _args, prev) => {
-			const content = (prev ?? {
-				documentation: [],
-				tags:          {}
-			}) as DeepWritable<RoxygenElementContent>;
-
+			const content = (prev ?? { documentation: [], tags: {} }) as DeepWritable<RoxygenElementContent>;
 			const shared = search.enrichmentContent(Enrichment.Roxygen) as RoxygenSearchContent | undefined;
 			const normalize = shared?.ast ?? await analyzer.normalize();
 			const roxygen = RNode.documentation(e.node.info.id, normalize.idMap);
@@ -332,7 +344,6 @@ export const Enrichments = {
 					(content.tags[comment.type] as RoxygenTag[]).push(comment);
 				}
 			}
-
 			return content;
 		}
 	} satisfies EnrichmentData<RoxygenElementContent, undefined, RoxygenSearchContent>,
@@ -346,25 +357,20 @@ export const Enrichments = {
 /**
  * Returns the content of the given enrichment type from a {@link FlowrSearchElement}.
  * If the search element is not enriched with the given enrichment, `undefined` is returned.
- * @param e - The search element whose enrichment content should be retrieved.
+ * @param e          - The search element whose enrichment content should be retrieved.
  * @param enrichment - The enrichment content, if present, else `undefined`.
  */
 export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<ParentInformation>, enrichment: E): EnrichmentElementContent<E> {
 	return e?.enrichments?.[enrichment] as EnrichmentElementContent<E>;
 }
 
-/**
- * Enriches the given search element with the given enrichment type, using the provided analysis data.
- */
+/** Enriches the given search element with the given enrichment type, using the provided analysis data. */
 export async function enrichElement<Element extends FlowrSearchElement<ParentInformation>, E extends Enrichment>(
 	e: Element, s: FlowrSearchElements<ParentInformation>, analyzer: ReadonlyFlowrAnalysisProvider, enrichment: E, args?: EnrichmentElementArguments<E>): Promise<Element> {
-	const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>>;
+	const enrichmentData = getEnrichment(enrichment);
 	const prev = e?.enrichments;
 	return {
 		...e,
-		enrichments: {
-			...prev ?? {},
-			[enrichment]: await enrichmentData.enrichElement?.(e, s, analyzer, args, prev?.[enrichment])
-		}
+		enrichments: { ...prev ?? {}, [enrichment]: await enrichmentData.enrichElement?.(e, s, analyzer, args, prev?.[enrichment]) }
 	};
 }

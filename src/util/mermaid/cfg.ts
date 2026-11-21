@@ -9,14 +9,12 @@ import {
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { reconstructToCode } from '../../reconstruct/reconstruct';
 import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
-import type { MermaidMarkStyle, MermaidGraphPrinterInfo, MermaidMarkdownMark } from './info';
-import { MermaidDefaultMarkStyle } from './info';
+import { type MermaidMarkStyle, type MermaidGraphPrinterInfo, type MermaidMarkdownMark, MermaidDefaultMarkStyle } from './info';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Mermaid } from './mermaid';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RTrue } from '../../r-bridge/lang-4.x/convert-values';
-
 
 export interface MermaidCfgGraphPrinterInfo extends MermaidGraphPrinterInfo {
 	/** The style to apply to mark an entry point marker node */
@@ -32,13 +30,9 @@ export interface MermaidCfgGraphPrinterInfo extends MermaidGraphPrinterInfo {
 export const MermaidEntryPointDefaultMarkStyle: MermaidMarkStyle['vertex'] = 'stroke:cyan,stroke-width:6.5px;';
 export const MermaidExitPointDefaultMarkStyle: MermaidMarkStyle['vertex'] = 'stroke:green,stroke-width:6.5px;';
 
-function getLexeme(n?: RNodeWithParent) {
-	return n ? RNode.lexeme(n) ?? '' : undefined;
-}
-
-
-function cfgOfNode(vert: CfgVertex, normalizedVertex: RNodeWithParent | undefined, id: NodeId, content: string | undefined, output: string): string {
-	if(normalizedVertex && content !== undefined) {
+function cfgOfNode(vert: CfgVertex, normalizedVertex: RNodeWithParent | undefined, id: NodeId, output: string): string {
+	if(normalizedVertex) {
+		const content = RNode.lexeme(normalizedVertex) ?? '';
 		const start = CfgVertex.isExpression(vert) ? '([' : '[';
 		const end = CfgVertex.isExpression(vert) ? '])' : ']';
 		/* the code is set in bold so it stands out from the type and id above it */
@@ -67,8 +61,7 @@ function collectBodies(graph: ReadOnlyControlFlowGraph): Map<NodeId, NodeId[]> {
 		}
 		const body = new Set<NodeId>();
 		const stack = [...children];
-		while(stack.length > 0) {
-			const current = stack.pop() as NodeId;
+		for(let current; (current = stack.pop()) !== undefined;) {
 			if(body.has(current)) {
 				continue;
 			}
@@ -87,15 +80,12 @@ function collectBodies(graph: ReadOnlyControlFlowGraph): Map<NodeId, NodeId[]> {
  * A definition itself belongs to the region it is written in, not to the one it opens.
  */
 function regionOf(id: NodeId, normalizedAst: NormalizedAst): string {
-	let current = normalizedAst.idMap.get(id);
-	current = current?.info.parent === undefined ? undefined : normalizedAst.idMap.get(current.info.parent);
 	let inParameters = false;
-	while(current !== undefined) {
+	for(const current of RNode.iterateParents(normalizedAst.idMap.get(id), normalizedAst.idMap)) {
 		inParameters ||= current.info.role === RoleInParent.FunctionDefinitionParameter;
 		if(RFunctionDefinition.is(current)) {
 			return `${current.info.id}-${inParameters ? 'parameters' : 'body'}`;
 		}
-		current = current.info.parent === undefined ? undefined : normalizedAst.idMap.get(current.info.parent);
 	}
 	return 'top-level';
 }
@@ -133,10 +123,9 @@ function blockCode(elems: readonly Exclude<CfgVertex, CfgBasicBlockVertex>[], no
 function conditionName(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, from: NodeId): string {
 	const vertex = cfg.graph.getVertex(from);
 	const condition = CfgVertex.isBlock(vertex) ? CfgVertex.getId(CfgVertex.getBasicBlockElements(vertex).at(-1)) ?? from : from;
-	const lexeme = getLexeme(normalizedAst.idMap.get(condition));
+	const lexeme = RNode.lexeme(normalizedAst.idMap.get(condition));
 	return lexeme ? `${lexeme} (${condition})` : String(condition);
 }
-
 
 function shouldIncludeNode(simplify: boolean, v: CfgVertex, include: ReadonlySet<MermaidMarkdownMark>): boolean {
 	if(simplify) {
@@ -180,13 +169,13 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 	const bodies = cfg.graph.mayHaveBasicBlocks() ? new Map<NodeId, NodeId[]>() : collectBodies(cfg.graph);
 	const partOfBody = new Set<NodeId>(bodies.values().flatMap(body => body));
 
-	const emitBody = (defId: NodeId): void => {
+	function emitBody(defId: NodeId): void {
 		const body = bodies.get(defId)?.filter(v => !includeOnlyIds || includeOnlyIds.has(v));
 		if(body === undefined || body.length === 0) {
 			return;
 		}
 		const definition = normalizedAst.idMap.get(defId);
-		output += `    subgraph n${defId}-body ["body of ${Mermaid.escape(limitTo(getLexeme(definition) ?? String(defId), 40))}"]\n`;
+		output += `    subgraph n${defId}-body ["body of ${Mermaid.escape(limitTo(RNode.lexeme(definition) ?? String(defId), 40))}"]\n`;
 		output += `        direction ${dirIs}\n`;
 		for(const vertexId of body) {
 			const vertex = cfg.graph.getVertex(vertexId);
@@ -194,16 +183,15 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 				continue;
 			}
 			const node = normalizedAst.idMap.get(vertexId);
-			output = cfgOfNode(vertex, node, vertexId, getLexeme(node), output);
+			output = cfgOfNode(vertex, node, vertexId, output);
 			diagramIncludedIds.add(vertexId);
 			emitBody(vertexId);
 		}
 		output += '    end\n';
-	};
+	}
 
 	for(const [id, vertex] of cfg.graph.vertices(false)) {
 		const normalizedVertex = normalizedAst?.idMap.get(id);
-		const content = getLexeme(normalizedVertex);
 		if(CfgVertex.isBlock(vertex)) {
 			const elems = CfgVertex.getBasicBlockElements(vertex);
 			if(simplify) {
@@ -220,7 +208,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 					continue;
 				}
 
-				output += `    subgraph n${id} [Block ${normalizedVertex?.info.fullLexeme ?? id}]\n`;
+				output += `    subgraph n${id} [Block ${RNode.lexeme(normalizedVertex) ?? id}]\n`;
 				output += `        direction ${dirIs}\n`;
 				diagramIncludedIds.add(id);
 				let last: NodeId | undefined = undefined;
@@ -232,8 +220,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 
 					const eid = CfgVertex.getId(element);
 					const childNormalizedVertex = normalizedAst?.idMap.get(eid);
-					const childContent = getLexeme(childNormalizedVertex);
-					output = cfgOfNode(element, childNormalizedVertex, eid, childContent, output);
+					output = cfgOfNode(element, childNormalizedVertex, eid, output);
 					diagramIncludedIds.add(eid);
 					/* everything in a block runs one after the other, which is what these arrows show */
 					if(last) {
@@ -244,7 +231,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 				output += '    end\n';
 			}
 		} else if((!includeOnlyIds || includeOnlyIds.has(id)) && !partOfBody.has(id)) {
-			output = cfgOfNode(vertex, normalizedVertex, id, content, output);
+			output = cfgOfNode(vertex, normalizedVertex, id, output);
 			diagramIncludedIds.add(id);
 			emitBody(id);
 		}
@@ -294,16 +281,12 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 	return output;
 }
 
-/**
- * Use mermaid to visualize the normalized AST.
- */
+/** Use mermaid to visualize the normalized AST. */
 export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, info?: MermaidCfgGraphPrinterInfo): string {
 	return Mermaid.codeToUrl(cfgToMermaid(cfg, normalizedAst, info ?? {}));
 }
 
-/**
- * Limits a string to n chars, after which the remainder will be replaced with ...
- */
+/** Limits a string to n chars, after which the remainder will be replaced with ... */
 function limitTo(str: string, limit: number): string {
 	if(str.length <= limit) {
 		return str;

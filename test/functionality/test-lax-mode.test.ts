@@ -55,7 +55,6 @@ describe('Lax Parser', withTreeSitter(ts => {
 		emptyGraph()
 			.addEdge('1@t', '1@0', EdgeType.DefinedBy)
 			.addEdge('3@t', '3@4', EdgeType.DefinedBy)
-			.addEdge('8@t', '1@t', EdgeType.Reads)
 			.addEdge('8@t', '3@t', EdgeType.Reads)
 			.addEdge('8@t', '5@t', EdgeType.Reads)
 			.addEdge('4@if', '4@==', EdgeType.Reads | EdgeType.Argument)
@@ -63,7 +62,6 @@ describe('Lax Parser', withTreeSitter(ts => {
 			.addEdge('4@==', '4@3', EdgeType.Reads | EdgeType.Argument)
 			.addEdge('8@print', '8@t', EdgeType.Reads | EdgeType.Returns | EdgeType.Argument)
 			.call('2@:', ':', [argumentInCall(4), argumentInCall(5)], { returns: [], reads: [NodeId.toBuiltIn(':'), 4, 5], onlyBuiltIn: true })
-			.calls('2@:', NodeId.toBuiltIn(':'))
 			.call('2@for', 'for', [argumentInCall(3), argumentInCall(6)], { returns: [], reads: [NodeId.toBuiltIn('for'), 11], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', 3) })
 			.addEdge('2@for', '2@:', EdgeType.Reads)
 			.calls(11, NodeId.toBuiltIn('for'))
@@ -97,7 +95,6 @@ describe('Lax Parser', withTreeSitter(ts => {
 			.addEdge('1@t', '1@0', EdgeType.DefinedBy)
 			.addEdge('3@t', '3@4', EdgeType.DefinedBy)
 			.call('2@:', ':', [argumentInCall(4), argumentInCall(5)], { returns: [], reads: [NodeId.toBuiltIn(':'), 4, 5], onlyBuiltIn: true })
-			.calls('2@:', NodeId.toBuiltIn(':'))
 			.call('2@for', 'for', [argumentInCall(3), argumentInCall(6)], { returns: [], reads: [NodeId.toBuiltIn('for'), 11], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', 3) })
 			.addEdge('2@for', '2@:', EdgeType.Reads)
 			.calls(11, NodeId.toBuiltIn('for')),

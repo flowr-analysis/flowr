@@ -1,10 +1,9 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { executeCallContextQueries } from './call-context-query-executor';
-import { type OutputFormatter, bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import type { OutputFormatter } from '../../../util/text/ansi';
 import Joi from 'joi';
-import { asciiCallContext } from '../../query-print';
+import { asciiCallContext, queryHeader } from '../../query-print';
 import { CallTargets } from './identify-link-to-last-call-relation';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex';
@@ -14,16 +13,11 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analy
 import type { Identifier } from '../../../dataflow/environments/identifier';
 
 export interface FileFilter<FilterType> {
-	/**
-	 * Regex that a node's file attribute must match to be considered
-	 */
+	/** Regex that a node's file attribute must match to be considered */
 	readonly filter:                 FilterType;
-	/**
-	 * If `fileFilter` is set, but a nodes `file` attribute is `undefined`, should we include it in the results? Defaults to `true`.
-	 */
+	/** If `fileFilter` is set, but a nodes `file` attribute is `undefined`, should we include it in the results? Defaults to `true`. */
 	readonly includeUndefinedFiles?: boolean;
 }
-
 
 export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> extends BaseQueryFormat {
 	readonly type:                   'call-context';
@@ -62,15 +56,9 @@ export interface LinkToLastCall<CallName extends CallNameTypes = CallNameTypes> 
 	readonly type:       'link-to-last-call';
 	/** Regex regarding the function name of the last call. Similar to {@link DefaultCallContextQueryFormat#callName}, strings are interpreted as a `RegExp`. */
 	readonly callName:   CallName;
-	/**
-	 * Should we ignore this (source) call?
-	 * Currently, there is no well working serialization for this.
-	 */
+	/** Should we ignore this (source) call? Currently, there is no well working serialization for this. */
 	readonly ignoreIf?:  (id: NodeId, graph: DataflowGraph) => boolean;
-	/**
-	 * Should we continue searching after the link was created?
-	 * Currently, there is no well working serialization for this.
-	 */
+	/** Should we continue searching after the link was created? Currently, there is no well working serialization for this. */
 	readonly cascadeIf?: (target: DataflowGraphVertexInfo, from: NodeId, graph: DataflowGraph) => CascadeAction;
 }
 
@@ -87,17 +75,14 @@ export interface LinkToNestedCall<CallName extends CallNameTypes = CallNameTypes
 	readonly type:      'link-to-nested-call';
 	/** Regex regarding the function name of the last call. Similar to {@link DefaultCallContextQueryFormat#callName}, strings are interpreted as a `RegExp`. */
 	readonly callName:  CallName;
-	/**
-	 * Should we ignore this (source) call?
-	 * Currently, there is no well working serialization for this.
-	 */
+	/** Should we ignore this (source) call? Currently, there is no well working serialization for this. */
 	readonly ignoreIf?: (id: NodeId, graph: DataflowGraph) => boolean;
 }
 
 export type LinkTo<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> = (LinkToLastCall<CallName> | LinkToNestedCall<CallName>) & { attachLinkInfo?: AttachLinkInfo };
 
 export interface SubCallContextQueryFormat<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> extends DefaultCallContextQueryFormat<CallName> {
-	readonly linkTo?: LinkTo<CallName, AttachLinkInfo> | LinkTo<CallName, AttachLinkInfo>[];
+	readonly linkTo?: LinkTo<CallName, AttachLinkInfo> | readonly LinkTo<CallName, AttachLinkInfo>[];
 }
 
 export interface CallContextQuerySubKindResult {
@@ -113,9 +98,7 @@ export interface CallContextQuerySubKindResult {
 	readonly calls?:      readonly NodeId[];
 	/** ids attached by the linkTo query, if you attached information with the `attachLinkInfo` field you can find it here */
 	readonly linkedIds?:  readonly (NodeId | { id: NodeId, info: object })[];
-	/**
-	 * (Direct) alias locations this call stems from
-	 */
+	/** (Direct) alias locations this call stems from */
 	readonly aliasRoots?: readonly NodeId[];
 }
 
@@ -152,7 +135,7 @@ export const CallContextQueryDefinition = {
 	asciiSummarizer: async(formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as CallContextQueryResult;
 		result.push(
-			`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`,
+			queryHeader('call-context', formatter, out['.meta'].timing),
 			asciiCallContext(formatter, out, (await analyzer.normalize()).idMap)
 		);
 		return true;

@@ -1,6 +1,6 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { guard } from '../../../../../../../util/assert';
-import { retrieveMetaStructure } from '../../normalize-meta';
+import { retrieveMetaStructure, currentSourceInfo } from '../../normalize-meta';
 import type { RSymbol } from '../../../../model/nodes/r-symbol';
 import { isSymbol, RType } from '../../../../model/type';
 import type { NamedJsonEntry } from '../../../json/format';
@@ -11,7 +11,7 @@ import type { SourceRange } from '../../../../../../../util/range';
  * Normalize the given object as an R symbol (incorporating namespace information).
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param objs - The JSON object to extract the meta-information from
- * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
+ * @returns    The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  * @see {@link RSymbol} for more information about R symbols.
  */
 export function tryNormalizeSymbol(data: NormalizerData, objs: readonly NamedJsonEntry[]): RSymbol | undefined {
@@ -40,10 +40,6 @@ export function tryNormalizeSymbol(data: NormalizerData, objs: readonly NamedJso
 		// remove backticks from symbol
 		content,
 		lexeme: meta.content,
-		info:   {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
+		info:   currentSourceInfo(data)
 	} satisfies RSymbol;
 }

@@ -1,9 +1,12 @@
 import { describe } from 'vitest';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
-import type { DataFrameAccessValidationResult } from '../../../src/linter/rules/dataframe-access-validation';
-import { assertLinter } from '../_helper/linter';
-import { withTreeSitter } from '../_helper/shell';
+import type { DataframeAccessValidationResult } from '../../../src/linter/rules/dataframe-access-validation';
+import { assertLinter, assertLintedLines } from '../_helper/linter';
+import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { SourceRange } from '../../../src/util/range';
+import { decorateLabelContext, label } from '../_helper/label';
+
+assumeLoadedPackages('dplyr', 'magrittr');
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('Data frame access validation', () => {
@@ -37,7 +40,7 @@ df3 <- df1 %>%
 
 print(df3${access})
 			`.trim();
-		};
+		}
 
 		describe('Valid data frame access', () => {
 			const testCases: string[] = [
@@ -88,12 +91,11 @@ print(df3${access})
 			];
 
 			for(const test of testCases) {
-				/* @ignore-in-wiki */
 				assertLinter(test, parser, test, 'dataframe-access-validation', []);
 			}
 		});
 		describe('Invalid data frame access', () => {
-			type ExpectedLinterResult = Omit<DataFrameAccessValidationResult, 'certainty' | 'quickFix' | 'involvedId'>;
+			type ExpectedLinterResult = Omit<DataframeAccessValidationResult, 'certainty' | 'quickFix' | 'involvedId'>;
 
 			const testCases: [string, ExpectedLinterResult][] = [
 				['df <- data.frame(id = 1:5, name = "A")\ndf$score', { type: 'column', accessed: 'score', access: '$', operand: 'df', loc: SourceRange.from(2, 1, 2, 8) }],
@@ -136,18 +138,24 @@ print(df3${access})
 				[exampleCode({ access: '[["name"]]' }), { type: 'column', accessed: 'name', access: '[[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 19) }],
 				[exampleCode({ access: '[5]' }), { type: 'column', accessed: 5, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 12) }],
 				[exampleCode({ access: '[[12]]' }), { type: 'column', accessed: 12, access: '[[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 15) }],
-				[exampleCode({ access: '[7, ]' }), { type: 'row', accessed: 7, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 14) }],
+				/* a join may repeat rows for keys that repeat, so only a row beyond all 5 x 6 pairs is surely missing */
+				[exampleCode({ access: '[31, ]' }), { type: 'row', accessed: 31, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 15) }],
 				[exampleCode({ access: '[5, 6]' }), { type: 'column', accessed: 6, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 15) }],
-				[exampleCode({ access: '[8, 4]' }), { type: 'row', accessed: 8, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 15) }],
+				[exampleCode({ access: '[31, 4]' }), { type: 'row', accessed: 31, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 16) }],
 				[exampleCode({ access: '[3:5]' }), { type: 'column', accessed: 5, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 14) }],
 				[exampleCode({ access: '[3:5, c(2, 8)]' }), { type: 'column', accessed: 8, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 23) }],
-				[exampleCode({ access: '[3:7, c(1, 3)]' }), { type: 'row', accessed: 7, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 23) }]
+				[exampleCode({ access: '[3:31, c(1, 3)]' }), { type: 'row', accessed: 31, access: '[', operand: 'df3', loc: SourceRange.from(18, 7, 18, 24) }]
 			];
 
 			for(const [test, result] of testCases) {
-				/* @ignore-in-wiki */
 				assertLinter(test, parser, test, 'dataframe-access-validation', [{ ...result, certainty: LintingResultCertainty.Certain }]);
 			}
+		});
+
+		describe('Partial matching', () => {
+			assertLinter('dollar matches a prefix', parser, 'df <- data.frame(id = 1:5, value = "A")\ndf$val', 'dataframe-access-validation', []);
+			assertLinter('double bracket does not', parser, 'df <- data.frame(id = 1:5, value = "A")\ndf[["val"]]', 'dataframe-access-validation',
+				[{ type: 'column', accessed: 'val', access: '[[', operand: 'df', loc: [2, 1, 2, 11], certainty: LintingResultCertainty.Certain }]);
 		});
 
 		describe('Documentation test cases', () => {
@@ -212,4 +220,5 @@ print(df3${access})
 			);
 		});
 	});
+	assertLintedLines(decorateLabelContext(label('deps: a function handed to across is no column', ['name-normal', 'function-calls']), ['dataflow']), parser, 'library(dplyr)\ndf <- data.frame(a = 1:2)\nmutate(df, across(everything(), as.character))', 'dataframe-access-validation', []);
 }));

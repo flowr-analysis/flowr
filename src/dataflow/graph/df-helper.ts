@@ -1,115 +1,78 @@
-import { NoEdges, DataflowGraph, UnknownSideEffect, type CallQualifier } from './graph';
+import { DataflowGraph, UnknownSideEffect, type CallQualifier } from './graph';
+import { AmbientAccess } from './ambient-access';
 import { DfEdge, EdgeType } from './edge';
 import { emptyGraph } from './dataflowgraph-builder';
-import { getOriginInDfg } from '../origin/dfg-get-origin';
+import { getOriginInDfg, type Origin } from '../origin/dfg-get-origin';
 import { GraphHelper } from './graph-helper';
-import { CallGraph } from './call-graph';
-import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
+import { ambientAccessOf, ambientAccessOfFunctions, computeCallGraphSummaries, foldCallGraph, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { REnvironmentInformation } from '../environments/environment';
-import type { DataflowGraphVertexInfo } from './vertex';
-import { FunctionCallVertex, ValueVertex } from './vertex';
-import { Identifier } from '../environments/identifier';
-import { Resolve } from '../environments/resolve-helper';
-import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
-import { isBaseRPackage } from '../../util/r-base-packages';
+import { DfgVertex, VertexType, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo } from './vertex';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier } from '../environments/identifier';
+import { BuiltInProcName } from '../environments/built-in-proc-name';
+import { AttachedBasePackageSet, baseRExportOwner, isBaseRPackage } from '../../util/r-base-packages';
+import { getCallables, importOrigin } from '../../project/plugins/file-plugins/files/flowr-namespace-file';
+import { DefaultMap } from '../../util/collections/defaultmap';
+import { getAllFunctionCallTargets, type LinkedFunctionResolver } from '../internal/linker';
+import { getAllRefsToSymbol } from '../origin/dfg-get-symbol-refs';
+import type { FlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import { attachLibrary, type AttachSpec } from '../internal/process/functions/call/built-in/built-in-library';
+import { type Environment, EnvType, REnvironment, type REnvironmentInformation } from '../environments/environment';
+import { DepType } from '../../project/sigdb/schema';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { metaPackageCore } from '../../project/attached-packages';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+
+/** Copies the unknown side effects and ambient accesses of the selected ids of `graph` to `df`. */
+function copySelectedMarks(graph: DataflowGraph, df: DataflowGraph, select: ReadonlySet<NodeId>): DataflowGraph {
+	for(const u of graph.unknownSideEffects) {
+		const id = UnknownSideEffect.id(u);
+		if(select.has(id)) {
+			df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
+		}
+	}
+	for(const id of graph.ambientAccessIds()) {
+		if(select.has(id)) {
+			df.recordAmbientAccess(id, AmbientAccess.names(graph.ambientAccessOf(id) as AmbientAccess));
+		}
+	}
+	return df;
+}
+
+/** The edges a provenance follows by default, see {@link Dataflow.provenance}. */
+export const ProvenanceEdges = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
- *
- * - {@link Dataflow.visualize} - for visualization helpers (e.g., rendering the DFG as a mermaid graph),
- * - {@link Dataflow.views} - for working with specific views of the dataflow graph (e.g., the call graph),
- * - {@link Dataflow.edge} - for working with the edges in the dataflow graph,
- * - {@link Dataflow.qualify}/{@link Dataflow.qualifyAll} - for the package-qualified `pkg::fn` identifier of a call
- *   from its id and graph, or of every call of a graph at once,
- * - {@link Dataflow.resolve} - for resolving a name against an environment,
- * - {@link Dataflow.packagesOf} - for the packages a set of nodes (e.g. a slice) calls into,
- * - {@link Dataflow.valueIsUsed}/{@link Dataflow.hasComputedArguments} - for what a call does with, and gets as, values,
- * @example
- * ```ts
- * Dataflow.origin(graph, id);                       // where the use at `id` comes from
- * Dataflow.edge.includesType(edge, EdgeType.Reads); // the edge helpers
- * Dataflow.visualize.mermaid.url(graph);            // a link to the rendered graph
- * ```
+ * @helper dataflow This is the root helper object to work with the DataflowGraph.
  */
 export const Dataflow = {
-	/**
-	 * Maps to flowR's main graph object to store and manipulate the dataflow graph
-	 * @see {@link DataflowGraph}
-	 */
-	graph: DataflowGraph,
 	...GraphHelper,
-	name:  'Dataflow',
-	/**
-	 * Maps to flowR's dataflow edge helper to work with the edges in the dataflow graph
-	 */
-	edge:  DfEdge,
-	/**
-	 * Dispatches to helper objects that relate to (sub-) views of the dataflow graph, e.g. the call graph.
-	 */
-	views: {
-		/**
-		 * Maps to flowR's helper object for the call-graph
-		 */
-		callGraph: CallGraph,
-	},
-	/**
-	 * Dispatches to helper functions to create new dataflow graphs, e.g. from a pipeline or an empty graph.
-	 */
+	name:   'Dataflow',
+	/** Dispatches to helper functions to create new dataflow graphs, e.g. from a pipeline or an empty graph. */
 	create: {
-		/**
-		 * Creates an empty dataflow graph with the given id map (or a new one if not provided).
-		 * @see {@link emptyGraph}
-		 */
+		/** Creates an empty dataflow graph with the given id map (or a new one if not provided). */
 		empty: emptyGraph
 	},
-	/**
-	 * Returns the origin of a vertex in the dataflow graph
-	 * @see {@link getOriginInDfg} - for the underlying function
-	 */
-	origin:  getOriginInDfg,
-	/**
-	 * Name and value resolution.
-	 * @see {@link Resolve} - the helper object itself, which documents which entry point to reach for
-	 */
-	resolve: Resolve,
-	/**
-	 * The qualified identifier of the call with the given id, or `undefined` if it does not resolve to a package
-	 * export and is not itself already namespaced (with `purrr` loaded, a `map()` call yields
-	 * `Identifier.make('map', 'purrr')`; an explicit `pkg::fn()` call yields `pkg::fn` unchanged).
-	 *
-	 * This is the compact form of {@link Identifier.toQualified}, reconstructing both the
-	 * {@link Dataflow.origin|origins} and the call's name from the graph.
-	 * @param id           - The id of the call to qualify
-	 * @param graph        - The graph the call is part of
-	 * @param qualifyBaseR - Whether to also qualify a bare base-R call from the package exporting it
-	 *                       (`sd` yields `stats::sd`), which needs neither a loaded database nor graph edges.
-	 *                       Set this to `false` to only qualify what the origins resolve to (or what is already namespaced).
-	 */
+	/** Returns the origin of a vertex in the dataflow graph */
+	origin: getOriginInDfg,
+	/** The qualified identifier of the call with the given id, or `undefined` if it does not resolve to a package export and is not itself already namespaced (with `purrr` loaded, a `map()` call yields `Identifier.make('map', 'purrr')`; an explicit `pkg::fn()` call yields `pkg::fn` unchanged). */
 	qualify(this: void, id: NodeId, graph: DataflowGraph, qualifyBaseR = true): Identifier | undefined {
 		return graph.qualify(id, qualifyBaseR, resolveQualification);
 	},
-	/**
-	 * The qualified name of every call of the graph, `undefined` for the calls that do not qualify.
-	 * Prefer this over asking call by call: it resolves each call once for both `qualifyBaseR` variants.
-	 * @param graph        - The graph to qualify
-	 * @param qualifyBaseR - Which of the two results to return, see {@link Dataflow.qualify}
-	 */
+	/** The qualified name of every call of the graph, `undefined` for the calls that do not qualify. */
 	qualifyAll(this: void, graph: DataflowGraph, qualifyBaseR = true): ReadonlyMap<NodeId, Identifier | undefined> {
 		return graph.qualifyAll(qualifyBaseR, resolveQualification);
 	},
-	/**
-	 * The packages the given nodes call into, as {@link Dataflow.qualify} resolves every call among them.
-	 * This is what a selection needs, which is not what the program loads: a `library()` whose exports the
-	 * selection never calls does not make the package needed. Base R is left out unless `includeBaseR`.
-	 * @param nodes        - the ids to consider, e.g. the result of a slice
-	 * @param graph        - the graph the ids belong to
-	 * @param includeBaseR - whether to also report base-R packages
-	 */
-	packagesOf(this: void, nodes: Iterable<NodeId>, graph: DataflowGraph, includeBaseR = false): Set<string> {
-		const packages = new Set<string>();
+	/** The packages the given nodes call into, as {@link Dataflow.qualify} resolves every call among them. */
+	packagesOf(this: void, nodes: Iterable<NodeId>, graph: DataflowGraph, includeBaseR = false): Set<BrandedNamespace> {
+		const packages = new Set<BrandedNamespace>();
 		for(const id of nodes) {
-			if(!FunctionCallVertex.is(graph.getVertex(id))) {
+			if(!DfgVertex.isFunctionCall(graph.getVertex(id))) {
 				continue;
 			}
 			const qualified = Dataflow.qualify(id, graph, includeBaseR);
@@ -120,51 +83,155 @@ export const Dataflow = {
 		}
 		return packages;
 	},
-	/**
-	 * Whether the call's result is passed on -- assigned, handed to another call, returned -- rather than left
-	 * for R to auto-print. A bare `anova(a, b)` is an output the program reports; the `summary(m)` of
-	 * `x <- summary(m)` is not.
-	 *
-	 * Only an edge that carries the value counts. A plain {@link EdgeType.Reads} does not: it also chains the
-	 * calls that share a side effect, which would report `plot(x)` as consumed by the `lines(y)` drawn after it.
-	 */
+	/** Whether the call's result is passed on -- assigned, handed to another call, returned -- rather than left for R to auto-print. */
 	valueIsUsed(this: void, id: NodeId, graph: DataflowGraph): boolean {
-		const consuming = EdgeType.Argument | EdgeType.Returns | EdgeType.DefinedBy;
-		for(const [, edge] of graph.ingoingEdges(id) ?? NoEdges) {
-			if(DfEdge.includesType(edge, consuming)) {
-				return true;
-			}
-		}
-		return false;
+		return graph.edgesTo(id).values().some(edge => DfEdge.includesType(edge, EdgeType.Argument | EdgeType.Returns | EdgeType.DefinedBy));
 	},
-	/**
-	 * Whether any argument of the call carries a value the program worked out, rather than only literals the
-	 * author typed: `cat("starting\n")` is a log line, `cat("n =", length(m))` is a finding.
-	 * A call among the arguments counts as computed, even one over literals such as `paste("a", "b")`.
-	 */
+	/** Whether any argument of the call carries a value the program worked out, rather than only literals the author typed: `cat("starting\n")` is a log line, `cat("n =", length(m))` is a finding. */
 	hasComputedArguments(this: void, id: NodeId, graph: DataflowGraph): boolean {
-		for(const [target] of graph.outgoingEdges(id) ?? NoEdges) {
-			if(!NodeId.isBuiltIn(target) && !ValueVertex.is(graph.getVertex(target))) {
+		for(const [target] of graph.edgesFrom(id)) {
+			if(!NodeId.isBuiltIn(target) && !DfgVertex.isValue(graph.getVertex(target))) {
 				return true;
 			}
 		}
 		return false;
 	},
-	/**
-	 * Interprocedural propagation of escaped side effects (attached packages, `<<-` definitions) to their callers.
-	 */
-	sideEffects: {
-		propagateTransitive: propagateTransitiveSideEffects,
-		callGraphSummaries:  computeCallGraphSummaries,
+	/** The ids at the far end of the outgoing edges of `node` that carry any of `types` (empty if there are none). */
+	targetsOf(this: void, graph: DataflowGraph, node: NodeId, types: EdgeType): NodeId[] {
+		const found: NodeId[] = [];
+		for(const [target, edge] of graph.edgesFrom(node)) {
+			if(DfEdge.includesType(edge, types)) {
+				found.push(target);
+			}
+		}
+		return found;
 	},
-	/**
-	 * Only returns the sub-part of the graph that is determined by the given selection.
-	 * In other words, this will return a graph with only vertices that are part of the selected ids,
-	 * and edges that are between such selected vertices.
-	 * @param graph                 - the dataflow graph to slice for
-	 * @param select                - the ids to select in the reduced graph
-	 * @param includeMissingTargets - if set to true, this will include edges which target vertices that are not selected!
-	 */
+	/** The ids at the near end of the incoming edges of `node` that carry any of `types` (empty if there are none). */
+	sourcesOf(this: void, graph: DataflowGraph, node: NodeId, types: EdgeType): NodeId[] {
+		const found: NodeId[] = [];
+		for(const [source, edge] of graph.edgesTo(node)) {
+			if(DfEdge.includesType(edge, types)) {
+				found.push(source);
+			}
+		}
+		return found;
+	},
+	/** Whether there is an edge from `from` to `to` that carries any of `types`. */
+	hasEdge(this: void, graph: DataflowGraph, from: NodeId, to: NodeId, types: EdgeType): boolean {
+		const edge = graph.edgesFrom(from).get(to);
+		return edge !== undefined && DfEdge.includesType(edge, types);
+	},
+	/** The ids of the function definitions a call is linked to by a {@link EdgeType.Calls} edge (empty if none, e.g. for built-ins). */
+	calleeIdsOf(this: void, graph: DataflowGraph, call: NodeId): NodeId[] {
+		return Dataflow.targetsOf(graph, call, EdgeType.Calls).filter(t => DfgVertex.isFunctionDefinition(graph.getVertex(t)));
+	},
+	/** The function definitions (as nodes of the normalized AST) a call is linked to by a {@link EdgeType.Calls} edge, see {@link Dataflow.calleeIdsOf}. */
+	calleeDefinitionsOf(this: void, graph: DataflowGraph, call: NodeId): RFunctionDefinition<ParentInformation>[] {
+		return Dataflow.calleeIdsOf(graph, call).map(id => graph.idMap?.get(id)).filter(RFunctionDefinition.is);
+	},
+	/** All known targets of a call, as well as the name sources which define them (empty if there are none). */
+	callTargetsOf(this: void, call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation, resolver?: LinkedFunctionResolver): NodeId[] {
+		return getAllFunctionCallTargets(call, graph, environment, resolver);
+	},
+	/** Whether every function the call may run is a built-in or one the program defines, so that what flowR knows about those functions is all there is to know about the call. */
+	callsOnlyKnownFunctions(this: void, call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation): boolean {
+		return Dataflow.callTargetsOf(call, graph, environment).every(t => NodeId.isBuiltIn(t) || DfgVertex.isFunctionDefinition(graph.getVertex(t)));
+	},
+	/** The calls within the body of a function definition, id and vertex paired. */
+	* callsIn(this: void, definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): Generator<[NodeId, DataflowGraphVertexFunctionCall]> {
+		for(const node of definition.subflow.graph) {
+			const vertex = graph.getVertex(node);
+			if(DfgVertex.isFunctionCall(vertex)) {
+				yield [node, vertex];
+			}
+		}
+	},
+	/** The value a plain assignment binds to the definition `def`, `undefined` for any other kind of definition (`class(x) <- `, `assign`, a parameter, ...). */
+	assignedValueOf(this: void, def: NodeId, graph: DataflowGraph): NodeId | undefined {
+		const vertex = graph.getVertex(def);
+		const byAssignment = Dataflow.targetsOf(graph, def, EdgeType.DefinedBy).some(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Assignment));
+		return DfgVertex.isVariableDefinition(vertex) && byAssignment && vertex.source?.length === 1 ? vertex.source[0] : undefined;
+	},
+	/** The vertices the value at `id` originates from: an argument is followed to its value, a read to the definitions it reads, a definition to what it is defined by (other than the assignment making it) or, for a replacement (`e$f <- v`), to what the variable held before, and with `throughAccess` an access to what it accesses. */
+	valueSources(this: void, id: NodeId, graph: DataflowGraph, opts?: { readonly throughAccess?: boolean, readonly budget?: number }): NodeId[] | undefined {
+		const budget = opts?.budget ?? 256;
+		const origins: NodeId[] = [];
+		const seen = new Set<NodeId>();
+		const todo = [id];
+		for(let at = todo.pop(); at !== undefined; at = todo.pop()) {
+			if(seen.has(at)) {
+				continue;
+			} else if(seen.size >= budget) {
+				return undefined;
+			}
+			seen.add(at);
+			const node = graph.idMap?.get(at);
+			const vertex = graph.getVertex(at);
+			let next: readonly NodeId[] = [];
+			if(RArgument.is(node)) {
+				next = node.value === undefined ? [] : [node.value.info.id];
+			} else if(DfgVertex.isUse(vertex)) {
+				next = Dataflow.targetsOf(graph, at, EdgeType.Reads);
+			} else if(DfgVertex.isVariableDefinition(vertex) && node?.info.role === RoleInParent.Accessed) {
+				/* a replacement (`e$f <- v`) rebinds `e` to what it held, changed in part */
+				next = Dataflow.targetsOf(graph, at, EdgeType.Reads).filter(t => DfgVertex.isVariableDefinition(graph.getVertex(t)));
+			} else if(DfgVertex.isVariableDefinition(vertex)) {
+				next = Dataflow.targetsOf(graph, at, EdgeType.DefinedBy).filter(t => !DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Assignment));
+			} else if(opts?.throughAccess && DfgVertex.hasOrigin(vertex, BuiltInProcName.Access) && DfgVertex.isFunctionCall(vertex)) {
+				const [accessed] = vertex.args;
+				next = accessed === undefined || accessed === EmptyArgument ? [] : [accessed.nodeId];
+			}
+			if(next.length === 0) {
+				origins.push(at);
+			} else {
+				todo.push(...next);
+			}
+		}
+		return origins;
+	},
+	/** Whether the call at `id` binds with `<<-` (or `->>`), be it the assignment itself or a replacement it runs: `x$a <<- v` rebinds `x` in an enclosing frame just like `x <<- v` does. */
+	superAssigns(this: void, graph: DataflowGraph, id: NodeId): boolean {
+		const vertex = graph.getVertex(id);
+		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.SuperAssignment)) {
+			return true;
+		} else if(!DfgVertex.hasOrigin(vertex, BuiltInProcName.Replacement) || graph.idMap === undefined) {
+			return false;
+		}
+		const assignment = RNode.findEnclosing(id, graph.idMap, RBinaryOp.is);
+		const operator = assignment === undefined ? undefined : (graph.idMap.get(assignment) as RBinaryOp | undefined)?.operator;
+		return operator === '<<-' || operator === '->>';
+	},
+	/** Whether the definition `def` is made by a super assignment (`v <<- 5`, `v$a <<- 5`), see {@link Dataflow.superAssigns}. */
+	definedBySuperAssignment(this: void, graph: DataflowGraph, def: NodeId): boolean {
+		return Dataflow.targetsOf(graph, def, EdgeType.DefinedBy).some(t => Dataflow.superAssigns(graph, t));
+	},
+
+	/** Every variable definition of the graph by its unquoted name, in a single pass. */
+	definitionsByName(this: void, graph: DataflowGraph): DefaultMap<BrandedIdentifier, NodeId[]> {
+		const byName = new DefaultMap<BrandedIdentifier, NodeId[]>(() => []);
+		for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
+			const name = NodeId.recoverBareName(id, graph.idMap);
+			if(name !== undefined) {
+				byName.get(name).push(id);
+			}
+		}
+		return byName;
+	},
+	/** The definitions and references to the symbol with the given id (including itself), or `undefined` if it is no symbol of the graph. */
+	refsToSymbol(this: void, graph: DataflowGraph, id: NodeId): NodeId[] | undefined {
+		return getAllRefsToSymbol(graph, id);
+	},
+	/** Interprocedural propagation of escaped side effects (attached packages, `<<-` definitions) to their callers. */
+	sideEffects: {
+		propagateTransitive:      propagateTransitiveSideEffects,
+		callGraphSummaries:       computeCallGraphSummaries,
+		foldCallGraph:            foldCallGraph,
+		/** What running the given code reads and writes of the global state (pseudo variables like `#option:digits`, see {@link AmbientStateName}), the global variables the functions it calls bind, and its drawing calls (`SemanticCallTag.Graphics`), including what the functions it calls access. */
+		ambientAccess:            ambientAccessOf,
+		/** {@link Dataflow.sideEffects.ambientAccess} for every function definition when it is called, including what the functions it calls access. */
+		ambientAccessOfFunctions: ambientAccessOfFunctions,
+	},
+	/** Only returns the sub-part of the graph that is determined by the given selection. */
 	reduceGraph<G extends DataflowGraph>(this: void, graph: G, select: ReadonlySet<NodeId>, includeMissingTargets = false): G {
 		const df = new DataflowGraph(graph.idMap);
 		const roots = graph.rootIds();
@@ -175,7 +242,7 @@ export const Dataflow = {
 			if(select.has(id)) {
 				df.addVertex(
 					vtx,
-					vtx.environment as unknown as REnvironmentInformation,
+					vtx.environment,
 					forceRoot || roots.has(id)
 				);
 			}
@@ -192,20 +259,10 @@ export const Dataflow = {
 				df.addEdge(from, tar, types);
 			}
 		}
-		for(const u of graph.unknownSideEffects) {
-			const id = UnknownSideEffect.id(u);
-			if(select.has(id)) {
-				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
-			}
-		}
-		return df as G;
+		return copySelectedMarks(graph, df, select) as G;
 	},
 
-	/**
-	 * Equivalent to {@link Dataflow.reduceGraph|`reduceGraph`} followed by {@link Dataflow.invertGraph|`invertGraph`}
-	 * but in a single pass over the graph, allocating only one intermediate object instead of two.
-	 * Use this when you need the reduced-and-inverted graph for a forward traversal within a restriction set.
-	 */
+	/** Equivalent to {@link Dataflow.reduceGraph|`reduceGraph`} followed by {@link Dataflow.invertGraph|`invertGraph`} but in a single pass over the graph, allocating only one intermediate object instead of two. */
 	reduceAndInvertGraph<G extends DataflowGraph>(this: void, graph: G, select: ReadonlySet<NodeId>, cleanEnv: REnvironmentInformation): G {
 		const df = new DataflowGraph(graph.idMap);
 		for(const [id, vtx] of graph.vertices(true)) {
@@ -224,80 +281,30 @@ export const Dataflow = {
 				df.addEdge(to, from, types);
 			}
 		}
-		for(const u of graph.unknownSideEffects) {
-			const id = UnknownSideEffect.id(u);
-			if(select.has(id)) {
-				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
-			}
-		}
-		return df as G;
+		return copySelectedMarks(graph, df, select) as G;
 	},
 
-	/**
-	 * Whether the node is quoted, i.e., affected by a {@link EdgeType.NonStandardEvaluation} edge that actually
-	 * keeps it from being evaluated (as `quote` and `substitute` do).
-	 *
-	 * Loops mark their body as non-standard-evaluated as well, yet that body really is evaluated (and its symbols
-	 * really are read), so such an edge does not quote. Use this instead of testing for the edge type directly
-	 * whenever you want to know whether something is evaluated at all.
-	 * @param id           - The id of the node to check
-	 * @param graph        - The graph the node is part of
-	 * @param withOutgoing - Whether to also consider the outgoing edges of the node (i.e., whether the node itself
-	 *                       quotes something), and not just the ingoing ones (i.e., whether it is quoted)
-	 */
+	/** See {@link DataflowGraph#isQuoted}, which this answers for `graph`. */
 	isQuoted(this: void, id: NodeId, graph: DataflowGraph, withOutgoing = false): boolean {
-		/* an nse edge quotes iff it does not originate from a loop marking its body */
-		const quotes = (source: NodeId, e: DfEdge): boolean =>
-			DfEdge.includesType(e, EdgeType.NonStandardEvaluation) && !RLoopConstructs.is(graph.idMap?.get(source));
-		if(graph.ingoingEdges(id)?.entries().some(([source, e]) => quotes(source, e))) {
-			return true;
-		}
-		return withOutgoing && (graph.outgoingEdges(id)?.values().some(e => quotes(id, e)) ?? false);
+		return graph.isQuoted(id, withOutgoing);
 	},
-
-	/**
-	 * Given the id of a vertex (usually a variable use),
-	 * this returns a reachable provenance set by calculating a non-interprocedural and non-context sensitive backward slice, but stopping at the given ids!
-	 * You can obtain the corresponding graph using {@link Dataflow.reduceGraph}.
-	 * @param id          - The id to use as a seed for provenance calculation
-	 * @param graph       - The graph to perform the provenance calculation on
-	 * @param consider    - The ids to restrict the calculation too (e.g., the ids contained within a function definition to restrict the analysis to)
-	 * @param followEdges - Which edges to consider in the provenance traversal, if you set this to undefined this will automatically track all edges
-	 * @see {@link Dataflow.provenanceGraph} - for a convenience wrapper to directly obtain the graph of the provenance.
-	 */
-	provenance(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>, followEdges: number | undefined = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.DefinedByOnCall): Set<NodeId> {
-		const queue = [id];
-		const visited = new Set<NodeId>();
-
-		while(queue.length > 0) {
-			const nodeId = queue.pop();
-			if(nodeId === undefined || visited.has(nodeId) || (consider && !consider.has(nodeId))) {
-				continue;
-			}
-			visited.add(nodeId);
-			const vtx = graph.get(nodeId);
-			if(vtx === undefined) {
-				continue;
-			}
-			for(const [to, types] of vtx[1]) {
-				if(followEdges === undefined || DfEdge.includesType(types, followEdges)) {
-					queue.push(to);
-				}
-			}
-			for(const cd of vtx[0].cds ?? []) {
-				queue.push(cd.id);
+	/** Whether the node or one of its AST ancestors is quoted or evaluated elsewhere (`quote(...)`, a data mask), see {@link DataflowGraph#isQuoted}. */
+	isWithinQuoted(this: void, id: NodeId, graph: DataflowGraph): boolean {
+		const idMap = graph.idMap;
+		for(let cur = idMap?.get(id); cur !== undefined; cur = cur.info.parent === undefined ? undefined : idMap?.get(cur.info.parent)) {
+			if(graph.isQuoted(cur.info.id)) {
+				return true;
 			}
 		}
-		return visited;
+		return false;
 	},
-	/**
-	 * A simple visitor akin to {@link RNode.visitAst} to traverse the dataflow graph starting from the start id and only
-	 * respecting edge direction.
-	 * @param graph      - The dataflow graph to operate on.
-	 * @param start      - The start id of the visitation.
-	 * @param onVertex   - The function to execute for each vertex, if this returns `true` the visitation will stop from this vertex.
-	 */
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+
+	/** Given the id of a vertex (usually a variable use), this returns a reachable provenance set by calculating a non-interprocedural and non-context sensitive backward slice, but stopping at the given ids! */
+	provenance(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>, followEdges: number | undefined = ProvenanceEdges): Set<NodeId> {
+		return Dataflow.reachable(graph, id, { follow: followEdges, consider, cds: true });
+	},
+	/** A simple visitor akin to {@link RNode.visitAst} to traverse the dataflow graph starting from the start id and only respecting edge direction. */
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- visitors that only observe return nothing, and we never stop for them
 	visitDfg(this: void, graph: DataflowGraph, start: NodeId, onVertex: (vtx: DataflowGraphVertexInfo) => (boolean | void)) {
 		const queue = [start];
 		const visited = new Set<NodeId>();
@@ -321,22 +328,98 @@ export const Dataflow = {
 			}
 		}
 	},
-	/**
-	 * A convenience wrapper for {@link Dataflow.reduceGraph|reducing} the {@link Dataflow.provenance|provenance} of a graph.
-	 * @param id       - The id to use as a seed for provenance calculation
-	 * @param graph    - The graph to perform the provenance calculation on
-	 * @param consider - The ids to restrict the calculation too (e.g., the ids contained within a function definition to restrict the analysis to)
-	 * @see {@link Dataflow.provenance}
-	 */
+	/** A convenience wrapper for {@link Dataflow.reduceGraph|reducing} the {@link Dataflow.provenance|provenance} of a graph. */
 	provenanceGraph(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>): DataflowGraph {
 		return Dataflow.reduceGraph(graph, Dataflow.provenance(id, graph, consider));
+	},
+	/** What `library(pkg)` does, asked without analyzing any code. */
+	library: {
+		name:      'library',
+		/** The `search()` entries `library(pkg)` adds; see {@link libraryAttachesOf}. */
+		attaches:  libraryAttachesOf,
+		/** The namespaces `library(pkg)` loads; see {@link libraryLoadsOf}. */
+		loads:     libraryLoadsOf,
+		/** The environment layers `library(pkg)` adds to the search path; see {@link libraryLayersOf}. */
+		layers:    libraryLayersOf,
+		/** The exports of `pkg` that re-export another package's function, with that package; see {@link libraryReexportsOf}. */
+		reexports: libraryReexportsOf
 	}
 } as const;
 
 /** both qualifications of a call from a single origin resolution, as the base-R step only adds to what the origins gave */
 const resolveQualification: CallQualifier = (graph, id, vertex) => {
-	const origins = getOriginInDfg(graph, id);
-	const name = FunctionCallVertex.is(vertex) ? vertex.name : undefined;
+	const origins = Dataflow.origin(graph, id);
+	const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : undefined;
 	const bare = Identifier.toQualified(origins, name, false);
-	return [bare, bare ?? Identifier.toQualified(origins, name, true)];
+	return [bare, bare ?? Identifier.toQualified(origins, name, true) ?? aliasedBaseR(graph, id, origins)];
 };
+
+/** The base-R function an aliased call resolves to when it reaches nothing of the analyzed code, `utils::read.csv` for the `f()` of `f <- read.csv`, which the origins alone cannot tell from a call of the code, as both read the definition of `f`. */
+function aliasedBaseR(graph: DataflowGraph, id: NodeId, origins: readonly Origin[] | undefined): Identifier | undefined {
+	if(!origins?.some(o => !('proc' in o) && !NodeId.isBuiltIn(o.id))) {
+		return undefined;
+	}
+	for(const [target, edge] of graph.edgesFrom(id)) {
+		if(DfEdge.includesType(edge, EdgeType.Calls) && !NodeId.isBuiltIn(target)) {
+			return undefined;
+		}
+	}
+	const names = new Set(origins.flatMap(o => 'proc' in o && NodeId.isBuiltIn(o.proc) ? [NodeId.fromBuiltIn(o.proc)] : []));
+	const [name] = names;
+	const owner = names.size === 1 ? baseRExportOwner(name) : undefined;
+	return owner === undefined ? undefined : Identifier.make(name, owner);
+}
+
+/** The layers `library(pkg)` puts on an empty search path, innermost first, built by the {@link attachLibrary} the analysis uses: per attached package its namespace (exports) and imports layer, or for an unresolved one what flowR states about it or a bare {@link EnvType.LoadedNamespace}. */
+function libraryLayersOf(this: void, ctx: FlowrAnalyzerContext, pkg: BrandedNamespace, spec?: AttachSpec): readonly Environment[] {
+	return [...REnvironment.searchPath(attachLibrary(pkg, ctx.deps.getDependency(pkg), ctx.env.makeCleanEnv(), ctx, spec).current)];
+}
+
+/** The `search()` entries `library(pkg)` adds, in `search()` order: `pkg`, its `Depends` and a meta-package's core set, recursively. */
+function libraryAttachesOf(this: void, ctx: FlowrAnalyzerContext, pkg: BrandedNamespace, spec?: AttachSpec): readonly BrandedNamespace[] {
+	if(spec?.namespaceOnly) {
+		return []; // loading a namespace puts nothing on the search path
+	}
+	/* a package R attaches on startup is on the search path already, so a `Depends: methods` adds no entry */
+	return libraryLayersOf(ctx, pkg, spec).filter(l => l.t !== EnvType.Imports && l.n !== undefined && !AttachedBasePackageSet.has(l.n)).map(l => l.n as string);
+}
+
+/** The exports of `pkg` it re-exports from another package, mapped to that package (`%>%` of dplyr to `magrittr`). */
+function libraryReexportsOf(this: void, ctx: FlowrAnalyzerContext, pkg: BrandedNamespace): ReadonlyMap<BrandedIdentifier, BrandedNamespace> {
+	const ns = ctx.deps.getDependency(pkg)?.namespaceInfo;
+	const reexports = new Map<BrandedIdentifier, BrandedNamespace>();
+	if(ns === undefined) {
+		return reexports;
+	}
+	for(const fn of getCallables(ns)) {
+		const origin = importOrigin(fn, ns);
+		if(origin !== undefined) {
+			reexports.set(fn, origin);
+		}
+	}
+	return reexports;
+}
+
+/** The packages loading `pkg` loads directly: its `Depends` and `Imports`, its `NAMESPACE` imports, and a meta-package's core set. */
+function directLoadsOf(ctx: FlowrAnalyzerContext, pkg: BrandedNamespace): BrandedNamespace[] {
+	const db = ctx.deps.signatures();
+	const dependency = ctx.deps.getDependency(pkg);
+	return [
+		...(db.sources().dependencies(pkg, db.versionOf(pkg)) ?? [])
+			.filter(d => (d.type === DepType.Depends || d.type === DepType.Imports) && d.name !== 'R').map(d => d.name),
+		...dependency?.namespaceInfo?.importedPackages.keys() ?? [],
+		...dependency?.dependencies?.map(d => d.name) ?? [],
+		...metaPackageCore(pkg, db.versionOf(pkg))
+	];
+}
+
+/** The namespaces `library(pkg)` loads, `pkg` first: the closure over {@link directLoadsOf} at the versions the analysis assumes. */
+function libraryLoadsOf(this: void, ctx: FlowrAnalyzerContext, pkg: BrandedNamespace): readonly BrandedNamespace[] {
+	const loaded = new Set([pkg]);
+	for(const p of loaded) {
+		for(const d of directLoadsOf(ctx, p)) {
+			loaded.add(d);
+		}
+	}
+	return [...loaded];
+}

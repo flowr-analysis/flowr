@@ -24,7 +24,8 @@ const ContributingRef = `${FlowrGithubRef}/tree/main/.github/CONTRIBUTING.md`;
 
 const Commands: readonly [command: string, why: string][] = [
 	['npm run flowr:dev', 'start the REPL on the current sources'],
-	['npm test', 'run the functionality tests (watch mode)'],
+	['npm test', 'run the functionality tests affected by uncommitted changes (watch mode)'],
+	['npm run test:all', 'run all functionality tests'],
 	['npm run lint-local', 'typecheck and lint without the license check'],
 	['npm run checkup', 'everything the CI runs, in parallel']
 ];

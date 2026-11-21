@@ -1,4 +1,9 @@
 import { configDefaults, defineConfig } from 'vitest/config';
+import { readFileSync } from 'fs';
+import './test-tmp.mjs';
+
+/* read rather than imported: a JSON import needs an import attribute the project's TypeScript setup does not allow */
+const TestSuites = JSON.parse(readFileSync('test/functionality/test-suites.json', 'utf8')) as Record<'functionality' | 'mutations', { folder: string, details: string }>;
 
 export default defineConfig({
 	test: {
@@ -16,13 +21,15 @@ export default defineConfig({
 			]
 		},
 		testTimeout: 60 * 1000,
+		/* a `beforeAll` like that of `assertSliced` runs the analysis the tests then check, so it gets as long as a test */
+		hookTimeout: 60 * 1000,
 		sequence:    {
 			/* each test file that does not support parallel execution will be executed in sequence by stating this explicitly */
 			concurrent: true,
 			setupFiles: 'parallel'
 		},
-		setupFiles:  ['./test/functionality/test-setup.ts'],
-		globalSetup: ['./test/functionality/test-setup-global.ts'],
+		setupFiles:  [`./${TestSuites.functionality.folder}/test-setup.ts`],
+		globalSetup: [`./${TestSuites.functionality.folder}/test-setup-global.ts`],
 		reporters:   process.env.GITHUB_ACTIONS ? ['default', 'github-actions'] : ['dot'],
 		isolate:     false,
 		pool:        'threads',
@@ -42,8 +49,19 @@ export default defineConfig({
 		exclude: [
 			...configDefaults.exclude,
 			'dist/**',
-			'test/system-tests/**'
+			'test/system-tests/**',
+			'test/mutations/**'
 		],
-		include: ['test/functionality/**/*.test.ts']
+		include:            [`${TestSuites.functionality.folder}/**/*.test.ts`],
+		/* changes no test imports, but which every test may depend on, run everything (also for `--changed`) */
+		forceRerunTriggers: [
+			...configDefaults.forceRerunTriggers,
+			'**/test/vitest.config.mts',
+			'**/test/functionality/test-setup*.ts',
+			'**/test/testfiles/**',
+			'**/package.json',
+			'**/package-lock.json',
+			'**/tsconfig.json'
+		]
 	},
 });

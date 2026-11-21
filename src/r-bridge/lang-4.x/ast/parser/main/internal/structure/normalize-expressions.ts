@@ -55,9 +55,7 @@ interface HandledExpressionList {
 	braces:   undefined | [start: NamedJsonEntry, end: NamedJsonEntry]
 }
 
-/**
- * Split a token collection into comments tokens and "other" tokens
- */
+/** Split a token collection into comments tokens and "other" tokens */
 export function splitComments(tokens: readonly NamedJsonEntry[]) {
 	const comments = [];
 	const others = [];
@@ -70,7 +68,6 @@ export function splitComments(tokens: readonly NamedJsonEntry[]) {
 	}
 	return { comments, others };
 }
-
 
 function splitExprs(tokens: readonly NamedJsonEntry[]) {
 	let last = 0, i = 0;
@@ -100,37 +97,22 @@ function splitExprs(tokens: readonly NamedJsonEntry[]) {
 	return segments;
 }
 
-/**
- * Handles semicolons within _and_ braces at the start and end of the expression
- * @param raw - The tokens to split
- */
+/** Handles semicolons within _and_ braces at the start and end of the expression */
 function handleExpressionList(raw: readonly NamedJsonEntry[]): HandledExpressionList {
 	if(raw.length === 0) {
 		return { segments: [], comments: [], braces: undefined };
 	}
 	const { comments, others: tokens } = splitComments(raw);
 	const first = tokens[0]?.name;
-	if(first === RawRType.BraceLeft) {
+	const close = first === RawRType.BraceLeft ? RawRType.BraceRight : first === RawRType.ParenLeft ? RawRType.ParenRight : undefined;
+	if(close !== undefined) {
 		const endType = tokens[tokens.length - 1].name;
-		guard(endType === RawRType.BraceRight, () => `expected a brace at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`);
-		return {
-			segments: [tokens.slice(1, tokens.length - 1)],
-			comments,
-			braces:   [tokens[0], tokens[tokens.length - 1]]
-		};
-	} else if(first === RawRType.ParenLeft) {
-		const endType = tokens[tokens.length - 1].name;
-		guard(endType === RawRType.ParenRight, () => `expected a parenthesis at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`);
-		return {
-			segments: [tokens.slice(1, tokens.length - 1)],
-			comments,
-			braces:   [tokens[0], tokens[tokens.length - 1]]
-		};
+		guard(endType === close, () => `expected a ${first === RawRType.BraceLeft ? 'brace' : 'parenthesis'} at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`);
+		return { segments: [tokens.slice(1, tokens.length - 1)], comments, braces: [tokens[0], tokens[tokens.length - 1]] };
 	} else {
 		return { segments: splitExprs(tokens), comments, braces: undefined };
 	}
 }
-
 
 function processBraces([start, end]: [start: NamedJsonEntry, end: NamedJsonEntry], processed: readonly RNode[], comments: RComment[], data: NormalizerData): RExpressionList {
 	const [newStart, newEnd] = [tryNormalizeSymbol(data, [start]), tryNormalizeSymbol(data, [end])];
@@ -141,15 +123,11 @@ function processBraces([start, end]: [start: NamedJsonEntry, end: NamedJsonEntry
 		grouping: [newStart, newEnd],
 		lexeme:   undefined,
 		location: undefined,
-		info:     {
-			adToks: comments,
-		}
+		info:     { adToks: comments }
 	};
 }
 
-/**
- * Normalizes a list of expressions, handling semicolons and braces
- */
+/** Normalizes a list of expressions, handling semicolons and braces */
 export function normalizeExpressions(
 	data: NormalizerData,
 	tokens: readonly JsonEntry[] | readonly NamedJsonEntry[]
@@ -192,13 +170,10 @@ export function normalizeExpressions(
 		mappedWithName = segments[0];
 	}
 
-
 	return [...parsedComments, ...normalizeMappedWithoutSemicolonBasedOnType(mappedWithName, data)];
 }
 
-/**
- * Parses nodes when their type is unknown
- */
+/** Parses nodes when their type is unknown */
 export function parseNodesWithUnknownType(data: NormalizerData, mappedWithName: readonly NamedJsonEntry[] | undefined): (RNode | RDelimiter)[] {
 	const parsedNodes: (RNode | RDelimiter)[] = [];
 	// used to indicate the new root node of this set of nodes

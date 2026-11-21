@@ -1,6 +1,7 @@
 import ts, { SyntaxKind, type NamedDeclaration, type SourceFile, type TypeChecker } from 'typescript';
 import { guard } from '../../util/assert';
-import { RemoteFlowrFilePathBaseRef, toPosixPath } from './doc-files';
+import { RemoteFlowrFilePathBaseRef } from './doc-files';
+import { RPath } from '../../util/files';
 import fs from 'fs';
 import path from 'path';
 import { codeBlock } from './doc-code';
@@ -15,9 +16,7 @@ import { Mermaid } from '../../util/mermaid/mermaid';
  */
 export type TypeElementKind = 'interface' | 'type' | 'enum' | 'class' | 'variable';
 
-/**
- * The full underlying information about a TypeScript type element found in source code.
- */
+/** The full underlying information about a TypeScript type element found in source code. */
 export interface TypeElementInSource {
 	name:                 string;
 	node:                 ts.Node;
@@ -56,13 +55,11 @@ const options: ts.CompilerOptions = {
 
 } as const;
 
-/**
- * Retrieve TypeScript source files from the given file names.
- */
+/** Retrieve TypeScript source files from the given file names. */
 export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {
 		// keeps wiki/doc links consistent across OSes (Windows uses backslashes)
-		const normalizedFileNames = fileNames.map(toPosixPath);
+		const normalizedFileNames = fileNames.map(RPath.of);
 		const program = ts.createProgram(normalizedFileNames, options);
 		return { program, files: normalizedFileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file) };
 	} catch(err) {
@@ -70,7 +67,6 @@ export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files:
 		return { files: [], program: undefined as unknown as ts.Program };
 	}
 }
-
 
 const DropGenericsPattern = /<.*>/g;
 /**
@@ -132,9 +128,10 @@ function getTextualCommentsFromTypeScript(node: ts.Node): string[] {
 	return out;
 }
 
-
 /**
- *
+ * The 1-based line a TypeScript node starts on, for the wiki pages that link into the source.
+ * @param node       - the node to locate
+ * @param sourceFile - the file it belongs to
  */
 export function getStartLineOfTypeScriptNode(node: ts.Node, sourceFile: ts.SourceFile): number {
 	const lineStart = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line;
@@ -176,7 +173,6 @@ function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
 
 const defaultSkip = ['Pick', 'Partial', 'Required', 'Readonly', 'Omit', 'DeepPartial', 'DeepReadonly', 'DeepWritable', 'StrictOmit'];
 
-
 function followTypeReference(type: ts.TypeReferenceNode, sourceFile: ts.SourceFile): string[] {
 	const node = type.typeName;
 	if(ts.isQualifiedName(node)) {
@@ -206,32 +202,32 @@ function genericNames(node: { readonly typeParameters?: ts.NodeArray<ts.TypePara
 	return node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
 }
 
-function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], options: GetTypesWithProgramOption): TypeElementInSource[] {
+function collectTypeHierarchy(sourceFiles: readonly ts.SourceFile[], options: GetTypesWithProgramOption): TypeElementInSource[] {
 	const hierarchyList: TypeElementInSource[] = [];
 	const typeChecker = options.program.getTypeChecker();
 	const visit = (node: ts.Node | undefined, sourceFile: ts.SourceFile) => {
 		if(!node) {
 			return;
 		}
-
-		if(ts.isInterfaceDeclaration(node)) {
-			const interfaceName = node.name?.getText(sourceFile) ?? '';
-			const baseTypes = heritageTypeNames(node, sourceFile);
-			const generics = genericNames(node, sourceFile);
-
-			hierarchyList.push({
-				name:       dropGenericsFromTypeName(interfaceName),
+		const nameOf = (n: { readonly name?: ts.Node }) => n.name?.getText(sourceFile) ?? '';
+		const membersOf = (members: readonly NamedDeclaration[]) => members.map(member => formatNode(member, sourceFile, typeChecker));
+		const add = (name: string, kind: TypeElementKind, extendsTypes: string[], generics: string[] = [], properties?: string[]) => {
+			return hierarchyList.push({
+				name:       dropGenericsFromTypeName(name),
 				node,
-				kind:       'interface',
-				extends:    baseTypes,
+				kind,
+				extends:    extendsTypes,
 				generics,
 				comments:   getTextualCommentsFromTypeScript(node),
 				filePath:   sourceFile.fileName,
 				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
-				properties: node.members.map(member => formatNode(member, sourceFile, typeChecker)),
+				properties
 			});
+		};
+
+		if(ts.isInterfaceDeclaration(node)) {
+			add(nameOf(node), 'interface', heritageTypeNames(node, sourceFile), genericNames(node, sourceFile), membersOf(node.members));
 		} else if(ts.isTypeAliasDeclaration(node)) {
-			const typeName = node.name?.getText(sourceFile) ?? '';
 			let baseTypes: string[] = [];
 			if(ts.isIntersectionTypeNode(node.type) || ts.isUnionTypeNode(node.type)) {
 				baseTypes = node.type.types
@@ -241,101 +237,28 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 			} else if(ts.isTypeReferenceNode(node.type)) {
 				baseTypes = followTypeReference(node.type, sourceFile).map(dropGenericsFromTypeName);
 			}
-
-			const generics = genericNames(node, sourceFile);
-
-			hierarchyList.push({
-				name:       dropGenericsFromTypeName(typeName),
-				node,
-				kind:       'type',
-				extends:    baseTypes,
-				comments:   getTextualCommentsFromTypeScript(node),
-				generics,
-				filePath:   sourceFile.fileName,
-				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
-			});
+			add(nameOf(node), 'type', baseTypes, genericNames(node, sourceFile));
 		} else if(ts.isEnumDeclaration(node)) {
-			const enumName = node.name?.getText(sourceFile) ?? '';
-			hierarchyList.push({
-				name:       dropGenericsFromTypeName(enumName),
-				node,
-				kind:       'enum',
-				extends:    [],
-				comments:   getTextualCommentsFromTypeScript(node),
-				generics:   [],
-				filePath:   sourceFile.fileName,
-				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
-				properties: node.members.map(member => formatNode(member, sourceFile, typeChecker))
-			});
+			add(nameOf(node), 'enum', [], [], membersOf(node.members));
 		} else if(ts.isEnumMember(node)) {
-			const typeName = node.parent.name?.getText(sourceFile) ?? '';
-			const enumName = dropGenericsFromTypeName(typeName);
-			hierarchyList.push({
-				name:       dropGenericsFromTypeName(node.name.getText(sourceFile)),
-				node,
-				kind:       'enum',
-				extends:    [enumName],
-				comments:   getTextualCommentsFromTypeScript(node),
-				generics:   [],
-				filePath:   sourceFile.fileName,
-				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
-			});
+			add(node.name.getText(sourceFile), 'enum', [dropGenericsFromTypeName(nameOf(node.parent))]);
 		} else if(ts.isClassDeclaration(node)) {
-			const className = node.name?.getText(sourceFile) ?? '';
-			const baseTypes = heritageTypeNames(node, sourceFile);
-			const generics = genericNames(node, sourceFile);
-
-			hierarchyList.push({
-				name:       dropGenericsFromTypeName(className),
-				node,
-				kind:       'class',
-				extends:    baseTypes,
-				comments:   getTextualCommentsFromTypeScript(node),
-				generics,
-				filePath:   sourceFile.fileName,
-				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
-				properties: node.members
-					.filter(member => member.name !== undefined)
-					.map(member => formatNode(member, sourceFile, typeChecker)),
-			});
+			add(nameOf(node), 'class', heritageTypeNames(node, sourceFile), genericNames(node, sourceFile), membersOf(node.members.filter(member => member.name !== undefined)));
 		} else if(
 			ts.isVariableDeclaration(node) || ts.isExportDeclaration(node) || ts.isExportAssignment(node) || ts.isDeclarationStatement(node)
 		) {
-			const name = node.name?.getText(sourceFile) ?? '';
-			const comments = getTextualCommentsFromTypeScript(node);
-			hierarchyList.push({
-				name:       dropGenericsFromTypeName(name),
-				node,
-				kind:       'variable',
-				extends:    [],
-				comments,
-				generics:   [],
-				filePath:   sourceFile.fileName,
-				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
-			});
+			add(nameOf(node), 'variable', []);
 		} else if(
 			ts.isPropertyAssignment(node) || ts.isPropertyDeclaration(node) || ts.isPropertySignature(node)
 			|| ts.isMethodDeclaration(node) || ts.isMethodSignature(node) || ts.isFunctionDeclaration(node) || ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node)
 		) {
-			const name = node.name?.getText(sourceFile) ?? '';
-
 			// get the name of the object/enclosing type
 			let parent = node.parent;
 			while(typeof parent === 'object' && parent !== undefined && !('name' in parent)) {
 				parent = parent.parent;
 			}
 			if(typeof parent === 'object' && 'name' in parent) {
-				const comments = getTextualCommentsFromTypeScript(node);
-				hierarchyList.push({
-					name:       dropGenericsFromTypeName(name),
-					node,
-					kind:       'variable',
-					extends:    [parent.name?.getText(sourceFile) ?? ''],
-					comments,
-					generics:   [],
-					filePath:   sourceFile.fileName,
-					lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
-				});
+				add(nameOf(node), 'variable', [parent.name?.getText(sourceFile) ?? '']);
 			}
 		}
 
@@ -353,7 +276,6 @@ interface MermaidCompact {
 	nodeLines: string[]
 	edgeLines: string[]
 }
-
 
 function getTypePathForTypeScript({ filePath }: Pick<TypeElementInSource, 'filePath' >) {
 	return filePath.replace(/^.*\/src\//, 'src/').replace(/^.*\/test\//, 'test/');
@@ -402,7 +324,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 	if(node.kind === 'type') {
 		collect.nodeLines.push(`style ${node.name} opacity:.35,fill:#FAFAFA`);
 	}
-	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${Mermaid.escape(node.comments?.join('; ').replace(/\n/g, ' ') ?? '' )}"`);
+	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${Mermaid.escape(node.comments?.join('; ').replace(/\n/g, ' ') ?? '')}"`);
 	const inline = [...options.inlineTypes ?? [], ...defaultSkip];
 
 	let baseTypes = node.extends;
@@ -437,9 +359,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 	return collect;
 }
 
-/**
- * Visualize the type hierarchy as a mermaid class diagram.
- */
+/** Visualize the type hierarchy as a mermaid class diagram. */
 export function visualizeMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], options: { typeNameForMermaid?: string } & MermaidClassDiagramArguments): string | undefined {
 	if(!options.typeNameForMermaid) {
 		return undefined;
@@ -462,12 +382,8 @@ function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMerma
 	const { files, program } = getTypeScriptSourceFiles(fileNames);
 	guard(files.length > 0, () => `No source files found for ${JSON.stringify(fileNames)}`);
 	const withProgram = { ...options, program };
-	const hierarchyList = collectHierarchyInformation(files, withProgram);
-	return {
-		mermaid: visualizeMermaidClassDiagram(hierarchyList, withProgram),
-		info:    hierarchyList,
-		program
-	};
+	const hierarchyList = collectTypeHierarchy(files, withProgram);
+	return { mermaid: visualizeMermaidClassDiagram(hierarchyList, withProgram), info: hierarchyList, program };
 }
 
 export interface GetTypesAsMermaidOption {
@@ -492,9 +408,7 @@ export interface TypeReport {
 export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid: string }): (TypeReport & { mermaid: string });
 export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid?: undefined }): (TypeReport & { mermaid: undefined });
 export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport;
-/**
- * Inspect typescript source code for types and return a report.
- */
+/** Inspect typescript source code for types and return a report. */
 export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport {
 	guard(options.rootFolder !== undefined || options.files !== undefined, 'Either rootFolder or files must be provided');
 	let files = [...options.files ?? []];
@@ -503,21 +417,13 @@ export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport
 		for(const folder of folders) {
 			files = files.concat(
 				fs.readdirSync(folder, { recursive: true })
-					.filter(f => {
-						const p = f.toString();
-						return p.endsWith('.ts')
-							&& !p.endsWith('.test.ts')
-							&& !p.endsWith('-app.ts')
-							&& !p.endsWith('.d.ts');
-					}
-					)
+					.filter(f => f.toString().endsWith('.ts') && !['.test.ts', '-app.ts', '.d.ts'].some(s => f.toString().endsWith(s)))
 					.map(f => path.join(folder, f.toString()))
 			);
 		}
 	}
 	return getTypesFromFileAsMermaid(files, options);
 }
-
 
 function implSnippet(node: TypeElementInSource | undefined, program: ts.Program, showName = true, nesting = 0, open = false, showImplSnippet = true): string {
 	guard(node !== undefined, 'Node must be defined => invalid change of type name?');
@@ -598,9 +504,7 @@ export function printHierarchy({ program, info, root, ignoredTypes, collapseFrom
 	}
 }
 
-/**
- * Options to print code of an element
- */
+/** Options to print code of an element */
 export interface FnElementInfo {
 	/** The type information collected from the source code */
 	info:             TypeElementInSource[],
@@ -642,7 +546,7 @@ export function printCodeOfElement(info: FnElementInfo, name: string): string {
  * This is great to show examples that are directly taken from the source code.
  */
 export function printCodeOfFile(info: FnElementInfo, relativePath: string): string {
-	const fullPath = toPosixPath(path.resolve(__dirname, `../../../${relativePath}`));
+	const fullPath = RPath.of(path.resolve(__dirname, `../../../${relativePath}`));
 	const code = info.program.getSourceFile(fullPath)?.getFullText().trim();
 	if(!code) {
 		console.error(`Could not find source file ${relativePath}!`);
@@ -694,20 +598,15 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
 	if(name.includes('::')) {
 		[container, name] = name.split(/:::?/);
 	}
-	let node = hierarchy.filter(e =>  fuzzy ? fuzzyCompare(e.name, name) : e.name === name);
+	let node = hierarchy.filter(e => (fuzzy ? fuzzyCompare(e.name, name) : e.name === name)
+		&& (!container || (fuzzy ? e.extends.some(n => fuzzyCompare(n, container)) : e.extends.includes(container)))
+		&& (!type || e.kind === type));
 	if(node.length === 0) {
 		return undefined;
-	} else if(container) {
-		node = node.filter(n => fuzzy ? n.extends.some(n => fuzzyCompare(n, container)) : n.extends.includes(container));
-		if(node.length === 0) {
-			return undefined;
-		}
 	}
-	if(type) {
-		node = node.filter(n => n.kind === type);
-		if(node.length === 0) {
-			return undefined;
-		}
+	if(!container) {
+		/* a bare name means the declaration itself, not a member that happens to share it (like the `Dataflow` gas key of `GasFeatureKey`) */
+		node = [...node.filter(n => n.extends.length === 0), ...node.filter(n => n.extends.length > 0)];
 	}
 	return [container, name, node[0]];
 }
@@ -715,13 +614,13 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
 /**
  * Create a short link to a type in the documentation.
  * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
- * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
+ * @param name            - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
  *                    Use `:::` if you want to access a scoped function, but the name should be displayed without the scope
- * @param hierarchy - The hierarchy of types to search in
- * @param codeStyle - Whether to use code style for the link
+ * @param hierarchy       - The hierarchy of types to search in
+ * @param codeStyle       - Whether to use code style for the link
  * @param realNameWrapper - How to highlight the function in name in the `x::y` format?
- * @param fuzzy     - Whether to use fuzzy matching when searching for the type
- * @param type      - Optionally restrict to a certain type of element
+ * @param fuzzy           - Whether to use fuzzy matching when searching for the type
+ * @param type            - Optionally restrict to a certain type of element
  */
 export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b', fuzzy?: boolean, type?: TypeElementKind): string {
 	const res = retrieveNode(name, hierarchy, fuzzy, type);
@@ -729,19 +628,14 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 		console.error(`Could not find node ${name} when resolving short link!`);
 		return '';
 	}
-	const [, mainName, node] = res;
-	let pkg = res[0];
-	if(name.includes(':::')) {
-		pkg = undefined;
-	}
+	const [container, mainName, node] = res;
+	const pkg = name.includes(':::') ? undefined : container;
+	const label = pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName;
 	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/<\/?p\/?>/g, ' ').replace(/"/g, '\'') ?? '';
 	return `<a href="${getTypePathLink(node)}">${codeStyle ? '<code>' : ''}${
-		(node.comments?.length ?? 0) > 0 ?
-			textWithTooltip(pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) :
-			pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName
+		(node.comments?.length ?? 0) > 0 ? textWithTooltip(label, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) : label
 	}${codeStyle ? '</code>' : ''}</a>`;
 }
-
 
 /**
  * Create a short link to a type in the documentation.
@@ -764,7 +658,6 @@ export interface GetDocumentationForTypeFilters {
 	fuzzy?: boolean;
 	type?:  TypeElementKind;
 }
-
 
 /**
  * Retrieve documentation comments for a type.

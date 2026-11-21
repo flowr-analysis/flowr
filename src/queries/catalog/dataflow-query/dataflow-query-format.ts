@@ -1,21 +1,28 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { executeDataflowQuery } from './dataflow-query-executor';
-import { bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import { queryHeader } from '../../query-print';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { metaSince, warnUnlessSingleQuery } from '../../query-meta';
+
+/** Executes the given dataflow queries. */
+export async function executeDataflowQuery({ analyzer }: BasicQueryData, queries: readonly DataflowQuery[]): Promise<DataflowQueryResult> {
+	warnUnlessSingleQuery('Dataflow', queries);
+	const startTime = Date.now();
+	const { graph } = await analyzer.dataflow();
+	return { ...metaSince(startTime), graph: queries.every(q => q.environments === false) ? graph.withoutEnvironments() : graph };
+}
 
 /** Above this many characters, the mermaid.live link is dropped from the REPL output (large graphs produce megabyte-sized base64 urls). */
 const MaxMermaidUrlLength = 8000;
 
-/**
- * Simple re-returns the dataflow graph of the analysis.
- */
+/** Simple re-returns the dataflow graph of the analysis. */
 export interface DataflowQuery extends BaseQueryFormat {
-	readonly type: 'dataflow';
+	readonly type:          'dataflow';
+	/** Whether to include the environments of the vertices and function definitions (default), see {@link DataflowGraph#withoutEnvironments}. */
+	readonly environments?: boolean;
 }
 
 export interface DataflowQueryResult extends BaseQueryResult {
@@ -28,26 +35,23 @@ export const DataflowQueryDefinition = {
 	executor:        executeDataflowQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow'>['dataflow'];
-		result.push(`Query: ${bold('dataflow', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('dataflow', formatter, out['.meta'].timing));
 		const url = Dataflow.visualize.mermaid.url(out.graph);
 		if(url.length <= MaxMermaidUrlLength) {
 			result.push(`   ╰ [Dataflow Graph](${url})`);
 		} else {
-			const vertices = Array.from(out.graph.vertices(true)).length;
+			const vertices = out.graph.vertices(true).toArray().length;
 			const edges = Array.from(out.graph.edges()).length;
 			result.push(`   ╰ Dataflow Graph too large to link (${vertices} vertices, ${edges} edges, url would be ${url.length} chars); use ':df#' for more detail.`);
 		}
 		return true;
 	},
 	schema: Joi.object({
-		type: Joi.string().valid('dataflow').required().description('The type of the query.'),
+		type:         Joi.string().valid('dataflow').required().description('The type of the query.'),
+		environments: Joi.boolean().optional().description('Whether to include the environments of the vertices and function definitions (default: true). They make up most of the answer, so leave them out if only the graph itself is of interest.'),
 	}).description('The dataflow query simply returns the dataflow graph, there is no need to pass it multiple times!'),
-	flattenInvolvedNodes: queryResults => {
-		const flattened: NodeId[] = [];
+	flattenInvolvedNodes: (queryResults): NodeId[] => {
 		const out = queryResults as QueryResults<'dataflow'>['dataflow'];
-		for(const id of out.graph.idMap?.keys() ?? []) {
-			flattened.push(id);
-		}
-		return flattened;
+		return [...out.graph.idMap?.keys() ?? []];
 	}
 } as const satisfies SupportedQuery<'dataflow'>;

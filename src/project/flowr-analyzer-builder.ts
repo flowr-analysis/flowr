@@ -1,5 +1,4 @@
-import { type EngineConfig, FlowrConfig, type ValidFlowrConfigPaths } from '../config';
-import type { DeepWritable } from 'ts-essentials';
+import { type WritableFlowrConfig, type ConfigValueAt, type EngineConfig, type EngineConfigPath, FlowrConfig, type ValidFlowrConfigPaths } from '../config';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
@@ -8,15 +7,14 @@ import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize
 import { guard } from '../util/assert';
 import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
-import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-registry';
-import { makePlugin } from './plugins/plugin-registry';
-import type { ValueAtPath } from '../util/objects';
+import { type BuiltInFlowrPluginName, type PluginToRegister, makePlugin } from './plugins/plugin-registry';
 
 /**
  * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
  * with {@link FlowrAnalyzerBuilder#build|`.build()`} or {@link FlowrAnalyzerBuilder#buildSync|`.buildSync()`}.
  *
  * You can add new files and folders to analyze using the {@link FlowrAnalyzer#addRequest|`.addRequest()`} method on the resulting analyzer.
+ * @see https://github.com/flowr-analysis/flowr/wiki/Analyzer
  * @example Let's create an analyzer for a single R script file:
  *
  * ```ts
@@ -33,10 +31,9 @@ import type { ValueAtPath } from '../util/objects';
  * const dfInfo = await analyzer.dataflow();
  * console.log(dfInfo);
  * ```
- * @see https://github.com/flowr-analysis/flowr/wiki/Analyzer
  */
 export class FlowrAnalyzerBuilder {
-	private flowrConfig:                 DeepWritable<FlowrConfig> = FlowrConfig.default();
+	private flowrConfig:                 WritableFlowrConfig = FlowrConfig.default();
 	private parser?:                     KnownParser;
 	private input?:                      Omit<NormalizeRequiredInput, 'context'>;
 	private readonly plugins:            Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
@@ -64,8 +61,8 @@ export class FlowrAnalyzerBuilder {
 	 * Per default, the value returned by {@link FlowrConfig.default} is used.
 	 * @param func - Receives the current configuration of the builder and allows for amendment.
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-	public amendConfig(func: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): this {
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- amendments usually mutate in place and return nothing
+	public amendConfig(func: (config: WritableFlowrConfig) => FlowrConfig | void): this {
 		this.flowrConfig = FlowrConfig.amend(this.flowrConfig, func);
 		return this;
 	}
@@ -89,15 +86,22 @@ export class FlowrAnalyzerBuilder {
 	// we have a type safe export to ease auto-completion
 	/**
 	 * Set a specific value in the configuration used by the resulting analyzer.
+	 *
+	 * Besides the configuration's own paths this takes an {@link EngineConfigPath}, so an engine option that
+	 * lives in an array entry is reachable the same way as everything else:
+	 * @example
+	 * ```ts
+	 * new FlowrAnalyzerBuilder()
+	 *   .setEngine('tree-sitter')
+	 *   .configure('engine.tree-sitter.lax', true)   // parse on, syntax errors and all
+	 * ```
 	 */
-	public configure<K extends ValidFlowrConfigPaths>(
+	public configure<K extends ValidFlowrConfigPaths | EngineConfigPath>(
 		key: K,
-		value: ValueAtPath<FlowrConfig, K>
+		value: ConfigValueAt<K>
 	): this;
-	/**
-	 * Set a specific value in the configuration used by the resulting analyzer.
-	 */
-	public configure(key: ValidFlowrConfigPaths, value: unknown): this {
+	/** Set a specific value in the configuration used by the resulting analyzer. */
+	public configure(key: ValidFlowrConfigPaths | EngineConfigPath, value: unknown): this {
 		FlowrConfig.setInConfigInPlace(this.flowrConfig, key, value as never);
 		return this;
 	}
@@ -115,16 +119,15 @@ export class FlowrAnalyzerBuilder {
 	/**
 	 * Set the engine and hence the parser that will be used by the analyzer.
 	 * This is an alternative to {@link FlowrAnalyzerBuilder#setParser} if you do not have a parser instance at hand.
+	 * @param engine - The engine to analyze with; its own options are set with
+	 *               {@link FlowrAnalyzerBuilder#configure|configure} (`engine.tree-sitter.lax`, ...).
 	 */
 	public setEngine(engine: EngineConfig['type']): this {
 		(this.flowrConfig.defaultEngine as string) = engine;
 		return this;
 	}
 
-	/**
-	 * Additional parameters for the analyses.
-	 * @param input - The input.
-	 */
+	/** Additional parameters for the analyses. */
 	public setInput(input: Omit<NormalizeRequiredInput, 'context'>): this {
 		this.input = input;
 		return this;
@@ -186,6 +189,14 @@ export class FlowrAnalyzerBuilder {
 	}
 
 	/**
+	 * {@link FlowrAnalyzerBuilder#build|Build} the analyzer and {@link FlowrAnalyzer#addRequest|add} the given requests to it,
+	 * e.g., `await new FlowrAnalyzerBuilder().setParser(parser).buildFor('x <- 1')`.
+	 */
+	public async buildFor(...request: Parameters<FlowrAnalyzer['addRequest']>): Promise<FlowrAnalyzer> {
+		return (await this.build()).addRequest(...request);
+	}
+
+	/**
 	 * Synchronous version of {@link FlowrAnalyzerBuilder#build}, please only use this if you have set the parser using
 	 * {@link FlowrAnalyzerBuilder#setParser} before, otherwise an error will be thrown.
 	 */
@@ -196,11 +207,7 @@ export class FlowrAnalyzerBuilder {
 		if(this.flowrConfig.solver.sigdb.enabled && this.flowrConfig.solver.sigdb.eagerlyLoad) {
 			context.deps.eagerlyLoadSignatureDatabases();
 		}
-		const cache = FlowrAnalyzerCache.create({
-			parser: this.parser,
-			context,
-			...(this.input ?? {})
-		});
+		const cache = FlowrAnalyzerCache.create({ parser: this.parser, context, ...(this.input ?? {}) });
 
 		return new FlowrAnalyzer(
 			this.parser,

@@ -1,71 +1,21 @@
-import type { ReplCodeCommand, ReplOutput } from './repl-main';
+import type { ReplCodeCommand } from './repl-main';
 import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid/cfg';
-import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type CfgSimplificationPassName, DefaultCfgSimplificationOrder } from '../../../control-flow/cfg-simplification';
-import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import { handleString } from '../core';
-import { ReplClipboard } from './repl-clipboard';
+import { clipboardCommand } from './repl-code-command';
 
-function formatInfo(out: ReplOutput, type: string): string {
-	return out.formatter.format(`Copied ${type} to clipboard.`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
+function cfgCommand(description: string, usageExample: string, aliases: string[], simplifications: readonly CfgSimplificationPassName[], cfgConverter: (cfg: ControlFlowInformation, ast: NormalizedAst) => string): ReplCodeCommand {
+	return clipboardCommand(description, usageExample, aliases, async analyzer => {
+		const cfg = await analyzer.controlflow([...DefaultCfgSimplificationOrder, ...simplifications]);
+		return { text: cfgConverter(cfg, await analyzer.normalize()), type: 'mermaid code' };
+	});
 }
 
-async function produceAndPrintCfg(analyzer: ReadonlyFlowrAnalysisProvider, output: ReplOutput, simplifications: readonly CfgSimplificationPassName[], cfgConverter: (cfg: ControlFlowInformation, ast: NormalizedAst) => string) {
-	const cfg = await analyzer.controlflow([...DefaultCfgSimplificationOrder, ...simplifications]);
-	const normalizedAst = await analyzer.normalize();
-	const mermaid = cfgConverter(cfg, normalizedAst);
-	await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid code'));
-}
+export const controlflowCommand = cfgCommand('Get mermaid code for the control-flow graph of R code', ':controlflow', ['cfg', 'cf'], [], cfgToMermaid);
 
-export const controlflowCommand: ReplCodeCommand = {
-	description:   'Get mermaid code for the control-flow graph of R code',
-	isCodeCommand: true,
-	usageExample:  ':controlflow',
-	aliases:       [ 'cfg', 'cf' ],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
-		await produceAndPrintCfg(analyzer, output, [], cfgToMermaid);
-	}
-};
+export const controlflowStarCommand = cfgCommand('Returns the URL to mermaid.live', ':controlflow*', ['cfg*', 'cf*'], [], cfgToMermaidUrl);
 
+export const controlflowBbCommand = cfgCommand('Get mermaid code for the control-flow graph with basic blocks', ':controlflowbb', ['cfgb', 'cfb'], ['to-basic-blocks'], cfgToMermaid);
 
-export const controlflowStarCommand: ReplCodeCommand = {
-	description:   'Returns the URL to mermaid.live',
-	isCodeCommand: true,
-	usageExample:  ':controlflow*',
-	aliases:       [ 'cfg*', 'cf*' ],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
-		await produceAndPrintCfg(analyzer, output, [], cfgToMermaidUrl);
-	}
-};
-
-
-export const controlflowBbCommand: ReplCodeCommand = {
-	description:   'Get mermaid code for the control-flow graph with basic blocks',
-	isCodeCommand: true,
-	usageExample:  ':controlflowbb',
-	aliases:       [ 'cfgb', 'cfb' ],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
-		await produceAndPrintCfg(analyzer, output, ['to-basic-blocks'], cfgToMermaid);
-	}
-};
-
-
-export const controlflowBbStarCommand: ReplCodeCommand = {
-	description:   'Returns the URL to mermaid.live',
-	isCodeCommand: true,
-	usageExample:  ':controlflowbb*',
-	aliases:       [ 'cfgb*', 'cfb*' ],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
-		await produceAndPrintCfg(analyzer, output, ['to-basic-blocks' ], cfgToMermaidUrl);
-	}
-};
+export const controlflowBbStarCommand = cfgCommand('Returns the URL to mermaid.live', ':controlflowbb*', ['cfgb*', 'cfb*'], ['to-basic-blocks'], cfgToMermaidUrl);

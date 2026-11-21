@@ -1,4 +1,5 @@
 export * from './wiki-core';
+export * from './wiki-helper-objects';
 export * from './wiki-query';
 export * from './wiki-search';
 export * from './wiki-engine';

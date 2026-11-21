@@ -4,6 +4,7 @@ import readline from 'readline';
 import { guard } from '../../util/assert';
 import { log } from '../../util/log';
 import { exitSafe } from '../../util/proc';
+import { SecureMode } from '../../util/secure-mode';
 
 type Stdio = [stdin: Writable | null, stdout: Readable | null, stderr: Readable | null, extra: Writable | Readable | null | undefined, extra: Writable | Readable | null | undefined];
 export type StdioProcessor = (stdio: Stdio) => void;
@@ -16,19 +17,12 @@ export type StdioProcessor = (stdio: Stdio) => void;
  */
 export function stdioCaptureProcessor(stdio: Stdio, onStdOutLine: (msg: string) => void, onStdErrLine: (msg: string) => void) {
 	guard(stdio[1] !== null, 'no stdout given in stdio!');
-	const outRl = readline.createInterface({
-		input:    stdio[1],
-		terminal: false
-	});
+	const outRl = readline.createInterface({ input: stdio[1], terminal: false });
 	guard(stdio[2] !== null, 'no stderr given in stdio!');
-	const errRl = readline.createInterface({
-		input:    stdio[2],
-		terminal: false
-	});
+	const errRl = readline.createInterface({ input: stdio[2], terminal: false });
 	outRl.on('line', onStdOutLine);
 	errRl.on('line', onStdErrLine);
 }
-
 
 /**
  * Run the given module with the presented arguments, and wait for it to exit.
@@ -45,9 +39,8 @@ export function stdioCaptureProcessor(stdio: Stdio, onStdOutLine: (msg: string) 
  */
 export async function waitOnScript(module: string, args: readonly string[], io?: StdioProcessor, exitOnError = false): Promise<void> {
 	log.info(`starting script ${module} with args ${JSON.stringify(args)}`);
-	const child = cp.fork(module, args, {
-		silent: io !== undefined
-	});
+	SecureMode.guard('starting a process', module);
+	const child = cp.fork(module, args, { silent: io !== undefined });
 	if(io !== undefined) {
 		io(child.stdio);
 	}

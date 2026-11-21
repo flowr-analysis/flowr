@@ -24,6 +24,8 @@ export interface NameRankInput {
 	readonly s3?:        boolean;
 	/** the name holds a value rather than a function */
 	readonly variable?:  boolean;
+	/** the script being edited defines the name itself, which is what its author most likely means */
+	readonly local?:     boolean;
 }
 
 /**
@@ -42,7 +44,7 @@ const Adjustments: readonly (readonly [points: number, when: (of: NameRankInput)
 	[900, ({ name, needle }) => name !== needle && name.toLowerCase() === needle.toLowerCase()],
 	/* a real function from base R is what a reader usually means; a lone symbol almost never is */
 	[40, ({ name, baseR }) => baseR === true && name.length >= 3],
-	[-20, ({ variable }) => variable === true],
+	[-20, ({ variable, local }) => variable === true && local !== true],
 	[-40, ({ name }) => name.length < 3],
 	/* `names<-` is the replacement form of `names`, and nobody reaches for it first */
 	[-35, ({ name }) => name.endsWith('<-')],
@@ -52,6 +54,8 @@ const Adjustments: readonly (readonly [points: number, when: (of: NameRankInput)
 	/* a name flowR recognises outranks a closer spelling it knows nothing about: typing `plot` should
 	   offer `ggplot` before `plotH`, because one of them is a function people actually call */
 	[500, ({ known }) => known === true],
+	/* what the script defines itself outranks everything it merely could call, short of what was typed exactly */
+	[2000, ({ local }) => local === true],
 	[-30, ({ s3 }) => s3 === true],
 	/* operators, punctuation, and SHOUTING names are rarely what someone is looking for */
 	[-60, ({ name }) => /^%.*%$/.test(name) || /^[^\w.]/.test(name)],

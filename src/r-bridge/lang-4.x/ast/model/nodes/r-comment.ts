@@ -1,5 +1,4 @@
-import type { Leaf, Location, NoInfo } from '../model';
-import { RNode } from '../model';
+import { type Leaf, type Location, type NoInfo, RNode } from '../model';
 import { RType } from '../type';
 
 /**
@@ -13,6 +12,7 @@ export interface RComment<Info = NoInfo> extends Location, Leaf<Info> {
 
 /**
  * Helper for working with {@link RComment} AST nodes.
+ * @helper ast
  */
 export const RComment = {
 	...RNode,

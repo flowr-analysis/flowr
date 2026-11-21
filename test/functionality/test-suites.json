@@ -1,0 +1,4 @@
+{
+	"functionality": { "folder": "test/functionality", "details": "coverage/flowr-test-details.json" },
+	"mutations": { "folder": "test/mutations", "details": "coverage/flowr-test-details-mutations.json" }
+}

@@ -4,9 +4,7 @@ import { PosIntervalDomain, PosIntervalTop } from '../domains/positive-interval-
 import type { SetRangeValue } from '../domains/set-range-domain';
 import type { DataFrameDomain } from './dataframe-domain';
 
-/**
- * Represents the different types of resulting constraints that are inferred by abstract data frame operations.
- */
+/** Represents the different types of resulting constraints that are inferred by abstract data frame operations. */
 export enum ConstraintType {
 	/** The inferred constraints must hold for the operand at the point of the operation */
 	OperandPrecondition,
@@ -16,10 +14,7 @@ export enum ConstraintType {
 	ResultPostcondition
 }
 
-/**
- * Mapper for defining the abstract data frame operations and mapping them to semantics applier functions,
- * including information about the type of the resulting constraints that are inferred by the operation.
- */
+/** Maps abstract data frame operations to their semantics applier function and inferred constraint type. */
 const DataFrameSemanticsMapper = {
 	'create':      { apply: applyCreateSemantics,      type: ConstraintType.ResultPostcondition },
 	'read':        { apply: applyReadSemantics,        type: ConstraintType.ResultPostcondition },
@@ -50,12 +45,7 @@ type DataFrameSemanticsMapperInfo<Arguments extends object, Options extends obje
 	readonly type:  ConstraintType
 };
 
-/**
- * Data frame semantics applier for applying the abstract semantics of an abstract data frame operation with respect to the data frame shape domain.
- * - `value` contains the abstract data frame shape of operand of the abstract operation
- * - `args` contains the arguments required for the abstract operation
- * - `options` optionally contains additional options to change the behavior or the abstract operation
- */
+/** Applies the abstract semantics of an abstract data frame operation to the operand `value`'s shape, given `args` and optional `options`. */
 type DataFrameSemanticsApplier<Arguments extends object, Options extends object | undefined> = (
 	value: DataFrameDomain,
 	args: Arguments,
@@ -75,14 +65,8 @@ export type DataFrameOperationArgs<N extends DataFrameOperationName> = Parameter
 export type DataFrameOperationOptions<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]['apply']>[2];
 
 /**
- * Applies the abstract semantics of an abstract data frame operation with respect to the data frame shape domain.
- * This expects that all arguments have already been sanitized according to the original concrete data frame function (e.g. by replacing duplicate/invalid column names).
- * @param operation - The name of the abstract operation to apply the semantics of
- * @param value     - The abstract data frame shape of the operand of the abstract operation
- * @param args      - The arguments for applying the abstract semantics of the abstract operation
- * @param options   - The optional additional options of the abstract operation
- * @returns The resulting new data frame shape constraints.
- * The semantic type of the resulting constraints depends on the {@link ConstraintType} of the abstract operation.
+ * Applies the abstract semantics of `operation` to `value`, assuming `args`/`options` were already sanitized per the
+ * original concrete function (e.g. duplicate/invalid column names replaced). Result's constraint type: {@link ConstraintType}.
  */
 export function applyDataFrameSemantics<Name extends DataFrameOperationName>(
 	operation: Name,
@@ -95,9 +79,7 @@ export function applyDataFrameSemantics<Name extends DataFrameOperationName>(
 	return applier.apply(value, args, options);
 }
 
-/**
- * Gets the default resulting constraint type for an abstract data frame operation.
- */
+/** Gets the default resulting constraint type for an abstract data frame operation. */
 export function getConstraintType(operation: DataFrameOperationName): ConstraintType {
 	return DataFrameSemanticsMapper[operation].type;
 }
@@ -129,11 +111,7 @@ function applyAccessColsSemantics(
 	{ columns }: { columns: string[] | number[] | undefined }
 ): DataFrameDomain {
 	if(columns?.every(col => typeof col === 'string')) {
-		return value.create({
-			colnames: value.colnames.union(setRange(columns)),
-			cols:     value.cols,
-			rows:     value.rows
-		});
+		return value.create({ colnames: value.colnames.union(setRange(columns)), cols: value.cols, rows: value.rows });
 	} else if(columns?.every(col => typeof col === 'number')) {
 		return value.create({
 			colnames: value.colnames,
@@ -160,9 +138,14 @@ function applyAccessRowsSemantics(
 
 function applyAssignColsSemantics(
 	value: DataFrameDomain,
-	{ columns }: { columns: string[] | number[] | undefined }
+	{ columns }: { columns: string[] | number[] | undefined },
+	options?: { maybeNull?: boolean }
 ): DataFrameDomain {
-	if(columns?.every(col => typeof col === 'string')) {
+	/* a value that may be `NULL` removes the columns instead */
+	if(options?.maybeNull) {
+		const removed = applyRemoveColsSemantics(value, { colnames: columns?.every(col => typeof col === 'string') ? columns : undefined }, { maybe: true });
+		return applyAssignColsSemantics(value, { columns }).join(removed);
+	} else if(columns?.every(col => typeof col === 'string')) {
 		return value.create({
 			colnames: value.colnames.union(setRange(columns)),
 			cols:     value.cols.add([0, columns.length]).max([columns.length, columns.length]),
@@ -175,11 +158,7 @@ function applyAssignColsSemantics(
 			rows:     value.rows
 		});
 	}
-	return value.create({
-		colnames: value.colnames.widenUp(),
-		cols:     value.cols.widenUp(),
-		rows:     value.rows
-	});
+	return value.create({ colnames: value.colnames.widenUp(), cols: value.cols.widenUp(), rows: value.rows });
 }
 
 function applyAssignRowsSemantics(
@@ -193,11 +172,7 @@ function applyAssignRowsSemantics(
 			rows:     rows.reduce((current, row) => current.max([row, row]), value.rows)
 		});
 	}
-	return value.create({
-		colnames: value.colnames,
-		cols:     value.cols,
-		rows:     value.rows.widenUp()
-	});
+	return value.create({ colnames: value.colnames, cols: value.cols, rows: value.rows.widenUp() });
 }
 
 function applySetColNamesSemantics(
@@ -206,11 +181,7 @@ function applySetColNamesSemantics(
 	options?: { partial?: boolean }
 ): DataFrameDomain {
 	if(options?.partial) {
-		return value.create({
-			colnames: value.colnames.widenDown().union(setRange(colnames)),
-			cols:     value.cols,
-			rows:     value.rows
-		});
+		return value.create({ colnames: value.colnames.widenDown().union(setRange(colnames)), cols: value.cols, rows: value.rows });
 	}
 	const allColNames = colnames?.every(isNotUndefined) && value.cols.isValue() && colnames.length >= value.cols.upper;
 
@@ -250,9 +221,19 @@ function applyAddRowsSemantics(
 	});
 }
 
+/**
+ * How many of `count` indices reaching up to `maxIndex` a removal actually drops: all of them while every index
+ * names something, and anywhere between none and all once one reaches past the extent, as R drops nothing for it.
+ */
+function removedRange(count: number, maxIndex: number | undefined, extent: PosIntervalDomain): [number, number] {
+	const lower = extent.isValue() ? extent.lower : undefined;
+	/* `subtract` takes what comes off each bound, so an uncertain removal takes `count` off the lower and none off the upper */
+	return maxIndex !== undefined && typeof lower === 'number' && maxIndex > lower ? [count, 0] : [count, count];
+}
+
 function applyRemoveColsSemantics(
 	value: DataFrameDomain,
-	{ colnames }: { colnames: (string | undefined)[] | undefined },
+	{ colnames, maxIndex }: { colnames: (string | undefined)[] | undefined, maxIndex?: number },
 	options?: { maybe?: boolean }
 ): DataFrameDomain {
 	if(options?.maybe) {
@@ -264,14 +245,14 @@ function applyRemoveColsSemantics(
 	}
 	return value.create({
 		colnames: colnames !== undefined ? value.colnames.subtract(setRange(colnames)) : value.colnames.widenDown(),
-		cols:     colnames !== undefined ? value.cols.subtract([colnames.length, colnames.length]) : value.cols.widenDown(),
+		cols:     colnames !== undefined ? value.cols.subtract(removedRange(colnames.length, maxIndex, value.cols)) : value.cols.widenDown(),
 		rows:     value.rows
 	});
 }
 
 function applyRemoveRowsSemantics(
 	value: DataFrameDomain,
-	{ rows }: { rows: number | undefined },
+	{ rows, maxIndex }: { rows: number | undefined, maxIndex?: number },
 	options?: { maybe?: boolean }
 ): DataFrameDomain {
 	if(options?.maybe) {
@@ -284,7 +265,7 @@ function applyRemoveRowsSemantics(
 	return value.create({
 		colnames: value.colnames,
 		cols:     value.cols,
-		rows:     rows !== undefined ? value.rows.subtract([rows, rows]) : value.rows.widenDown()
+		rows:     rows !== undefined ? value.rows.subtract(removedRange(rows, maxIndex, value.rows)) : value.rows.widenDown()
 	});
 }
 
@@ -292,11 +273,7 @@ function applyConcatColsSemantics(
 	value: DataFrameDomain,
 	{ other }: { other: DataFrameDomain }
 ): DataFrameDomain {
-	return value.create({
-		colnames: value.colnames.union(other.colnames),
-		cols:     value.cols.add(other.cols),
-		rows:     value.rows
-	});
+	return value.create({ colnames: value.colnames.union(other.colnames), cols: value.cols.add(other.cols), rows: value.rows });
 }
 
 function applyConcatRowsSemantics(
@@ -310,11 +287,7 @@ function applyConcatRowsSemantics(
 			rows:     value.rows.add(other.rows)
 		});
 	}
-	return value.create({
-		colnames: value.colnames,
-		cols:     value.cols,
-		rows:     value.rows.add(other.rows)
-	});
+	return value.create({ colnames: value.colnames, cols: value.cols, rows: value.rows.add(other.rows) });
 }
 
 function applySubsetColsSemantics(
@@ -342,22 +315,25 @@ function applySubsetColsSemantics(
 	});
 }
 
+/**
+ * Selecting rows by index yields exactly as many rows as the selection names, whatever the frame holds: R pads an
+ * index past the end with an `NA` row rather than dropping it, and repeats one that appears twice. That holds for
+ * a logical selection too. `head` and `tail` instead take what is there, which `atMost` states.
+ */
 function applySubsetRowsSemantics(
 	value: DataFrameDomain,
 	{ rows }: { rows: number | undefined },
-	options?: { duplicateRows?: boolean }
+	options?: { atMost?: boolean, repeats?: boolean }
 ): DataFrameDomain {
-	if(options?.duplicateRows) {
-		return value.create({
-			colnames: value.colnames,
-			cols:     value.cols,
-			rows:     rows !== undefined ? value.rows.create([rows, rows]) : value.rows.top()
-		});
+	if(rows === undefined) {
+		/* an index may name a row twice or past the end, a condition only selects among them */
+		return value.create({ colnames: value.colnames, cols: value.cols, rows: options?.repeats ? value.rows.top() : value.rows.widenDown() });
 	}
 	return value.create({
 		colnames: value.colnames,
 		cols:     value.cols,
-		rows:     rows !== undefined ? value.rows.min([rows, rows]) : value.rows.widenDown()
+		/* `head` and `tail` take what is there, an index selects what it names even where nothing is */
+		rows:     options?.atMost ? value.rows.min([rows, rows]) : value.rows.create([rows, rows])
 	});
 }
 
@@ -389,11 +365,7 @@ function applyGroupBySemantics(
 	options?: { mutatedCols?: boolean }
 ): DataFrameDomain {
 	if(options?.mutatedCols) {
-		return value.create({
-			colnames: value.colnames.union(setRange(by)),
-			cols:     value.cols.add([0, by.length]),
-			rows:     value.rows
-		});
+		return value.create({ colnames: value.colnames.union(setRange(by)), cols: value.cols.add([0, by.length]), rows: value.rows });
 	}
 	// Group by only marks columns as groups but does not change the shape itself
 	return value;
@@ -410,61 +382,62 @@ function applySummarizeSemantics(
 	});
 }
 
+/** Which rows of the two data frames a join keeps beyond the matching ones. */
+export enum JoinType {
+	Inner = 'inner',
+	Left = 'left',
+	Right = 'right',
+	Full = 'full'
+}
+
 function applyJoinSemantics(
 	value: DataFrameDomain,
 	{ other, by }: { other: DataFrameDomain, by: (string | undefined)[] | undefined },
-	options?: { join?: 'inner' | 'left' | 'right' | 'full', natural?: boolean }
+	options?: { join?: JoinType, natural?: boolean }
 ): DataFrameDomain {
 	// Merge two intervals by creating the maximum of the lower bounds and adding the upper bounds
-	const mergeInterval = (interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
+	function mergeInterval(interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain {
 		if(interval1.isValue() && interval2.isValue()) {
 			return new PosIntervalDomain([Math.max(interval1.lower, interval2.lower), interval1.upper + interval2.upper]);
 		}
 		return interval1.bottom();
-	};
-	// Creating the Cartesian product of two intervals by keeping the lower bound and multiplying the upper bounds
-	const productInterval = (lower: PosIntervalDomain, interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
+	}
+	// Creating the Cartesian product of two intervals by keeping the lower bound and multiplying the upper bounds (but never below the upper bound of the rows kept anyway)
+	function productInterval(lower: PosIntervalDomain, interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain {
 		if(lower.isValue() && interval1.isValue() && interval2.isValue()) {
-			return new PosIntervalDomain([lower.lower, interval1.upper * interval2.upper]);
+			return new PosIntervalDomain([lower.lower, Math.max(lower.upper, interval1.upper * interval2.upper)]);
 		}
 		return lower.bottom();
-	};
+	}
 	let duplicateCols: string[] | undefined;  // columns that may be renamed due to occurring in both data frames
-	let productRows: boolean;  // whether the resulting rows may be a Cartesian product of the rows of the data frames
 
 	if(options?.natural) {
-		const commonCols = value.colnames.intersect(other.colnames).upper();
 		duplicateCols = [];
-		productRows = commonCols !== Bottom && commonCols !== Top && commonCols.size === 0;
 	} else if(by === undefined) {
 		duplicateCols = undefined;
-		productRows = true;
 	} else if(by.length === 0) {
 		const commonCols = value.colnames.intersect(other.colnames).upper();
 		duplicateCols = commonCols !== Bottom ? commonCols !== Top ? [...commonCols] : undefined : [];
-		productRows = true;
 	} else if(by.every(isNotUndefined)) {
 		const remainingCols = value.colnames.intersect(other.colnames).subtract(setRange(by)).upper();
 		duplicateCols = remainingCols !== Bottom ? remainingCols !== Top ? [...remainingCols] : undefined : [];
-		productRows = false;
 	} else {
 		duplicateCols = undefined;
-		productRows = false;
 	}
-	const joinType = options?.join ?? 'inner';
+	const joinType = options?.join ?? JoinType.Inner;
 	let rows: PosIntervalDomain;
 
 	switch(joinType) {
-		case 'inner':
+		case JoinType.Inner:
 			rows = value.rows.max(other.rows).widenDown();
 			break;
-		case 'left':
+		case JoinType.Left:
 			rows = value.rows.max(other.rows.isValue() ? [0, other.rows.upper] : Bottom);
 			break;
-		case 'right':
+		case JoinType.Right:
 			rows = other.rows.max(value.rows.isValue() ? [0, value.rows.upper] : Bottom);
 			break;
-		case 'full':
+		case JoinType.Full:
 			rows = mergeInterval(value.rows, other.rows);
 			break;
 		default:
@@ -473,22 +446,21 @@ function applyJoinSemantics(
 	return value.create({
 		colnames: duplicateCols === undefined ? value.colnames.top() : duplicateCols.length > 0 ? value.colnames.union(other.colnames).subtract(setRange(duplicateCols)).widenUp() : value.colnames.union(other.colnames),
 		cols:     by !== undefined ? value.cols.add(other.cols).subtract([by.length, by.length]) : mergeInterval(value.cols, other.cols),
-		rows:     productRows ? productInterval(rows, value.rows, other.rows) : rows
+		// the keys need not be unique, so every row of one may match every row of the other
+		rows:     productInterval(rows, value.rows, other.rows)
 	});
 }
 
 function applyIdentitySemantics(
 	value: DataFrameDomain,
-	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-	_args: {}
+	_args: object
 ): DataFrameDomain {
 	return value;
 }
 
 function applyUnknownSemantics(
 	value: DataFrameDomain,
-	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-	_args: {}
+	_args: object
 ): DataFrameDomain {
 	return value.top();
 }

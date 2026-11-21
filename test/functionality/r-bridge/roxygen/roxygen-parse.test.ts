@@ -1,18 +1,17 @@
 import { assert, describe, test } from 'vitest';
-import type { RoxygenTag } from '../../../../src/r-bridge/roxygen2/roxygen-ast';
-import { KnownRoxygenTags } from '../../../../src/r-bridge/roxygen2/roxygen-ast';
+import { label } from '../../_helper/label';
+import { type RoxygenTag, KnownRoxygenTags } from '../../../../src/r-bridge/roxygen2/roxygen-ast';
 import { parseRoxygenCommentsOfNode, parseRoxygenComment } from '../../../../src/r-bridge/roxygen2/roxygen-parse';
 import { withTreeSitter } from '../../_helper/shell';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { guard } from '../../../../src/util/assert';
+import { analyze } from '../../_helper/analyzer';
 
 describe('Parse Comments', () => {
 	describe('Direct Comment Parser', () => {
 		function check(name: string, comments: string | string[], expected: readonly RoxygenTag[]) {
 			const lines = Array.isArray(comments) ? comments : comments.split('\n');
-			test(name, () => {
+			test(label(name, ['roxygen2'], ['other']), () => {
 				const parsed = parseRoxygenComment(lines);
 				assert.deepStrictEqual(parsed, expected);
 			});
@@ -99,8 +98,7 @@ describe('Parse Comments', () => {
 	describe('From R Code', withTreeSitter(ts => {
 		function check(name: string, code: string, asks: SlicingCriterion[], expected: readonly RoxygenTag[]) {
 			test.each(asks)(name, async(ask) => {
-				const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-				analyzer.addRequest(requestFromInput(code));
+				const analyzer = await analyze(ts, code);
 				const nast = await analyzer.normalize();
 				const criterion = SlicingCriterion.parse(ask, nast.idMap);
 				const vertex = nast.idMap.get(criterion);

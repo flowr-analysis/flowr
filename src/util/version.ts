@@ -1,29 +1,18 @@
 import { bold, faint, supportsHyperlinks } from './text/ansi';
-import { SemVer } from 'semver';
-import type { KnownParser } from '../r-bridge/parser';
+import { type KnownParser, ParserName } from '../r-bridge/parser';
 import { guard } from './assert';
 import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { sigDbRemoteRelease } from '../project/sigdb/sigdb-download';
 import { FlowrWikiBaseRef } from '../documentation/doc-util/doc-files';
+import { compareByCodeUnit } from './text/strings';
+import { flowrVersion, versionDate } from './flowr-version';
 
-// this is automatically replaced with the current version by release-it
-const version = '2.14.4';
-// this is automatically replaced with the release date by release-it (regex-bumper, see package.json)
-const versionDate = '2026-07-15T07:13:44Z';
-
-/**
- * Retrieves the current flowR version as a new {@link SemVer} object.
- */
-export function flowrVersion(): SemVer {
-	return new SemVer(version);
-}
+export { flowrVersion } from './flowr-version';
 
 type Version = `${number}.${number}.${number}`;
 
-/**
- * Describes the version of flowR and the used R interpreter.
- */
+/** Describes the version of flowR and the used R interpreter. */
 export interface VersionInformation {
 	/** The version of flowR */
 	flowr:  Version,
@@ -34,10 +23,7 @@ export interface VersionInformation {
 
 const versionRegex = /^\d+\.\d+\.\d+/m;
 
-
-/**
- * Retrieves the version information for flowR and the given parser or analysis provider.
- */
+/** Retrieves the version information for flowR and the given parser or analysis provider. */
 export async function retrieveVersionInformation(input: KnownParser | ReadonlyFlowrAnalysisProvider): Promise<VersionInformation> {
 	const flowr = flowrVersion().toString();
 
@@ -48,7 +34,7 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
 		name = input.name;
 	} else {
 		const parserInformation = input.parserInformation();
-		r = parserInformation.name === 'r-shell' ? (await parserInformation.rVersion()) : 'unknown';
+		r = parserInformation.name === ParserName.Shell ? (await parserInformation.rVersion()) : 'unknown';
 		name = parserInformation.name;
 	}
 
@@ -58,10 +44,7 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
 	return { flowr: flowr as Version, r: r as Version, engine: name };
 }
 
-
-/**
- * Displays the version information to the given output.
- */
+/** Displays the version information to the given output. */
 export async function printVersionInformation(output: ReplOutput, input: KnownParser | ReadonlyFlowrAnalysisProvider, engineOnly = false) {
 	const { flowr, r, engine } = await retrieveVersionInformation(input);
 	const dim = (s: string) => faint(s, output.formatter);
@@ -85,10 +68,10 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 		rows.push(['assumed R', `${ctx.resolvedRVersion} ${dim(`(solver.sigdb.assumedRVersion = "${setting}")`)}`]);
 		const dbs = ctx.deps.loadedSignatureDatabases();
 		const sigDbUrl = sigDbRemoteRelease()?.url;
-		const describe = (d: typeof dbs[number]) => {
+		function describe(d: typeof dbs[number]) {
 			const entry = `${d.scope} (v${d.version}, ${d.date}${d.format ? `, ${d.format}` : ''})`;
 			return sigDbUrl ? output.formatter.hyperlink(entry, sigDbUrl, true) : entry;
-		};
+		}
 		rows.push(['databases', dbs.length === 0 ? 'none' : dbs.map(describe).join(', '), dbs.length === 0]);
 		// the registered plugins, grouped by prefix; collected here and printed after the table (below) so the
 		// longer labels do not widen the version rows. The header links (once) to the plugin wiki section
@@ -106,20 +89,14 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 		// plugin/dataflow graph) into `util/version`, which `util/assert` depends on
 		const { BuiltInPlugins } = await import('../project/plugins/plugin-registry');
 		const keyByClass = new Map<string, string>(BuiltInPlugins.map(([key, producer]) => [producer.name, key]));
-		const activated = new Set<string>();
-		for(const cls of ctx.activatedPlugins) {
-			const key = keyByClass.get(cls);
-			if(key !== undefined) {
-				activated.add(key);
-			}
-		}
+		const activated = new Set(ctx.activatedPlugins.values().map(cls => keyByClass.get(cls)));
 		const render = (full: string, suffix: string): string => trace && !activated.has(full) ? dim(suffix) : suffix;
 		const labelWidth = Math.max(...[...byPrefix.keys()].map(p => p.length));
 		const header = `registered plugins (${names.length})`;
 		const hint = trace ? ' (faint = did not activate)' : ' (set +repl.showPlugins=true to track activation)';
 		pluginLines.push(`${bold(output.formatter.hyperlink(header, wiki, true), output.formatter)}:${dim(hint)}`);
 		for(const [prefix, suffixes] of [...byPrefix].sort((a, b) => a[0].localeCompare(b[0]))) {
-			pluginLines.push(`  ${bold(prefix, output.formatter)}:${' '.repeat(labelWidth - prefix.length)} ${[...suffixes].sort((a, b) => a.localeCompare(b)).map(s => render(`${prefix}:${s}`, s)).join(', ')}`);
+			pluginLines.push(`  ${bold(prefix, output.formatter)}:${' '.repeat(labelWidth - prefix.length)} ${[...suffixes].sort(compareByCodeUnit).map(s => render(`${prefix}:${s}`, s)).join(', ')}`);
 		}
 		if(!osc8) {
 			pluginLines.push(`  ${dim('docs: ' + wiki)}`);

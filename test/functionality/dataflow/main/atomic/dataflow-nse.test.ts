@@ -1,28 +1,30 @@
 import { assert, beforeAll, describe, test } from 'vitest';
-import { withTreeSitter } from '../../../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
-import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
-import type { PipelineOutput } from '../../../../../src/core/steps/pipeline/pipeline';
 import { guard } from '../../../../../src/util/assert';
-import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
-import { NoEdges } from '../../../../../src/dataflow/graph/graph';
 import { DfEdge } from '../../../../../src/dataflow/graph/edge';
 import { OriginType } from '../../../../../src/dataflow/origin/dfg-get-origin';
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import { analyze } from '../../../_helper/analyzer';
+import type { DataflowInformation } from '../../../../../src/dataflow/info';
+import type { NormalizedAst } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+
+assumeLoadedPackages('dplyr', 'ggplot2', 'rlang');
 
 /** Whether a criterion still reads a definition: a quoted name does not, one that only looks quoted does. */
 describe('Dataflow', withTreeSitter(ts => {
 	describe('non-standard evaluation', () => {
 		function assertReads(
-			name: string, capabilities: readonly SupportedFlowrCapabilityId[], code: string,
+			name: string, capabilities: readonly FlowrCapabilityId[], code: string,
 			expected: Record<SlicingCriterion, SlicingCriterion | readonly SlicingCriterion[] | undefined>
 		): void {
 			describe(label(name, capabilities, ['dataflow']), () => {
-				let analysis: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
+				let analysis: { dataflow: DataflowInformation, normalize: NormalizedAst } | undefined;
 				beforeAll(async() => {
-					analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
+					const analyzer = await analyze(ts, code);
+					analysis = { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() };
 				});
 				test.each(Object.keys(expected) as SlicingCriterion[])('%s', (use: SlicingCriterion) => {
 					guard(analysis !== undefined);
@@ -70,11 +72,11 @@ describe('Dataflow', withTreeSitter(ts => {
 		   is the column and nothing else, as R asks the data first and a closure is not what `>` compares */
 		test(label('a masked name the caller binds reads the data as well', ['function-calls', 'data-masking'], ['dataflow']), async() => {
 			const code = 'library(dplyr)\ndf <- data.frame(id = 1:3)\nid <- function(k) k\nn <- 1\nfilter(df, id > n)';
-			const analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
+			const analyzer = await analyze(ts, code);
+			const analysis = { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() };
 			const idMap = analysis.normalize.idMap;
-			const targets = (use: SlicingCriterion) =>
-				[...analysis.dataflow.graph.outgoingEdges(SlicingCriterion.parse(use, idMap)) ?? NoEdges]
-					.filter(([, edge]) => !DfEdge.isOnlyControlFlow(edge)).map(([target]) => target);
+			const targets = (use: SlicingCriterion) => [...analysis.dataflow.graph.edgesFrom(SlicingCriterion.parse(use, idMap))]
+				.filter(([, edge]) => !DfEdge.isOnlyControlFlow(edge)).map(([target]) => target);
 			assert.deepStrictEqual(targets('5@id'), [SlicingCriterion.parse('5@df', idMap)], 'a name bound to a function is the column');
 			assert.sameMembers(targets('5@n'), [SlicingCriterion.parse('4@n', idMap), SlicingCriterion.parse('5@df', idMap)],
 				'a name bound to a value is both');
@@ -89,10 +91,11 @@ describe('Dataflow', withTreeSitter(ts => {
 				['structure() attaches a class', head + 'id <- structure(function(...) 42, class = "cls")\nfilter(df, id > 42)', '4@id', true],
 				['class<- attaches one too', head + 'id <- function(...) 42\nclass(id) <- "cls"\nfilter(df, id > 42)', '5@id', true]
 			] as const)('%s', async(_what, code, use, keepsIt) => {
-				const analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
+				const analyzer = await analyze(ts, code);
+				const analysis = { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() };
 				const idMap = analysis.normalize.idMap;
 				const at = SlicingCriterion.parse(use, idMap);
-				const targets = [...analysis.dataflow.graph.outgoingEdges(at) ?? NoEdges]
+				const targets = [...analysis.dataflow.graph.edgesFrom(at)]
 					.filter(([, edge]) => !DfEdge.isOnlyControlFlow(edge)).map(([target]) => target);
 				const data = SlicingCriterion.parse(`${use.slice(0, use.indexOf('@'))}@df` as SlicingCriterion, idMap);
 				assert.include(targets, data, 'the data it may be a column of');
@@ -225,9 +228,11 @@ describe('Dataflow', withTreeSitter(ts => {
 			});
 
 		test(label('an evaluated capture is no longer marked as unevaluated', ['built-in-quoting', 'built-in-evaluation'], ['dataflow']), async() => {
-			const analysis = await createDataflowPipeline(ts, { context: contextFromInput('x <- 1\ne <- quote(x + 1)\neval(e)') }).allRemainingSteps();
-			const graph = analysis.dataflow.graph;
-			const use = SlicingCriterion.parse('2@x', analysis.normalize.idMap);
+			const analyzer = await analyze(ts, 'x <- 1\ne <- quote(x + 1)\neval(e)');
+			const dataflow = await analyzer.dataflow();
+			const normalize = await analyzer.normalize();
+			const graph = dataflow.graph;
+			const use = SlicingCriterion.parse('2@x', normalize.idMap);
 			assert.isFalse(Dataflow.isQuoted(use, graph), 'the expression is evaluated, so nothing about it is quoted');
 		});
 
@@ -280,8 +285,13 @@ describe('Dataflow', withTreeSitter(ts => {
 		/* the closure carries the promise past the call, so it reads whatever is bound when it runs */
 		assertReads('a promise a closure carries reaches every binding it may see',
 			['function-calls', 'formals-promises', 'closures'],
+			'mk <- function(v) function() v\nk <- 5\nfn <- mk(k)\nif(u) fn()\nk <- 6\nfn()', {
+				'3@k': ['2@k', '5@k']
+			});
+		assertReads('a promise a closure carries first runs after the overwrite',
+			['function-calls', 'formals-promises', 'closures'],
 			'mk <- function(v) function() v\nk <- 5\nfn <- mk(k)\nk <- 6\nfn()', {
-				'3@k': ['2@k', '4@k']
+				'3@k': ['4@k']
 			});
 
 		assertReads('forcing in the body settles the promise where it is made',

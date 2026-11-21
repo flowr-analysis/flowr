@@ -1,18 +1,16 @@
-import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
-import type { VertexType } from '../dataflow/graph/vertex';
-import { FunctionCallVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
+import { type RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
+import { FunctionSemantics } from '../dataflow/fn/function-semantics';
+import { type VertexType, DfgVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
-import type { Enrichment } from './search-executor/search-enrichers';
-import { enrichmentContent, EnrichmentElementContent } from './search-executor/search-enrichers';
+import { type Enrichment, enrichmentContent, EnrichmentElementContent } from './search-executor/search-enrichers';
 import type { DataflowInformation } from '../dataflow/info';
 import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { looselyCompareObjects } from '../util/objects';
-import { searchLogger } from './search-executor/search-generators';
+import { searchLogger } from './search-logger';
 import { callFnProps } from '../dataflow/environments/query-fn-props';
-import type { CallProp, CallProps } from '../dataflow/environments/built-in-props';
+import type { CallProp, PropSelector, SemanticCallTag } from '../dataflow/environments/built-in-props';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
@@ -49,8 +47,9 @@ export enum FlowrFilter {
 	 */
 	FilePathFilter = 'file-path-filter',
 	/**
-	 * Only returns function calls whose {@link CallProp} bits match the given mask, so that _every call that asks
-	 * the user_ or _every call that closes a device_ can be searched for without naming a single function.
+	 * Only returns function calls carrying the given {@link CallProp}/{@link SemanticCallTag} properties, so that
+	 * _every call that asks the user_ or _every call that closes a device_ can be searched for without naming a
+	 * single function.
 	 * This filter accepts {@link CallPropsArgs}.
 	 */
 	CallProps = 'call-props'
@@ -70,7 +69,7 @@ export const FlowrFilters = {
 	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
 	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: { dataflow: DataflowInformation }) => {
 		const dfgNode = data.dataflow.graph.getVertex(e.node.info.id);
-		if(!dfgNode || !FunctionCallVertex.is(dfgNode)) {
+		if(!dfgNode || !DfgVertex.isFunctionCall(dfgNode)) {
 			return args.keepNonFunctionCalls ?? false;
 		}
 		const match = typeof args.origin === 'string' ?
@@ -88,8 +87,8 @@ export const FlowrFilters = {
 		return rx.test(file ?? '');
 	}) satisfies FlowrFilterFunction<FilePathFilterArgs>,
 	[FlowrFilter.CallProps]: ((e: FlowrSearchElement<ParentInformation>, args: CallPropsArgs, data: { dataflow: DataflowInformation }) => {
-		const props = callFnProps(e.node.info.id, data.dataflow)?.props ?? 0;
-		return args.matchType === 'every' ? (props & args.props) === args.props : (props & args.props) !== 0;
+		const props = callFnProps(e.node.info.id, data.dataflow);
+		return args.matchType === 'every' ? FunctionSemantics.call.props.hasAll(props, args.props) : FunctionSemantics.call.props.hasAny(props, args.props);
 	}) satisfies FlowrFilterFunction<CallPropsArgs>
 } as const;
 export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;
@@ -114,16 +113,14 @@ export interface FilePathFilterArgs {
 	filePathRegex: string | RegExp
 }
 export interface CallPropsArgs {
-	/** the {@link CallProp} bits to look for, e.g. `CallProp.User | CallProp.Closes` */
-	props:      CallProps;
-	/** whether a call has to carry every bit of {@link props} or just one of them (the default) */
+	/** the properties to look for, e.g. `[SemanticCallTag.User, CallProp.Pure]` */
+	props:      PropSelector;
+	/** whether a call has to carry every one of {@link props} or just one of them (the default) */
 	matchType?: 'some' | 'every'
 }
 
 type ValidFilterTypes<F extends FlowrFilter = FlowrFilter> = FlowrFilterName | FlowrFilterWithArgs<F, FlowrFilterArgs<F>> | RType | VertexType;
-/**
- * By default, we provide filter for every {@link RType} and {@link VertexType}.
- */
+/** By default, we provide filter for every {@link RType} and {@link VertexType}. */
 export type FlowrFilterExpression<F extends FlowrFilter = FlowrFilter> = FlowrFilterCombinator | ValidFilterTypes<F>;
 
 interface BooleanBinaryNode<Composite> {
@@ -142,17 +139,15 @@ type LeafSpecial<F extends FlowrFilter = FlowrFilter> = { readonly type: 'specia
 
 type Leaf = LeafRType | LeafVertexType | LeafSpecial;
 
-
 type BooleanNode = BooleanBinaryNode<BooleanNode>
 	| BooleanUnaryNode<BooleanNode>
 	| Leaf;
-
 
 type BooleanNodeOrCombinator = BooleanNode | FlowrFilterCombinator;
 
 /**
  * @see {@link FlowrFilterCombinator.is}
- * @see {@link evalFilter}
+ * @see {@link prepareFilter}
  * @see {@link binaryTreeToString}
  */
 export class FlowrFilterCombinator {
@@ -210,11 +205,7 @@ export class FlowrFilterCombinator {
 	}
 
 	private binaryRight<F extends FlowrFilter = FlowrFilter>(op: BooleanBinaryNode<BooleanNode>['type'], right: BooleanNodeOrCombinator | ValidFilterTypes<F>): this {
-		this.tree = {
-			type:  op,
-			left:  this.tree,
-			right: this.unpack(FlowrFilterCombinator.is(right))
-		};
+		this.tree = { type: op, left: this.tree, right: this.unpack(FlowrFilterCombinator.is(right)) };
 		return this;
 	}
 
@@ -223,10 +214,7 @@ export class FlowrFilterCombinator {
 	}
 
 	private unary(op: BooleanUnaryNode<BooleanNode>['type']): this {
-		this.tree = {
-			type:    op,
-			operand: this.tree
-		};
+		this.tree = { type: op, operand: this.tree };
 		return this;
 	}
 
@@ -240,9 +228,7 @@ export class FlowrFilterCombinator {
 }
 export const F = FlowrFilterCombinator;
 
-/**
- * Converts the given binary tree to a string representation.
- */
+/** Converts the given binary tree to a string representation. */
 export function binaryTreeToString(tree: BooleanNode): string {
 	const res = treeToStringImpl(tree, 0);
 	// drop outer parens
@@ -280,13 +266,13 @@ export function isBinaryTree(tree: unknown): tree is { tree: BooleanNode } {
 	return typeof tree === 'object' && tree !== null && 'tree' in tree;
 }
 
-interface FilterData {
-	readonly element: FlowrSearchElement<ParentInformation>,
-	readonly data:    { dataflow: DataflowInformation }
-}
-
 /** A filter expression resolved to the function testing one element. */
 export type PreparedFilter = (element: FlowrSearchElement<ParentInformation>, data: { dataflow: DataflowInformation }) => boolean;
+
+function bindFilter(name: FlowrFilterName, args: unknown): PreparedFilter {
+	const handler = FlowrFilters[name] as FlowrFilterFunction<unknown>;
+	return (e, d) => handler(e, args, d);
+}
 
 const compileVisit = {
 	and: ({ left, right }: BooleanBinaryNode<BooleanNode>): PreparedFilter => {
@@ -311,12 +297,10 @@ const compileVisit = {
 		(e, d) => d.dataflow.graph.getVertex(e.node.info.id)?.tag === value,
 	'special': ({ value }: LeafSpecial): PreparedFilter => {
 		const name = typeof value === 'string' ? value : value.name;
-		const args = typeof value === 'string' ? undefined as unknown as FlowrFilterArgs<FlowrFilter> : value.args;
-		const handler = FlowrFilters[name];
-		if(!handler) {
+		if(!FlowrFilters[name]) {
 			throw new Error(`Couldn't find special filter with name ${name}`);
 		}
-		return (e, d) => handler(e, args, d);
+		return bindFilter(name, typeof value === 'string' ? undefined : value.args);
 	}
 };
 
@@ -329,27 +313,15 @@ function compileTree(tree: BooleanNode): PreparedFilter {
  * Resolve a filter expression to the function that tests one element.
  * Nothing here depends on the element, so a search over `n` elements should do this once instead of `n` times:
  * a bare {@link VertexType}/{@link RType} filter otherwise builds a {@link FlowrFilterCombinator} per element.
- * @see {@link evalFilter} - the one-shot form, if you only test a single element
  */
 export function prepareFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>): PreparedFilter {
 	if(filter instanceof FlowrFilterCombinator) {
 		return compileTree(filter.get());
 	} else if(typeof filter === 'string' && ValidFlowrFilters.has(filter)) {
-		const handler = FlowrFilters[filter as FlowrFilter];
-		return (e, d) => handler(e, undefined as unknown as FlowrFilterArgs<FlowrFilter>, d);
+		return bindFilter(filter as FlowrFilter, undefined);
 	} else if(typeof filter === 'object' && 'name' in filter) {
-		const handler = FlowrFilters[filter.name];
-		const args = ('args' in filter ? filter.args : undefined) as unknown as never;
-		return (e, d) => handler(e, args, d);
+		return bindFilter(filter.name, 'args' in filter ? filter.args : undefined);
 	} else {
 		return compileTree(FlowrFilterCombinator.is(filter).get());
 	}
-}
-
-/**
- * Evaluates the given filter expression against the provided data.
- * @see {@link prepareFilter} - resolve once when testing more than one element
- */
-export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
-	return prepareFilter(filter)(data.element, data.data);
 }

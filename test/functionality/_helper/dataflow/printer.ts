@@ -3,13 +3,13 @@ import {
 } from '../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
 import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IdentifierReference } from '../../../../src/dataflow/environments/identifier';
-import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { type IdentifierReference, Identifier } from '../../../../src/dataflow/environments/identifier';
 import type { ControlDependency, ExitPoint } from '../../../../src/dataflow/info';
 
 
 /**
- *
+ * A node id as the dataflow test expectations spell it, quoted so it survives being read back.
+ * @param id - the id to print
  */
 export function wrap(id: string | NodeId | undefined): string {
 	if(id === undefined) {
@@ -27,9 +27,10 @@ export function wrap(id: string | NodeId | undefined): string {
 
 
 /**
- *
+ * Control dependencies as the dataflow test expectations spell them.
+ * @param cds - the dependencies to print, absent for a node under none
  */
-export function wrapControlDependencies(cds: ControlDependency[] | undefined): string {
+export function wrapControlDependencies(cds: readonly ControlDependency[] | undefined): string {
 	if(cds === undefined) {
 		return 'undefined';
 	} else {

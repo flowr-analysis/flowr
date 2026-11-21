@@ -1,9 +1,6 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
 import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
-import {
-	dataflowGraphToJson,
-	dataflowGraphToQuads
-} from '../../../print/dataflow-printer';
+import { dataflowGraphToJson, dataflowGraphToQuads } from '../../../print/dataflow-printer';
 import type { DeepReadonly } from 'ts-essentials';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { produceDataFlowGraph } from '../../../../dataflow/extractor';
@@ -22,7 +19,7 @@ const staticDataflowCommon = {
 		[StepOutputFormat.Mermaid]:    Dataflow.visualize.mermaid.raw,
 		[StepOutputFormat.MermaidUrl]: Dataflow.visualize.mermaid.url
 	},
-	dependencies: [ 'normalize' ],
+	dependencies: ['normalize'],
 } as const;
 
 function processor(results: { normalize?: NormalizedAst }, input: { parser?: Parser<KnownParserType>, context?: FlowrAnalyzerContext }) {
@@ -33,6 +30,5 @@ export const STATIC_DATAFLOW = {
 	...staticDataflowCommon,
 	humanReadableName: 'dataflow',
 	processor,
-	requiredInput:     {
-	}
+	requiredInput:     {}
 } as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof processor>>;

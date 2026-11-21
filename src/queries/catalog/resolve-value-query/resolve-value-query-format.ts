@@ -1,16 +1,46 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import type { SlicingCriteria } from '../../../slicing/criterion/parse';
+import { type BasicQueryData, type BaseQueryFormat, type BaseQueryResult, invalidQueryLine } from '../../base-query-format';
+import { type SlicingCriteria, SlicingCriterion } from '../../../slicing/criterion/parse';
+import { queryHeader } from '../../query-print';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import Joi from 'joi';
-import { executeResolveValueQuery } from './resolve-value-query-executor';
 import { stringifyValue } from '../../../dataflow/eval/values/r-value';
 import type { ResolveResult } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { log } from '../../../util/log';
+import { metaSince } from '../../query-meta';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
 
+/** Naive fingerprint to filter out duplicate queries. */
+export function fingerPrintOfQuery(query: ResolveValueQuery): string {
+	return JSON.stringify(query);
+}
+
+/** Executes a resolve-value query. */
+export async function executeResolveValueQuery({ analyzer }: BasicQueryData, queries: readonly ResolveValueQuery[]): Promise<ResolveValueQueryResult> {
+	const start = Date.now();
+	const results: ResolveValueQueryResult['results'] = {};
+
+	const graph = (await analyzer.dataflow()).graph;
+	const idMap = (await analyzer.normalize()).idMap;
+	for(const query of queries) {
+		const key = fingerPrintOfQuery(query);
+
+		if(results[key]) {
+			log.warn(`Duplicate Key for resolve-value-query: ${key}, skipping...`);
+		}
+
+		const values = query.criteria
+			.map(criteria => SlicingCriterion.parse(criteria, idMap))
+			.flatMap(ident => Resolve.toValue(ident, { graph, full: true, idMap, resolve: analyzer.flowrConfig.solver.variables, ctx: analyzer.inspectContext() }));
+
+		results[key] = { values: values };
+	}
+
+	return { ...metaSince(start), results };
+}
 
 export interface ResolveValueQuery extends BaseQueryFormat {
 	readonly type:     'resolve-value';
@@ -25,24 +55,16 @@ export interface ResolveValueQueryResult extends BaseQueryResult {
 function resolveValueLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'resolve-value'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	if(!criteria || criteria.length == 0) {
-		output.stderr(output.formatter.format('Invalid resolve-value query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
-			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		return { query: [] };
+		return invalidQueryLine(output, 'Invalid resolve-value query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"');
 	}
 
-	return {
-		query: [
-			{
-				type:     'resolve-value',
-				criteria: criteria,
-			}],
-		rCode: queryLineCode(line)
-	} ;
+	return { query: [{ type: 'resolve-value', criteria: criteria }], rCode: queryLineCode(line) };
 }
 
 export const ResolveValueQueryDefinition = {
 	title:           'Resolve Value Query',
 	executor:        executeResolveValueQuery,
+	perQueryResults: true,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'resolve-value'>['resolve-value'];
 		if(out === undefined || typeof out !== 'object' || !('.meta' in out)) {
@@ -51,7 +73,7 @@ export const ResolveValueQueryDefinition = {
 			);
 			return true;
 		}
-		result.push(`Query: ${bold('resolve-value', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('resolve-value', formatter, out['.meta'].timing));
 		for(const [fingerprint, obj] of Object.entries(out.results)) {
 			const { criteria } = JSON.parse(fingerprint) as ResolveValueQuery;
 			result.push(`   ╰ Values for {${criteria.join(', ')}}`);
@@ -65,6 +87,5 @@ export const ResolveValueQueryDefinition = {
 	schema:    Joi.object({
 		type:     Joi.string().valid('resolve-value').required().description('The type of the query.'),
 		criteria: Joi.array().items(Joi.string()).min(1).required().description('The slicing criteria to use.'),
-	}).description('The resolve value query used to get definitions of an identifier'),
-	flattenInvolvedNodes: () => []
+	}).description('The resolve value query used to get definitions of an identifier')
 } as const satisfies SupportedQuery<'resolve-value'>;

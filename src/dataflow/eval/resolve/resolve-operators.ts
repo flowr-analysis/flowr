@@ -1,6 +1,6 @@
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { Identifier } from '../../environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../environments/identifier';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
@@ -31,8 +31,8 @@ function asLogical(node: RNodeWithParent, args: BuiltInEvalHandlerArgs): boolean
 }
 
 /** the operands of a binary operator and its entry in `ops`, with R presenting the `%.%` ones as an infix call */
-function binary<T>(node: RNodeWithParent, ops: Record<string, T>): { op: T, lhs: RNodeWithParent, rhs: RNodeWithParent } | undefined {
-	let name: string, lhs: RNodeWithParent | undefined, rhs: RNodeWithParent | undefined;
+function binary<T>(node: RNodeWithParent, ops: Record<BrandedIdentifier, T>): { op: T, lhs: RNodeWithParent, rhs: RNodeWithParent } | undefined {
+	let name: BrandedIdentifier, lhs: RNodeWithParent | undefined, rhs: RNodeWithParent | undefined;
 	if(RBinaryOp.is(node)) {
 		[name, lhs, rhs] = [node.operator, node.lhs, node.rhs];
 	} else if(RFunctionCall.isNamed(node) && node.arguments.length === 2) {
@@ -107,12 +107,16 @@ export function resolveAsLogical(args: BuiltInEvalHandlerArgs): Value {
 	return rhs === undefined ? Top : logicalValue(bin.op.apply(lhs, rhs));
 }
 
-/** Resolves `(x)` to the {@link Value} of `x`, so that a parenthesized sub-expression folds like the expression itself. */
+/**
+ * Resolves `(x)` and `{ ...; x }` to the {@link Value} of `x`. A grouping has the value of the expression it
+ * wraps and a block the value of its last expression, so both fold like that expression itself.
+ */
 export function resolveAsGroup(args: BuiltInEvalHandlerArgs): Value {
 	const node = args.node;
-	if(!RExpressionList.is(node) || node.children.length !== 1) {
+	const last = RExpressionList.is(node) ? node.children.at(-1) : undefined;
+	if(last === undefined) {
 		return Top;
 	}
 	/* unwrap the set again, as the caller of a handler wraps the returned value in one */
-	return NodeValue.sole(valueSetGuard(Resolve.toValue(node.children[0], args))) ?? Top;
+	return NodeValue.sole(valueSetGuard(Resolve.toValue(last, args))) ?? Top;
 }

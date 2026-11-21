@@ -1,5 +1,4 @@
-import type { ExecException } from 'child_process';
-import { exec } from 'child_process';
+import { type ExecException, exec } from 'child_process';
 
 /** How long a command may take, generous because the checkup jobs run alongside. */
 const DefaultTimeout = 5 * 60 * 1000;
@@ -40,12 +39,13 @@ async function retryOnCrash<T>(attempt: () => Promise<T>): Promise<T> {
 /**
  * Runs the flowr repl and feeds input to the repl
  * @param input - input to feed
- * @returns Repl Output
+ * @returns     Repl Output
  */
 
 
 /**
- *
+ * Runs the flowR REPL on `input`, one line per entry, and answers with everything it printed.
+ * @param input - the lines to type into the REPL
  */
 export async function flowrRepl(input: string[]): Promise<string> {
 	return retryOnCrash(() => new Promise<string>((resolve, reject) => {
@@ -94,10 +94,10 @@ export async function runCaptureAll(command: string, timeout = DefaultTimeout): 
 /**
  * Runs a command and terminates it automatically if it outputs a certain string
  * This is useful, so we don't have to set timeouts and hope the output will be produced in time.
- * @param command - Command to run
+ * @param command     - Command to run
  * @param terminateOn - (optional) string to kill the process on
- * @param timeout - (optional) timeout in milliseconds
- * @returns output of command
+ * @param timeout     - (optional) timeout in milliseconds
+ * @returns           output of command
  */
 export async function run(command: string, terminateOn?: string, timeout = DefaultTimeout): Promise<string> {
 	return retryOnCrash(() => new Promise<string>((resolve, reject) => {

@@ -1,13 +1,12 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { type RNa, boolean2ts, isBoolean, isNA, RNumberValue } from '../../../../../convert-values';
-import { retrieveMetaStructure } from '../../normalize-meta';
+import { retrieveMetaStructure, currentSourceInfo } from '../../normalize-meta';
 import type { RNumber } from '../../../../model/nodes/r-number';
 import type { RLogical } from '../../../../model/nodes/r-logical';
 import type { RSymbol } from '../../../../model/nodes/r-symbol';
 import type { NoInfo } from '../../../../model/model';
 import { RType } from '../../../../model/type';
 import type { JsonEntry } from '../../../json/format';
-
 
 /**
  * Normalize the given object as a R number (see {@link RNumberValue.fromRLexeme}), supporting booleans (see {@link boolean2ts}),
@@ -18,34 +17,14 @@ import type { JsonEntry } from '../../../json/format';
  */
 export function normalizeNumber(data: NormalizerData, obj: JsonEntry): RNumber | RLogical | RSymbol<NoInfo, typeof RNa> {
 	const { location, content } = retrieveMetaStructure(obj);
-	const common = {
-		location,
-		lexeme: content,
-		info:   {
-			fullRange:  data.currentRange,
-			adToks:     [],
-			fullLexeme: data.currentLexeme
-		}
-	};
+	const common = { location, lexeme: content, info: currentSourceInfo(data) };
 
 	/* the special symbol */
 	if(isNA(content)) {
-		return {
-			...common,
-			type: RType.Symbol,
-			content
-		};
+		return { ...common, type: RType.Symbol, content };
 	} else if(isBoolean(content)) {
-		return {
-			...common,
-			type:    RType.Logical,
-			content: boolean2ts(content)
-		};
+		return { ...common, type: RType.Logical, content: boolean2ts(content) };
 	} else {
-		return {
-			...common,
-			type:    RType.Number,
-			content: RNumberValue.fromRLexeme(content)
-		};
+		return { ...common, type: RType.Number, content: RNumberValue.fromRLexeme(content) };
 	}
 }

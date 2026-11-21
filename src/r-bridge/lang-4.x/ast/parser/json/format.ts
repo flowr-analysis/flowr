@@ -1,13 +1,10 @@
-import { removeRQuotes } from '../../../../retriever';
+import { RString } from '../../model/nodes/r-string';
 import { guard } from '../../../../../util/assert';
 import { RawRType } from '../../model/type';
 
 export const RootId = 0;
 
-/**
- * Entry type - shared between CSV and JSON entries.
- * These include position, token, and text.
- */
+/** Entry type - shared between CSV and JSON entries. These include position, token, and text. */
 interface Entry extends Record<string, unknown> {
 	readonly line1: number,
 	readonly col1:  number,
@@ -28,17 +25,12 @@ export interface CsvEntry extends Entry {
 	children?:         CsvEntry[]
 }
 
-/**
- * Type-safe object structure that we work with during normalization.
- * Has Children (empty list indicates no children).
- */
+/** Type-safe object structure that we work with during normalization. Has Children (empty list indicates no children). */
 export interface JsonEntry extends Entry {
 	readonly children: JsonEntry[]
 }
 
-/**
- * Named JSON entries - these also have a RawRType assigned to them.
- */
+/** Named JSON entries - these also have a RawRType assigned to them. */
 export interface NamedJsonEntry {
 	name:    RawRType
 	content: JsonEntry
@@ -131,9 +123,7 @@ function bytesToUtf8Json(bytes: number[]): string {
 	return JSON.stringify(decoded).slice(1, -1);
 }
 
-/**
- * Takes the raw {@link RShell} output and extracts the csv information contained
- */
+/** Takes the raw {@link RShell} output and extracts the csv information contained */
 export function prepareParsedData(data: string): CsvEntry[] {
 	let json: unknown;
 	try {
@@ -149,7 +139,7 @@ export function prepareParsedData(data: string): CsvEntry[] {
 	guard(Array.isArray(json), () => `Expected ${data} to be an array but was not`);
 
 	const ret = new Map<number, CsvEntry>((json as ParsedDataRow[]).map(([line1, col1, line2, col2, id, parent, token, terminal, text]) => {
-		return [id, { line1, col1, line2, col2, id, parent, token: removeRQuotes(token), terminal, text }] satisfies [number, CsvEntry];
+		return [id, { line1, col1, line2, col2, id, parent, token: RString.unquote(token), terminal, text }] satisfies [number, CsvEntry];
 	}));
 
 	const roots: CsvEntry[] = [];
@@ -171,27 +161,13 @@ export function prepareParsedData(data: string): CsvEntry[] {
 	return roots;
 }
 
-/**
- * Takes the CSV-Entries and maps them to the old json format for compatibility.
- */
+/** Takes the CSV-Entries and maps them to the old json format for compatibility. */
 export function convertPreparedParsedData(roots: readonly CsvEntry[]): JsonEntry {
-	const partialEntry = {
-		token:  RawRType.ExpressionList,
-		text:   '',
-		id:     RootId,
-		parent: RootId
-	};
+	const partialEntry = { token: RawRType.ExpressionList, text: '', id: RootId, parent: RootId };
 
 	// if we don't have children, this is simple
-	if(roots.length <= 0){
-		return {
-			...partialEntry,
-			line1:    1,
-			col1:     1,
-			line2:    1,
-			col2:     1,
-			children: []
-		};
+	if(roots.length <= 0) {
+		return { ...partialEntry, line1: 1, col1: 1, line2: 1, col2: 1, children: [] };
 	}
 
 	// Locate start, end of a source file (order children in advance).

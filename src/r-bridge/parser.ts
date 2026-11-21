@@ -8,9 +8,7 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 
 interface ParserContent<T> {
 	readonly name:        string;
-	/**
-	 * Whether the parser has incremental parsing capabilities
-	 */
+	/** Whether the parser has incremental parsing capabilities */
 	readonly incremental: boolean;
 	information(analyzer: FlowrAnalysisProvider): BaseParserInformation;
 
@@ -22,12 +20,16 @@ interface ParserContent<T> {
 	close(): void;
 }
 
+/** The parser engines flowR knows. */
+export const ParserName = { Shell: 'r-shell', TreeSitter: 'tree-sitter' } as const;
+export type ParserName = typeof ParserName[keyof typeof ParserName];
+
 export interface BaseParserInformation {
 	readonly name: KnownParserName
 }
 
 export interface BaseRShellInformation extends BaseParserInformation {
-	readonly name: 'r-shell'
+	readonly name: typeof ParserName.Shell
 	rVersion(): Promise<string>
 }
 
@@ -43,7 +45,7 @@ export interface RShellInformation extends BaseRShellInformation {
 }
 
 export interface TreeSitterInformation extends BaseParserInformation {
-	readonly name:           'tree-sitter'
+	readonly name:           typeof ParserName.TreeSitter
 	readonly grammarVersion: number
 	/**
 	 * Runs the given tree-sitter query using the underlying tree-sitter parser and returns the resulting capture.
@@ -92,7 +94,7 @@ export interface ParseStepOutput<T> {
  * Takes an input program and parses it using the given parser.
  * @param _results - just a proxy for the pipeline, signifies that this function does not need prior knowledge of the pipeline
  * @param input    - the input to the parse step
- * @returns The parsed AST per request in the loading order obtained from the {@link FlowrAnalyzerFilesContext|files context} of the given {@link FlowrAnalyzerContext}.
+ * @returns        The parsed AST per request in the loading order obtained from the {@link FlowrAnalyzerFilesContext|files context} of the given {@link FlowrAnalyzerContext}.
  */
 export async function parseRequests<T extends KnownParserType>(_results: unknown, input: Partial<ParseRequiredInput<T>>):
 Promise<ParseStepOutput<T>> {
@@ -101,7 +103,7 @@ Promise<ParseStepOutput<T>> {
 	/* in the future, we want to expose all cases */
 	const translatedRequests = loadingOrder.map(r => (input.context as FlowrAnalyzerContext).files.resolveRequest(r));
 
-	if(input.parser?.async){
+	if(input.parser?.async) {
 		/* sadly we cannot Promise.all with the Rshell as it has to process commands in order and is not thread safe */
 		const files: ParseStepOutputSingleFile<T>[] = [];
 		for(const req of translatedRequests) {

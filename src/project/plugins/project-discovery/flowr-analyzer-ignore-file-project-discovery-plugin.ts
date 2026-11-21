@@ -2,8 +2,7 @@ import { FlowrAnalyzerProjectDiscoveryPlugin } from './flowr-analyzer-project-di
 import { SemVer } from 'semver';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import type { RProjectAnalysisRequest } from '../../context/flowr-analyzer-files-context';
-import type { RParseRequest } from '../../../r-bridge/retriever';
-import { isParseRequest } from '../../../r-bridge/retriever';
+import { type RParseRequest, isParseRequest } from '../../../r-bridge/retriever';
 import type { FlowrFile } from '../../context/flowr-file';
 import path from 'path';
 import fs from 'fs';

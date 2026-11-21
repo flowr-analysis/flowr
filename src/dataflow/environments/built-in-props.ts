@@ -1,230 +1,488 @@
+import type { GuardFacts } from './guard-facts';
+import type { AmbientScope } from '../internal/process/functions/call/built-in/built-in-ambient-state';
+import type { AmbientEffects } from './ambient-effect';
+import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { DecodedFunction } from '../../project/sigdb/decode';
+import { Record } from '../../util/record';
+import { Ternary } from '../../util/logic';
+import type { BrandedIdentifier } from './identifier';
 
-/**
- * What a single argument of a call is used for, as a bitmask.
- * @see {@link BuiltInFnInfo#sig}
- */
+/** What a single argument of a call is used for, as a bitmask ({@link ArgProp.Forced}/{@link ArgProp.NoDefault} lead, being the two bits the signature database can also state). */
 export enum ArgProp {
-	/** the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge */
-	Alias    = 1 << 0,
-	/** the result is computed from the argument's value, like `x` in `sum(x)` */
-	Value    = 1 << 1,
-	/** only the shape is used (length, dimensions, names, other attributes), like `x` in `nrow(x)` */
-	Shape    = 1 << 2,
-	/** selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` */
-	Flag     = 1 << 3,
-	/** names the resource the call reads or writes, like `file` in `write.csv(x, file)` */
-	Resource = 1 << 4,
-	/** what it refers to may be modified, like `envir` in `assign(x, v, envir = e)` */
-	Written  = 1 << 5,
 	/** evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` */
-	Forced   = 1 << 6,
+	Forced    = 1 << 0,
+	/** declared without a default value, like `x` in `nchar(x, type)`; says nothing about whether a call must supply it */
+	NoDefault = 1 << 1,
+	/** the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge. */
+	Alias     = 1 << 2,
+	/** the result is computed from the argument's value, like `x` in `sum(x)` */
+	Value     = 1 << 3,
+	/** only the shape is used (length, dimensions, names, other attributes), like `x` in `nrow(x)` */
+	Shape     = 1 << 4,
+	/** selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` */
+	Flag      = 1 << 5,
+	/** names the resource the call reads or writes, like `file` in `write.csv(x, file)`. */
+	Resource  = 1 << 6,
+	/** what it refers to may be modified, like `envir` in `assign(x, v, envir = e)`, or the file `to` names in `file.copy(from, to)` */
+	Written   = 1 << 7,
 	/** quoted or evaluated in another frame, like `expr` in `quote(expr)` */
-	Nse      = 1 << 7,
+	Nse       = 1 << 8,
 	/** called as a function, like `FUN` in `lapply(x, FUN)` */
-	Callee   = 1 << 8,
+	Callee    = 1 << 9,
 	/** only whether it was supplied matters, as with `missing()` */
-	Presence = 1 << 9,
-	/**
-	 * the result is one of this argument's values, like `choices` in `match.arg(arg, choices)`. The bounding
-	 * argument of a {@link CallProp.Narrows} call; without one such a call yields a value of its own making.
-	 */
-	Bounds   = 1 << 10,
-	/**
-	 * only atomic data works here, never a closure, as with `e1` in `e1 > e2`. A bare symbol in such an
-	 * argument therefore names a variable even when a function of that name is in scope.
-	 */
-	Atomic   = 1 << 11,
+	Presence  = 1 << 10,
+	/** the result is one of this argument's values, like `choices` in `match.arg(arg, choices)`. */
+	Bounds    = 1 << 11,
+	/** only atomic data works here, never a closure, as with `e1` in `e1 > e2`. */
+	Atomic    = 1 << 12,
 	/** the open handle the call acts on, like `con` in `close(con)` */
-	Handle   = 1 << 12
+	Handle     = 1 << 13,
+	/** never evaluated, the definite counterpart of {@link ArgProp.Forced}: no path of the body reads it */
+	Lazy       = 1 << 14,
+	/** open to injection, so a call handing it unescaped data is a finding: system commands, R expressions, database queries, HTML, or JavaScript. */
+	Injectable = 1 << 15,
+	/** besides its value, the expression as written names a part of the result, like `a` in `data.frame(a)`, which becomes the column `a`; passing `identity(a)` instead changes the name */
+	Deparsed   = 1 << 16,
+	/** a {@link ArgProp.Resource} whose default names none, like `file` in `cat(..., file = "")`, which prints to the console, or in `capture.output(..., file = NULL)`; left out, the call accesses no file through it */
+	Optional   = 1 << 17,
+	/** a call leaving it out fails, as the body reads it on every way through; only inferred (see {@link FunctionSemantics.guards}) */
+	Required   = 1 << 18,
+	/** a call fails on some of what it could hold, as there are guards on it; only inferred (see {@link FunctionSemantics.guards}) */
+	Guarded    = 1 << 19
 }
 
-/**
- * What the call as a whole does, as a bitmask. The resource bits ({@link CallProp.File} and its neighbors)
- * say where the call gets its data from, which is what {@link InputProps} collects.
- * @see {@link BuiltInFnInfo#props}
- */
+/** The properties of the behavior of a call, as a bitmask. */
 export enum CallProp {
-	/** computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` (excludes {@link ImpureProps}) */
-	Pure      = 1 << 0,
 	/**
-	 * pure on its own, but it runs code it is handed, so whatever that code does happens too.
-	 * The parameter it runs is marked {@link ArgProp.Callee} or {@link ArgProp.Nse}, as with `lapply(x, f)`.
+	 * computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` (excludes {@link ImpureProps}).
+	 * It may still read global state to do so, as `paste` formats numbers by the `scipen` option: what it reads is in its
+	 * `ambient` effects, it changes none of it. {@link CallProp.Ambient} is for a call whose result is that state.
 	 */
-	MayPure   = 1 << 1,
+	Pure       = 1 << 0,
+	/** pure on its own, but it runs code it is handed, so whatever that code does happens too. */
+	MayPure    = 1 << 1,
 	/** may signal an error, like `stop()` (see {@link SigDbInferable}) */
-	Throws    = 1 << 2,
+	Throws     = 1 << 2,
 	/** returns invisibly, so the result is not auto-printed */
-	Invisible = 1 << 3,
+	Invisible  = 1 << 3,
 	/** dispatches on the class of an argument (S3, S4, or S7), a group generic like `+` on either operand */
-	Generic   = 1 << 4,
+	Generic    = 1 << 4,
 	/** a method that is reached by dispatch, like `print.foo` (see {@link SigDbInferable}) */
-	Method    = 1 << 5,
+	Method     = 1 << 5,
 	/** binds, rebinds, or removes names outside of its own frame, like `assign` or `library` */
-	Scope     = 1 << 6,
+	Scope      = 1 << 6,
 	/** the result may differ between two identical calls for a reason neither `Random` nor `Ambient` covers (see {@link SigDbInferable}) */
-	NonDet    = 1 << 7,
-	/** draws from the random number generator, or sets its state (stated instead of `NonDet`) */
-	Random    = 1 << 8,
-	/** depends on ambient state like the clock, the locale, environment variables, or global options (stated instead of `NonDet`) */
-	Ambient   = 1 << 9,
-	/** touches the file system */
-	File      = 1 << 10,
-	/** produces a temporary path; on its own this touches no file system, so a call that also does states `File` too */
-	TempFile  = 1 << 11,
-	/**
-	 * always reaches the network, like `curl::curl_download`. Calls that only do so for some arguments, like
-	 * `read.csv` of a URL, are left to the `network-functions` rule, which decides that per call site.
-	 */
-	Network   = 1 << 12,
-	/** runs a system command */
-	Process   = 1 << 13,
+	NonDet     = 1 << 7,
+	/** the result is ambient state like the clock, the locale, environment variables, or global options (stated instead of `NonDet`); a call that only reads some of it on the way says so in its `ambient` effects */
+	Ambient    = 1 << 8,
+	/** sets ambient state later calls read back: the working directory, environment variables, options, the locale, the RNG seed. */
+	Configures = 1 << 9,
 	/** calls native code through the foreign function interface, like `.Call` */
-	Ffi       = 1 << 14,
+	Ffi        = 1 << 10,
 	/** produces a language object, like `quote` or `deparse` */
-	Lang      = 1 << 15,
-	/** asks the user, like `readline` or a file chooser */
-	User      = 1 << 16,
-	/** draws on a graphics device */
-	Graphics  = 1 << 17,
-	/** talks to a database */
-	Database  = 1 << 18,
-	/** reads the resource its `Resource` arguments name */
-	Reads     = 1 << 19,
-	/** writes the resource its `Resource` arguments name */
-	Writes    = 1 << 20,
-	/** may emit to standard output, like `print` or a `cat` without a `file`, and follows a `sink` when one is active */
-	Prints    = 1 << 21,
-	/**
-	 * the result is bounded no matter what flows in: a count, an index, a logical, or one of the values of the
-	 * argument marked {@link ArgProp.Bounds}. So nothing an argument carries reaches the result, which is what
-	 * lets the input-sources query stop tracing at `length(x)` or `match.arg(arg, choices)`.
-	 */
-	Narrows   = 1 << 22,
-	/**
-	 * sets ambient state later calls read back: the working directory, environment variables, options, the
-	 * locale, the RNG seed. The counterpart of {@link CallProp.Ambient}; a call doing both states both.
-	 */
-	Configures = 1 << 23,
-	/** ends what an opener started: a graphics device, a connection, a sink. Narrower than {@link CallProp.Graphics}. */
-	Closes     = 1 << 24,
-	/** yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer */
-	Glob       = 1 << 25,
-	/** hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do */
-	CommandLine = 1 << 26,
-	/** hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` */
-	Opens       = 1 << 27,
-	/** performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) */
-	Statistics  = 1 << 28,
-	/** marked for removal, with a better alternative available, like `dplyr::funs` */
-	Deprecated  = 1 << 29
+	Lang       = 1 << 11,
+	Strict     = 1 << 12,
+	/** runs its work in parallel (workers, a cluster, a future/promise backend); says nothing about purity, only reproducibility and where an error surfaces. */
+	Concurrent = 1 << 13,
+	/** the R language itself provides it: a `.Primitive` or `.Internal` of a base package, `if` and `for` and the operators included. */
+	Primitive  = 1 << 14
 }
 
-/**
- * The {@link CallProp} bits that state an effect beyond computing a result, so no {@link CallProp.Pure}
- * definition may carry any of them.
- */
-export const ImpureProps = CallProp.MayPure | CallProp.Scope | CallProp.NonDet | CallProp.Random | CallProp.Ambient
-	| CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang
-	| CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes | CallProp.Prints
-	| CallProp.Configures | CallProp.Closes | CallProp.Opens | CallProp.CommandLine;
-
-/**
- * Which {@link CallProp} bits rule each other out, as `[bit, everything stating it forbids]`. A definition
- * that carries the left bit must carry none of the right ones; a test checks the {@link DefaultBuiltinConfig}
- * (and any configured built-ins) against this. Every other pair of bits combines freely.
- */
-export const ExclusiveCallProps: readonly (readonly [bit: CallProp, forbidden: CallProps])[] = [
-	[CallProp.Pure, ImpureProps],
-	[CallProp.NonDet, CallProp.Random | CallProp.Ambient],
-	[CallProp.Random, CallProp.Ambient]
-];
-
-/**
- * The {@link CallProp} bits of calls that bring in data of their own. A function that states its props and
- * carries none of these derives its result from its arguments, which is what {@link BuiltInIndex#without}
- * looks for.
- */
-export const InputProps = CallProp.NonDet | CallProp.Random | CallProp.Ambient | CallProp.File
-	| CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang | CallProp.User
-	| CallProp.CommandLine;
-
-/**
- * The {@link CallProp} bits the signature database states itself, so {@link fnInfoFromSignature} can read them
- * off any package function without anyone writing them down.
- */
-export const SigDbInferable = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic;
-
-/**
- * The {@link CallProp} bits that say a call takes its data from a file, as {@link CallProp.File} alone also
- * covers the calls that only write one.
- */
-export const FileInputProps = CallProp.File | CallProp.Reads;
-
-/**
- * The {@link CallProp} bits that carry over from a callee to its caller: what the called function does, the
- * calling one does too. Purity does not travel this way, which is why it is not in here.
- */
-export const PropagatedProps = CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Prints
-	| CallProp.Random | CallProp.Ambient | CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process
-	| CallProp.Ffi | CallProp.Lang | CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes
-	| CallProp.Configures | CallProp.CommandLine;
+/** The semantic properties of the behavior of a call. */
+export enum SemanticCallTag {
+	/** draws from the random number generator, or sets its state (stated instead of `NonDet`) */
+	Random      = 'random',
+	/** touches the file system */
+	File        = 'file',
+	/** produces a temporary path; on its own this touches no file system, so a call that also does states `File` too */
+	TempFile    = 'temp-file',
+	/** always reaches the network, like `curl::curl_download`. */
+	Network     = 'network',
+	/** runs a system command */
+	Process     = 'process',
+	/** asks the user, like `readline` or a file chooser */
+	User        = 'asks-user',
+	/** only does its job in an interactive session: opens a viewer, an editor, or the debugger (`View`, `edit`, `browser`), which a script run by `Rscript` has none of */
+	Interactive = 'interactive-only',
+	/** hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do */
+	CommandLine = 'command-line',
+	/** yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer */
+	Glob        = 'glob',
+	/** draws on a graphics device */
+	Graphics    = 'draws-graphics',
+	/** hands back a console connection (`stdout()`, `stderr()`, `stdin()`), which names no file */
+	Console     = 'console',
+	/** talks to a database */
+	Database    = 'database',
+	/** hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` */
+	Opens       = 'opens-handle',
+	/** ends what an opener started: a graphics device, a connection, a sink. Narrower than {@link SemanticCallTag.Graphics}. */
+	Closes      = 'closes-handle',
+	/** reads the resource its `Resource` arguments name */
+	Reads       = 'reads',
+	/** writes the resource its `Resource` arguments name */
+	Writes      = 'writes',
+	/** may emit to standard output, like `print` or a `cat` without a `file`, and follows a `sink` when one is active */
+	Prints      = 'prints',
+	/** the result is bounded no matter what flows in: a count, an index, a logical, or one of the values of the argument marked {@link ArgProp.Bounds}. */
+	Narrows     = 'narrows-args',
+	/** cuts or replaces parts of a string (`gsub`, `substr`), so what an escaping function made of it no longer holds */
+	Edits       = 'edits-string',
+	/** performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) */
+	Statistics  = 'statistics',
+	/** reshapes, filters, joins or aggregates the data it is given (`dplyr::mutate`, `merge`, `tidyr::pivot_longer`) */
+	Transforms  = 'transforms-data',
+	/** marked for removal, with a better alternative available, like `dplyr::funs` */
+	Deprecated  = 'deprecated',
+	/** dynamically executes R code or returns the value of dynamically computed identifiers, like `eval`, `do.call`, or `get` */
+	Eval        = 'eval',
+	/** produces raw HTML or JavaScript, such as `shiny::HTML` */
+	Html        = 'html',
+	/** produces raw JavaScript code, such as `shinyjs::runjs` */
+	JavaScript  = 'javascript',
+	/** loads a package's namespace (running its `.onLoad`), like `library` or `loadNamespace` */
+	LoadsPackage    = 'loads-package',
+	/** puts a package's exports on the search path, so their bare names resolve, like `library` or `attachNamespace` */
+	AttachesPackage = 'attaches-package',
+	/** answers whether a package is available, like `require`, `requireNamespace`, or `find.package` */
+	ChecksPackage   = 'checks-package',
+	/** takes a package off the search path, like `detach` or `unloadNamespace` */
+	DetachesPackage = 'detaches-package',
+	/** registers a class, generic, method, or global name without computing anything else, like `setClass` or `utils::globalVariables` */
+	Declares        = 'declares',
+	/** reads which environment it runs in, like `environment()` or `parent.frame()`, so moving the call into another frame changes its result */
+	Frames          = 'reflects-frame'
+}
 
 /** a bitfield of {@link ArgProp} */
 export type ArgProps = number;
 /** a bitfield of {@link CallProp} */
 export type CallProps = number;
+/** the {@link SemanticCallTag} entries of a call, in the order they were stated */
+export type SemanticCallTags = SemanticCallTag[];
 
-/**
- * The formals of a built-in, in the order they are declared in, each with what its argument is used for.
- * A `...` entry stands for every argument from the position it appears at, and the entries behind it are matched
- * by their full name only.
- */
-export type FnSig = [name: string, props: ArgProps][];
-
-/**
- * Utility functions for {@link FnSig|function signatures}.
- */
-export const FnSig = {
-	name:    'FnSig',
-	/** The positional view of a signature; see {@link sigLayout}. */
-	layout:  sigLayout,
-	/** The roles of the argument at a position; see {@link argProp}. */
-	propAt:  argProp,
-	/** The positions carrying any of the given roles; see {@link argsWith}. */
-	posWith: argsWith
-} as const;
-
-/** the {@link CallProp} bits as the words a reader wants, in the order they are declared */
-const CallPropNames: readonly (readonly [CallProp, string])[] = [
-	[CallProp.Pure, 'pure'], [CallProp.Throws, 'can throw'], [CallProp.Invisible, 'invisible'],
-	[CallProp.Generic, 'generic'], [CallProp.Method, 's3 method'], [CallProp.Scope, 'changes scope'],
-	[CallProp.NonDet, 'non deterministic'], [CallProp.Random, 'random'], [CallProp.Ambient, 'ambient state'],
-	[CallProp.File, 'file system'], [CallProp.Reads, 'reads'], [CallProp.Writes, 'writes'],
-	[CallProp.Network, 'network'], [CallProp.Prints, 'prints']
-];
-
-/** What a call states about itself, as words rather than as a bit mask, for anything showing it to a reader. */
-export function callPropWords(props: CallProps | undefined): string[] {
-	return props === undefined ? [] : CallPropNames.filter(([bit]) => (props & bit) !== 0).map(([, word]) => word);
+/** The stated properties of a call, including the {@link CallProp} bitfield and {@link SemanticCallTag} array. */
+export interface StatedProps {
+	/** the bitfield of {@link CallProp} */
+	readonly props?: CallProps
+	/** the array of {@link SemanticCallTag} */
+	readonly tags?:  SemanticCallTags
 }
 
-/**
- * Semantics of a built-in that hold no matter which processor handles the call. The remaining facts already
- * have a home: the exit behavior in `cfg`, whether flowR can fold the call in the `evalHandler` of the
- * definition, and the fallback for everything unmodelled in `hasUnknownSideEffects`.
- */
-export interface BuiltInFnInfo {
+/** A selector to check for {@link CallProp}s or {@link SemanticCallTag}s */
+export type PropSelector = CallProp | CallProps | SemanticCallTag | readonly (CallProps | SemanticCallTag)[] | PropMask;
+
+/** A selector in the form the {@link CallProps} helpers work with, including the {@link CallProp} bitfield and {@link SemanticCallTag} set. */
+export interface PropMask {
+	readonly props: CallProps
+	readonly tags:  ReadonlySet<SemanticCallTag>
+}
+
+/** The properties that say where a definition comes from rather than what it does. */
+export const ProvenanceProps: CallProps = CallProp.Primitive;
+
+/** The properties that state an effect beyond computing a result, so no {@link CallProp.Pure} definition may carry any of them. */
+export const ImpureProps: PropMask = getPropMask([
+	CallProp.MayPure | CallProp.Scope | CallProp.NonDet | CallProp.Ambient | CallProp.Configures | CallProp.Ffi | CallProp.Lang,
+	SemanticCallTag.Random, SemanticCallTag.File, SemanticCallTag.TempFile, SemanticCallTag.Network, SemanticCallTag.Process,
+	SemanticCallTag.User, SemanticCallTag.Interactive, SemanticCallTag.CommandLine, SemanticCallTag.Graphics, SemanticCallTag.Database,
+	SemanticCallTag.Opens, SemanticCallTag.Closes, SemanticCallTag.Reads, SemanticCallTag.Writes, SemanticCallTag.Prints
+]);
+
+/** Which properties rule each other out, as `[property, everything stating it forbids]`. */
+export const ExclusiveCallProps: readonly (readonly [prop: PropMask, forbidden: PropMask])[] = [
+	[getPropMask(CallProp.Pure), ImpureProps],
+	[getPropMask(CallProp.NonDet), getPropMask([SemanticCallTag.Random, CallProp.Ambient])],
+	[getPropMask(SemanticCallTag.Random), getPropMask(CallProp.Ambient)]
+];
+
+/** The properties of calls that bring in data of their own. */
+export const InputProps: PropMask = getPropMask([
+	CallProp.NonDet | CallProp.Ambient | CallProp.Ffi | CallProp.Lang,
+	SemanticCallTag.Random, SemanticCallTag.File, SemanticCallTag.TempFile, SemanticCallTag.Network, SemanticCallTag.Process,
+	SemanticCallTag.User, SemanticCallTag.CommandLine, SemanticCallTag.LoadsPackage, SemanticCallTag.ChecksPackage
+]);
+
+/** The {@link CallProp} bits the signature database states itself, so {@link fnInfoFromSignature} can read them off any package function without anyone writing them down. */
+export const SigDbInferable: CallProps = CallProp.Pure | CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic | CallProp.Concurrent;
+
+/** The properties that say a call takes its data from a file, as {@link SemanticCallTag.File} alone also covers the calls that only write one. */
+export const FileInputProps: PropMask = getPropMask([SemanticCallTag.File, SemanticCallTag.Reads]);
+
+/** The properties that carry over from a callee to its caller: what the called function does, the calling one does too. */
+export const PropagatedProps: PropMask = getPropMask([
+	CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Ambient | CallProp.Configures | CallProp.Ffi | CallProp.Lang | CallProp.Concurrent,
+	SemanticCallTag.Random, SemanticCallTag.File, SemanticCallTag.TempFile, SemanticCallTag.Network,
+	SemanticCallTag.Process, SemanticCallTag.User, SemanticCallTag.Interactive, SemanticCallTag.CommandLine, SemanticCallTag.Graphics,
+	SemanticCallTag.Database, SemanticCallTag.Reads, SemanticCallTag.Writes, SemanticCallTag.Prints,
+	SemanticCallTag.Eval, SemanticCallTag.Html, SemanticCallTag.JavaScript, SemanticCallTag.LoadsPackage, SemanticCallTag.AttachesPackage,
+	SemanticCallTag.ChecksPackage, SemanticCallTag.DetachesPackage
+]);
+
+/** The {@link PropagatedProps} a {@link CallProp.Pure} function still carries over: it vouches that nothing impure it reaches runs. */
+export const PureCarriedProps: PropMask = {
+	props: PropagatedProps.props & ~ImpureProps.props,
+	tags:  new Set([...PropagatedProps.tags].filter(tag => !ImpureProps.tags.has(tag)))
+};
+
+/** Checks whether a {@link PropSelector} is a bitfield of {@link CallProp}s */
+function isCallProp(this: void, selector: PropSelector): selector is CallProp | CallProps {
+	return typeof selector === 'number';
+}
+
+/** Checks whether a {@link PropSelector} is a {@link SemanticCallTag} */
+function isSemanticTag(this: void, selector: PropSelector): selector is SemanticCallTag {
+	return typeof selector === 'string';
+}
+
+/** Checks whether a {@link PropSelector} is an already computed {@link PropMask} */
+function isPropMask(this: void, selector: PropSelector): selector is PropMask {
+	return typeof selector === 'object' && 'props' in selector && 'tags' in selector;
+}
+
+/** Generates a {@link PropMask} for a property selector. */
+function getPropMask(this: void, selector: PropSelector): PropMask {
+	if(isCallProp(selector)) {
+		return { props: selector, tags: new Set() };
+	} else if(isSemanticTag(selector)) {
+		return { props: 0, tags: new Set([selector]) };
+	} else if(isPropMask(selector)) {
+		return selector;
+	}
+	let props = 0;
+	const tags = new Set<SemanticCallTag>();
+	for(const prop of selector) {
+		if(typeof prop === 'number') {
+			props |= prop;
+		} else {
+			tags.add(prop);
+		}
+	}
+	return { props, tags };
+}
+
+/** How a property reads: the word for it, the short form a signature shows where there is one, and what it means. */
+export interface PropWord {
+	readonly word:   string
+	readonly short?: string
+	readonly about:  string
+}
+
+/** the {@link CallProp} bits as words, in the order they are declared */
+const CallPropWords: Readonly<Record<CallProp, PropWord>> = {
+	[CallProp.Pure]:       { word: 'pure', about: 'computes a result, nothing else' },
+	[CallProp.MayPure]:    { word: 'maybe pure', short: 'maypure', about: 'pure if what it calls is' },
+	[CallProp.Throws]:     { word: 'can throw', short: 'throws', about: 'may raise an error' },
+	[CallProp.Invisible]:  { word: 'invisible', short: 'invis', about: 'the result is not printed' },
+	[CallProp.Generic]:    { word: 'generic', about: 'dispatches on its argument' },
+	[CallProp.Method]:     { word: 's3 method', short: 's3', about: 'a method of a generic' },
+	[CallProp.Scope]:      { word: 'changes scope', short: 'scope', about: 'defines or removes variables' },
+	[CallProp.NonDet]:     { word: 'non deterministic', short: 'nondet', about: 'may differ between runs' },
+	[CallProp.Ambient]:    { word: 'ambient state', short: 'ambient', about: 'reads state outside its arguments' },
+	[CallProp.Configures]: { word: 'sets ambient state', short: 'configures', about: 'changes options or devices' },
+	[CallProp.Ffi]:        { word: 'calls native code', short: 'ffi', about: 'uses C, C++ or Fortran' },
+	[CallProp.Lang]:       { word: 'produces language object', short: 'lang', about: 'returns code as data' },
+	[CallProp.Strict]:     { word: 'strict', about: 'evaluates every argument' },
+	[CallProp.Concurrent]: { word: 'concurrent', short: 'async', about: 'runs in parallel' },
+	[CallProp.Primitive]:  { word: 'primitive', about: 'implemented in the R core' }
+};
+
+/** Helper functions to work with {@link CallProp}s and {@link SemanticCallTag}s of calls. All helpers use {@link PropSelector}s to identify call properties. */
+export const CallProps = {
+	/** Checks whether a {@link PropSelector} is a bitfield of {@link CallProp}s. */
+	isCallProp,
+	/** Checks whether a {@link PropSelector} is a {@link SemanticCallTag}. */
+	isSemanticTag,
+	/** Whether stated properties carry at least one property of a selector, or state anything about their behavior at all. */
+	hasAny(this: void, stated: StatedProps | undefined, selector?: PropSelector): boolean {
+		if(selector === undefined) {
+			return ((stated?.props ?? 0) & ~ProvenanceProps) !== 0 || stated?.tags !== undefined;
+		}
+		const mask = getPropMask(selector);
+		return ((stated?.props ?? 0) & mask.props) !== 0 || (stated?.tags?.some(prop => mask.tags.has(prop)) ?? false);
+	},
+	/** Whether stated properties carry every property of a selector. */
+	hasAll(this: void, stated: StatedProps | undefined, selector: PropSelector): boolean {
+		const mask = getPropMask(selector);
+		return ((stated?.props ?? 0) & mask.props) === mask.props && mask.tags.values().every(prop => stated?.tags?.includes(prop));
+	},
+	/**
+	 * Joins the {@link CallProp}s and {@link SemanticCallTag}s of two stated properties.
+	 * It merges the tags itself, as the array helpers would make loading the configuration expensive.
+	 * @lintIgnore
+	 */
+	join(this: void, props1: StatedProps | undefined, props2: StatedProps | undefined): StatedProps {
+		const props = props1?.props === undefined ? props2?.props : (props2?.props === undefined ? props1.props : props1.props | props2.props);
+		const tags = props1?.tags === undefined ? props2?.tags :
+			(props2?.tags === undefined ? props1.tags : [...new Set([...props1.tags, ...props2.tags])]);
+		return { props, tags };
+	},
+	/** Keep only the properties in the stated properties that are in the property selector. */
+	filter(this: void, stated: StatedProps | undefined, selector: PropSelector): StatedProps {
+		const mask = getPropMask(selector);
+		return { props: (stated?.props ?? 0) & mask.props, tags: stated?.tags?.filter(prop => mask.tags.has(prop)) };
+	},
+	/** Transforms a property selector into a unique string identifier. */
+	key(this: void, selector: PropSelector): string {
+		const mask = getPropMask(selector);
+		return `${mask.props}|${[...mask.tags].sort().join(',')}`;
+	},
+	/** Gets the property names for a property selector. */
+	names(this: void, selector: PropSelector): string[] {
+		const mask = getPropMask(selector);
+		return [
+			...Record.entries(CallProp).filter(([, prop]) => (prop & mask.props) !== 0).map(([name]) => name),
+			...Record.entries(SemanticCallTag).filter(([, prop]) => mask.tags.has(prop)).map(([name]) => name)
+		];
+	},
+	/** the {@link CallProp} bits as words, in the order they are declared */
+	vocabulary: CallPropWords,
+	/** Gets the string labels for stated properties, see {@link CallPropWords}. */
+	labels(this: void, stated: StatedProps | undefined): string[] {
+		return [...CallProps.words(stated?.props), ...stated?.tags ?? []];
+	},
+	/** The {@link CallPropWords} for a bare {@link CallProps} bitfield, as inferred functions carry one. */
+	words(this: void, props: CallProps | undefined): string[] {
+		return wordsOf(CallPropEntries, props);
+	},
+	/** The {@link PropMask} the given {@link CallProp}/{@link SemanticCallTag} member names stand for, unknown ones ignored. */
+	mask(this: void, names: readonly string[]): PropMask {
+		const tags = new Set<SemanticCallTag>();
+		for(const name of names) {
+			const tag = (SemanticCallTag as Record<string, SemanticCallTag | undefined>)[name];
+			if(tag !== undefined) {
+				tags.add(tag);
+			}
+		}
+		return { props: maskOfNames(CallProp, names), tags };
+	},
+	/** Whether a {@link PropMask} names nothing at all, so filtering by it can only answer with nothing. */
+	isEmptyMask(this: void, mask: PropMask): boolean {
+		return mask.props === 0 && mask.tags.size === 0;
+	}
+} as const;
+
+/** The formals of a built-in, in the order they are declared in, each with what its argument is used for. */
+export type FnSig = [name: BrandedIdentifier, props: ArgProps][];
+
+/** The signature of a call that evaluates every argument and states nothing else, which is all that is known about a callee flowR cannot resolve. */
+const ForcingEvery: FnSig = [['...', ArgProp.Forced]];
+
+/** The signature with only the {@link ArgProp.Resource} arguments the call reads (`writes` false) or writes. */
+function resourcesOf(sig: FnSig, writes: boolean): FnSig {
+	const written = ArgProp.Resource | ArgProp.Written;
+	if(!sig.some(([, p]) => (p & written) === written)) {
+		return sig;
+	}
+	return sig.map(([n, p]) => (p & ArgProp.Resource) === 0 || ((p & ArgProp.Written) !== 0) === writes ? [n, p] : [n, p & ~ArgProp.Resource]);
+}
+
+/** Utility functions for {@link FnSig|function signatures}. */
+export const FnSig = {
+	/** The positional view of a signature; see {@link sigLayout}. */
+	layout:    sigLayout,
+	/** The roles of the argument at a position; see {@link argProp}. */
+	propAt:    argProp,
+	/** The parameter each argument fills, honoring names; see {@link argumentSlots}. */
+	slots:     argumentSlots,
+	/** The positions carrying any of the given roles; see {@link argsWith}. */
+	posWith:   argsWith,
+	/** Which of the first `count` arguments a call evaluates; see {@link forcedArgs}. */
+	forced:    forcedArgs,
+	/** How surely a call evaluates each of the first `count` arguments; see {@link argForcing}. */
+	forcing:   argForcing,
+	/** A signature saying only that the call evaluates every argument; see {@link ForcingEvery}. */
+	every:     ForcingEvery,
+	/** A signature saying only that the call evaluates one argument; see {@link forcingOnly}. */
+	only:      forcingOnly,
+	/** The signature keeping only the resources the call reads or writes, see {@link resourcesOf}. */
+	resources: resourcesOf
+} as const;
+
+/** the {@link ArgProp} bits as words; integer keys iterate in ascending bit order */
+const ArgPropWords: Readonly<Record<ArgProp, PropWord>> = {
+	[ArgProp.Forced]:     { word: 'forced', short: 'F', about: 'always evaluated' },
+	[ArgProp.NoDefault]:  { word: 'no default', short: 'R', about: 'declared without a default' },
+	[ArgProp.Alias]:      { word: 'alias', about: 'handed back as the result' },
+	[ArgProp.Value]:      { word: 'value', short: 'val', about: 'its value feeds the result' },
+	[ArgProp.Shape]:      { word: 'shape', about: 'only length or attributes used' },
+	[ArgProp.Flag]:       { word: 'flag', about: 'selects a behavior' },
+	[ArgProp.Resource]:   { word: 'resource', short: 'res', about: 'names a file or connection' },
+	[ArgProp.Written]:    { word: 'written', short: 'out', about: 'may be modified' },
+	[ArgProp.Nse]:        { word: 'nse', about: 'quoted, not evaluated' },
+	[ArgProp.Callee]:     { word: 'callee', short: 'fn', about: 'called as a function' },
+	[ArgProp.Presence]:   { word: 'presence', short: 'seen', about: 'only whether it was given matters' },
+	[ArgProp.Bounds]:     { word: 'bounds', about: 'the result is one of its values' },
+	[ArgProp.Atomic]:     { word: 'atomic', about: 'plain data only' },
+	[ArgProp.Handle]:     { word: 'handle', about: 'an open connection' },
+	[ArgProp.Lazy]:       { word: 'lazy', short: 'L', about: 'never evaluated' },
+	[ArgProp.Injectable]: { word: 'injectable', about: 'open to injection' },
+	[ArgProp.Deparsed]:   { word: 'deparsed', about: 'its expression names part of the result' },
+	[ArgProp.Optional]:   { word: 'optional', about: 'a resource whose default names none' },
+	[ArgProp.Required]:   { word: 'required', short: 'req', about: 'a call has to supply it' },
+	[ArgProp.Guarded]:    { word: 'guarded', about: 'a call fails on some values of it' }
+};
+
+/** The bitfield the given {@link ArgProp}/{@link CallProp} member names stand for, unknown ones ignored. */
+function maskOfNames(this: void, of: Record<string, string | number>, names: readonly string[]): number {
+	let mask = 0;
+	for(const name of names) {
+		const bit = of[name];
+		mask |= typeof bit === 'number' ? bit : 0;
+	}
+	return mask;
+}
+
+/** The words for whichever of `mask`'s bits appear in `entries`, shared by {@link ArgProps.words} and {@link CallProps.words}. */
+function wordsOf(this: void, entries: readonly (readonly [number, string])[], mask: number | undefined): string[] {
+	return mask === undefined ? [] : entries.filter(([bit]) => (mask & bit) !== 0).map(([, word]) => word);
+}
+
+/** A bit-keyed word table as `[bit, word]` pairs in ascending bit order, for {@link wordsOf}; shared by {@link ArgProps} and {@link CallProps}. */
+function bitEntries(this: void, byBit: Readonly<Record<number, PropWord>>): readonly (readonly [number, string])[] {
+	return Object.entries(byBit).map(([bit, { word }]) => [Number(bit), word] as const);
+}
+
+const ArgPropEntries = bitEntries(ArgPropWords);
+const CallPropEntries = bitEntries(CallPropWords);
+
+/** Utility functions for {@link ArgProps|argument property bitfields}. */
+export const ArgProps = {
+	/** the {@link ArgProp} bits as words, in ascending bit order */
+	vocabulary: ArgPropWords,
+	/** What an argument is used for, as words; see {@link wordsOf}. */
+	words:      (props: ArgProps | undefined): string[] => wordsOf(ArgPropEntries, props),
+	/** The mask the given {@link ArgProp} member names stand for; see {@link maskOfNames}. */
+	mask:       (names: readonly string[]): ArgProps => maskOfNames(ArgProp, names)
+} as const;
+
+/** Semantics of a built-in that hold no matter which processor handles the call. */
+export interface BuiltInFnInfo extends StatedProps {
+	/** how the call reads or writes global state like the graphics parameters, the options, or files, see {@link AmbientEffect} */
+	readonly ambient?:               AmbientEffects
+	/** the call changes that state for a scope only, see {@link AmbientScope} */
+	readonly scope?:                 AmbientScope
+	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>
+	/** The condition classes a call signals when every argument it is handed is a constant, like `simpleError`, `error`, and `condition` for `stop("x")`. */
+	readonly signals?:               readonly string[]
+	/** The condition classes the call muffles while its code runs, like `message` for `suppressMessages(expr)`, which decides where the output of that code goes. */
+	readonly muffles?:               readonly string[]
 	/** the parameters and what each of their arguments is used for */
-	readonly sig?:             FnSig
-	/** bitfield of {@link CallProp} */
-	readonly props?:           CallProps
+	readonly sig?:                   FnSig
 	/** keep the environment on the call vertex, for a later pass to look names up in */
-	readonly keepEnvironment?: boolean
+	readonly keepEnvironment?:       boolean
+	/** What this call lets the function around it reach about its own formals without naming one of them, e.g. `match.call()` ({@link ArgProp.Nse}) or `nargs()` ({@link ArgProp.Presence}); see {@link reflectiveRolesOf}. */
+	readonly frame?:                 ArgProps
+	/** per name this definition states, what it has to do with the guards of the functions calling it, see {@link GuardFacts} */
+	readonly guards?:                Readonly<Record<BrandedIdentifier, GuardFacts>>
+	/** the generics the call may dispatch to on (parts of) its arguments, like `as.character` for `paste` or `format` for the columns `print` shows of a data frame; any method of them may run */
+	readonly dispatches?:            string[]
 }
 
 /** A {@link FnSig} in the form the call processors use it, see {@link sigLayout}. */
 export interface SigLayout {
+	/** the declared parameter names, in order */
+	readonly names: readonly BrandedIdentifier[]
 	/** the props of each declared parameter, in order */
 	readonly props: readonly ArgProps[]
 	/** the position of the `...` parameter, `-1` if there is none */
@@ -233,21 +491,22 @@ export interface SigLayout {
 	readonly any:   ArgProps
 	/** the position of the {@link ArgProp.Alias} argument, handed back as the result, `-1` if there is none */
 	readonly alias: number
+	forced?:        (readonly boolean[])[]
+	forcing?:       (readonly Ternary[])[]
 }
 
 const layouts = new WeakMap<FnSig, SigLayout>();
 
-/**
- * The positional view of a {@link FnSig}, computed on first use and cached per signature object,
- * so declaring a signature costs nothing until a call actually needs it.
- */
+/** The positional view of a {@link FnSig}, computed on first use and cached per signature object, so declaring a signature costs nothing until a call actually needs it. */
 function sigLayout(this: void, sig: FnSig): SigLayout {
 	let layout = layouts.get(sig);
 	if(layout === undefined) {
+		const names = sig.map(p => p[0]);
 		const props = sig.map(p => p[1]);
 		layout = {
+			names,
 			props,
-			rest:  sig.findIndex(p => p[0] === '...'),
+			rest:  names.indexOf('...'),
 			any:   props.reduce((acc, p) => acc | p, 0),
 			alias: props.findIndex(p => (p & ArgProp.Alias) !== 0)
 		};
@@ -261,45 +520,78 @@ function argProp(this: void, { props, rest }: SigLayout, index: number): ArgProp
 	return (rest >= 0 && index >= rest ? props[rest] : props[index]) ?? 0;
 }
 
+/** The parameter each argument fills, matched as R does: an argument naming a parameter exactly fills it, the unnamed ones fill the parameters left in order up to `...`, which takes everything else. */
+function argumentSlots(this: void, { names, rest }: SigLayout, argNames: readonly (BrandedIdentifier | undefined)[]): number[] {
+	const named = argNames.map(n => n === undefined ? -1 : names.indexOf(n));
+	const taken = new Set(named.filter(at => at >= 0 && at !== rest));
+	let next = 0;
+	return argNames.map((n, i) => {
+		if(n !== undefined) {
+			return named[i] >= 0 && named[i] !== rest ? named[i] : rest;
+		}
+		while(next < names.length && next !== rest && taken.has(next)) {
+			next++;
+		}
+		return next < names.length && next !== rest ? next++ : rest;
+	});
+}
+
+/** The signature of a call that evaluates the argument at `index` and states nothing else, as the apply family does for the function it is handed. */
+function forcingOnly(this: void, index: number, name: string): FnSig {
+	return [...Array.from({ length: index }, (_, i) => [`..${i + 1}`, 0] as [string, ArgProps]), [name, ArgProp.Forced]];
+}
+
+/** Which of the first `count` arguments the call evaluates, `undefined` when the signature states it of none. */
+function forcedArgs(this: void, sig: FnSig | undefined, count: number): readonly boolean[] | undefined {
+	const layout = sig === undefined ? undefined : sigLayout(sig);
+	if(layout === undefined || (layout.any & ArgProp.Forced) === 0) {
+		return undefined;
+	}
+	const cache = layout.forced ??= [];
+	return cache[count] ??= Array.from({ length: count }, (_, i) => (argProp(layout, i) & ArgProp.Forced) !== 0);
+}
+
+/** How surely a call evaluates each of the first `count` arguments: {@link ArgProp.Forced} always, {@link ArgProp.Nse} and {@link ArgProp.Presence} never, anything else maybe; `undefined` without a signature. */
+function argForcing(this: void, sig: FnSig | undefined, count: number): readonly Ternary[] | undefined {
+	if(sig === undefined) {
+		return undefined;
+	}
+	const layout = sigLayout(sig);
+	const cache = layout.forcing ??= [];
+	return cache[count] ??= Array.from({ length: count }, (_, i) => {
+		const props = argProp(layout, i);
+		return (props & ArgProp.Forced) !== 0 ? Ternary.Always
+			: (props & (ArgProp.Nse | ArgProp.Presence)) !== 0 ? Ternary.Never : Ternary.Maybe;
+	});
+}
+
 /** The positions of the first `count` arguments that carry any of `prop`. */
 function argsWith(this: void, layout: SigLayout, count: number, prop: ArgProps): number[] {
-	const found: number[] = [];
-	for(let i = 0; i < count; i++) {
-		if((FnSig.propAt(layout, i) & prop) !== 0) {
-			found.push(i);
-		}
-	}
-	return found;
+	return Array.from({ length: count }, (_, i) => i).filter(i => (argProp(layout, i) & prop) !== 0);
 }
 
 /** the {@link DecodedFunction#props} names that have a {@link CallProp} counterpart, together {@link SigDbInferable} */
 const SigDbProps: Readonly<Record<string, CallProp>> = {
 	'can-throw':         CallProp.Throws,
 	'non-deterministic': CallProp.NonDet,
-	's3-method':         CallProp.Method
+	's3-method':         CallProp.Method,
+	'generic':           CallProp.Generic,
+	'concurrent':        CallProp.Concurrent,
+	'pure':              CallProp.Pure
 };
 
 /** the callees that make the calling function itself a generic ({@link CallProp.Generic}) */
-export const DispatchCallees: ReadonlySet<string> = new Set(['UseMethod', 'standardGeneric', 'S7_dispatch']);
+export const DispatchCallees: ReadonlySet<BrandedIdentifier> = new Set(['UseMethod', 'standardGeneric', 'S7_dispatch']);
 
-/**
- * The part of a {@link BuiltInFnInfo} that the signature database already knows: the parameter names in order
- * (`...` included) with the ones R always forces, plus the properties listed in {@link SigDbProps}. Everything
- * else the database records (`higher-order`, `deprecated`, `recursive`, ...) has no counterpart here and is
- * dropped, and anything it cannot see (purity, resources, what an argument is used for) stays unset.
- */
+/** The part of a {@link BuiltInFnInfo} the signature database already knows: the parameter names in order with the {@link ArgProp} bits stored for each, plus the {@link SigDbProps} properties; everything else is dropped. */
 export function fnInfoFromSignature(fn: DecodedFunction): BuiltInFnInfo {
 	let props = 0;
 	for(const name of fn.props) {
 		props |= SigDbProps[name] ?? 0;
 	}
-	/* a function whose own body dispatches is the generic, which no property of the database states */
-	if(fn.callees.some(c => DispatchCallees.has(c))) {
+	/* the `generic` property settles it; without one (an older bundle, or none stored) the dispatching callee does */
+	if(!(props & CallProp.Generic) && fn.callees.some(c => DispatchCallees.has(c))) {
 		props |= CallProp.Generic;
 	}
-	return {
-		sig: fn.signature.map(p => [p.name,
-			(p.forced ? ArgProp.Forced : 0) | (p.default === 'TRUE' || p.default === 'FALSE' ? ArgProp.Flag : 0)]),
-		props
-	};
+	return { sig: fn.signature.map(p => [p.name, p.props]), props };
 }

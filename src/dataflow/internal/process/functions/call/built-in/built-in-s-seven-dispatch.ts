@@ -1,4 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -11,9 +12,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 /** Used to separate S7 dispatch info in identifiers */
 export const S7DispatchSeparator = '﹕s3﹕';
 
-/**
- * Process an S7 generic dispatch call like `S7_dispatch`.
- */
+/** Process an S7 generic dispatch call like `S7_dispatch`. */
 export function processS7Dispatch<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -23,7 +22,7 @@ export function processS7Dispatch<OtherInfo>(
 	if(!('currentS7name' in data) || !Array.isArray(data.currentS7name)) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.S7Dispatch }).information;
 	}
-	const info = processKnownFunctionCall({ name, forceArgs: 'all', args, rootId, data, origin: BuiltInProcName.S7Dispatch }).information;
+	const info = processKnownFunctionCall({ name, sig: FunctionSemantics.call.signature.every, args, rootId, data, origin: BuiltInProcName.S7Dispatch }).information;
 	for(const id of data.currentS7name as unknown[]) {
 		if(typeof id === 'string') {
 			const newIn = info.in.slice();

@@ -16,21 +16,13 @@ import { DefaultMap } from '../../util/collections/defaultmap';
 import { log } from '../../util/log';
 
 export interface BenchmarkSummarizerConfiguration extends CommonSummarizerConfiguration {
-	/**
-	 * If given, produce graph data output (e.g., for the benchmark visualization) to the given path
-	 */
+	/** If given, produce graph data output (e.g., for the benchmark visualization) to the given path */
 	graphOutputPath?:       string
-	/**
-	 * The input path to read from
-	 */
+	/** The input path to read from */
 	inputPath:              string
-	/**
-	 * Path for the intermediate results of the preparation phase
-	 */
+	/** Path for the intermediate results of the preparation phase */
 	intermediateOutputPath: string
-	/**
-	 * Path for the final results of the summarization phase
-	 */
+	/** Path for the final results of the summarization phase */
 	outputPath:             string
 }
 
@@ -48,7 +40,7 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		let fileNum = 0;
 		const outputPathsPerRun = new DefaultMap<number, string[]>(() => []);
 		// recursively find all files in all the input path subdirectories
-		for await (const file of getAllFiles(this.config.inputPath)){
+		for await (const file of getAllFiles(this.config.inputPath)) {
 			const outputDir = path.join(this.config.intermediateOutputPath, path.relative(this.config.inputPath, file));
 			fs.mkdirSync(outputDir, { recursive: true });
 			const textOutputPath = path.join(outputDir, 'summary.log');

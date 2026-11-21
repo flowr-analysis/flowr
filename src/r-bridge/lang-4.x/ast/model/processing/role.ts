@@ -1,4 +1,6 @@
-import type { AstIdMap, RNodeWithParent } from './decorate';
+import type { NodeId } from './node-id';
+import type { AstIdMap, ParentInformation } from './decorate';
+import type { RNode } from '../model';
 
 /**
  * Describes the role of the node in its parent. For example,
@@ -39,14 +41,26 @@ export const enum RoleInParent {
 
 
 /**
- * Returns the roles of the parents of the given node, starting with the parent-role of the node itself.
+ * Helper for asking what a node is to its parent, see {@link RoleInParent}.
+ * @helper ast
  */
-export function rolesOfParents(node: RNodeWithParent, idMap: AstIdMap): RoleInParent[] {
-	const roles: RoleInParent[] = [];
-	let current: RNodeWithParent | undefined = node;
-	while(current !== undefined) {
-		roles.push(current.info.role);
-		current = current.info.parent ? idMap.get(current.info.parent) : undefined;
+export const RRole = {
+	name: 'RRole',
+	/** The role of the node with the given id, if the id map knows it. */
+	of(this: void, id: NodeId | undefined, idMap: AstIdMap | undefined): RoleInParent | undefined {
+		return id === undefined ? undefined : idMap?.get(id)?.info.role;
+	},
+	/** Whether the node with the given id is the name of a parameter. */
+	isParameterName(this: void, id: NodeId | undefined, idMap: AstIdMap | undefined): boolean {
+		return RRole.of(id, idMap) === RoleInParent.ParameterName;
+	},
+	/** The function definition whose parameter the node with the given id names, if it names one. */
+	functionOfParameter(this: void, id: NodeId | undefined, idMap: AstIdMap | undefined): NodeId | undefined {
+		const node = id === undefined ? undefined : idMap?.get(id);
+		return node?.info.role === RoleInParent.ParameterName && node.info.parent !== undefined ? idMap?.get(node.info.parent)?.info.parent : undefined;
+	},
+	/** Whether the node is a statement of its own, at the top level or in an expression list. */
+	isStatement(this: void, node: RNode<ParentInformation>): boolean {
+		return node.info.role === RoleInParent.Root || node.info.role === RoleInParent.ExpressionListChild;
 	}
-	return roles;
-}
+} as const;

@@ -69,9 +69,9 @@ function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerSta
 
 /**
  * Summarizes the given stats by calculating the min, max, median, mean, and the standard deviation for each measurement.
+ * @lintIgnore use-instead
  * @see Slicer
  * The re-parse below measures the raw parser on the sliced output, the analyzer's pipeline would measure something else.
- * @lintIgnore use-instead
  */
 export async function summarizeSlicerStats(
 	stats: SlicerStats,
@@ -183,7 +183,7 @@ export async function summarizeSlicerStats(
 				normalized: reconstructTime / numberOfNormalizedTokens
 			});
 			totalTimes.push({
-				raw:        (sliceTime + reconstructTime ) / numberOfRTokens,
+				raw:        (sliceTime + reconstructTime) / numberOfRTokens,
 				normalized: (sliceTime + reconstructTime) / numberOfNormalizedTokens
 			});
 		} catch{
@@ -238,13 +238,28 @@ export async function summarizeSlicerStats(
 	};
 }
 
+type ShapeValue = number | 'top' | 'infinite' | 'bottom' | undefined;
+const isValue = (value: ShapeValue): value is number => value !== undefined && value !== 'top' && value !== 'infinite' && value !== 'bottom';
+
+/** What the shape inference infers of one dimension (`ColNames`) over all nodes, from the inferred values and the ranges approximating them. */
+function dimension<D extends 'ColNames' | 'ColCount' | 'RowCount'>(dim: D, inferred: readonly ShapeValue[], ranges: readonly (number | undefined)[]) {
+	const counted = (is: (value: ShapeValue) => boolean) => inferred.filter(is).length;
+	return {
+		[`inferred${dim}`]:         summarizeMeasurement(inferred.filter(isValue)),
+		[`approxRange${dim}`]:      summarizeMeasurement(ranges.filter(isNotUndefined).filter(isFinite)),
+		[`numberOf${dim}Exact`]:    ranges.filter(range => range === 0).length,
+		[`numberOf${dim}Values`]:   counted(isValue),
+		[`numberOf${dim}Bottom`]:   counted(v => v === 'bottom'),
+		[`numberOf${dim}Infinite`]: counted(v => v === 'infinite'),
+		[`numberOf${dim}Top`]:      counted(v => v === 'top')
+	} as Record<`inferred${D}` | `approxRange${D}`, SummarizedMeasurement> & Record<`numberOf${D}${'Exact' | 'Values' | 'Bottom' | 'Infinite' | 'Top'}`, number>;
+}
+
 function summarizeDfShapeStats({ perNodeStats, ...stats }: SlicerStatsDfShape): SummarizedDfShapeStats {
 	const nodeStats = perNodeStats.values().toArray();
 
-	const isTop = (value?: number | 'top' | 'infinite' | 'bottom') => value === 'top';
-	const isInfinite = (value?: number | 'top' | 'infinite' | 'bottom') => value === 'infinite';
-	const isBottom = (value?: number | 'top' | 'infinite' | 'bottom') => value === 'bottom';
-	const isValue = (value?: number | 'top' | 'infinite' | 'bottom') => value !== undefined && !isTop(value) && !isInfinite(value) && !isBottom(value);
+	const isTop = (value: ShapeValue) => value === 'top';
+	const isBottom = (value: ShapeValue) => value === 'bottom';
 
 	return {
 		...stats,
@@ -255,27 +270,9 @@ function summarizeDfShapeStats({ perNodeStats, ...stats }: SlicerStatsDfShape): 
 		numberOfTotalValues:      nodeStats.filter(s => isValue(s.inferredColNames) && isValue(s.inferredColCount) && isValue(s.inferredRowCount)).length,
 		numberOfTotalBottom:      nodeStats.filter(s => isBottom(s.inferredColCount) && isBottom(s.inferredColCount) && isBottom(s.inferredRowCount)).length,
 		numberOfTotalTop:         nodeStats.filter(s => isTop(s.inferredColNames) && isTop(s.inferredColCount) && isTop(s.inferredRowCount)).length,
-		inferredColNames:         summarizeMeasurement(nodeStats.map(s => s.inferredColNames).filter(isValue)),
-		approxRangeColNames:      summarizeMeasurement(nodeStats.map(s => s.approxRangeColNames).filter(isNotUndefined).filter(isFinite)),
-		numberOfColNamesExact:    nodeStats.map(s => s.approxRangeColNames).filter(range => range === 0).length,
-		numberOfColNamesValues:   nodeStats.map(s => s.inferredColNames).filter(isValue).length,
-		numberOfColNamesBottom:   nodeStats.map(s => s.inferredColNames).filter(isBottom).length,
-		numberOfColNamesInfinite: nodeStats.map(s => s.inferredColNames).filter(isInfinite).length,
-		numberOfColNamesTop:      nodeStats.map(s => s.inferredColNames).filter(isTop).length,
-		inferredColCount:         summarizeMeasurement(nodeStats.map(s => s.inferredColCount).filter(isValue)),
-		approxRangeColCount:      summarizeMeasurement(nodeStats.map(s => s.approxRangeColCount).filter(isNotUndefined).filter(isFinite)),
-		numberOfColCountExact:    nodeStats.map(s => s.approxRangeColCount).filter(range => range === 0).length,
-		numberOfColCountValues:   nodeStats.map(s => s.inferredColCount).filter(isValue).length,
-		numberOfColCountBottom:   nodeStats.map(s => s.inferredColCount).filter(isBottom).length,
-		numberOfColCountInfinite: nodeStats.map(s => s.inferredColCount).filter(isInfinite).length,
-		numberOfColCountTop:      nodeStats.map(s => s.inferredColCount).filter(isTop).length,
-		inferredRowCount:         summarizeMeasurement(nodeStats.map(s => s.inferredRowCount).filter(isValue)),
-		approxRangeRowCount:      summarizeMeasurement(nodeStats.map(s => s.approxRangeRowCount).filter(isNotUndefined).filter(isFinite)),
-		numberOfRowCountExact:    nodeStats.map(s => s.approxRangeRowCount).filter(range => range === 0).length,
-		numberOfRowCountValues:   nodeStats.map(s => s.inferredRowCount).filter(isValue).length,
-		numberOfRowCountBottom:   nodeStats.map(s => s.inferredRowCount).filter(isBottom).length,
-		numberOfRowCountInfinite: nodeStats.map(s => s.inferredRowCount).filter(isInfinite).length,
-		numberOfRowCountTop:      nodeStats.map(s => s.inferredRowCount).filter(isTop).length,
+		...dimension('ColNames', nodeStats.map(s => s.inferredColNames), nodeStats.map(s => s.approxRangeColNames)),
+		...dimension('ColCount', nodeStats.map(s => s.inferredColCount), nodeStats.map(s => s.approxRangeColCount)),
+		...dimension('RowCount', nodeStats.map(s => s.inferredRowCount), nodeStats.map(s => s.approxRangeRowCount)),
 		perOperationNumber:       summarizePerOperationStats(nodeStats),
 	};
 }
@@ -292,9 +289,7 @@ function summarizePerOperationStats(nodeStats: PerNodeStatsDfShape[]): Summarize
 	return perOperationNumber;
 }
 
-/**
- * Summarizes the given measurements by calculating the min, max, median, mean, standard deviation, and total.
- */
+/** Summarizes the given measurements by calculating the min, max, median, mean, standard deviation, and total. */
 export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): SummarizedMeasurement {
 	data = data.filter(isNotUndefined);
 	const min = Math.min(...data.map(d => d.min).filter(isNotUndefined));
@@ -309,9 +304,7 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 	return { min, max, median, mean, std, total };
 }
 
-/**
- * Summarizes the given reductions of summarized measurements.
- */
+/** Summarizes the given reductions of summarized measurements. */
 export function summarizeSummarizedReductions(reductions: Reduction<SummarizedMeasurement>[]): Reduction<SummarizedMeasurement> {
 	return {
 		numberOfDataflowNodes:           summarizeSummarizedMeasurement(reductions.map(r => r.numberOfDataflowNodes)),
@@ -336,9 +329,7 @@ function summarizeReductions(reductions: Reduction<number | undefined>[]): Reduc
 	};
 }
 
-/**
- * Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement.
- */
+/** Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement. */
 export function summarizeSummarizedTimePerToken(times: TimePerToken[]): TimePerToken {
 	return {
 		raw:        summarizeSummarizedMeasurement(times.map(t => t.raw)),
@@ -346,12 +337,7 @@ export function summarizeSummarizedTimePerToken(times: TimePerToken[]): TimePerT
 	};
 }
 
-/**
- * Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement.
- */
+/** Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement. */
 export function summarizeTimePerToken(times: TimePerToken<number>[]): TimePerToken {
-	return {
-		raw:        summarizeMeasurement(times.map(t => t.raw)),
-		normalized: summarizeMeasurement(times.map(t => t.normalized)),
-	};
+	return { raw: summarizeMeasurement(times.map(t => t.raw)), normalized: summarizeMeasurement(times.map(t => t.normalized)) };
 }

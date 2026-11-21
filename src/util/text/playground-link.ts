@@ -1,4 +1,5 @@
-import { packForUrl } from './url-encoding';
+import { packForUrl, unpackFromUrl } from './url-encoding';
+import { escapeRegex } from './strings';
 import { uniqueArray } from '../collections/arrays';
 
 /** the parts of the page a mark can point at, rather than a place in the script */
@@ -10,7 +11,11 @@ export enum PlaygroundBox {
 	/** what the dependency query found */
 	Deps  = 'deps',
 	/** what the linter found */
-	Lints = 'lints'
+	Lints = 'lints',
+	/** what the functions of the script ask of their calls */
+	Contracts = 'contracts',
+	/** what the DESCRIPTION of the project says */
+	Project = 'project'
 }
 
 /**
@@ -21,13 +26,13 @@ export enum PlaygroundBox {
  * - `lint:<rule>` is everything a linting rule reported, `lint:<rule>@12` its finding on that line
  * - `dep:<kind>` is what the dependency query found of that kind, `dep:<kind>@12` the one on that line
  * - a {@link PlaygroundBox} is one of the boxes of the page itself
- * @see {@link PlaygroundMark.isValid} to check one, {@link PlaygroundMark.compress} to shorten a list
+ * @see {@link Mark.isValid} to check one, {@link Mark.compress} to shorten a list
  */
-export type PlaygroundMark = `${number}` | `${number}-${number}` | `${number}:${number}` | `${number}@${string}`
+export type PlaygroundMark = `${number}` | `${number}-${number}` | `${number}:${number}` | `${number}@${string}` | `${number}(${string})`
 	| `lint:${string}` | `dep:${string}` | PlaygroundBox;
 
-/** a mark that stands for a place in the script: a line, a range, a column, or a name on a line */
-const CodeMarkPattern = /^\d+(:\d+|-\d+|@.+)?$/;
+/** a mark that stands for a place in the script: a line, a range, a column, or a name on a line, in another file with a `(file-regex)` */
+const CodeMarkPattern = /^\d+(:\d+|-\d+|@.+)?(\(.+\))?$/;
 /** a mark that stands for what an analysis found: `lint:<rule>[@<line>]`, `dep:<kind>[@<line>]` */
 const FoundMarkPattern = /^(lint|dep):[^@,]+(@\d+)?$/;
 /** how many lines one range may stand for, so a hand-written link cannot ask for a million marks */
@@ -36,11 +41,17 @@ const MaxExpandedRange = 500;
 const MaxSharedLink = 4000;
 
 /**
- * The helper object associated with {@link PlaygroundMark}, which makes it easy to check a mark and to
- * keep a list of them as short as a link should be.
+ * What a fragment carries unescaped: the unreserved characters plus the sub-delimiters a link is still read
+ * with, minus `&` and `+`, which mean something of their own here. The `u` flag keeps a character outside the
+ * basic plane one match, so escaping never splits a surrogate pair.
  */
-export const PlaygroundMark = {
-	name: 'PlaygroundMark',
+const FragmentSafe = /[^A-Za-z0-9\-._~!$'()*,;:@/?=]/gu;
+
+/**
+ * What a {@link PlaygroundMark} is, reached as {@link Playground.Mark}: checking one, and keeping a list of
+ * them as short as a link should be.
+ */
+const Mark = {
 	/**
 	 * Checks whether a value has a valid mark syntax. This does not check whether the mark points at
 	 * anything: a line past the end of the script is valid and simply marks nothing.
@@ -58,7 +69,7 @@ export const PlaygroundMark = {
 	 * so this shortens rather than packs.
 	 */
 	compress(this: void, marks: readonly PlaygroundMark[]): PlaygroundMark[] {
-		const kept = uniqueArray(marks.filter(PlaygroundMark.isValid));
+		const kept = uniqueArray(marks.filter(Mark.isValid));
 		/* `lint:<rule>` stands for each of its findings, so the single ones beside it say nothing more */
 		const whole = kept.filter(mark => FoundMarkPattern.test(mark) && !mark.includes('@'));
 		const left = kept.filter(mark => !whole.some(all => mark.startsWith(`${all}@`)));
@@ -74,12 +85,12 @@ export const PlaygroundMark = {
 		}
 		return [...ranges, ...left.filter(mark => !/^\d+$/.test(mark))];
 	},
-	/** the inverse of {@link PlaygroundMark.compress}: every range back to the lines it stands for */
+	/** the inverse of {@link Mark.compress}: every range back to the lines it stands for */
 	expand(this: void, marks: readonly string[]): PlaygroundMark[] {
 		return marks.flatMap((mark): PlaygroundMark[] => {
 			const range = /^(\d+)-(\d+)$/.exec(mark);
 			if(range === null) {
-				return PlaygroundMark.isValid(mark) ? [mark] : [];
+				return Mark.isValid(mark) ? [mark] : [];
 			}
 			const [from, to] = [Number(range[1]), Number(range[2])];
 			return from <= to && to - from < MaxExpandedRange
@@ -93,6 +104,10 @@ export const PlaygroundMark = {
 export interface PlaygroundLinkParts {
 	/** the script the page opens with; left out, the page keeps its own sample */
 	readonly code?:       string;
+	/** the file name of that script, `main.R` when left out */
+	readonly name?:       string;
+	/** the other files of the project, in the order flowR loads them, all before the opened one */
+	readonly files?:      readonly { name: string, code: string }[];
 	/** what the page marks when it opens, and what alt-click toggles from there on */
 	readonly marks?:      readonly PlaygroundMark[];
 	/** the boxes that open folded away, for whatever the example is not about */
@@ -117,95 +132,125 @@ export interface PlaygroundLinkParts {
 }
 
 /**
+ * The letter each setting of the view takes in the view field of a link, in the order a link writes them. Links in
+ * papers and mails have to open as they were sent: a letter is never reused for something else, only new ones are added.
+ */
+const ViewFlags = { forward: '>', removal: '-', dim: 'd', replOpen: 'r', wholeSlice: 'a', inline: 'i' } as const;
+/** how the view of the page was left, as the view field of a link carries it */
+export type PlaygroundView = { readonly [Setting in keyof typeof ViewFlags]?: boolean };
+
+/**
  * Everything about flowR's playground that is not the page itself: what a link to it carries, and how
  * one is written. The page reads back exactly what {@link Playground.link} writes.
+ * @helper location
  * @example
  * ```ts
  * Playground.link({ code: 'x <- 1\nprint(x)', at: '2@x', marks: ['2@x'] });
  * ```
  */
 export const Playground = {
-	name:    'Playground',
+	name:     'Playground',
 	/** where the page these links point at is served from */
-	BaseRef: 'https://flowr-analysis.github.io/flowr/wiki/playground/',
+	BaseRef:  'https://flowr-analysis.github.io/flowr/wiki/playground/',
+	/** the name of the file a link opens on when it names none */
+	MainFile: 'main.R',
 	/** what a link can point at */
-	Mark:    PlaygroundMark,
+	Mark,
 	/** the boxes of the page a mark can point at */
-	Box:     PlaygroundBox,
+	Box:      PlaygroundBox,
+	/** the view field's letters for the settings of `view` that are on */
+	viewFlags(this: void, view: PlaygroundView): string {
+		return Object.entries(ViewFlags).filter(([setting]) => view[setting as keyof PlaygroundView]).map(([, letter]) => letter).join('');
+	},
+	/** which settings of the view the letters of a view field turn on */
+	readView(this: void, flags: string): Required<PlaygroundView> {
+		return Object.fromEntries(Object.entries(ViewFlags).map(([setting, letter]) => [setting, flags.includes(letter)])) as Required<PlaygroundView>;
+	},
 	/**
 	 * The link that opens the playground on exactly this: a script, what it points at, where its cursor
 	 * sits, and how the page is laid out.
 	 */
 	link(this: void, parts: PlaygroundLinkParts): string {
-		const { code, marks = [], collapsed = [], at, forward, dim, replOpen, wholeSlice, config = [], split, repl } = parts;
+		const { code, name, files = [], marks = [], collapsed = [], at, forward, dim, replOpen, wholeSlice, config = [], split, repl } = parts;
 		const base = parts.base ?? Playground.BaseRef;
-		const fields: [string, string][] = [];
-		if(code !== undefined && code.length > 0) {
-			fields.push(['c', packForUrl(code)]);
-		}
-		if(config.length > 0) {
-			fields.push(['k', config.join(';')]);
-		}
-		const kept = PlaygroundMark.compress(marks);
-		if(kept.length > 0) {
-			fields.push(['h', kept.join(',')]);
-		}
-		const folded = uniqueArray(collapsed).filter(box => (Object.values(PlaygroundBox) as string[]).includes(box));
-		if(folded.length > 0) {
-			fields.push(['f', folded.join(',')]);
-		}
 		/* one field for everything about the layout, with the trailing empty parts dropped */
 		const view = [
 			split === undefined ? '' : String(split),
 			repl === undefined ? '' : String(repl),
-			`${forward ? '>' : ''}${dim ? 'd' : ''}${replOpen ? 'r' : ''}${wholeSlice ? 'a' : ''}`
+			Playground.viewFlags({ forward, dim, replOpen, wholeSlice })
 		];
 		while(view.length > 0 && view[view.length - 1].length === 0) {
 			view.pop();
 		}
-		if(view.length > 0) {
-			fields.push(['v', view.join(',')]);
-		}
 		const position = at === undefined ? undefined
 			: code === undefined ? (/^\d+:\d+$/.test(at) ? at : undefined) : Playground.positionOf(code, at);
-		if(position !== undefined) {
-			fields.push(['p', position]);
-		}
-		const hash = Playground.hash(fields);
+		/* an empty field is left out of the link */
+		const hash = Playground.hash([
+			['c', code ? packForUrl(code) : ''],
+			['n', name !== undefined && name !== Playground.MainFile ? name : ''],
+			['o', files.length > 0 ? packForUrl(JSON.stringify(files.map(f => [f.name, f.code]))) : ''],
+			['k', config.length > 0 ? Playground.packConfig(config) : ''],
+			['h', Mark.compress(marks).join(',')],
+			['f', uniqueArray(collapsed).filter(box => (Object.values(PlaygroundBox) as string[]).includes(box)).join(',')],
+			['v', view.join(',')],
+			['p', position ?? '']
+		]);
 		return hash.length > 0 ? `${base}#${hash}` : base;
 	},
 	/**
-	 * A fragment is not a query, so `,`, `:`, and the braces a configuration carries stand in it as they
-	 * are and only what would end it, split it, or read back as something else has to be escaped. `<` and
-	 * `>` go together: both are excluded from a URI, and a bare one of either ends the autolink a chat
-	 * client or a markdown reader made of the address. A link is also made not to end on punctuation,
-	 * because that is where a chat client stops reading it.
+	 * The configuration keys as one field. A key is `a.b.c=<json>`, and the json is brackets, braces and quotes
+	 * that a fragment does not carry, so it travels packed like the script rather than as a run of `%5B`.
+	 */
+	packConfig(this: void, config: readonly string[]): string {
+		return packForUrl(config.join(';'));
+	},
+	/** The keys back out of that field, which older links wrote out plainly and which is read either way. */
+	unpackConfig(this: void, field: string | null | undefined): string[] {
+		if(!field) {
+			return [];
+		}
+		/* a key carries its `=`, and neither packing produces one, so what has one was written before they did */
+		const text = field.includes('=') ? field : unpackFromUrl(field) ?? '';
+		return text.split(';').filter(key => key.length > 0);
+	},
+	/**
+	 * The non-empty fields as a fragment. Everything a fragment does not carry as itself is escaped, so a
+	 * configuration's brackets, braces and quotes travel as `%5B`, `%7B` and `%22` rather than as characters a chat client, a markdown reader or
+	 * a terminal cuts the address at. What is left is what {@link FragmentSafe} lists: a fragment is not a
+	 * query, so `,`, `:` and `;` stand in it as they are and keep a link readable. `&` and `+` are escaped
+	 * beyond that, the first because it separates the fields here and the second because a reader takes it
+	 * for a space. A link is also made not to end on punctuation, because that is where a chat client stops
+	 * reading it.
 	 */
 	hash(this: void, fields: readonly (readonly [string, string])[]): string {
 		const hash = fields
 			.filter(([, value]) => value.length > 0)
-			.map(([key, value]) => `${key}=${value.replace(/[%&#+<>\s]/g, character => encodeURIComponent(character))}`)
+			.map(([key, value]) => `${key}=${value.replace(FragmentSafe, character => encodeURIComponent(character))}`)
 			.join('&');
-		return hash.replace(/[.,:;"')\]]$/, character => encodeURIComponent(character));
+		return hash.replace(/[.,:;')]$/, character => encodeURIComponent(character));
+	},
+	/**
+	 * The parts of a mark `<line>[:<column>][@<name>]`, `undefined` for a line that is no positive number.
+	 * A name may carry an `@` itself, as `object@slot` does, so only the first one separates.
+	 */
+	parseMark(this: void, mark: string): { readonly line: number, readonly column?: number, readonly name?: string } | undefined {
+		const cut = mark.indexOf('@');
+		const [lineText, columnText] = (cut < 0 ? mark : mark.slice(0, cut)).split(':');
+		const line = Number(lineText);
+		return Number.isInteger(line) && line > 0 ? { line, column: columnText === undefined ? undefined : Number(columnText), name: cut < 0 ? undefined : mark.slice(cut + 1) } : undefined;
 	},
 	/**
 	 * Where a criterion points in the given code, as the `<line>:<column>` the page opens the cursor on.
 	 * `12@sum` is the name `sum` in line 12, `12:5` that column, `12` the first name on the line.
 	 */
 	positionOf(this: void, code: string, criterion: string): string | undefined {
-		if(!CodeMarkPattern.test(criterion)) {
+		const mark = CodeMarkPattern.test(criterion) ? Playground.parseMark(criterion) : undefined;
+		const text = mark === undefined ? undefined : code.split('\n')[mark.line - 1];
+		if(mark === undefined || text === undefined) {
 			return undefined;
 		}
-		const cut = criterion.indexOf('@');
-		const [lineText, columnText] = (cut < 0 ? criterion : criterion.slice(0, cut)).split(':');
-		const name = cut < 0 ? undefined : criterion.slice(cut + 1);
-		const line = Number(lineText);
-		const text = code.split('\n')[line - 1];
-		if(!Number.isInteger(line) || line < 1 || text === undefined) {
-			return undefined;
-		}
-		if(columnText !== undefined) {
-			const column = Number(columnText);
+		const { line, column, name } = mark;
+		if(column !== undefined) {
 			return Number.isInteger(column) && column > 0 ? `${line}:${column}` : undefined;
 		}
 		const wanted = name ?? /[A-Za-z.][\w._]*/.exec(text)?.[0];
@@ -242,7 +287,7 @@ export const Playground = {
 	},
 	/** where a name stands in a line, as a name rather than as a substring of a longer one */
 	nameIndexIn(this: void, text: string, name: string): number | undefined {
-		for(const found of text.matchAll(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'))) {
+		for(const found of text.matchAll(new RegExp(escapeRegex(name), 'g'))) {
 			const before = text[found.index - 1];
 			const after = text[found.index + name.length];
 			if(!/[\w._]/.test(before ?? ' ') && !/[\w._]/.test(after ?? ' ')) {

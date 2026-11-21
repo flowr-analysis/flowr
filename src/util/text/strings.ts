@@ -1,16 +1,18 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
+import type { Printable } from './ansi';
 
-/**
- * Check if the given string starts and ends with the given letter
- */
+/** The text as a regex matches it literally */
+export function escapeRegex(text: Printable): string {
+	return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Check if the given string starts and ends with the given letter */
 export function startAndEndsWith(str: string, letter: string): boolean {
 	return str.startsWith(letter) && str.endsWith(letter);
 }
 
-/**
- * Whether every character of `needle` appears in `hay` in order (a subsequence / fuzzy match).
- */
+/** Whether every character of `needle` appears in `hay` in order (a subsequence / fuzzy match). */
 export function isSubsequence(needle: string, hay: string): boolean {
 	if(needle.length === 0) {
 		return true;
@@ -37,16 +39,12 @@ export function matchByPrefixOrSubsequence(candidates: readonly string[], needle
 	return candidates.filter(c => c !== needle && isSubsequence(lower, c.toLowerCase()));
 }
 
-/**
- * Removes all whitespace in the given string
- */
+/** Removes all whitespace in the given string */
 export function withoutWhitespace(output: string): string {
 	return output.replace(/\s/g, '');
 }
 
-/**
- * Find the longest common prefix in an array of strings
- */
+/** Find the longest common prefix in an array of strings */
 export function longestCommonPrefix(strings: string[]): string {
 	if(strings.length === 0) {
 		return '';
@@ -90,10 +88,7 @@ export function isUrl(p: string): boolean {
 	return UrlPattern.test(p);
 }
 
-/**
- * If `s` is a `file://` URI, return the local filesystem path it refers to.
- * Returns `undefined` for any other string.
- */
+/** If `s` is a `file://` URI, return the local filesystem path it refers to. Returns `undefined` for any other string. */
 export function fileUrlToPath(s: string): string | undefined {
 	if(!s.startsWith('file://')) {
 		return undefined;
@@ -105,12 +100,10 @@ export function fileUrlToPath(s: string): string | undefined {
 	}
 }
 
-/**
- * Check if the given path is an absolute path.
- */
+/** Check if the given path is an absolute path. */
 export function isAbsolutePath(p: string, regex: RegExp | undefined): boolean {
-	if(regex?.test(p) || p.startsWith('/') || p.startsWith('\\') || /[a-zA-Z]:[\\/]/.test(p)) {
-		return true;   // the second is a UNC path, the third a Windows one
+	if(regex?.test(p) || p.startsWith('/') || p.startsWith('\\') || /^[a-zA-Z]:[\\/]/.test(p) || p.startsWith('~') || isUrl(p)) {
+		return true;   // a UNC path, a Windows one, `~`, which R expands to the user's home, and any URL
 	}
 	/* where there is no file system there is nothing to resolve against, and a browser is such a place:
 	   without the check the stub answers every question with itself, and every path would look absolute */
@@ -118,12 +111,7 @@ export function isAbsolutePath(p: string, regex: RegExp | undefined): boolean {
 	return typeof normalized === 'string' && normalized === path.normalize(path.resolve(p) + '/');
 }
 
-
-const CorrespondingClose = {
-	'(': ')',
-	'[': ']',
-	'{': '}'
-} as const;
+const CorrespondingClose = { '(': ')', '[': ']', '{': '}' } as const;
 
 /** collect '-' at the start until '[' or '(' is reached, then drop the same from the end if present otherwise return the value as is */
 export function dropRawStringSurround(value: string): string {
@@ -141,3 +129,32 @@ export function dropRawStringSurround(value: string): string {
 	return value;
 }
 
+/**
+ * The `prefix.suffix` readings of a dotted R name, longest prefix first, which is the order S3 dispatch
+ * resolves them in (`as.data.frame.matrix` reads as `as.data.frame` before `as.data`).
+ */
+export function* dottedSplits<S extends string>(name: S): Generator<readonly [prefix: string, suffix: string]> {
+	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
+		yield [name.slice(0, dot), name.slice(dot + 1)];
+	}
+}
+
+/**
+ * Orders two strings by code unit, which every machine agrees on. Use this wherever an order decides an
+ * analysis result: `localeCompare` reads the machine's locale and ICU build, so it would make two users
+ * analyzing the same code disagree (`da` orders `A` before `a`, `en-US` the other way round).
+ */
+export function compareByCodeUnit<S extends string>(a: S, b: S): number {
+	return a < b ? -1 : a > b ? 1 : 0;
+}
+
+export type RQuote = '"' | '\'' | '`';
+
+/** Splits off the matching R quotes (double, single, or backtick) wrapping `str`, escapes are not interpreted. */
+export function splitRQuotes<S extends string>(str: S): { readonly quote: RQuote | undefined, readonly content: string } {
+	const quote = str[0];
+	if(str.length > 1 && (quote === '"' || quote === '\'' || quote === '`') && str[str.length - 1] === quote) {
+		return { quote, content: str.slice(1, -1) };
+	}
+	return { quote: undefined, content: str };
+}

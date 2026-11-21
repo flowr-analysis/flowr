@@ -15,7 +15,7 @@ void (async() => {
 	const analyzer = await new FlowrAnalyzerBuilder().setEngine('tree-sitter').build();
 	const sources = analyzer.inspectContext().deps.signatureSources();
 	if(sources.length === 0) {
-		info('check-generic-labels: no signature database is mounted, run `npm run sync:sigdb` first');
+		info('check-generic-labels: no signature database is mounted, run `npm run sigdb:sync` first');
 		return;
 	}
 	const missing = BuiltInIndex.default().entries.filter(entry => {

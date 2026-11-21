@@ -1,8 +1,8 @@
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../dataflow/environments/identifier';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { groupGenericOf } from '../../dataflow/environments/group-generics';
 import type { DecodedFunction } from './decode';
-import type { PackageSignatureSource } from './reader';
-import { MergedSignatureSource } from './reader';
+import { type PackageSignatureSource, MergedSignatureSource } from './reader';
 import type { LibraryExports } from './schema';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../context/flowr-analyzer-dependencies-context';
 import { log } from '../../util/log';
@@ -32,15 +32,15 @@ export interface SignatureDb {
 	 * The version the analysis assumes for `pkg`, `undefined` if flowR could not pin one down. This is what every
 	 * lookup here uses when no version is given.
 	 */
-	versionOf(this: void, pkg: string): string | undefined;
+	versionOf(this: void, pkg: BrandedNamespace): string | undefined;
 	/** Whether the database can resolve `pkg` at all, at any version. */
-	has(this: void, pkg: string): boolean;
+	has(this: void, pkg: BrandedNamespace): boolean;
 	/**
 	 * The export view of a package.
 	 * @param pkg     - The package to look up.
 	 * @param version - The version to answer for, {@link versionOf} if omitted.
 	 */
-	exportsOf(this: void, pkg: string, version?: string): LibraryExports | undefined;
+	exportsOf(this: void, pkg: BrandedNamespace, version?: string): LibraryExports | undefined;
 	/**
 	 * The database entry for a *qualified* call, i.e. a `pkg::fn` {@link Identifier}. Decodes only that one
 	 * function rather than the whole package.
@@ -48,18 +48,29 @@ export interface SignatureDb {
 	 * A name the package answers only as part of an S4 group falls back to the group: `Matrix::sin` is served by
 	 * `Matrix`'s `Math` entry when there is no `sin` of its own, because that is what an `sin(x)` call dispatches
 	 * to. The result then carries the group's name, not the one that was asked for.
+	 *
+	 * The {@link Identifier} decides how far the lookup reaches: `pkg::fn` answers only with what the package
+	 * exports, `pkg:::fn` reaches its internals as well, exactly as R has it.
 	 * @param id      - The qualified identifier of the function.
 	 * @param version - The version to answer for, {@link versionOf} of its package if omitted.
 	 */
 	functionOf(this: void, id: Identifier, version?: string): DecodedFunction | undefined;
 	/**
-	 * The formal parameter names of a qualified call, ready to hand to {@link MatchArgs.toNames}.
+	 * Like {@link functionOf} (same version and S4-group resolution) but returns the entry's true `exported`
+	 * bit instead of applying the `::`-only check - for callers checking whether a source's own `::`/`:::`
+	 * matches what the package actually exports, rather than wanting R's accessibility rules applied for them.
+	 * @param id      - The identifier to look up; its internal bit is ignored.
+	 * @param version - The version to answer for, {@link versionOf} of its package if omitted.
+	 */
+	rawFunctionOf(this: void, id: Identifier, version?: string): DecodedFunction | undefined;
+	/**
+	 * The formal parameter names of a qualified call, ready to hand to {@link FunctionSemantics.call.match.toNames}.
 	 * @param id      - The qualified identifier of the function.
 	 * @param version - The version to answer for, {@link versionOf} of its package if omitted.
 	 */
-	parametersOf(this: void, id: Identifier, version?: string): readonly string[] | undefined;
+	parametersOf(this: void, id: Identifier, version?: string): readonly BrandedIdentifier[] | undefined;
 	/** The packages exporting `name`, ordered by downloads, see {@link PackageSignatureSource.packagesExporting}. */
-	packagesExporting(this: void, name: string): readonly string[];
+	packagesExporting(this: void, name: BrandedIdentifier): readonly BrandedNamespace[];
 	/** Every loaded source as one, for the questions this interface does not ask. */
 	sources(this: void): PackageSignatureSource;
 }
@@ -79,8 +90,8 @@ const signatureDbLog = log.getSubLogger({ name: 'signature-db' });
  */
 export function signatureDbOf(deps: ReadOnlyFlowrAnalyzerDependenciesContext): SignatureDb {
 	const merged = () => new MergedSignatureSource(deps.signatureSources());
-	const versionOf = (pkg: string) => deps.getDependency(pkg)?.resolvedVersion;
-	const answerFor = <T>(pkg: string, version: string | undefined, ask: (src: PackageSignatureSource, v: string | undefined) => T | undefined): T | undefined => {
+	const versionOf = (pkg: BrandedNamespace) => deps.getDependency(pkg)?.resolvedVersion;
+	function answerFor<T>(pkg: BrandedNamespace, version: string | undefined, ask: (src: PackageSignatureSource, v: string | undefined) => T | undefined): T | undefined {
 		const src = merged();
 		const assumed = version ?? versionOf(pkg);
 		const found = ask(src, assumed);
@@ -92,22 +103,31 @@ export function signatureDbOf(deps: ReadOnlyFlowrAnalyzerDependenciesContext): S
 			signatureDbLog.debug(`no signature for ${pkg} ${assumed}, answering from the newest version the database holds`);
 		}
 		return any;
-	};
+	}
 
-	const functionOf = (id: Identifier, version?: string): DecodedFunction | undefined => {
-		const pkg = Identifier.getNamespace(id);
+	function functionOf(id: Identifier, version?: string): DecodedFunction | undefined {
+		const [name, pkg, internal] = Identifier.toArray(id);
 		if(pkg === undefined) {
 			return undefined; // without a package there is nothing to look the function up in
 		}
-		const name = Identifier.getName(id);
-		const found = answerFor(pkg, version, (src, v) => src.functionByName(pkg, name, v));
+		/* `::` reaches what the package exports, only `:::` reaches the rest */
+		const reaches = (fn: DecodedFunction | undefined) => fn !== undefined && (fn.exported || internal === true) ? fn : undefined;
+		const found = reaches(answerFor(pkg, version, (src, v) => src.functionByName(pkg, name, v)));
 		if(found !== undefined) {
 			return found;
 		}
 		/* `setMethod('Math', 'cls', ...)` answers every member of the group at once, so the group is the entry */
 		const group = groupGenericOf(name);
-		return group === undefined ? undefined : answerFor(pkg, version, (src, v) => src.functionByName(pkg, group, v));
-	};
+		return group === undefined ? undefined : reaches(answerFor(pkg, version, (src, v) => src.functionByName(pkg, group, v)));
+	}
+
+	function rawFunctionOf(id: Identifier, version?: string): DecodedFunction | undefined {
+		const [name, pkg] = Identifier.toArray(id);
+		if(pkg === undefined) {
+			return undefined; // without a package there is nothing to look the function up in
+		}
+		return answerFor(pkg, version, (src, v) => src.functionByName(pkg, name, v));
+	}
 
 	return {
 		available:         () => deps.signatureSources().length > 0,
@@ -117,6 +137,7 @@ export function signatureDbOf(deps: ReadOnlyFlowrAnalyzerDependenciesContext): S
 		packagesExporting: name => deps.packagesExporting(name),
 		sources:           () => merged(),
 		functionOf,
+		rawFunctionOf,
 		parametersOf:      (id, version) => functionOf(id, version)?.signature.map(p => p.name)
 	};
 }

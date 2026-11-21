@@ -1,5 +1,4 @@
-import type { FlowrFileProvider } from '../../../context/flowr-file';
-import { FileRole, FlowrFile } from '../../../context/flowr-file';
+import { type FlowrFileProvider, FileRole, FlowrFile } from '../../../context/flowr-file';
 import { guard } from '../../../../util/assert';
 
 /**
@@ -20,15 +19,18 @@ export class FlowrSweaveFile extends FlowrFile {
 		this.wrapped = file;
 	}
 
-	/**
-	 * The content of the Sweave file.
-	 */
+	/** The content of the Sweave file. */
 	get rnw(): SweaveInfo {
 		if(!this.data) {
 			this.loadContent();
 		}
 		guard(this.data);
 		return this.data;
+	}
+
+	/** The text of the document itself, as its content is only the code it holds. */
+	public rawText(): string {
+		return this.wrapped.content().toString();
 	}
 
 	/**
@@ -40,19 +42,23 @@ export class FlowrSweaveFile extends FlowrFile {
 		return this.data.content;
 	}
 
-	public static from(file: FlowrFileProvider<string> | FlowrSweaveFile): FlowrSweaveFile {
+	/**
+	 * Lifts a file to a {@link FlowrSweaveFile}, reusing it if already one and assigning roles.
+	 * @param file - The file to lift or return if already a Sweave file
+	 * @param role - An optional role to assign to the file
+	 */
+	public static from(file: FlowrFileProvider<string> | FlowrSweaveFile, role?: FileRole): FlowrSweaveFile {
+		if(role) {
+			file.assignRole(role);
+		}
 		return file instanceof FlowrSweaveFile ? file : new FlowrSweaveFile(file);
 	}
 }
 
 export interface SweaveInfo {
-	/**
-	 * The R code without the latex code, no-eval blocks, ...
-	 */
+	/** The R code without the latex code, no-eval blocks, ... */
 	content: string;
-	/**
-	 * All code blocks, including those that should not be evaluated and the latex code.
-	 */
+	/** All code blocks, including those that should not be evaluated and the latex code. */
 	blocks:  SweaveCodeBlock[];
 }
 
@@ -83,13 +89,11 @@ export interface SweaveReuseOptions {
 	reuse: string;
 }
 
-
 const CodeBlockStartPattern = /^<<([^>]*)>>(?<reuse>=)?/;
 const ReusePattern = /^<<([^>]*)>>/;
 /**
  * Parse a Sweave file into joined content and blocks
- * @param raw - raw contents of file
- * @returns Joined Content and Blocks
+ * @returns   Joined Content and Blocks
  */
 export function parseSweave(raw: string): SweaveInfo {
 	const lines = raw.split(/\r?\n/);
@@ -128,12 +132,7 @@ export function parseSweave(raw: string): SweaveInfo {
 					blocks.push({ type: 'reuse', reuse: result.reuse, startLine: lineNum });
 					continue;
 				}
-				currentBlock = {
-					type:      'content',
-					options:   result,
-					content:   '',
-					startLine: lineNum
-				};
+				currentBlock = { type: 'content', options: result, content: '', startLine: lineNum };
 			}
 		}
 	}
@@ -154,18 +153,14 @@ export function parseSweave(raw: string): SweaveInfo {
 		}
 	}
 
-	return {
-		content: content.join('\n'),
-		blocks:  blocks
-	};
+	return { content: content.join('\n'), blocks: blocks };
 }
 
 const evalWithFlagPattern = /eval\s*=\s*(TRUE|FALSE)/i;
 
 /**
  * Parses a Sweave Code Block Start if it can find one
- * @param line - the line to parse
- * @returns info about options and name if code block start was found
+ * @returns    info about options and name if code block start was found
  */
 export function parseSweaveCodeblockStart(line: string): SweaveBlockOptions | SweaveReuseOptions | undefined {
 	const match = line.match(CodeBlockStartPattern);
@@ -200,9 +195,7 @@ export function parseSweaveCodeblockStart(line: string): SweaveBlockOptions | Sw
 			}
 		}
 
-		return {
-			name, eval: evalOpt
-		};
+		return { name, eval: evalOpt };
 	}
 
 	return undefined;

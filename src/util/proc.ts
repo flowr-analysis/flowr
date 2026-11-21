@@ -5,12 +5,13 @@
  */
 export function exitSafe(code = 0): void {
 	let pending = 2;
-	const done = () => {
+	function done() {
 		if(--pending === 0) {
 			process.exit(code);
 		}
-	};
+	}
 	process.stdout.write('', done);
 	process.stderr.write('', done);
-	setTimeout(() => process.exit(code), 60_000).unref();
+	/* a browser's timer is a plain number that cannot be unreferenced */
+	(setTimeout(() => process.exit(code), 60_000) as { unref?: () => void }).unref?.();
 }

@@ -1,14 +1,7 @@
-import {
-	type FlowrGasConfig,
-	type GasFeatureOverride,
-	type GasHeapStatistics,
-	GasLevel,
-	type GasOverrides,
-	type GasThresholdPair,
-	type GasThresholdSpec
-} from '../../gas';
+import { type FlowrGasConfig, type GasFeatureOverride, type GasHeapStatistics, GasLevel, type GasOverrides, type GasThresholdPair, type GasThresholdSpec, type DataflowBudget, DataflowBudgetTracker, isBoundedBudget } from '../../gas';
 import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
+import { DefaultCountedCheckEvery } from '../../config';
 import { log } from '../../util/log';
 import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
 
@@ -40,14 +33,19 @@ function tryGetHeapStatistics(): GasHeapStatistics | undefined {
 }
 
 type Bound = 'problematic' | 'critical';
-type Dimension = 'timeMs' | 'memory';
+/** the sampled dimensions {@link FlowrAnalyzerGasContext.checkGas} reads, plus the counted ones a budget arms */
+type Dimension = 'timeMs' | 'memory' | 'steps' | 'vertices';
 
 /** One contingent, one operation: a slice is not billed for the analysis that preceded it. */
 interface GasScope {
 	/** what the elapsed-time bounds are measured from */
-	startTime:       number;
+	startTime:        number;
 	/** the {@link GasOverrides} in effect, innermost last */
-	readonly layers: readonly GasOverrides[];
+	readonly layers:  readonly GasOverrides[];
+	/** the scope this one was derived from, to report a degraded check to the enclosing scopes */
+	readonly parent?: GasScope;
+	/** set once a gas check in this scope or a scope derived from it reported more than normal */
+	degraded?:        boolean;
 }
 
 function isPair(v: number | Partial<GasThresholdPair> | undefined): v is Partial<GasThresholdPair> {
@@ -57,15 +55,8 @@ function isPair(v: number | Partial<GasThresholdPair> | undefined): v is Partial
 /** feature entry, then `default`, then the shared pair */
 function configuredBound(spec: GasThresholdSpec | undefined, feature: string, bound: Bound): number | undefined {
 	const own = spec?.[feature];
-	if(isPair(own) && own[bound] !== undefined) {
-		return own[bound];
-	}
-	const fallback = spec?.default?.[bound];
-	if(fallback !== undefined) {
-		return fallback;
-	}
 	const shared = spec?.[bound];
-	return typeof shared === 'number' ? shared : undefined;
+	return (isPair(own) ? own[bound] : undefined) ?? spec?.default?.[bound] ?? (typeof shared === 'number' ? shared : undefined);
 }
 
 /** a bare number is an elapsed-time bound in ms */
@@ -94,6 +85,16 @@ export interface ReadOnlyFlowrAnalyzerGasContext {
 	 */
 	checkGas(key: string): GasLevel;
 	/**
+	 * The counted bounds of `key`, resolved once against the current contingent, or `undefined` when disabled or
+	 * unbounded. Arming counterpart of {@link checkGas} for the dataflow fold, see {@link GasFeatureKey.Dataflow}.
+	 */
+	budget(key: string): DataflowBudgetTracker | undefined;
+	/**
+	 * How many counted steps one accounting covers, from `gas.countedCheckEvery`. A bound may be overshot by up
+	 * to this many steps, which is what keeps an armed check off the per-step path.
+	 */
+	checkEvery(): number;
+	/**
 	 * A view with a fresh contingent, measured from this call, for one operation to run against.
 	 * The enclosing bounds still apply, `overrides` winning over them. Derives a new object rather than
 	 * mutating this one, so it is safe for nested and concurrent work.
@@ -110,6 +111,8 @@ export interface WriteableFlowrAnalyzerGasContext extends ReadOnlyFlowrAnalyzerG
 	reset(): void;
 	/** see {@link FlowrAnalyzerGasContext#withGas} */
 	withGas<T>(overrides: GasOverrides | undefined, fn: () => T): T;
+	/** see {@link FlowrAnalyzerGasContext#withFreshGas} */
+	withFreshGas<T>(fn: () => Promise<T>): Promise<{ readonly value: T, readonly degraded: boolean }>;
 }
 
 /** Checks heap and elapsed-time pressure for named analysis features. See {@link ReadOnlyFlowrAnalyzerGasContext}. */
@@ -142,6 +145,8 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 		this.base.startTime = Date.now();
 	}
 
+	fork(_source: FlowrAnalyzerGasContext): void {}
+
 	/** A new analysis makes the spent contingent irrelevant. */
 	public receive(_event: InvalidationEvent): void {
 		this.reset();
@@ -156,7 +161,29 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 	 * {@link scope} wherever the context can be threaded through.
 	 */
 	public withGas<T>(overrides: GasOverrides | undefined, fn: () => T): T {
-		const frame = this.derive(overrides);
+		return this.within(this.derive(overrides), fn);
+	}
+
+	/**
+	 * Runs `fn` against a contingent of its own: the configured bounds only, none of the overrides of the
+	 * operation asking, and a fresh start time. Reports whether any gas check during `fn` came back above normal,
+	 * so a result meant to be shared (see {@link FlowrAnalyzerCache#derive}) is only kept when it is complete.
+	 * Use it for work that outlives the operation asking, and {@link FlowrAnalyzerGasContext#withGas} for the work of the asking
+	 * operation itself, since this one ignores the overrides in effect (so it does not inherit a tight bound of the caller).
+	 * `degraded` is also set if a check inside a nested scope reported more than normal.
+	 * @example
+	 * ```ts
+	 * const { value, degraded } = await analyzer.context().gas.withFreshGas(async() => await analyzer.dataflow());
+	 * const kept = degraded ? undefined : value; // a degraded value may be incomplete, so do not store it
+	 * ```
+	 */
+	public async withFreshGas<T>(fn: () => Promise<T>): Promise<{ readonly value: T, readonly degraded: boolean }> {
+		const frame = this.derive(undefined, this.base, true);
+		const value = await this.within(frame, fn);
+		return { value, degraded: frame.degraded === true };
+	}
+
+	private within<T>(frame: GasScope, fn: () => T): T {
 		this.frames.push(frame);
 		let result: T;
 		try {
@@ -180,16 +207,26 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 		return this.viewOf(this.derive(overrides));
 	}
 
-	private derive(overrides: GasOverrides | undefined, from?: GasScope): GasScope {
-		const inherited = (from ?? this.activeScope()).layers;
-		return { startTime: Date.now(), layers: overrides ? [...inherited, overrides] : inherited };
+	private derive(overrides: GasOverrides | undefined, from?: GasScope, detached = false): GasScope {
+		const parent = from ?? this.activeScope();
+		const layers = overrides ? [...parent.layers, overrides] : parent.layers;
+		return detached ? { startTime: Date.now(), layers } : { startTime: Date.now(), layers, parent };
+	}
+
+	/** marks `scope` and the scopes it was derived from as degraded, stopping at the first one already marked */
+	private static markDegraded(scope: GasScope | undefined): void {
+		for(let s = scope; s !== undefined && s.degraded !== true; s = s.parent) {
+			s.degraded = true;
+		}
 	}
 
 	private viewOf(scope: GasScope): ReadOnlyFlowrAnalyzerGasContext {
 		return {
-			name:     `${this.name}:scope`,
-			checkGas: key => this.levelFor(key, scope),
-			scope:    o => this.viewOf(this.derive(o, scope))
+			name:       `${this.name}:scope`,
+			checkGas:   key => this.levelFor(key, scope),
+			budget:     key => this.budgetFor(key, scope),
+			checkEvery: () => this.checkEvery(),
+			scope:      o => this.viewOf(this.derive(o, scope))
 		};
 	}
 
@@ -237,14 +274,12 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 		if(stats === undefined || stats.heap_size_limit <= 0) {
 			return GasLevel.Normal;
 		}
-		const ratio = (stats.used_heap_size / stats.heap_size_limit) * factor;
-		if(ratio >= this.bound(scope, key, 'memory', 'critical'))    {
-			return GasLevel.Critical;
-		}
-		if(ratio >= this.bound(scope, key, 'memory', 'problematic')) {
-			return GasLevel.Problematic;
-		}
-		return GasLevel.Normal;
+		return this.levelAt((stats.used_heap_size / stats.heap_size_limit) * factor, scope, key, 'memory');
+	}
+
+	private levelAt(value: number, scope: GasScope, key: string, dim: Dimension): GasLevel {
+		return value >= this.bound(scope, key, dim, 'critical') ? GasLevel.Critical
+			: value >= this.bound(scope, key, dim, 'problematic') ? GasLevel.Problematic : GasLevel.Normal;
 	}
 
 	private static maxLevel(a: GasLevel, b: GasLevel): GasLevel {
@@ -252,18 +287,34 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 	}
 
 	private timeLevel(factor: number, key: string, scope: GasScope): GasLevel {
-		const elapsed = (Date.now() - scope.startTime) * factor;
-		if(elapsed >= this.bound(scope, key, 'timeMs', 'critical'))    {
-			return GasLevel.Critical;
-		}
-		if(elapsed >= this.bound(scope, key, 'timeMs', 'problematic')) {
-			return GasLevel.Problematic;
-		}
-		return GasLevel.Normal;
+		return this.levelAt((Date.now() - scope.startTime) * factor, scope, key, 'timeMs');
 	}
 
 	public checkGas(key: string): GasLevel {
 		return this.levelFor(key, this.activeScope());
+	}
+
+	public budget(key: string): DataflowBudgetTracker | undefined {
+		return this.budgetFor(key, this.activeScope());
+	}
+
+	/** @see {@link ReadOnlyFlowrAnalyzerGasContext#checkEvery} */
+	public checkEvery(): number {
+		return this.config?.countedCheckEvery ?? DefaultCountedCheckEvery;
+	}
+
+	/** The bounds `key` is armed with, pre-divided by its factor so the tracker only ever compares, never multiplies. */
+	private budgetFor(key: string, scope: GasScope): DataflowBudgetTracker | undefined {
+		const factor = this.factorFor(scope, key);
+		if(!factor) {
+			return undefined;   // disabled, which is what keeps an unarmed run free of the guard entirely
+		}
+		const cap = (dim: Dimension): number => {
+			const bound = this.bound(scope, key, dim, 'critical');
+			return Number.isFinite(bound) ? Math.max(1, Math.floor(bound / factor)) : 0;
+		};
+		const budget: DataflowBudget = { steps: cap('steps'), vertices: cap('vertices'), timeMs: cap('timeMs') };
+		return isBoundedBudget(budget) ? new DataflowBudgetTracker(budget, scope.startTime, this.checkEvery()) : undefined;
 	}
 
 	private levelFor(key: string, scope: GasScope): GasLevel {
@@ -271,26 +322,23 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 		if(!factor && this.plugins.length === 0) {
 			return GasLevel.Normal;
 		}
-
 		let level = GasLevel.Normal;
-
 		if(factor) {
 			level = FlowrAnalyzerGasContext.maxLevel(level, this.memoryLevel(factor, key, scope));
 			if(level < GasLevel.Critical) {
 				level = FlowrAnalyzerGasContext.maxLevel(level, this.timeLevel(factor, key, scope));
 			}
 		}
-
 		for(const plugin of this.plugins) {
 			if(level >= GasLevel.Critical) {
 				break;
 			}
-			const override = plugin.processor(this.ctx, key);
-			if(override !== undefined) {
-				level = FlowrAnalyzerGasContext.maxLevel(level, override);
-			}
+			level = FlowrAnalyzerGasContext.maxLevel(level, plugin.processor(this.ctx, key) ?? GasLevel.Normal);
 		}
+		if(level > GasLevel.Normal) {
 
+			FlowrAnalyzerGasContext.markDegraded(scope);
+		}
 		return level;
 	}
 }

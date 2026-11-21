@@ -2,7 +2,8 @@ import type { DataflowGraph, IngoingEdges } from './graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge, EdgeType } from './graph/edge';
 import { guard } from '../util/assert';
-import { FunctionDefinitionVertex } from './graph/vertex';
+import { DfgVertex } from './graph/vertex';
+import { Identifier } from './environments/identifier';
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
 export interface DataflowGraphCluster {
@@ -22,9 +23,7 @@ export interface DataflowGraphCluster {
 	readonly hasUnknownSideEffects: boolean;
 }
 
-/**
- * Find all clusters in the given dataflow graph.
- */
+/** Find all clusters in the given dataflow graph. */
 export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 	const clusters: DataflowGraphClusters = [];
 	// we reverse the vertices since dependencies usually point "backwards" from later nodes
@@ -67,8 +66,7 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 	const nodes = new Set<NodeId>([from]);
 	const pending: NodeId[] = [from];
 
-	while(pending.length > 0) {
-		const current = pending.pop() as NodeId;
+	for(let current = pending.pop(); current !== undefined; current = pending.pop()) {
 		const info = graph.getVertex(current);
 		guard(info !== undefined, () => `Vertex ${current} not found in graph`);
 
@@ -80,8 +78,8 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 		}
 
 		// cluster function def exit points
-		if(FunctionDefinitionVertex.is(info)) {
-			for(const { nodeId } of info.exitPoints){
+		if(DfgVertex.isFunctionDefinition(info)) {
+			for(const { nodeId } of info.exitPoints) {
 				reach(nodeId);
 			}
 		}
@@ -94,7 +92,7 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 					continue;
 				}
 				// don't cluster for function content if it isn't returned
-				if(DfEdge.doesNotIncludeType(e, EdgeType.Returns) && info.onlyBuiltin && info.name === '{') {
+				if(DfEdge.doesNotIncludeType(e, EdgeType.Returns) && DfgVertex.isFunctionCall(info) && info.onlyBuiltin && Identifier.getName(info.name) === '{') {
 					continue;
 				}
 				reach(dest);

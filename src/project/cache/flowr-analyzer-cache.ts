@@ -1,4 +1,4 @@
-import type { KnownParser, ParseStepOutput } from '../../r-bridge/parser';
+import { type KnownParser, type ParseStepOutput, ParserName } from '../../r-bridge/parser';
 import { FlowrCache, type InvalidationEvent, InvalidationEventType } from './flowr-cache';
 import {
 	createDataflowPipeline,
@@ -17,6 +17,7 @@ import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 import { FlowrAnalyzerControlFlowCache } from './flowr-analyzer-controlflow-cache';
 import type { Tree } from 'web-tree-sitter';
 import { CallGraph } from '../../dataflow/graph/call-graph';
+import type { ForkOptions } from '../flowr-analyzer';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
 	parser:  Parser;
@@ -38,15 +39,15 @@ function isTreeSitterParse(parse: unknown): parse is ParseStepOutput<Tree> {
 			f => typeof f.parsed === 'object' && f.parsed !== null && 'rootNode' in f.parsed);
 }
 
-/**
- * This provides the full analyzer caching layer, please avoid using this directly
- * and prefer the {@link FlowrAnalyzer}.
- */
+/** This provides the full analyzer caching layer, please avoid using this directly and prefer the {@link FlowrAnalyzer}. */
 export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<AnalyzerCacheType<Parser>> {
-	private args:             FlowrAnalyzerCacheOptions<Parser>;
-	private pipeline:         AnalyzerPipelineExecutor<Parser> = undefined as unknown as AnalyzerPipelineExecutor<Parser>;
-	private controlFlowCache: FlowrAnalyzerControlFlowCache = undefined as unknown as FlowrAnalyzerControlFlowCache;
-	private callGraphCache:   CallGraph | undefined = undefined;
+	private args:              FlowrAnalyzerCacheOptions<Parser>;
+	private pipeline!:         AnalyzerPipelineExecutor<Parser>;
+	/** the steps of the tape run so far, which the next caller waits for */
+	private running:           Promise<unknown> = Promise.resolve();
+	private controlFlowCache!: FlowrAnalyzerControlFlowCache;
+	private callGraphCache:    CallGraph | undefined = undefined;
+	private derivedCache = new Map<object, Promise<unknown>>();
 
 	protected constructor(args: FlowrAnalyzerCacheOptions<Parser>) {
 		super();
@@ -61,6 +62,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		}) as AnalyzerPipelineExecutor<Parser>;
 		this.controlFlowCache = new FlowrAnalyzerControlFlowCache();
 		this.callGraphCache = undefined;
+		this.derivedCache = new Map();
 		this.computeIfAbsent(true, () => this.pipeline?.getResults(true));
 	}
 
@@ -79,7 +81,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	public override receive(event: InvalidationEvent): void {
 		super.receive(event);
 		const type = event.type;
-		if(type === InvalidationEventType.Full){
+		if(type === InvalidationEventType.Full) {
 			this.disposeParse();
 		}
 		switch(type) {
@@ -102,18 +104,23 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	}
 
 	private async runTapeUntil<T>(force: boolean | undefined, until: () => T | undefined): Promise<T> {
-		guard(this.args.context.files.loadingOrder.getUnorderedRequests().length > 0,
-			'At least one request must be set to run the analysis pipeline');
-		if(force) {
-			this.reset();
-		}
-		/* the contingent belongs to the analysis, so stepping the tape starts one of its own */
-		return this.args.context.gas.withGas(undefined, () => this.stepTapeUntil(until));
+		guard(this.args.context.files.hasRequests(), 'At least one request must be set to run the analysis pipeline');
+		/* one tape: a second caller, as `analyzer.normalize()` while `analyzer.dataflow()` still runs, waits for the steps before */
+		const run = this.running.then(() => {
+			if(force) {
+				this.reset();
+			}
+			/* the contingent belongs to the analysis, so stepping the tape starts one of its own */
+			return this.args.context.gas.withGas(undefined, () => this.stepTapeUntil(until));
+		});
+		this.running = run.catch(() => undefined);
+		return run;
 	}
 
 	private async stepTapeUntil<T>(until: () => T | undefined): Promise<T> {
 		let g: T | undefined;
 		while((g = until()) === undefined && this.pipeline.hasNextStep()) {
+			await this.prepareDataflow();
 			await this.pipeline.nextStep();
 		}
 
@@ -123,19 +130,26 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		return g;
 	}
 
+	/** the normalized AST the dependency plugins already {@link FlowrAnalyzerDependenciesContext#prepare|prepared} for */
+	private prepared: unknown;
+
+	/** once the AST is there and the dataflow is not, the dependency plugins may wait for what the dataflow asks of them */
+	private async prepareDataflow(): Promise<void> {
+		const { normalize, dataflow } = this.get();
+		if(normalize !== undefined && dataflow === undefined && this.prepared !== normalize) {
+			this.prepared = normalize;
+			await this.args.context.deps.prepare(normalize);
+		}
+	}
+
 	private storeIncrementalSnapshotIfAvailable(): void {
-		if(this.args.parser.name !== 'tree-sitter') {
+		if(this.args.parser.name !== ParserName.TreeSitter) {
 			return;
 		}
 
 		const parse = this.peekParse();
 		if(isTreeSitterParse(parse)) {
 			this.args.context.inc.storeOldParseResults(parse);
-		}
-
-		const normalize = this.peekNormalize();
-		if(normalize) {
-			this.args.context.inc.storeOldNormalizedAst(normalize);
 		}
 	}
 
@@ -145,8 +159,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @see {@link FlowrAnalyzerCache#peekParse} - to get the parse output if already available without triggering a new parse.
 	 */
 	public async parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>> {
-		const d = this.get();
-		return this.runTapeUntil(force, () => d.parse);
+		return this.runTapeUntil(force, () => this.get().parse);
 	}
 
 	/**
@@ -164,8 +177,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @see {@link FlowrAnalyzerCache#peekNormalize} - to get the normalized AST if already available without triggering a new normalization.
 	 */
 	public async normalize(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['normalize']>> {
-		const d = this.get();
-		return this.runTapeUntil(force, () => d.normalize);
+		return this.runTapeUntil(force, () => this.get().normalize);
 	}
 
 	/**
@@ -183,8 +195,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @see {@link FlowrAnalyzerCache#peekDataflow} - to get the dataflow graph if already available without triggering a new computation.
 	 */
 	public async dataflow(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['dataflow']>> {
-		const d = this.get();
-		return this.runTapeUntil(force, () => d.dataflow);
+		return this.runTapeUntil(force, () => this.get().dataflow);
 	}
 
 	/**
@@ -196,17 +207,24 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		return this.get()?.dataflow;
 	}
 
+	/** Reuse cached results from the source cache according to the given fork options. */
+	public fork(source: FlowrAnalyzerCache<KnownParser>, options?: ForkOptions): void {
+		const target = this.get();
+		target.normalize = source.peekNormalize();
+		target.parse = source.peekParse();
+
+		if(options?.forkDataflow ?? true) {
+			target.dataflow = source.peekDataflow();
+		}
+	}
+
 	/**
 	 * Get the control flow graph (CFG) for the request, computing if necessary.
 	 * @param force           - Do not use the cache, instead force new analyses.
 	 * @param simplifications - Simplification passes to be applied to the CFG.
 	 */
 	public async controlflow(force: boolean | undefined, simplifications?: readonly CfgSimplificationPassName[]): Promise<ControlFlowInformation> {
-		const cfgInfo = {
-			ctx: this.args.context,
-			ast: async() => await this.normalize(),
-			dfg: async() => await this.dataflow()
-		};
+		const cfgInfo = { ctx: this.args.context, ast: async() => await this.normalize(), dfg: async() => await this.dataflow() };
 		return this.controlFlowCache.get(force, cfgInfo, simplifications);
 	}
 
@@ -231,8 +249,41 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	}
 
 	/**
-	 * Get the call graph for the request if already available, otherwise return `undefined`.
+	 * A value computed from the current analysis once per `key`, dropped with the analysis.
+	 * A failed computation is not kept, so the next caller tries again.
+	 * Callers asking while it runs share the one promise, so a value of one analysis is never computed twice
+	 * concurrently. See {@link ReadonlyFlowrAnalysisProvider#derive} for what to keep in mind when choosing the `key`.
+	 * @example
+	 * ```ts
+	 * const first = cache.derive(key, compute);
+	 * const second = cache.derive(key, compute); // the same promise
+	 * ```
 	 */
+	public derive<T>(key: object, compute: () => Promise<T>): Promise<T> {
+		const known = this.derivedCache.get(key) as Promise<T> | undefined;
+		if(known !== undefined) {
+			return known;
+		}
+		const store = this.derivedCache;
+		/* shared by every later caller, so it runs against a contingent of its own rather than the asking one,
+		 * and a result computed under gas pressure (which may be incomplete) is handed out but not kept */
+		function forget() {
+			if(store.get(key) === computed) {
+				store.delete(key);
+			}
+		}
+		const computed: Promise<T> = this.args.context.gas.withFreshGas(compute).then(({ value, degraded }) => {
+			if(degraded) {
+				forget();
+			}
+			return value;
+		});
+		store.set(key, computed);
+		computed.catch(forget);
+		return computed;
+	}
+
+	/** Get the call graph for the request if already available, otherwise return `undefined`. */
 	public peekCallGraph(): CallGraph | undefined {
 		return this.callGraphCache;
 	}

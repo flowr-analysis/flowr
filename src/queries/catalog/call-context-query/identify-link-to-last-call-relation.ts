@@ -2,8 +2,8 @@ import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { type DataflowGraph, FunctionArgument } from '../../../dataflow/graph/graph';
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import { type DataflowGraphVertexFunctionCall, FunctionCallVertex, FunctionDefinitionVertex } from '../../../dataflow/graph/vertex';
-import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
+import { type DataflowGraphVertexFunctionCall, DfgVertex } from '../../../dataflow/graph/vertex';
+import { EdgeType } from '../../../dataflow/graph/edge';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { assertUnreachable } from '../../../util/assert';
 import type { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
@@ -12,10 +12,10 @@ import type { LinkToLastCall } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
 import type { PromotedCallTest, PromotedLinkTo } from './call-context-query-executor';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
-import { CfgVertex } from '../../../control-flow/control-flow-graph';
+import { type ControlFlowGraph, CfgVertex } from '../../../control-flow/control-flow-graph';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 
 type KnownCalls = Map<NodeId, Required<DataflowGraphVertexFunctionCall>>;
 
@@ -24,7 +24,7 @@ export enum CallTargets {
 	OnlyGlobal = 'global',
 	/** call targets a function that is defined locally or globally, but must include a global function */
 	MustIncludeGlobal = 'must-include-global',
-	/** call targets a function that is defined locally  */
+	/** call targets a function that is defined locally */
 	OnlyLocal = 'local',
 	/** call targets a function that is defined locally or globally, but must include a local function */
 	MustIncludeLocal = 'must-include-local',
@@ -32,19 +32,13 @@ export enum CallTargets {
 	Any = 'any'
 }
 
-/**
- * Determines whether the given function call node satisfies the specified call target condition.
- */
+/** Determines whether the given function call node satisfies the specified call target condition. */
 export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no' {
 	const outgoing = graph.outgoingEdges(info.id);
 	if(outgoing === undefined) {
 		return 'no';
 	}
-	const callTargets = outgoing.entries()
-		.filter(([, e]) => DfEdge.includesType(e, EdgeType.Calls))
-		.map(([t]) => t)
-		.toArray()
-    ;
+	const callTargets = Dataflow.targetsOf(graph, info.id, EdgeType.Calls);
 
 	let builtIn = false;
 
@@ -97,12 +91,10 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
 	}
 }
 
-/**
- * Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types.
- */
+/** Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types. */
 export function getValueOfArgument<Types extends readonly RType[] = readonly RType[]>(
 	graph: DataflowGraph, call: DataflowGraphVertexFunctionCall | undefined, argument: { name?: string, index: number }, additionalAllowedTypes?: Types
-): (RNodeWithParent & { type: Types[number] } ) | undefined {
+): (RNodeWithParent & { type: Types[number] }) | undefined {
 	if(!call) {
 		return undefined;
 	}
@@ -169,9 +161,7 @@ function anyCallMatches(knownCalls: KnownCalls, callName: RegExp | PromotedCallT
 	return matched;
 }
 
-/**
- * Synchronous version of {@link identifyLinkToLastCallRelation}.
- */
+/** Synchronous version of {@link identifyLinkToLastCallRelation}. */
 export function identifyLinkToLastCallRelationSync(
 	from: NodeId,
 	cfg: ControlFlowGraph,
@@ -197,7 +187,7 @@ export function identifyLinkToLastCallRelationSync(
 		(node: NodeId) => knownCalls.get(node) :
 		(node: NodeId) => {
 			const v = graph.getVertex(node);
-			return FunctionCallVertex.is(v) ? v : undefined;
+			return DfgVertex.isFunctionCall(v) ? v : undefined;
 		};
 
 	/* function bodies the walk steps into, collected while walking and drained afterwards */
@@ -222,7 +212,7 @@ export function identifyLinkToLastCallRelationSync(
 		 */
 		for(const target of CfgVertex.getCallTargets(cfg.getVertex(node)) ?? []) {
 			const definition = graph.getVertex(target);
-			if(FunctionDefinitionVertex.is(definition)) {
+			if(DfgVertex.isFunctionDefinition(definition)) {
 				searchFrom.push(...definition.exitPoints.map(e => e.nodeId));
 			}
 		}
@@ -230,6 +220,8 @@ export function identifyLinkToLastCallRelationSync(
 			const act = cascadeIf ? cascadeIf(vertex, from, graph) : CascadeAction.Stop;
 			if(act === CascadeAction.Skip) {
 				return;
+			} else if(act === CascadeAction.Block) {
+				return true;
 			}
 			const tar = satisfiesCallTargets(vertex, graph, CallTargets.MustIncludeGlobal);
 			if(tar !== 'no') {

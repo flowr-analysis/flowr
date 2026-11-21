@@ -1,29 +1,37 @@
 #!/bin/sh
 set -eu
 
-staged=$(git diff --cached --name-only --diff-filter=ACM)
+# -z keeps a path with a space in it whole, which the quoted form of --name-only does not;
+# the newlines are only there so grep and read can work line by line
+staged=$(git diff --cached --name-only --diff-filter=ACM -z | tr '\0' '\n')
 if [ -z "$staged" ]; then
   exit 0
 fi
 
+# what `git grep --cached` reports for the paths read from stdin, one at a time so a path with a
+# space in it stays one pathspec instead of being split into several
+grepIn() {
+  pattern=$1
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    git grep --cached -n -E "$pattern" -- "$file" || true
+  done
+}
+
 fail=0
 
 # a focused test silently skips every other test of its file in the CI
-focused=$(echo "$staged" | grep -E '^test/.*\.(ts|tsx)$' || true)
-if [ -n "$focused" ]; then
-  # shellcheck disable=SC2086 # we want the argument splitting
-  hits=$(git grep --cached -n -E '(describe|test|it|bench)\.only\(' -- $focused || true)
-  if [ -n "$hits" ]; then
-    echo "Focused tests are staged, so the rest of their file would not run:"
-    echo "$hits"
-    echo "Remove the '.only' or commit with --no-verify if you know what you are doing."
-    fail=1
-  fi
+focused=$(printf '%s\n' "$staged" | grep -E '^test/.*\.(ts|tsx)$' || true)
+hits=$(printf '%s\n' "$focused" | grepIn '(describe|test|it|bench)\.only\(')
+if [ -n "$hits" ]; then
+  echo "Focused tests are staged, so the rest of their file would not run:"
+  echo "$hits"
+  echo "Remove the '.only' or commit with --no-verify if you know what you are doing."
+  fail=1
 fi
 
 # leftover conflict markers compile in some files and break others, and they are never intended
-# shellcheck disable=SC2086 # we want the argument splitting
-markers=$(git grep --cached -n -E '^(<<<<<<< |>>>>>>> |=======$)' -- $staged || true)
+markers=$(printf '%s\n' "$staged" | grepIn '^(<<<<<<< |>>>>>>> |=======$)')
 if [ -n "$markers" ]; then
   echo "Merge conflict markers are staged:"
   echo "$markers"

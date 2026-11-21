@@ -1,11 +1,4 @@
-import {
-	LintingPrettyPrintContext,
-	type LintingResult,
-	LintingResultCertainty,
-	type LintingRule,
-	LintingRuleCertainty,
-	type LintQuickFix
-} from '../linter-format';
+import { prettyPrint, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFix } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation, type SourceRange } from '../../util/range';
@@ -39,6 +32,8 @@ export interface RegionScan {
 	readonly closers:   readonly string[]
 	/** Offset of every `%` outside a string or comment; an odd count means an unclosed `%...%` operator. */
 	readonly percentAt: readonly number[]
+	/** Offset where the only missing `)` belongs: the end of a `for`/`while`/`if`/`function` head, right before its `{` body. */
+	readonly headAt?:   number
 }
 
 /** A `missing` (parser-inserted, zero-width) or `error` (un-parseable) tree-sitter node. */
@@ -60,6 +55,8 @@ export interface SyntaxErrorFixPattern {
 	readonly quickFix:    (finding: SyntaxErrorFinding, file: string | undefined) => LintQuickFix
 }
 
+/** what precedes the `(` of a control structure's head */
+const ControlHead = /\b(?:for|while|if|function)\s*$/;
 const DelimiterInsert = new Map([[')', ')'], ['}', '}'], [']', ']'], [']]', ']]'], ['"', '"'], ['\'', '\''], ['`', '`'], [',', ','], [';', ';']]);
 const KeywordInsert = new Map([['in', ' in '], ['else', ' else ']]);
 const OperatorToken = /^([-+*/^:~!<>=&|@$]+|<-|<<-|->|->>|\|>|%[^%]*%)$/;
@@ -75,10 +72,14 @@ const ConsoleOutput = /^\s*\[{1,2}\d+\]{1,2}(\s|$)/;
 const point = (p: { readonly row: number, readonly column: number }): SourceRange => [p.row + 1, p.column + 1, p.row + 1, p.column];
 const span = (n: SyntaxNode): SourceRange => [n.startPosition.row + 1, n.startPosition.column + 1, n.endPosition.row + 1, n.endPosition.column];
 const isDanglingOperator = (n: SyntaxNode | null): n is SyntaxNode => !!n && !n.isNamed && OperatorToken.test(n.type);
+const replace = (range: SourceRange, file: string | undefined, description: string, replacement: string): LintQuickFix => ({ type: 'replace', loc: SourceLocation.from(range, file), description, replacement });
+const remove = (range: SourceRange, file: string | undefined, description: string): LintQuickFix => ({ type: 'remove', loc: SourceLocation.from(range, file), description });
 
 /** Read an error region: what it leaves open, and where its operators sit. */
 function scanRegion(text: string): RegionScan {
 	const stack: string[] = [];
+	/* for each open `(` that heads a control structure, where the `{` that follows it starts the body (once there is one) */
+	const heads: ({ bodyAt?: number } | undefined)[] = [];
 	const percentAt: number[] = [];
 	let quote: string | undefined;
 	for(let i = 0; i < text.length; i++) {
@@ -99,21 +100,31 @@ function scanRegion(text: string): RegionScan {
 			percentAt.push(i);
 		} else if(c === '(') {
 			stack.push(')');
+			heads.push(ControlHead.test(text.slice(Math.max(0, i - 24), i)) ? {} : undefined);
 		} else if(c === '[') {
 			stack.push(text[i + 1] === '[' ? (i++, ']]') : ']');
+			heads.push(undefined);
 		} else if(c === '{') {
+			const head = heads[heads.length - 1];
+			if(head !== undefined && stack[stack.length - 1] === ')' && head.bodyAt === undefined) {
+				head.bodyAt = text.slice(0, i).trimEnd().length;
+			}
 			stack.push('}');
+			heads.push(undefined);
 		} else if((c === ')' || c === '}') && stack[stack.length - 1] === c) {
 			stack.pop();
+			heads.pop();
 		} else if(c === ']') {
 			if(stack[stack.length - 1] === ']') {
 				stack.pop();
+				heads.pop();
 			} else if(stack[stack.length - 1] === ']]') {
 				stack[stack.length - 1] = ']';
 			}
 		}
 	}
-	return { closers: stack.reverse(), percentAt };
+	/* the one `)` that is missing belongs where the head ends, not after everything that came with the body */
+	return { closers: stack.reverse(), percentAt, headAt: stack.length === 1 && stack[0] === ')' ? heads[0]?.bodyAt : undefined };
 }
 
 /** Fuzzy-complete the `%...` operator at `at` to the nearest known one (else just close it). */
@@ -125,8 +136,9 @@ function operatorCompletion(node: SyntaxNode, at: number): { range: SourceRange,
 	return { range: [node.startPosition.row + 1, column + 1, node.startPosition.row + 1, column + fragment.length], full };
 }
 
-const isMissingExpression = (f: SyntaxErrorFinding): boolean =>
-	f.kind === 'missing' && !DelimiterInsert.has(f.node.type) && !KeywordInsert.has(f.node.type);
+/** the grammar reports a missing string quote as `string_close`, which stands for whatever quote opened the string */
+const missingToken = (node: SyntaxNode): string => node.type === 'string_close' ? node.parent?.firstChild?.text ?? node.type : node.type;
+const isMissingExpression = (f: SyntaxErrorFinding): boolean => f.kind === 'missing' && !DelimiterInsert.has(missingToken(f.node)) && !KeywordInsert.has(missingToken(f.node));
 
 /** The built-in auto-fix patterns; append a {@link SyntaxErrorFixPattern} to add repairs. */
 export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
@@ -137,38 +149,28 @@ export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
 		description: 'Comment out a line of pasted R console output, which is missing its `#`.',
 		direction:   'comment',
 		appliesTo:   f => f.kind === 'error' && ConsoleOutput.test(f.line),
-		quickFix:    (f, file) => ({
-			type:        'replace',
-			loc:         SourceLocation.from(point({ row: f.node.startPosition.row, column: 0 }), file),
-			description: 'Comment out the pasted console output',
-			replacement: '# '
-		})
+		quickFix:    (f, file) => replace(point({ row: f.node.startPosition.row, column: 0 }), file, 'Comment out the pasted console output', '# ')
 	},
 	{
 		name:        'insert-missing-token',
 		description: 'Insert a delimiter, quote, or keyword the parser expected but did not find.',
 		direction:   'add',
-		appliesTo:   f => f.kind === 'missing' && (DelimiterInsert.has(f.node.type) || KeywordInsert.has(f.node.type)),
-		quickFix:    (f, file) => ({
-			type:        'replace',
-			loc:         SourceLocation.from(point(f.node.startPosition), file),
-			description: `Insert missing \`${f.node.type}\``,
-			replacement: DelimiterInsert.get(f.node.type) ?? KeywordInsert.get(f.node.type) as string
-		})
+		appliesTo:   f => f.kind === 'missing' && (DelimiterInsert.has(missingToken(f.node)) || KeywordInsert.has(missingToken(f.node))),
+		quickFix:    (f, file) => replace(point(f.node.startPosition), file, `Insert missing \`${missingToken(f.node)}\``, DelimiterInsert.get(missingToken(f.node)) ?? KeywordInsert.get(missingToken(f.node)) as string)
 	},
 	{
 		name:        'remove-dangling-operator',
 		description: 'Drop a dangling operator whose operand the parser found missing.',
 		direction:   'remove',
 		appliesTo:   f => isMissingExpression(f) && isDanglingOperator(f.node.previousSibling),
-		quickFix:    (f, file) => ({ type: 'remove', loc: SourceLocation.from(span(f.node.previousSibling as SyntaxNode), file), description: `Remove the dangling \`${(f.node.previousSibling as SyntaxNode).type}\`` })
+		quickFix:    (f, file) => remove(span(f.node.previousSibling as SyntaxNode), file, `Remove the dangling \`${(f.node.previousSibling as SyntaxNode).type}\``)
 	},
 	{
 		name:        'insert-operand-placeholder',
 		description: 'Insert a `NULL` placeholder for a missing operand or body.',
 		direction:   'add',
 		appliesTo:   isMissingExpression,
-		quickFix:    (f, file) => ({ type: 'replace', loc: SourceLocation.from(point(f.node.startPosition), file), description: 'Insert placeholder `NULL`', replacement: ' NULL' })
+		quickFix:    (f, file) => replace(point(f.node.startPosition), file, 'Insert placeholder `NULL`', ' NULL')
 	},
 	{
 		name:        'balance-brackets',
@@ -177,7 +179,13 @@ export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
 		appliesTo:   f => f.kind === 'error' && f.scan.closers.length > 0,
 		quickFix:    (f, file) => {
 			const closers = f.scan.closers.join('');
-			return { type: 'replace', loc: SourceLocation.from(point(f.node.endPosition), file), description: `Add missing closing \`${closers}\``, replacement: closers };
+			if(f.scan.headAt !== undefined) {
+				/* the offset is in the region's text, which starts where the node does */
+				const before = f.node.text.slice(0, f.scan.headAt).split('\n');
+				const column = before.length === 1 ? f.node.startPosition.column + f.scan.headAt : before[before.length - 1].length;
+				return replace(point({ row: f.node.startPosition.row + before.length - 1, column }), file, 'Add missing closing `)` after the head', ')');
+			}
+			return replace(point(f.node.endPosition), file, `Add missing closing \`${closers}\``, closers);
 		}
 	},
 	{
@@ -188,7 +196,7 @@ export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
 		appliesTo:   f => f.kind === 'error' && !f.node.text.includes('\n') && f.scan.percentAt.length % 2 === 1,
 		quickFix:    (f, file) => {
 			const { range, full } = operatorCompletion(f.node, f.scan.percentAt.at(-1) as number);
-			return { type: 'replace', loc: SourceLocation.from(range, file), description: `Complete operator to \`${full}\``, replacement: full };
+			return replace(range, file, `Complete operator to \`${full}\``, full);
 		}
 	},
 	{
@@ -196,21 +204,15 @@ export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
 		description: 'Turn a typographic quote back into the straight quote R can read.',
 		direction:   'add',
 		appliesTo:   f => f.kind === 'error' && SmartQuote.has(f.node.text),
-		quickFix:    (f, file) => ({
-			type:        'replace',
-			loc:         SourceLocation.from(span(f.node), file),
-			description: 'Replace the typographic quote with a straight one',
-			replacement: SmartQuote.get(f.node.text) as string
-		})
+		quickFix:    (f, file) => replace(span(f.node), file, 'Replace the typographic quote with a straight one', SmartQuote.get(f.node.text) as string)
 	},
 	{
 		name:        'remove-repl-prompt',
 		description: 'Drop a `>` prompt copied in front of a line taken from the R console.',
 		direction:   'remove',
 		// must open the line: `a > b` parses, and a leading `>=` is a different token
-		appliesTo:   f => f.kind === 'error' && f.node.text === '>'
-			&& f.line.slice(0, f.node.startPosition.column).trim() === '',
-		quickFix: (f, file) => ({ type: 'remove', loc: SourceLocation.from(span(f.node), file), description: 'Remove the copied `>` prompt' })
+		appliesTo:   f => f.kind === 'error' && f.node.text === '>' && f.line.slice(0, f.node.startPosition.column).trim() === '',
+		quickFix:    (f, file) => remove(span(f.node), file, 'Remove the copied `>` prompt')
 	},
 	{
 		name:        'remove-stray-closer',
@@ -218,14 +220,14 @@ export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
 		direction:   'remove',
 		// the `]` of `[1]` is a closer too, but there the line goes, not the bracket
 		appliesTo:   f => f.kind === 'error' && OnlyClosers.test(f.node.text) && !ConsoleOutput.test(f.line),
-		quickFix:    (f, file) => ({ type: 'remove', loc: SourceLocation.from(span(f.node), file), description: `Remove the stray \`${f.node.text.replace(/\s+/g, '')}\`` })
+		quickFix:    (f, file) => remove(span(f.node), file, `Remove the stray \`${f.node.text.replace(/\s+/g, '')}\``)
 	},
 	{
 		name:        'comment-out',
 		description: 'Comment out an un-parseable region so the rest of the file still parses.',
 		direction:   'comment',
 		appliesTo:   f => f.kind === 'error' && !f.node.text.includes('\n'),
-		quickFix:    (f, file) => ({ type: 'replace', loc: SourceLocation.from(span(f.node), file), description: 'Comment out the offending code', replacement: '# ' + f.node.text })
+		quickFix:    (f, file) => replace(span(f.node), file, 'Comment out the offending code', '# ' + f.node.text)
 	}
 ];
 
@@ -257,7 +259,7 @@ function collectFindings(node: SyntaxNode, lines: readonly string[], out: Syntax
 
 function describe(finding: SyntaxErrorFinding): string {
 	if(finding.kind === 'missing') {
-		return `Missing \`${finding.node.type}\``;
+		return `Missing \`${missingToken(finding.node)}\``;
 	}
 	const text = finding.node.text.replace(/\s+/g, ' ').trim();
 	return `Unexpected \`${text.length > 30 ? text.slice(0, 27) + '...' : text}\``;
@@ -281,18 +283,8 @@ export const SYNTACTICALLY_VALID = {
 				const lines = root.text.split('\n');
 				for(const finding of collectFindings(root, lines)) {
 					// a single fix per error, favouring the preferred direction (alternatives are never emitted together)
-					let fix: LintQuickFix | undefined;
-					let best = 2;
-					for(const p of patterns) {
-						const rank = p.direction === config.preferFix ? 0 : 1;
-						if(rank < best && p.appliesTo(finding)) {
-							fix = p.quickFix(finding, file.filePath);
-							best = rank;
-							if(best === 0) {
-								break;
-							}
-						}
-					}
+					const applies = (preferred: boolean) => patterns.find(p => (p.direction === config.preferFix) === preferred && p.appliesTo(finding));
+					const fix = (applies(true) ?? applies(false))?.quickFix(finding, file.filePath);
 					results.push({
 						certainty:  LintingResultCertainty.Certain,
 						kind:       finding.kind,
@@ -306,21 +298,18 @@ export const SYNTACTICALLY_VALID = {
 		}
 		return { results, '.meta': { parser, errors: results.length, fixable: results.filter(r => r.quickFix !== undefined).length } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: (result: SyntacticallyValidResult) => `${result.message} at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  (result: SyntacticallyValidResult) => `Syntax error (${result.kind}): ${result.message} at ${SourceLocation.format(result.loc)}`
-	},
+	prettyPrint: prettyPrint(
+		(result: SyntacticallyValidResult) => `${result.message} at ${SourceLocation.format(result.loc)}`,
+		(result: SyntacticallyValidResult) => `Syntax error (${result.kind}): ${result.message} at ${SourceLocation.format(result.loc)}`
+	),
 	info: {
 		name:            'Syntactically Valid',
-		description:     'Checks whether the code is free of syntax errors, using the configured (error-tolerant) parser, and offers extensible quick-fixes to repair them.',
+		description:     'Finds syntax errors with the configured (error-tolerant) parser. Offers extensible quick fixes to repair them.',
 		tags:            [LintingRuleTag.Bug, LintingRuleTag.Robustness, LintingRuleTag.QuickFix],
 		// tree-sitter reports real syntax errors precisely, but a strict parse may collapse a region into fewer findings
 		certainty:       LintingRuleCertainty.BestEffort,
 		// only meaningful under tree-sitter, so opt-in rather than part of the default set
 		activeByDefault: false,
-		defaultConfig:   {
-			disabledFixes: [],
-			preferFix:     'remove'
-		}
+		defaultConfig:   () => ({ disabledFixes: [], preferFix: 'remove' })
 	}
 } as const satisfies LintingRule<SyntacticallyValidResult, SyntacticallyValidMetadata, SyntacticallyValidConfig>;

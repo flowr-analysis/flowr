@@ -1,7 +1,7 @@
 import { type Range, minVersion } from 'semver';
 import { guard } from '../../../util/assert';
-import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
-import { FlowrNamespaceFile, setCallable } from '../file-plugins/files/flowr-namespace-file';
+import type { BrandedIdentifier, BrandedNamespace } from '../../../dataflow/environments/identifier';
+import { type NamespaceInfo, FlowrNamespaceFile, setCallable } from '../file-plugins/files/flowr-namespace-file';
 import { FlowrInlineTextFile } from '../../context/flowr-file';
 import { RRange } from '../../../util/r-version';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -29,7 +29,7 @@ export type PackageOptions = {
  * - {@link resolvedVersion}: the one concrete version the exports were read from.
  */
 export class Package {
-	public readonly name:                 string;
+	public readonly name:                 BrandedNamespace;
 	private _type?:                       PackageType;
 	private _dependencies?:               Package[];
 	private _namespaceInfo?:              NamespaceInfo;
@@ -63,20 +63,20 @@ export class Package {
 		return this.derivedRange ?? (this._resolvedVersion !== undefined ? RRange.parse('=' + this._resolvedVersion) : undefined);
 	}
 
-	constructor(info: { name: string } & PackageOptions) {
+	constructor(info: { name: BrandedNamespace } & PackageOptions) {
 		this.name = info.name;
 		this.addInfo(info);
 	}
 
 	/** Builds a package from a raw `NAMESPACE` body and its list of callable exports. */
-	public static fromConstants(name: string, namespace: string, callable: string[]): Package {
+	public static fromConstants(name: BrandedNamespace, namespace: string, callable: string[]): Package {
 		return new Package({
 			name,
 			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespace)).content().current, callable)
 		});
 	}
 
-	has(name: string, className?: string): boolean {
+	has(name: BrandedIdentifier, className?: string): boolean {
 		if(!this.namespaceInfo) {
 			return false;
 		}
@@ -89,7 +89,8 @@ export class Package {
 
 		// a directly exported symbol/function - this also covers dotted plain exports such as
 		// `solve.QP`, `as.Date` or `read.csv` that are not S3 methods
-		if(this.namespaceInfo.exportedFunctions.includes(name) || this.namespaceInfo.exportedSymbols.includes(name)) {
+		if(this.namespaceInfo.exportedSymbols.includes(name)
+			|| this.namespaceInfo.exportedS4Methods.includes(name) || this.namespaceInfo.exportedS4Classes.includes(name)) {
 			return true;
 		}
 
@@ -149,7 +150,7 @@ export class Package {
 		}
 	}
 
-	public static functionIdentifier(dependency: string, func: string): string{
+	public static functionIdentifier(dependency: BrandedNamespace, func: BrandedIdentifier): string {
 		return NodeId.pkgFnName(dependency, func);
 	}
 }

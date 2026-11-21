@@ -1,11 +1,10 @@
+import { SourceRange } from '../../../../../src/util/range';
 import { rPath } from '../../../_helper/r-path';
 import { assert, describe, test } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { withTreeSitter } from '../../../_helper/shell';
-import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import { type FlowrLaxSourcingOptions, FlowrConfig } from '../../../../../src/config';
 import { ProjectKind } from '../../../../../src/project/context/project-kind';
 import { DfEdge, EdgeType } from '../../../../../src/dataflow/graph/edge';
@@ -13,7 +12,8 @@ import type { DeepWritable } from 'ts-essentials';
 import type { DataflowGraph } from '../../../../../src/dataflow/graph/graph';
 import type { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexInfo } from '../../../../../src/dataflow/graph/vertex';
-import { NoEdges } from '../../../../../src/dataflow/graph/graph';
+import { analyze } from '../../../_helper/analyzer';
+import type { KnownParser } from '../../../../../src/r-bridge/parser';
 
 /** the vertices `s.R` contributed, i.e. the ones its id names */
 function sourced(graph: DataflowGraph): [NodeId, DataflowGraphVertexInfo][] {
@@ -24,7 +24,7 @@ function sourced(graph: DataflowGraph): [NodeId, DataflowGraphVertexInfo][] {
  * The graph of a project whose `main.R` defines `y`, sources an `s.R` redefining it, and reads it afterwards.
  * `assumeFilesExist` decides directly, no kind may interfere.
  */
-async function sourcingProject(assumeFilesExist: boolean, parser: Parameters<typeof createDataflowPipeline>[0]) {
+async function sourcingProject(assumeFilesExist: boolean, parser: KnownParser) {
 	const config = FlowrConfig.amend(FlowrConfig.default(), c => {
 		(c.solver.resolveSource ??= {} as DeepWritable<FlowrLaxSourcingOptions>).assumeFilesExist = assumeFilesExist;
 		c.specializeConfig = undefined;
@@ -34,7 +34,8 @@ async function sourcingProject(assumeFilesExist: boolean, parser: Parameters<typ
 		fs.writeFileSync(path.join(dir, 's.R'), 'y <- 2\n');
 		const main = path.join(dir, 'main.R');
 		fs.writeFileSync(main, `y <- 1\nsource('${rPath(path.join(dir, 's.R'))}')\nx <- y\n`);
-		return await createDataflowPipeline(parser, { context: contextFromInput(`file://${main}`, config) }).allRemainingSteps();
+		const analyzer = await analyze(parser, `file://${main}`, { config });
+		return { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() };
 	} finally {
 		fs.rmSync(dir, { recursive: true, force: true });
 	}
@@ -61,10 +62,10 @@ describe('solver.resolveSource.assumeFilesExist', withTreeSitter(parser => {
 		const { dataflow, normalize } = await sourcingProject(true, parser);
 		const use = dataflow.graph.vertices(true).find(([id]) => {
 			const node = normalize.idMap.get(id);
-			return node?.lexeme === 'y' && node?.location?.[0] === 3;
+			return node?.lexeme === 'y' && SourceRange.getStartLine(node?.location) === 3;
 		});
 		assert.isDefined(use, 'the `y` of `x <- y` has to be a vertex');
-		const reads = [...dataflow.graph.outgoingEdges(use[0]) ?? NoEdges]
+		const reads = [...dataflow.graph.edgesFrom(use[0])]
 			.filter(([, e]) => DfEdge.includesType(e, EdgeType.Reads)).map(([t]) => String(t));
 		assert.isNotEmpty(reads);
 		for(const read of reads) {

@@ -1,14 +1,9 @@
-import type { Leaf, Location, NoInfo } from '../model';
-import { RNode } from '../model';
+import { type Leaf, type Location, type NoInfo, RNode } from '../model';
 import { RType } from '../type';
 import type { RNumberValue } from '../../../convert-values';
 import { RUnaryOp } from './r-unary-op';
 
-/**
- * A number like `3`, `-2.14`, `1L`, or `2i`.
- * Includes numeric, integer, and complex.
- * See {@link RNumberValue} for more information.
- */
+/** A number like `3`, `-2.14`, `1L`, or `2i`. Includes numeric, integer, and complex. See {@link RNumberValue} for more information. */
 export interface RNumber<Info = NoInfo> extends Leaf<Info>, Location {
 	readonly type: RType.Number
 	content:       RNumberValue
@@ -16,6 +11,7 @@ export interface RNumber<Info = NoInfo> extends Leaf<Info>, Location {
 
 /**
  * Helper for working with {@link RNumber} AST nodes.
+ * @helper ast
  */
 export const RNumber = {
 	...RNode,

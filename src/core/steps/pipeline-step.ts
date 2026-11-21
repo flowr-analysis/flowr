@@ -20,9 +20,7 @@ import type { FlowrConfig } from '../../config';
  */
 export type StepProcessingFunction =
 	(results: Record<string, unknown>, input: Record<string, unknown>, config: FlowrConfig) => unknown;
-/**
- * This represents the required execution frequency of a step.
- */
+/** This represents the required execution frequency of a step. */
 export const enum PipelineStepStage {
 	/** This step has to be executed once per file */
 	OncePerFile,
@@ -33,9 +31,7 @@ export const enum PipelineStepStage {
 /** Name of a single {@link IPipelineStep|step} in a pipeline (branded to avoid type-mishaps). */
 export type PipelineStepName = string & { __brand?: 'StepName' };
 
-/**
- * Contains the data to specify the order of {@link IPipelineStep|steps} in a pipeline.
- */
+/** Contains the data to specify the order of {@link IPipelineStep|steps} in a pipeline. */
 export interface IPipelineStepOrder<
 	Name extends PipelineStepName = PipelineStepName,
 > {
@@ -62,6 +58,11 @@ export interface IPipelineStepOrder<
 	readonly decorates?:   PipelineStepName
 }
 
+/** Declares the input `T` a step requires from the caller, it exists only in the type of {@link IPipelineStep#requiredInput}. */
+export function requires<T extends object>(): T {
+	return undefined as unknown as T;
+}
+
 /**
  * Defines what is to be known of a single step in a pipeline.
  * It wraps around a single {@link IPipelineStep#processor|processor} function, providing additional information.
@@ -69,7 +70,7 @@ export interface IPipelineStepOrder<
  */
 export interface IPipelineStep<
 	Name extends PipelineStepName = PipelineStepName,
-	// eslint-disable-next-line -- by default, we assume nothing about the function shape
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- by default, we assume nothing about the function shape
 	Fn extends StepProcessingFunction = (...args: any[]) => any,
 > extends MergeableRecord, IPipelineStepOrder<Name> {
 	/** Human-readable name of this step */
@@ -89,10 +90,8 @@ export interface IPipelineStep<
 	 * Input configuration required to perform the respective steps.
 	 * Required inputs of dependencies do not have to, but can be repeated.
 	 * <p>
-	 * Use the pattern `undefined as unknown as T` to indicate that the value is required but not provided.
+	 * Use {@link requires} to indicate that the value is required but not provided.
 	 */
 	readonly requiredInput: object
 }
-
-
 

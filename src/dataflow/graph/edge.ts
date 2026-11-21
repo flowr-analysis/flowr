@@ -61,9 +61,7 @@ export enum EdgeType {
 	ControlEdge = 1 << 13,
 }
 
-/**
- * See {@link EdgeType} for the basis.
- */
+/** See {@link EdgeType} for the basis. */
 export const enum EdgeTypeName {
 	Reads                 = 'reads',
 	DefinedBy             = 'defined-by',
@@ -88,14 +86,14 @@ export type EdgeTypeBits = number;
 export const ControlFlowEdgeTypes: EdgeTypeBits = EdgeType.FlowEdge | EdgeType.ControlEdge;
 
 const edgeTypeToHumanReadableName: ReadonlyMap<EdgeType, EdgeTypeName> = new Map<EdgeType, EdgeTypeName>([
-	[EdgeType.Reads,                 EdgeTypeName.Reads                ],
-	[EdgeType.DefinedBy,             EdgeTypeName.DefinedBy            ],
-	[EdgeType.Calls,                 EdgeTypeName.Calls                ],
-	[EdgeType.Returns,               EdgeTypeName.Returns              ],
-	[EdgeType.DefinesOnCall,         EdgeTypeName.DefinesOnCall        ],
-	[EdgeType.DefinedByOnCall,       EdgeTypeName.DefinedByOnCall      ],
-	[EdgeType.Argument,              EdgeTypeName.Argument             ],
-	[EdgeType.SideEffectOnCall,      EdgeTypeName.SideEffectOnCall     ],
+	[EdgeType.Reads,                 EdgeTypeName.Reads],
+	[EdgeType.DefinedBy,             EdgeTypeName.DefinedBy],
+	[EdgeType.Calls,                 EdgeTypeName.Calls],
+	[EdgeType.Returns,               EdgeTypeName.Returns],
+	[EdgeType.DefinesOnCall,         EdgeTypeName.DefinesOnCall],
+	[EdgeType.DefinedByOnCall,       EdgeTypeName.DefinedByOnCall],
+	[EdgeType.Argument,              EdgeTypeName.Argument],
+	[EdgeType.SideEffectOnCall,      EdgeTypeName.SideEffectOnCall],
 	[EdgeType.NonStandardEvaluation, EdgeTypeName.NonStandardEvaluation],
 	[EdgeType.FlowEdge,              EdgeTypeName.FlowEdge],
 	[EdgeType.ControlEdge,           EdgeTypeName.ControlEdge]
@@ -105,12 +103,11 @@ type DfEdgeLike = { types: number };
 
 /**
  * Helper Functions to work with {@link DfEdge} and {@link EdgeType}.
+ * @helper dataflow
  */
 export const DfEdge = {
 	name: 'DfEdge',
-	/**
-	 * Takes joint edge types and returns their human-readable names.
-	 */
+	/** Takes joint edge types and returns their human-readable names. */
 	typesToNames(this: void, { types }: DfEdgeLike): Set<EdgeTypeName> {
 		const rTypes = new Set<EdgeTypeName>();
 		for(const [bit, name] of edgeTypeToHumanReadableName.entries()) {
@@ -142,7 +139,7 @@ export const DfEdge = {
 	 * Otherwise, use {@link DfEdge#typesToNames} which handles these cases.
 	 */
 	typeToName(this: void, type: EdgeType): string {
-		return edgeTypeToHumanReadableName.get(type) as string;
+		return edgeTypeToHumanReadableName.get(type) ?? String(type);
 	},
 	/**
 	 * Check if the given-edge type has any of the given types.
@@ -213,7 +210,6 @@ export const DfEdge = {
 	},
 } as const;
 
-
 export const enum TraverseEdge {
 	/** Do not traverse this edge */
 	Never = 0,
@@ -225,14 +221,11 @@ export const enum TraverseEdge {
 	Always = 3
 }
 
-
 const alwaysTraverseEdgeTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Argument | EdgeType.Calls;
 
 const definedByOnCallTypes = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall;
 
-/**
- * Determines whether an edge should be traversed during dataflow analysis.
- */
+/** Determines whether an edge should be traversed during dataflow analysis. */
 export function shouldTraverseEdge(e: DfEdge): TraverseEdge {
 	if(DfEdge.includesType(e, EdgeType.NonStandardEvaluation)) {
 		return TraverseEdge.Never;

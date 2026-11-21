@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import { guard } from '../util/assert';
 import type { SliceResult } from '../slicing/static/slicer-types';
 import { log } from '../util/log';
@@ -14,6 +15,7 @@ import { stats2string } from '../benchmark/stats/print';
 import { makeMagicCommentHandler } from '../reconstruct/auto-select/magic-comments';
 import { doNotAutoSelect } from '../reconstruct/auto-select/auto-select-defaults';
 import { FlowrConfig } from '../config';
+import { ParserName } from '../r-bridge/parser';
 
 export interface SlicerCliOptions {
 	verbose:             boolean
@@ -34,7 +36,6 @@ export interface SlicerCliOptions {
 	'config-json':       string | undefined
 }
 
-
 const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'criterion'], {
 	subtitle: 'Slice R code based on a given slicing criterion',
 	examples: [
@@ -49,12 +50,12 @@ const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'cr
 });
 
 async function getSlice() {
-	const slicer = new BenchmarkSlicer('r-shell');
+	const slicer = new BenchmarkSlicer(ParserName.Shell);
 	guard(options.input !== undefined, 'input must be given');
 	guard(options.criterion !== undefined, 'a slicing criterion must be given');
 
 	const config = (options['config-json'] ? FlowrConfig.parse(options['config-json']) : undefined)
-		?? FlowrConfig.fromFile(options['config-file']);
+		?? FlowrConfig.fromFile(options['config-file'] && path.resolve(options['config-file']));
 
 	await slicer.init(
 		options['input-is-text']

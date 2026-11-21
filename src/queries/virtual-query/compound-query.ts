@@ -5,10 +5,7 @@ import type { StrictOmit } from 'ts-essentials';
 /** @see CompoundQueryFormat */
 export type VirtualCompoundConstraint<SubQueryType extends SupportedQueryTypes> = keyof StrictOmit<QueryArgumentsWithType<SubQueryType>, 'type'>;
 
-/**
- * Virtual Query Format.
- * Grouping query parameters of the same type (re-specified in the `query` field).
- */
+/** Virtual Query Format. Grouping query parameters of the same type (re-specified in the `query` field). */
 export interface CompoundQueryFormat<
 	/* The queries we collect, locked by `query` demanding a single type */
 	SubQueryType extends SupportedQueryTypes,
@@ -29,9 +26,7 @@ export interface CompoundQueryFormat<
 	> & Partial<QueryArgumentsWithType<SubQueryType>>>;
 }
 
-/**
- * Execute a single, virtual compound query in terms of unfolding the contained queries.
- */
+/** Execute a single, virtual compound query in terms of unfolding the contained queries. */
 export function executeCompoundQueries<
 	SubQueryType extends SupportedQueryTypes,
 	CommonArguments extends VirtualCompoundConstraint<SubQueryType> = VirtualCompoundConstraint<SubQueryType>
@@ -40,11 +35,7 @@ export function executeCompoundQueries<
 ): QueryArgumentsWithType<SubQueryType>[] {
 	const results: QueryArgumentsWithType<SubQueryType>[] = [];
 	for(const arg of query.arguments) {
-		results.push({
-			type: query.query,
-			...query.commonArguments,
-			...arg
-		} as unknown as QueryArgumentsWithType<SubQueryType>);
+		results.push({ type: query.query, ...query.commonArguments, ...arg } as unknown as QueryArgumentsWithType<SubQueryType>);
 	}
 	return results;
 }

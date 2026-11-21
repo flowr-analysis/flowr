@@ -6,8 +6,8 @@ import { arraySum } from '../../../../../src/util/collections/arrays';
  */
 export const validStringSymbols = [
 	Array.from({ length: 223 }, (_, i) => String.fromCharCode(32 + i)),
-	[ '\n', '\t', '\v', '\b', '\r', '\f', '\x07', '\\', '\'', '"', ' ' ],
-	[ '😀', '💩' ]
+	['\n', '\t', '\v', '\b', '\r', '\f', '\x07', '\\', '\'', '"', ' '],
+	['😀', '💩']
 ];
 
 /**
@@ -82,9 +82,9 @@ export class RandomRCodeGenerator {
 	/**
 	 * Generates `numberOfObjects` random R variable definitions with the name scheme `var_0`, `var_1`, ...,
 	 * Each variable a randomly chosen object type and (with some probability) a random attribute is assigned.
-	 * @param numberOfObjects  - How many top-level variables to generate.
-	 * @param maxNestingLevel  - Maximum recursion depth for nested object types (e.g. a list of vectors).
-	 * @returns The generated R source code (`rCode`) and the list of variable names it defines (`vars`).
+	 * @param numberOfObjects - How many top-level variables to generate.
+	 * @param maxNestingLevel - Maximum recursion depth for nested object types (e.g. a list of vectors).
+	 * @returns               The generated R source code (`rCode`) and the list of variable names it defines (`vars`).
 	 */
 	generateRCode(numberOfObjects: number, maxNestingLevel: number) {
 		const codeMap = new Map<string, string>();
@@ -97,7 +97,7 @@ export class RandomRCodeGenerator {
 
 			let code = '';
 
-			if(rnd < 80){
+			if(rnd < 80) {
 				const operator = this.rnd.pick(['<-', '=', '<<-']);
 				const { value, type, len } = this.generateObject(0, maxNestingLevel);
 				code = `${name} ${operator} ${value}`;
@@ -131,7 +131,7 @@ export class RandomRCodeGenerator {
 	 * @param type            - The kind of object to generate.
 	 * @param nestingLevel    - Current recursion depth (used to bound nested generation).
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R expression (`value`), its R type name (`type`), and its length/size (`len`).
+	 * @returns               The generated R expression (`value`), its R type name (`type`), and its length/size (`len`).
 	 */
 	generateObjectOfType(type: RObjectType, nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
 		switch(type) {
@@ -160,7 +160,7 @@ export class RandomRCodeGenerator {
 	 * Generates one variable definition per entry in `types`, in order.
 	 * @param types           - The {@link RObjectType} to generate for each variable, in order.
 	 * @param maxNestingLevel - Maximum recursion depth for nested object types.
-	 * @returns The generated R source code (`rCode`) and the list of variable names it defines (`vars`).
+	 * @returns               The generated R source code (`rCode`) and the list of variable names it defines (`vars`).
 	 */
 	generateRCodeWithTypes(types: RObjectType[], maxNestingLevel = 1) {
 		const codeMap = new Map<string, string>();
@@ -182,9 +182,9 @@ export class RandomRCodeGenerator {
 	/**
 	 * Generates a fixed S4 class (`Employee`) and an instance of it assigned to `name`.
 	 * @param name - The variable name the new S4 instance should be assigned to.
-	 * @returns R source code.
+	 * @returns    R source code.
 	 */
-	generateS4(name: string){
+	generateS4(name: string) {
 		return `setClass("Employee", slots=list(name="character",
                                 age="numeric",
                                 role="character"))
@@ -197,10 +197,10 @@ export class RandomRCodeGenerator {
 	 * Generates a random object, picking its {@link RObjectType} uniformly at random.
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R object.
+	 * @returns               The generated R object.
 	 */
 	generateObject(nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
-		if(nestingLevel >= maxNestingLevel){
+		if(nestingLevel >= maxNestingLevel) {
 			return this.generateLiteral();
 		}
 
@@ -213,7 +213,7 @@ export class RandomRCodeGenerator {
 	 * Generates a `factor(...)` wrapping a random vector.
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R object.
+	 * @returns               The generated R object.
 	 */
 	generateFactor(nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
 		const vector = this.generateVector(nestingLevel, maxNestingLevel);
@@ -223,7 +223,7 @@ export class RandomRCodeGenerator {
 	/**
 	 * Generates an attribute to the given R object.
 	 * @param name - Name of variable the attribute is added to.
-	 * @returns The generated R source code (`value`) and the length of the object (`len`).
+	 * @returns    The generated R source code (`value`) and the length of the object (`len`).
 	 */
 	generateAttribute(name: string): { value: string, len: number } {
 		const obj = this.generateLiteral();
@@ -234,7 +234,7 @@ export class RandomRCodeGenerator {
 	 * Generates a pairlist.
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R object.
+	 * @returns               The generated R object.
 	 */
 	generatePairList(nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
 		const len = this.rnd.int(10);
@@ -248,7 +248,7 @@ export class RandomRCodeGenerator {
 	 * Generates a vector.
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R object.
+	 * @returns               The generated R object.
 	 */
 	generateVector(nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
 		const len = this.rnd.int(10);
@@ -263,7 +263,7 @@ export class RandomRCodeGenerator {
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
 	 * @param length          - (optional) Size of the generated list.
-	 * @returns The generated R object.
+	 * @returns               The generated R object.
 	 */
 	generateList(nestingLevel: number, maxNestingLevel: number, length?: number): GeneratedRObject {
 		const len = length ?? this.rnd.int(10);
@@ -277,7 +277,7 @@ export class RandomRCodeGenerator {
 	 * Generates a map (named list).
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R object.
+	 * @returns               The generated R object.
 	 */
 	generateMap(nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
 		const len = this.rnd.int(10);
@@ -292,7 +292,7 @@ export class RandomRCodeGenerator {
 	/**
 	 * Generates a matrix.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R object.
+	 * @returns               The generated R object.
 	 */
 	generateMatrix(maxNestingLevel: number): GeneratedRObject {
 		const rows = this.rnd.int(3) + 1;
@@ -337,7 +337,7 @@ export class RandomRCodeGenerator {
 	 * Generates a function.
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R object.
+	 * @returns               The generated R object.
 	 */
 	generateFunction(nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
 		const args = Array.from({ length: this.rnd.int(3) }, (_, i) => `arg${i}`).join(', ');
@@ -348,7 +348,7 @@ export class RandomRCodeGenerator {
 	/**
 	 * Generates a single literal value of the given primitive R type.
 	 * @param type - The primitive R type name to generate a literal for.
-	 * @returns The generated R object.
+	 * @returns    The generated R object.
 	 */
 	generateTypedLiteral(type: string): GeneratedRObject {
 		switch(type) {
@@ -450,7 +450,7 @@ export class SeededRandom {
 	/**
 	 * Generates a random number.
 	 * @param max - maximum size of the number.
-	 * @returns a random integer in `[0, max)`.
+	 * @returns   a random integer in `[0, max)`.
 	 */
 	int(max: number) {
 		return Math.floor(this.rng() * max);
@@ -459,7 +459,7 @@ export class SeededRandom {
 	/**
 	 * Generates a random element from a given array.
 	 * @param arr - the array to pick from.
-	 * @returns a random element.
+	 * @returns   a random element.
 	 */
 	pick<T>(arr: T[]) {
 		return arr[this.int(arr.length)];

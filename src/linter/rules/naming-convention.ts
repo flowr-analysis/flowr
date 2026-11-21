@@ -1,14 +1,16 @@
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { VertexType } from '../../dataflow/graph/vertex';
-import { getAllRefsToSymbol } from '../../dataflow/origin/dfg-get-symbol-refs';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Q } from '../../search/flowr-search-builder';
 import { assertUnreachable, isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
-import { type LintingResult, type LintingRule, type LintQuickFixReplacement, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, type LintQuickFixReplacement, LintingResultCertainty, prettyPrint, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
-
+import { collectCalledNames, isS3MethodName } from './unused-definitions';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 export enum CasingConvention {
 	CamelCase       = 'camelCase',
@@ -21,13 +23,11 @@ export enum CasingConvention {
 }
 
 export interface NamingConventionResult extends LintingResult {
-	name:           string,
+	name:           BrandedIdentifier,
 	detectedCasing: CasingConvention
 }
 
-/**
- * It is planned to have a config like ESLint
- */
+/** It is planned to have a config like ESLint */
 export interface NamingConventionConfig extends MergeableRecord {
 	/** which casing convention to enforce */
 	caseing: CasingConvention | 'auto'
@@ -46,28 +46,26 @@ export interface NamingConventionMetadata extends MergeableRecord {
 	numBreak: number;
 }
 
-function containsAlpha(s: string): boolean {
+function containsAlpha(s: BrandedIdentifier): boolean {
 	return /[A-Za-z]/.test(s);
 }
 
-/**
- * Attempts to detect the possible casing conventions used in the given identifier and returns an array ordered by likelihood of the casing convention being correct.
- */
-export function detectPotentialCasings(identifier: string, ignorePrefix?: string): CasingConvention[] {
+function withoutPrefix(identifier: BrandedIdentifier, ignorePrefix: string | undefined): string {
+	return ignorePrefix ? identifier.replace(new RegExp(`^(${ignorePrefix})`), '') : identifier;
+}
+
+/** Attempts to detect the possible casing conventions used in the given identifier and returns an array ordered by likelihood of the casing convention being correct. */
+export function detectPotentialCasings(identifier: BrandedIdentifier, ignorePrefix?: string): CasingConvention[] {
 	if(identifier.trim() === '' || !containsAlpha(identifier)) {
 		return [];
 	}
-	if(ignorePrefix) {
-		identifier = identifier.replace(new RegExp(`^(${ignorePrefix})`), '');
-	}
-
+	identifier = withoutPrefix(identifier, ignorePrefix);
 	const upper = identifier.toUpperCase();
 	const lower = identifier.toLowerCase();
 	const isAllUpper = identifier === upper;
 	const isAllLower = identifier === lower;
 	const hasUnderscores = identifier.includes('_');
-	const upperAfterAllScores = Array(identifier.length - 1).keys().every(i =>
-		identifier[i] !== '_' || identifier[i + 1] === upper[i + 1]);
+	const upperAfterAllScores = Array(identifier.length - 1).keys().every(i => identifier[i] !== '_' || identifier[i + 1] === upper[i + 1]);
 	const hasAnyUpperAfterLower = Array(identifier.length - 1).keys().some(i =>
 		containsAlpha(identifier[i]) && identifier[i] === lower[i] &&
 		containsAlpha(identifier[i + 1]) && identifier[i + 1] === upper[i + 1]);
@@ -98,53 +96,24 @@ export function detectPotentialCasings(identifier: string, ignorePrefix?: string
  * Attempts to detect the possible casing conventions used in the given identifier and returns the first result.
  * The function {@link detectPotentialCasings} is generally preferred, as it returns all potential casings and not just the first one.
  */
-export function detectCasing(identifier: string, ignorePrefix?:  string): CasingConvention {
-	const casings = detectPotentialCasings(identifier, ignorePrefix);
-	return casings.length > 0 ? casings[0] : CasingConvention.Unknown;
+export function detectCasing(identifier: BrandedIdentifier, ignorePrefix?:  string): CasingConvention {
+	return detectPotentialCasings(identifier, ignorePrefix)[0] ?? CasingConvention.Unknown;
 }
 
-/**
- * Determines the most used casing convention in the given list of symbols.
- */
-export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[] ): CasingConvention {
-	if(symbols.length === 0) {
-		return CasingConvention.Unknown;
-	}
-
-	const map = new Map<CasingConvention, number>();
-
-	for(const symbol of symbols) {
-		const o = map.get(symbol.detectedCasing) ?? 0;
-		map.set(symbol.detectedCasing, o + 1);
-	}
-
-	// Return element with most occurrences
-	return [...map].reduce((p, c) => p[1] > c[1] ? p : c)[0];
+/** Determines the most used casing convention in the given list of symbols. */
+export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[]): CasingConvention {
+	/* on a tie, the casing counted last wins */
+	return [...Map.groupBy(symbols, s => s.detectedCasing)].reduce<[CasingConvention, number]>((best, [casing, { length }]) => length >= best[1] ? [casing, length] : best, [CasingConvention.Unknown, 0])[0];
 }
 
-/**
- * Attempts to fix the casing of the given identifier to match the provided convention.
- */
-export function fixCasing(identifier: string, convention: CasingConvention, ignorePrefix?: string): string | undefined {
+/** Attempts to fix the casing of the given identifier to match the provided convention. */
+export function fixCasing(identifier: BrandedIdentifier, convention: CasingConvention, ignorePrefix?: string): BrandedIdentifier | undefined {
 	if(!containsAlpha(identifier)) {
 		return undefined;
 	}
-
-	if(ignorePrefix) {
-		identifier = identifier.replace(new RegExp(`^(${ignorePrefix})`), '');
-	}
-
-	const splitOn = identifier.includes('_') ? /_/ : /(?=[A-Z])/;
-	const tokens = identifier.split(splitOn).map(s => s.toLowerCase());
-
-	const firstUp = (s: string) => {
-		if(s.length < 1) {
-			return s.toUpperCase();
-		}
-
-		return `${s[0].toUpperCase()}${s.slice(1)}`;
-	};
-
+	identifier = withoutPrefix(identifier, ignorePrefix);
+	const tokens = identifier.split(identifier.includes('_') ? /_/ : /(?=[A-Z])/).map(s => s.toLowerCase());
+	const firstUp = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 	switch(convention) {
 		case CasingConvention.CamelCase: // camelCase
 			return `${tokens[0]}${tokens.slice(1).map(firstUp).join('')}`;
@@ -165,90 +134,88 @@ export function fixCasing(identifier: string, convention: CasingConvention, igno
 	}
 }
 
-/**
- * Creates quick fixes for renaming all references to the given node to match the provided replacement.
- */
-export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: NodeId, replacement: string, conv: CasingConvention): LintQuickFixReplacement[] | undefined {
-	const refs = getAllRefsToSymbol(graph, nodeId);
+/** Creates quick fixes for renaming all references to the given node to match the provided replacement. */
+export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: NodeId, replacement: BrandedIdentifier, conv: CasingConvention): LintQuickFixReplacement[] | undefined {
+	const refs = Dataflow.refsToSymbol(graph, nodeId);
 	const idMap = graph.idMap;
 	if(refs === undefined || idMap === undefined) {
 		return undefined;
 	}
-
+	/* the name as it is written, which is the only text a rename may overwrite */
+	const lexeme = NodeId.recoverName(nodeId, idMap);
+	const original = lexeme === undefined ? undefined : RString.splitQuotes(lexeme).content;
+	if(original === undefined || original === replacement) {
+		/* a replacement equal to what is already there is no fix at all */
+		return undefined;
+	}
 	const result: LintQuickFixReplacement[] = [];
 	for(const ref of refs) {
-		const node  = idMap.get(ref);
-		if(node === undefined) {
+		const node = idMap.get(ref);
+		const written = node?.lexeme === undefined ? undefined : RString.splitQuotes(node.lexeme);
+		if(node?.lexeme === undefined || written?.content !== original) {
+			/* a reference reached through something else, as `myfield(x) <- v` reaches `x` through the call it
+			   names, sits at a place holding another name, and writing over it would rename that one instead */
 			continue;
 		}
-
+		const quote = written.quote ?? '';
 		const loc = SourceLocation.fromNode(node);
 		if(loc) {
-			// In case of a function call we only need to include the name, not the '()'
-			loc[3] = loc[1] + (node.lexeme as string).length - 1;
-
-			result.push(
-				{
-					type:        'replace',
-					replacement: replacement,
-					description: `Rename to match naming convention ${conv}`,
-					loc:         loc
-				} satisfies LintQuickFixReplacement
-			);
+			result.push({
+				type:        'replace',
+				replacement: `${quote}${replacement}${quote}`,
+				description: `Rename to match naming convention ${conv}`,
+				// In case of a function call we only need to include the name, not the '()'
+				loc:         SourceLocation.from([loc[0], loc[1], loc[2], loc[1] + node.lexeme.length - 1], loc[4])
+			});
 		}
 	}
-
-	return result.length === 0 ?
-		undefined : // We sort so that when applied in order the fixes will start from the end of the line to avoid conflicts
-		result.sort((a, b) => SourceLocation.compare(b.loc, a.loc));
+	// We sort so that when applied in order the fixes will start from the end of the line to avoid conflicts
+	return result.length === 0 ? undefined : result.sort((a, b) => SourceLocation.compare(b.loc, a.loc));
 }
 
 export const NAMING_CONVENTION = {
-	createSearch:        (_config) => Q.all().filter(VertexType.VariableDefinition),
+	createSearch:        () => Q.all().filter(VertexType.VariableDefinition),
 	processSearchResult: async(elements, config, data) =>  {
 		const dataflow = await data.dataflow();
+		const called = collectCalledNames(dataflow.graph);
 		const symbols = elements.getElements()
-			.map(m => ({
-				certainty:      LintingResultCertainty.Certain,
-				detectedCasing: detectCasing(m.node.lexeme as string, config.ignorePrefix),
-				name:           m.node.lexeme as string,
-				loc:            SourceLocation.fromNode(m.node),
-				id:             m.node.info.id
-			})).filter(e => isNotUndefined(e.loc));
-		const casing = config.caseing === 'auto' ? getMostUsedCasing(symbols) : config.caseing;
-		const results = symbols
-			.filter(m => (m.detectedCasing !== casing) && (!config.ignoreNonAlpha || containsAlpha(m.name)))
+			.map(m => {
+				const name = RString.splitQuotes(m.node.lexeme as string).content;
+				return { certainty: LintingResultCertainty.Certain, detectedCasing: detectCasing(name, config.ignorePrefix), name, loc: SourceLocation.fromNode(m.node), id: m.node.info.id };
+			})
+			/* an S3 method is named after its generic and class, renaming it breaks the dispatch */
+			.filter(e => isNotUndefined(e.loc) && !isS3MethodName(e.name, data.inspectContext(), called));
+		/* a name that reads as several conventions, like a single word, says nothing about which one is in use */
+		const unambiguous = symbols.filter(s => detectPotentialCasings(s.name, config.ignorePrefix).length === 1);
+		const casing = config.caseing === 'auto' ? getMostUsedCasing(unambiguous) : config.caseing;
+		const taken = new Set<BrandedIdentifier | undefined>(dataflow.graph.vertices(true).map(([id]) => {
+			const lexeme = NodeId.recoverName(id, dataflow.graph.idMap);
+			return lexeme === undefined ? undefined : RString.splitQuotes(lexeme).content;
+		}));
+		const results = casing === CasingConvention.Unknown ? [] : symbols
+			/* a name that already reads as the wanted convention is no violation, whatever else it could also be
+			   read as: `f` carries no separator and no capital, so it is snake_case and camelCase at once */
+			.filter(m => !detectPotentialCasings(m.name, config.ignorePrefix).includes(casing) && (!config.ignoreNonAlpha || containsAlpha(m.name)))
 			.map(({ id, ...m }) => {
 				const fix = fixCasing(m.name, casing, config.ignorePrefix);
-				return {
-					...m,
-					involvedId: id,
-					quickFix:   fix ? createNamingConventionQuickFixes(dataflow.graph, id, fix, casing) : undefined
-				} as NamingConventionResult;
+				/* renaming onto a name already in use would merge two variables */
+				const quickFix = fix !== undefined && !taken.has(fix) ? createNamingConventionQuickFixes(dataflow.graph, id, fix, casing) : undefined;
+				return { ...m, involvedId: id, quickFix };
 			});
-		return {
-			results: results,
-			'.meta': {
-				numMatches: symbols.length - results.length,
-				numBreak:   results.length
-			}
-		};
+		return { results, '.meta': { numMatches: symbols.length - results.length, numBreak: results.length } };
 	},
-	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Identifier '${result.name}' at ${SourceLocation.format(result.loc)} (${result.detectedCasing})`,
-		[LintingPrettyPrintContext.Full]:  result => `Identifier '${result.name}' at ${SourceLocation.format(result.loc)} follows wrong convention: ${result.detectedCasing}`
-	},
+	prettyPrint: prettyPrint(
+		result => `Identifier '${result.name}' at ${SourceLocation.format(result.loc)} (${result.detectedCasing})`,
+		result => `Identifier '${result.name}' at ${SourceLocation.format(result.loc)} follows wrong convention: ${result.detectedCasing}`
+	),
 	info: {
 		name:            'Naming Convention',
 		// detects casing heuristically so correctness is not ensured using default config, but checks all identifiers in the code for naming convention match
 		certainty:       LintingRuleCertainty.OverApproximative,
-		description:     'Checks whether the symbols conform to a certain naming convention',
+		description:     'Finds symbols that do not follow the naming convention of the code.',
 		tags:            [LintingRuleTag.Style, LintingRuleTag.QuickFix],
 		// heuristic and noisy on real package code, so only run when requested explicitly
 		activeByDefault: false,
-		defaultConfig:   {
-			caseing:        'auto',
-			ignoreNonAlpha: true
-		}
+		defaultConfig:   () => ({ caseing: 'auto', ignoreNonAlpha: true })
 	}
 } as const satisfies LintingRule<NamingConventionResult, NamingConventionMetadata, NamingConventionConfig>;

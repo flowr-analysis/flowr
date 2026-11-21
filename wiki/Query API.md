@@ -1,9 +1,23 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:36 UTC (v2.14.1, R v4.6.1), please do not edit directly._
-
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-21, 14:03:04 UTC (v2.17.9, R v4.5.0), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
+In code, you run queries with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L404"><code>FlowrAnalyzer::<b>query</b></code></a>.
+Pass it a single query object, and it answers with the result of that query directly, which is the most common case and also the fastest, as there is nothing to group.
+For queries that report one entry per query (e.g., the [Static Slice Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice)), the result is just that entry.
+A failing single query throws an error.
 
+```ts
+const { slice, reconstruct } = await analyzer.query({ type: 'static-slice', criteria: ['3@x'] });
+```
+
+Pass it a list of queries, and it answers with a record of the results by query type.
+Queries of the same type run together, and a failing query type is reported as an error without affecting the others:
+
+```ts
+const results = await analyzer.query([{ type: 'id-map' }, { type: 'dataflow' }]);
+const graph = results.dataflow.graph;
+```
 
 > [!NOTE]
 > There are many ways to query a dataflow graph created by flowR.
@@ -11,7 +25,6 @@ Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interfac
 > with a running flowR server, or the <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span> command in the flowR [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#-using-the-repl).
 > 
 > Also, check out the [flowr-analysis/sample-analyzer-project-query](https://github.com/flowr-analysis/sample-analyzer-project-query) repository for a complete example project using the query API.
-
 
 ## The Query Format
 
@@ -21,19 +34,24 @@ In general, we separate two types of queries:
 1. **Active Queries**: Are exactly what you would expect from a query (e.g., the [Call-Context Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context)). They fetch information from the dataflow graph.
 2. **Virtual Queries**: Are used to structure your queries (e.g., the [Compound Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Compound)).
 
-We separate these from a concept perspective. 
-For now, we support the following **active** queries (which we will refer to simply as a `query`):
+We support the following **active** queries (which we refer to as a `query`):
 
 1. [Abstract Interpretation Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Abstract-Interpretation) (`absint`):\
     Returns the abstract values inferred for every expression or at specific locations.
+1. [Ambient Access Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Ambient-Access) (`ambient-access`):\
+    What code reads and writes of the global state
 1. [Call-Context Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context) (`call-context`):\
     Finds all calls in a set of files that matches specified criteria.
 1. [Call-Graph Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Graph) (`call-graph`):\
     Returns the call graph of the given code.
+1. [Code Clones Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Code-Clones) (`code-clones`):\
+    Finds code clones in all analyzed files with a configurable selection of AST, token, and fingerprint based algorithms.
 1. [Config Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Config) (`config`):\
     Returns the current configuration of flowR.
 1. [Control-Flow Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Control-Flow) (`control-flow`):\
     Provides the control-flow of the program.
+1. [Data Columns Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Data-Columns) (`data-columns`):\
+    Returns the columns of a data frame that can be written at a position, as an editor offers them to complete.
 1. [Dataflow Cluster Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dataflow-Cluster) (`dataflow-cluster`):\
     Calculates and returns all the clusters present in the dataflow graph.
 1. [Dataflow Lens Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dataflow-Lens) (`dataflow-lens`):\
@@ -48,6 +66,8 @@ For now, we support the following **active** queries (which we will refer to sim
     Checks whether a function calls another function matching given constraints.
 1. [Files Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Files) (`files`):\
     Returns the files matching the given criteria.
+1. [Function Info Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Function-Info) (`function-info`):\
+    Reports where a function name comes from: which packages export it, their signature, and whether flowR itself has a built-in definition for it.
 1. [Guess Dependency Versions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Guess-Dependency-Versions) (`guess-dep-versions`):\
     Guesses the version range each dependency must have, from declared constraints and actual code usage.
 1. [Happens-Before Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Happens-Before) (`happens-before`):\
@@ -56,14 +76,16 @@ For now, we support the following **active** queries (which we will refer to sim
     Returns the id-map of the normalized AST of the given code.
 1. [Input Sources Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Input-Sources) (`input-sources`):\
     Classify the input sources of function calls
+1. [Inspect Argument Roles Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Argument-Roles) (`inspect-fn-props`):\
+    Determine what functions and their formals do
 1. [Inspect Exceptions of Functions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Exceptions-of-Functions) (`inspect-exception`):\
     Determine whether functions throw exceptions (known to flowR)
+1. [Inspect Function Guards Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Function-Guards) (`inspect-fn-guards`):\
+    Infer what functions ask of the calls they return from
 1. [Inspect Higher-Order Functions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Higher-Order-Functions) (`inspect-higher-order`):\
     Determine whether functions are higher-order functions
 1. [Inspect Recursive Functions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Recursive-Functions) (`inspect-recursion`):\
     Determine whether functions are recursive
-1. [Inspect Strict Functions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Strict-Functions) (`inspect-strictness`):\
-    Determine whether functions force their arguments
 1. [Linter Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Linter) (`linter`):\
     Lints a given R script for common issues.
 1. [Location Map Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Location-Map) (`location-map`):\
@@ -84,6 +106,8 @@ For now, we support the following **active** queries (which we will refer to sim
     Inspects the signature database: packages, function signatures, source and documentation links.
 1. [Static Slice Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice) (`static-slice`):\
     Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).
+1. [Taint Analysis Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Taint-Analysis) (`taint`):\
+    Returns the taint values inferred for every expression.
 
 Similarly, we support the following **virtual** queries: 
 
@@ -92,10 +116,9 @@ Similarly, we support the following **virtual** queries:
 
 <details>
 
-
 <summary>Detailed Query Format (Automatically Generated)</summary>
 
-Although it is probably better to consult the detailed explanations, if you want to have a look at the schema, here is its description:
+The schema of the query format:
 
 - _Queries to run on the file analysis information (in the form of an array)_ (array)
 Valid item types:
@@ -187,6 +210,7 @@ Valid item types:
             - _The dataflow query simply returns the dataflow graph, there is no need to pass it multiple times!_ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'dataflow'
+                - **environments** [optional] _Whether to include the environments of the vertices and function definitions (default: true). They make up most of the answer, so leave them out if only the graph itself is of interest._ (boolean)
             - _Either returns all function definitions alongside whether they are recursive, or just those matching the filters._ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'does-call'
@@ -205,13 +229,17 @@ Valid item types:
                 - **criteria** [optional] _The slicing criteria of the nodes to get the inferred abstract values for._ (array)
                 Valid item types:
                     - (string)
+            - _The taint query conducts taint analyses and returns their results._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'taint'
+                - **defs** _The taint analyses to run._ (array)
             - _The file query finds files in the project based on their roles and path patterns._ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'files'
                 - **roles** [optional] _Optional roles of the files to query. If not provided, all roles are considered._ (array)
                 Valid item types:
                     - (string)
-                        Only allows: 'description', 'namespace', 'news', 'vignette', 'test', 'install', 'data', 'license', 'virtual-env', 'manifest', 'startup', 'environment', 'source', 'other'
+                        Only allows: 'description', 'namespace', 'news', 'vignette', 'test', 'install', 'data', 'documentation', 'license', 'virtual-env', 'manifest', 'startup', 'environment', 'source', 'other'
                 - **matchesPathRegex** [optional] _An optional regular expression to match the file paths against._ (string)
             - _The id map query retrieves the id map from the normalized AST._ (object)
                 - **type** [required] _The type of the query._ (string)
@@ -230,9 +258,14 @@ Valid item types:
                     - (string)
                 - **direction** [optional] _The direction to slice in. Defaults to backward slicing if unset._ (string)
                     Only allows: 'backward', 'forward'
+                - **removal** [optional] _Compute the removal slice instead: the code that only exists for the criteria, which can go while the rest keeps working. The result holds the removed statements, the reconstruction the program without them._ (boolean)
+                - **name** [optional] _What to call this slice: the results are keyed by it instead of by the serialized query._ (string)
                 - **noReconstruction** [optional] _Do not reconstruct the slice into readable code._ (boolean)
                 - **noMagicComments** [optional] _Should the magic comments (force-including lines within the slice) be ignored?_ (boolean)
-                - **inlineSources** [optional] _Inline resolvable source() calls into the reconstruction so the result is a single self-contained R text._ (boolean)
+                - **inlineSources** [optional] _Inline resolvable source() calls into the reconstruction so the result is a single self-contained R text; "banner" marks where each spliced file begins and ends with a banner comment naming it._ (alternatives)
+                    - (boolean)
+                    - (string)
+                        Only allows: 'banner'
                 - **inlineFull** [optional] _Inline all files into the reconstruction, in flowR's loading order and independent of whether they are sourced explicitly; "banner" precedes every file with a banner comment naming it._ (alternatives)
                     - (boolean)
                     - (string)
@@ -288,6 +321,15 @@ Valid item types:
                     Valid item types:
                         - (string)
                     - **user** [optional] _Functions that read interactive user input (e.g., file.choose, readline, menu, askYesNo)._ (array)
+                    Valid item types:
+                        - (string)
+                    - **sanitizers** [optional] _Functions whose result counts as a derived constant whatever flows in (e.g., an escaping function)._ (array)
+                    Valid item types:
+                        - (string)
+                    - **evaluating** [optional] _Functions that evaluate code or look up names at run time, whose result is unknown (e.g., eval, do.call, exists)._ (array)
+                    Valid item types:
+                        - (string)
+                    - **editing** [optional] _Functions that cut or replace parts of a string, undoing what a sanitizer escaped (e.g., gsub, substr)._ (array)
                     Valid item types:
                         - (string)
                     - **linkedObjects** [optional] _Objects a framework provides without a definition in the code, e.g. shiny's input._ (array)
@@ -355,6 +397,13 @@ Valid item types:
                         - **package** [optional] _The package name of the library function_ (string)
                         - **argIdx** [optional] _The index of the argument that contains the library name._ (number)
                         - **argName** [optional] _The name of the argument that contains the library name._ (string)
+                - **transformFunctions** [optional] _The set of transform functions to search for._ (array)
+                Valid item types:
+                    - (object)
+                        - **name** [required] _The name of the library function._ (string)
+                        - **package** [optional] _The package name of the library function_ (string)
+                        - **argIdx** [optional] _The index of the argument that contains the library name._ (number)
+                        - **argName** [optional] _The name of the argument that contains the library name._ (string)
                 - **testFunctions** [optional] _The set of test functions to search for._ (array)
                 Valid item types:
                     - (object)
@@ -369,9 +418,20 @@ Valid item types:
                         - **package** [optional] _The package name of the library function_ (string)
                         - **argIdx** [optional] _The index of the argument that contains the library name._ (number)
                         - **argName** [optional] _The name of the argument that contains the library name._ (string)
+                - **interactiveFunctions** [optional] _The set of interactive functions to search for._ (array)
+                Valid item types:
+                    - (object)
+                        - **name** [required] _The name of the library function._ (string)
+                        - **package** [optional] _The package name of the library function_ (string)
+                        - **argIdx** [optional] _The index of the argument that contains the library name._ (number)
+                        - **argName** [optional] _The name of the argument that contains the library name._ (string)
                 - **enabledCategories** [optional] _A set of flags that determines what types of dependencies are searched for. If unset, all dependency types are searched for._ (array)
                 Valid item types:
                     - (string)
+                - **focus** [optional] _Focus on the dependencies at these slicing criteria: the result names every node taking part in them in `.meta.focus`._ (array)
+                Valid item types:
+                    - (string)
+                - **assumedPackages** [optional] _Also report the base packages R attaches on startup (e.g. `stats` for a bare `sd()`) that the code uses but never asks for explicitly, as `library` entries marked `implicit`. `base` is reported too, additionally marked `alwaysAttached`. Defaults to false._ (boolean)
                 - **additionalCategories** [optional] _A set of additional, user-supplied dependency categories, whose results will be included in the query return value. Using the name of a built-in category extends it instead of replacing it._ (object)
                     Only allows: '[object Object]'
             - _The location map query retrieves the location of every id in the ast._ (object)
@@ -409,12 +469,51 @@ Valid item types:
                 - **filter** [optional] _If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered._ (array)
                 Valid item types:
                     - [required] (string)
-            - _Either returns all function definitions alongside whether they are strict, or just those matching the filters._ (object)
+            - _Either returns all function definitions alongside what they and their formals do, or just those matching the filters._ (object)
                 - **type** [required] _The type of the query._ (string)
-                    Only allows: 'inspect-strictness'
+                    Only allows: 'inspect-fn-props'
                 - **filter** [optional] _If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered._ (array)
                 Valid item types:
                     - [required] (string)
+                - **natives** [optional] _The native routines of the analyzed package (as the signature database records them), whose purity and concurrency the calls to them inherit._ (array)
+                Valid item types:
+                    - (object)
+                - **maxDepth** [optional] _How far a value is followed back through names and calls when deciding what a formal stands for (default 6)._ (number)
+                - **only** [optional] _Infer only what the formals do, or only what the function itself does; both are inferred when this is left out._ (string)
+                    Only allows: 'arguments', 'function'
+                - **formals** [optional] _Keep only the formals written as one of these names._ (array)
+                Valid item types:
+                    - (string)
+                - **props** [optional] _Keep only these properties, named as the ArgProp/CallProp/SemanticCallTag members they are._ (array)
+                Valid item types:
+                    - (string)
+                        Only allows: 'Forced', 'NoDefault', 'Alias', 'Value', 'Shape', 'Flag', 'Resource', 'Written', 'Nse', 'Callee', 'Presence', 'Bounds', 'Atomic', 'Handle', 'Lazy', 'Injectable', 'Deparsed', 'Optional', 'Required', 'Guarded', 'Pure', 'MayPure', 'Throws', 'Invisible', 'Generic', 'Method', 'Scope', 'NonDet', 'Ambient', 'Configures', 'Ffi', 'Lang', 'Strict', 'Concurrent', 'Primitive', 'Random', 'File', 'TempFile', 'Network', 'Process', 'User', 'Interactive', 'CommandLine', 'Glob', 'Graphics', 'Console', 'Database', 'Opens', 'Closes', 'Reads', 'Writes', 'Prints', 'Narrows', 'Edits', 'Statistics', 'Transforms', 'Deprecated', 'Eval', 'Html', 'JavaScript', 'LoadsPackage', 'AttachesPackage', 'ChecksPackage', 'DetachesPackage', 'Declares', 'Frames'
+            - _Returns what function definitions ask of the calls they return from, for all of them or just those matching the filter._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'inspect-fn-guards'
+                - **filter** [optional] _If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered._ (array)
+                Valid item types:
+                    - [required] (string)
+                - **kind** [optional] _Keep only the conditions the function checks itself, or only those R checks for it._ (string)
+                    Only allows: 'explicit', 'implicit'
+                - **onlyPure** [optional] _Keep only the conditions failing before any side effect._ (boolean)
+                - **formals** [optional] _Keep only what is said about the formals written as one of these names._ (array)
+                Valid item types:
+                    - (string)
+                - **builtIns** [optional] _Also state what these functions of R ask for, written `name` or `pkg::name`._ (array)
+                Valid item types:
+                    - (string)
+                - **natives** [optional] _The native routines of the analyzed package (as the signature database records them), whose contracts the calls to them inherit._ (array)
+                Valid item types:
+                    - (object)
+            - _What code reads and writes of the global state (options, environment variables, devices, ...)._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'ambient-access'
+                - **criteria** [optional] _The code to ask for, each slicing criterion with all the code its node spans. Without, every file and the whole project._ (array)
+                Valid item types:
+                    - (string)
+                - **functions** [optional] _Also answer for every function definition the code writes._ (boolean)
+                - **includeCallees** [optional] _Whether what the called functions access counts as well (default true)._ (boolean)
             - _The resolve value query used to get definitions of an identifier_ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'resolve-value'
@@ -425,7 +524,8 @@ Valid item types:
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'project'
                 - **withDf** [optional] _Whether to include Dataflow information in the result._ (boolean)
-            - _Inspects the loaded signature database(s): loaded databases, a package, a function, or wildcard matches (optionally filtered by parameter name or required-parameter count)._ (object)
+                - **showFiles** [optional] _Whether to include the list of files in the result._ (boolean)
+            - _Inspects the loaded signature database(s): loaded databases, a package, a function, or wildcard matches (optionally filtered by parameter name or required-parameter count). Names no database records are answered from flowR's own built-in configuration instead and marked as such._ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'signature'
                 - **package** [optional] _The package to inspect (glob wildcards allowed); omit for a summary of the loaded databases._ (string)
@@ -435,7 +535,9 @@ Valid item types:
                 Valid item types:
                     - (string)
                 - **requiredParameters** [optional] _Keep only functions with exactly this many required (no-default) parameters, excluding `...`._ (number)
+                - **flowr** [optional] _A spec over flowR's own built-in view: name(arg, [role], name[role], *) [prop], e.g. p*([alias]) [invisible]._ (string)
                 - **callGraph** [optional] _For a single function, also render its transitive call graph as a mermaid.live link (`--cg`)._ (boolean)
+                - **callGraphMaxNodes** [optional] _How many nodes the rendered call graph may hold before the expansion stops (default 300, `--cg-max <n>`)._ (number)
             - _The resolve value query used to get definitions of an identifier_ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'origin'
@@ -448,11 +550,15 @@ Valid item types:
                 - **rules** _The rules to lint for. If unset, all rules will be included._ (array)
                 Valid item types:
                     - (string)
-                        Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection'
+                        Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection', 'overwritten-file', 'unescaped-arguments', 'namespace-access', 'class-string-comparison', 'description-metadata', 'documentation-mismatch', 'non-ascii-code', 'true-false-abbreviation', 'bogus-return', 'package-hooks', 'global-environment-modification', 'namespace-tampering', 's3-method-consistency', 'foreign-function-calls', 'dependency-declaration', 'call-arguments', 'package-structure', 'compiled-code', 'package-metafiles', 'rd-files', 'package-data', 'package-runtime', 'secret-exfiltration', 'process-state-in-session', 'code-clones', 'call-contracts', 'interactive-functions', 'autoload-files'
                     - (object)
                         - **name** [required] (string)
-                            Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection'
+                            Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection', 'overwritten-file', 'unescaped-arguments', 'namespace-access', 'class-string-comparison', 'description-metadata', 'documentation-mismatch', 'non-ascii-code', 'true-false-abbreviation', 'bogus-return', 'package-hooks', 'global-environment-modification', 'namespace-tampering', 's3-method-consistency', 'foreign-function-calls', 'dependency-declaration', 'call-arguments', 'package-structure', 'compiled-code', 'package-metafiles', 'rd-files', 'package-data', 'package-runtime', 'secret-exfiltration', 'process-state-in-session', 'code-clones', 'call-contracts', 'interactive-functions', 'autoload-files'
                         - **config** (object)
+                - **tags** [optional] _Lint for every rule carrying one of these tags, e.g. cmd-check for the R CMD check rules._ (array)
+                Valid item types:
+                    - (string)
+                        Only allows: 'bug', 'deprecated', 'documentation', 'experimental', 'performance', 'robustness', 'rver3', 'rver4', 'readability', 'reproducibility', 'security', 'shiny', 'smell', 'style', 'usability', 'cmd-check', 'quickfix'
             - _Dice query: selects only paths from the given start nodes that reach the given end nodes._ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'dice'
@@ -462,9 +568,13 @@ Valid item types:
                 - **to** [required] _Slicing criteria for the end of the dice (backward slice seeds)._ (array)
                 Valid item types:
                     - (string)
+                - **name** [optional] _What to call this slice: the results are keyed by it instead of by the serialized query._ (string)
                 - **noReconstruction** [optional] _Do not reconstruct the slice into readable code._ (boolean)
                 - **noMagicComments** [optional] _Should the magic comments (force-including lines within the slice) be ignored?_ (boolean)
-                - **inlineSources** [optional] _Inline resolvable source() calls into the reconstruction so the result is a single self-contained R text._ (boolean)
+                - **inlineSources** [optional] _Inline resolvable source() calls into the reconstruction so the result is a single self-contained R text; "banner" marks where each spliced file begins and ends with a banner comment naming it._ (alternatives)
+                    - (boolean)
+                    - (string)
+                        Only allows: 'banner'
                 - **inlineFull** [optional] _Inline all files into the reconstruction, in flowR's loading order and independent of whether they are sourced explicitly; "banner" precedes every file with a banner comment naming it._ (alternatives)
                     - (boolean)
                     - (string)
@@ -491,6 +601,65 @@ Valid item types:
                         Only allows: 'newest', 'oldest'
                     - **prefer** [optional] _A version to prefer per dependency when it survives the constraints._ (object)
                     - **limit** [optional] _Cap the number of version combinations considered. Combinations whose versions cannot be loaded together are skipped, so fewer assignments may come out._ (number)
+            - _Reports which packages export a function name, its signature/details in each, and whether flowR itself carries a built-in definition for it._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'function-info'
+                - **name** [required] _The bare function/symbol name to look up._ (string)
+                - **packages** [optional] _Restrict the package list to these names; every exporting package is considered when omitted._ (array)
+                Valid item types:
+                    - (string)
+            - _Finds code clones with a configurable selection of algorithms (AST, token, and fingerprint based)._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'code-clones'
+                - **algorithms** [optional] _The clone detection algorithms to run (default: gst)._ (array)
+                Valid item types:
+                    - (string)
+                        Only allows: 'baxter', 'gst', 'winnowing'
+                - **perspective** [optional] _How the code is presented to the algorithms: as written (syntax), with sugar and newer R features rewritten (canonical, default), or additionally with single-use temporaries inlined along the dataflow (dataflow)._ (string)
+                    Only allows: 'syntax', 'canonical', 'dataflow'
+                - **config** [optional] _Thresholds and options of the algorithms, merged into the defaults._ (object)
+                    - **scope** [optional] (string)
+                        Only allows: 'all', 'cross-file'
+                    - **maxPairs** [optional] (number)
+                    - **gst** [optional] (object)
+                        - **tokens** (string)
+                            Only allows: 'normalized', 'exact'
+                        - **minimumMatchLength** (number)
+                        - **threshold** (number)
+                        - **unit** (string)
+                            Only allows: 'function', 'file'
+                    - **winnowing** [optional] (object)
+                        - **tokens** (string)
+                            Only allows: 'normalized', 'exact'
+                        - **k** (number)
+                        - **t** (number)
+                        - **threshold** (number)
+                        - **maxDocumentFrequency** (number)
+                        - **unit** (string)
+                            Only allows: 'function', 'file'
+                    - **baxter** [optional] (object)
+                        - **massThreshold** (number)
+                        - **similarityThreshold** (number)
+                - **exportIndex** [optional] _Also return the clone index of the analyzed files, to search against it later._ (boolean)
+                - **against** [optional] _Previously exported clone indices to search the analyzed files against. They must use the same perspective as the query._ (array)
+                Valid item types:
+                    - (object)
+                        - **format** [required] (string)
+                            Only allows: 'flowr-clone-index'
+                        - **version** [required] (number)
+                            Only allows: '1'
+                        - **perspective** [required] (string)
+                            Only allows: 'syntax', 'canonical', 'dataflow'
+                        - **files** [required] (array)
+                        Valid item types:
+                            - (object)
+            - _The data columns query returns the columns of a data frame that can be written at a position, after `df$` or within the arguments a call evaluates within its data._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'data-columns'
+                - **positions** [required] _The positions to ask about, as `line:column` of the cursor._ (array)
+                Valid item types:
+                    - (string)
+                - **file** [optional] _The file the positions are in, if the analysis holds more than one._ (string)
         - _Virtual queries (used for structure)_ (alternatives)
             - _Compound query used to combine queries of the same type_ (object)
                 - **type** [required] _The type of the query._ (string)
@@ -505,7 +674,7 @@ Valid item types:
 
 ### Why Queries?
 
-First, consider that you have a file like the following (of course, this is just a simple and artificial example):
+First, consider that you have a file like the following (a simple, artificial example):
 
 ```r
 library(ggplot)
@@ -531,10 +700,6 @@ print(mean(data2$k))
 
 <details> <summary>Dataflow Graph of the Example</summary>
 
-
-
-
-
 ```mermaid
 flowchart LR
     1{{"`*#91;RSymbol#93;* **ggplot**
@@ -558,17 +723,36 @@ library`"]
     arg: (9)`"]]
     14{{"`*#91;RString#93;* **#39;data.csv#39;**
       *6.18-27* (**id: 14**)`"}}
-    16[["`*#91;RFunctionCall#93;* **read#95;csv**
+    %% Environment of 16 [level: 0]:
+    %% Built-in
+    %% 1----------------------------------------
+    %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
+    %% 2----------------------------------------
+    %%   and what generics, magrittr, pillar, rlang, tibble, tidyselect attach
+    %% 3----------------------------------------
+    %%   and what dplyr attach
+    %% 4----------------------------------------
+    %% 5----------------------------------------
+    %%   and what readr attach
+    %% 6----------------------------------------
+    %%   #search-path:ggplot: {**#search-path:ggplot** (id: 3, type: Variable, def. @3)}
+    %%   #search-path:        {**#search-path** (id: 3, type: Variable, cds: {}, def. @3), **#search-path** (id: 7, type: Variable, cds: {}, def. @7), **#search-path** (id: 11, type: Variable, cds: {}, def. @11)}
+    %%   #search-path:dplyr:  {**#search-path:dplyr** (id: 7, type: Variable, def. @7)}
+    %%   #search-path:readr:  {**#search-path:readr** (id: 11, type: Variable, def. @11)}
+    16[["`*#91;RFunctionCall#93;* readr#58;#58;**read#95;csv**
       *6.9-28* (**id: 16**)
     arg: (14)`"]]
+    built-in:readr:read_csv["`Built-In:
+readr#58;#58;read#95;csv`"]
+    style built-in:readr:read_csv stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     12["`*#91;RSymbol#93;* **data**
       *6.1-4* (**id: 12**, v: 16)`"]
     17[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *6.1-28* (**id: 17**)
     arg: (12, 16)`"]]
-    built-in:_-["`Built-In:
+    built-in:_60_-["`Built-In:
 #60;#45;`"]
-    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_60_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     20{{"`*#91;RString#93;* **#39;data2.csv#39;**
       *7.19-29* (**id: 20**)`"}}
     %% Environment of 22 [level: 0]:
@@ -576,12 +760,19 @@ library`"]
     %% 1----------------------------------------
     %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
     %% 2----------------------------------------
-    %%    library-load: {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
+    %%   and what generics, magrittr, pillar, rlang, tibble, tidyselect attach
     %% 3----------------------------------------
-    %%    library-load: {**readr:: library-load** (id: 11, type: Function, def. @11)}
+    %%   and what dplyr attach
     %% 4----------------------------------------
-    %%   data: {**data** (id: 12, type: Unknown, def. @17)}
-    22[["`*#91;RFunctionCall#93;* **read#95;csv**
+    %% 5----------------------------------------
+    %%   and what readr attach
+    %% 6----------------------------------------
+    %%   #search-path:ggplot: {**#search-path:ggplot** (id: 3, type: Variable, def. @3)}
+    %%   #search-path:        {**#search-path** (id: 3, type: Variable, cds: {}, def. @3), **#search-path** (id: 7, type: Variable, cds: {}, def. @7), **#search-path** (id: 11, type: Variable, cds: {}, def. @11)}
+    %%   #search-path:dplyr:  {**#search-path:dplyr** (id: 7, type: Variable, def. @7)}
+    %%   #search-path:readr:  {**#search-path:readr** (id: 11, type: Variable, def. @11)}
+    %%   data:                {**data** (id: 12, type: Unknown, def. @17)}
+    22[["`*#91;RFunctionCall#93;* readr#58;#58;**read#95;csv**
       *7.10-30* (**id: 22**)
     arg: (20)`"]]
     18["`*#91;RSymbol#93;* **data2**
@@ -596,9 +787,9 @@ library`"]
     29[["`*#91;RAccess#93;* base#58;#58;**$**
       *9.11-16* (**id: 29**)
     arg: (26, 27)`"]]
-    built-in:_["`Built-In:
+    built-in:_36_["`Built-In:
 $`"]
-    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    style built-in:_36_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     31[["`*#91;RFunctionCall#93;* base#58;#58;**mean**
       *9.6-17* (**id: 31**)
     arg: (29)`"]]
@@ -621,40 +812,113 @@ print`"]
     38(["`*#91;RSymbol#93;* **data**
       *12.1-4* (**id: 38**)`"])
     43(["`*#91;RSymbol#93;* **x**
-      *13.24* (**id: 43**)`"])
+      *13.24* (**id: 43**, 50+, 48+)`"])
     44(["`*#91;RArgument#93;* **x**
-      *13.20* (**id: 44**)`"])
+      *13.20* (**id: 44**, 50+, 48+)`"])
     46(["`*#91;RSymbol#93;* **y**
-      *13.31* (**id: 46**)`"])
+      *13.31* (**id: 46**, 50+, 48+)`"])
     47(["`*#91;RArgument#93;* **y**
-      *13.27* (**id: 47**)`"])
+      *13.27* (**id: 47**, 50+, 48+)`"])
+    %% Environment of 48 [level: 0]:
+    %% Built-in
+    %% 1----------------------------------------
+    %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
+    %% 2----------------------------------------
+    %%   and what generics, magrittr, pillar, rlang, tibble, tidyselect attach
+    %% 3----------------------------------------
+    %%   and what dplyr attach
+    %% 4----------------------------------------
+    %% 5----------------------------------------
+    %%   and what readr attach
+    %% 6----------------------------------------
+    %%   #search-path:ggplot: {**#search-path:ggplot** (id: 3, type: Variable, def. @3)}
+    %%   #search-path:        {**#search-path** (id: 3, type: Variable, cds: {}, def. @3), **#search-path** (id: 7, type: Variable, cds: {}, def. @7), **#search-path** (id: 11, type: Variable, cds: {}, def. @11)}
+    %%   #search-path:dplyr:  {**#search-path:dplyr** (id: 7, type: Variable, def. @7)}
+    %%   #search-path:readr:  {**#search-path:readr** (id: 11, type: Variable, def. @11)}
+    %%   data:                {**data** (id: 12, type: Unknown, def. @17)}
+    %%   data2:               {**data2** (id: 18, type: Unknown, def. @23)}
+    %%   m:                   {**m** (id: 24, type: Unknown, def. @32)}
+    %%   #sink:output:        {**#sink:output** (id: 36, type: Variable, cds: {}, def. @36)}
     48[["`*#91;RFunctionCall#93;* **aes**
-      *13.16-32* (**id: 48**)
+      *13.16-32* (**id: 48**, 50+)
     arg: (x (44), y (47))`"]]
-    built-in:aes["`Built-In:
-aes`"]
-    style built-in:aes stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    %% Environment of 50 [level: 0]:
+    %% Built-in
+    %% 1----------------------------------------
+    %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
+    %% 2----------------------------------------
+    %%   and what generics, magrittr, pillar, rlang, tibble, tidyselect attach
+    %% 3----------------------------------------
+    %%   and what dplyr attach
+    %% 4----------------------------------------
+    %% 5----------------------------------------
+    %%   and what readr attach
+    %% 6----------------------------------------
+    %%   #search-path:ggplot: {**#search-path:ggplot** (id: 3, type: Variable, def. @3)}
+    %%   #search-path:        {**#search-path** (id: 3, type: Variable, cds: {}, def. @3), **#search-path** (id: 7, type: Variable, cds: {}, def. @7), **#search-path** (id: 11, type: Variable, cds: {}, def. @11)}
+    %%   #search-path:dplyr:  {**#search-path:dplyr** (id: 7, type: Variable, def. @7)}
+    %%   #search-path:readr:  {**#search-path:readr** (id: 11, type: Variable, def. @11)}
+    %%   data:                {**data** (id: 12, type: Unknown, def. @17)}
+    %%   data2:               {**data2** (id: 18, type: Unknown, def. @23)}
+    %%   m:                   {**m** (id: 24, type: Unknown, def. @32)}
+    %%   #sink:output:        {**#sink:output** (id: 36, type: Variable, cds: {}, def. @36)}
     50[["`*#91;RFunctionCall#93;* **ggplot**
       *13.9-33* (**id: 50**)
     arg: (38, 48)`"]]
-    built-in:ggplot["`Built-In:
-ggplot`"]
-    style built-in:ggplot stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-    52[["`*#91;RFunctionCall#93;* **data %#62;%
-	ggplot(aes(x = x, y = y))**
+    %% Environment of 52 [level: 0]:
+    %% Built-in
+    %% 1----------------------------------------
+    %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
+    %% 2----------------------------------------
+    %%   and what generics, magrittr, pillar, rlang, tibble, tidyselect attach
+    %% 3----------------------------------------
+    %%   and what dplyr attach
+    %% 4----------------------------------------
+    %% 5----------------------------------------
+    %%   and what readr attach
+    %% 6----------------------------------------
+    %%   #search-path:ggplot: {**#search-path:ggplot** (id: 3, type: Variable, def. @3)}
+    %%   #search-path:        {**#search-path** (id: 3, type: Variable, cds: {}, def. @3), **#search-path** (id: 7, type: Variable, cds: {}, def. @7), **#search-path** (id: 11, type: Variable, cds: {}, def. @11)}
+    %%   #search-path:dplyr:  {**#search-path:dplyr** (id: 7, type: Variable, def. @7)}
+    %%   #search-path:readr:  {**#search-path:readr** (id: 11, type: Variable, def. @11)}
+    %%   data:                {**data** (id: 12, type: Unknown, def. @17)}
+    %%   data2:               {**data2** (id: 18, type: Unknown, def. @23)}
+    %%   m:                   {**m** (id: 24, type: Unknown, def. @32)}
+    %%   #sink:output:        {**#sink:output** (id: 36, type: Variable, cds: {}, def. @36)}
+    52[["`*#91;RFunctionCall#93;* **dplyr#58;#58;%#62;%**
       *12.6-8* (**id: 52**)
     arg: (38, 50)`"]]
-    built-in:___["`Built-In:
-%#62;%`"]
-    style built-in:___ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    built-in:dplyr:_37__62__37_["`Built-In:
+dplyr#58;#58;%#62;%`"]
+    style built-in:dplyr:_37__62__37_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    %% Environment of 54 [level: 0]:
+    %% Built-in
+    %% 1----------------------------------------
+    %%    library-load: {**ggplot:: library-load** (id: 3, type: Function, def. @3)}
+    %% 2----------------------------------------
+    %%   and what generics, magrittr, pillar, rlang, tibble, tidyselect attach
+    %% 3----------------------------------------
+    %%   and what dplyr attach
+    %% 4----------------------------------------
+    %% 5----------------------------------------
+    %%   and what readr attach
+    %% 6----------------------------------------
+    %%   #search-path:ggplot: {**#search-path:ggplot** (id: 3, type: Variable, def. @3)}
+    %%   #search-path:        {**#search-path** (id: 3, type: Variable, cds: {}, def. @3), **#search-path** (id: 7, type: Variable, cds: {}, def. @7), **#search-path** (id: 11, type: Variable, cds: {}, def. @11)}
+    %%   #search-path:dplyr:  {**#search-path:dplyr** (id: 7, type: Variable, def. @7)}
+    %%   #search-path:readr:  {**#search-path:readr** (id: 11, type: Variable, def. @11)}
+    %%   data:                {**data** (id: 12, type: Unknown, def. @17)}
+    %%   data2:               {**data2** (id: 18, type: Unknown, def. @23)}
+    %%   m:                   {**m** (id: 24, type: Unknown, def. @32)}
+    %%   #sink:output:        {**#sink:output** (id: 36, type: Variable, cds: {}, def. @36)}
     54[["`*#91;RFunctionCall#93;* **geom#95;point**
       *14.9-20* (**id: 54**)`"]]
-    built-in:geom_point["`Built-In:
-geom#95;point`"]
-    style built-in:geom_point stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     55[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *12.1-14.20* (**id: 55**)
     arg: (52, 54)`"]]
+    built-in:_43_["`Built-In:
+#43;`"]
+    style built-in:_43_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     57(["`*#91;RSymbol#93;* **data2**
       *16.6-10* (**id: 57**)`"])
     58{{"`*#91;RSymbol#93;* **x**
@@ -731,188 +995,194 @@ points`"]
     linkStyle 11 stroke:gray,color:gray;
     14 -.->|"flow"| 16
     linkStyle 12 stroke:gray,color:gray;
-    16 -->|"arg"| 14
+    16 -->|"reads, arg"| 14
+    16 -->|"reads"| 11
+    16 -.->|"reads, calls"| built-in:readr:read_csv
+    linkStyle 15 stroke:gray;
     16 -.->|"flow"| 12
-    linkStyle 14 stroke:gray,color:gray;
+    linkStyle 16 stroke:gray,color:gray;
     12 -->|"defined-by, flow"| 17
     12 -->|"defined-by"| 16
     17 -->|"reads, arg"| 16
     17 -->|"returns, arg"| 12
-    17 -.->|"reads, calls"| built-in:_-
-    linkStyle 19 stroke:gray;
+    17 -.->|"reads, calls"| built-in:_60_-
+    linkStyle 21 stroke:gray;
     17 -.->|"flow"| 20
-    linkStyle 20 stroke:gray,color:gray;
+    linkStyle 22 stroke:gray,color:gray;
     20 -.->|"flow"| 22
-    linkStyle 21 stroke:gray,color:gray;
-    22 -->|"arg"| 20
-    22 -.->|"flow"| 18
     linkStyle 23 stroke:gray,color:gray;
+    22 -->|"reads, arg"| 20
+    22 -->|"reads"| 11
+    22 -.->|"reads, calls"| built-in:readr:read_csv
+    linkStyle 26 stroke:gray;
+    22 -.->|"flow"| 18
+    linkStyle 27 stroke:gray,color:gray;
     18 -->|"defined-by, flow"| 23
     18 -->|"defined-by"| 22
     23 -->|"reads, arg"| 22
     23 -->|"returns, arg"| 18
-    23 -.->|"reads, calls"| built-in:_-
-    linkStyle 28 stroke:gray;
+    23 -.->|"reads, calls"| built-in:_60_-
+    linkStyle 32 stroke:gray;
     23 -.->|"flow"| 26
-    linkStyle 29 stroke:gray,color:gray;
+    linkStyle 33 stroke:gray,color:gray;
     26 -->|"reads"| 12
     26 -.->|"flow"| 27
-    linkStyle 31 stroke:gray,color:gray;
+    linkStyle 35 stroke:gray,color:gray;
     27 -.->|"flow"| 29
-    linkStyle 32 stroke:gray,color:gray;
+    linkStyle 36 stroke:gray,color:gray;
     29 -->|"reads, returns, arg"| 26
     29 -->|"reads, arg"| 27
+    29 -.->|"reads, calls"| built-in:_36_
+    linkStyle 39 stroke:gray;
     29 -.->|"flow"| 31
-    linkStyle 35 stroke:gray,color:gray;
-    29 -.->|"reads, calls"| built-in:_
-    linkStyle 36 stroke:gray;
+    linkStyle 40 stroke:gray,color:gray;
     31 -->|"reads, arg"| 29
     31 -.->|"flow"| 24
-    linkStyle 38 stroke:gray,color:gray;
+    linkStyle 42 stroke:gray,color:gray;
     31 -.->|"reads, calls"| built-in:mean
-    linkStyle 39 stroke:gray;
+    linkStyle 43 stroke:gray;
     24 -->|"defined-by, flow"| 32
     24 -->|"defined-by"| 31
     32 -->|"reads, arg"| 31
     32 -->|"returns, arg"| 24
-    32 -.->|"reads, calls"| built-in:_-
-    linkStyle 44 stroke:gray;
+    32 -.->|"reads, calls"| built-in:_60_-
+    linkStyle 48 stroke:gray;
     32 -.->|"flow"| 34
-    linkStyle 45 stroke:gray,color:gray;
+    linkStyle 49 stroke:gray,color:gray;
     34 -->|"reads"| 24
     34 -.->|"flow"| 36
-    linkStyle 47 stroke:gray,color:gray;
+    linkStyle 51 stroke:gray,color:gray;
     36 -->|"reads, returns, arg"| 34
     36 -.->|"reads, calls"| built-in:print
-    linkStyle 49 stroke:gray;
+    linkStyle 53 stroke:gray;
     36 -.->|"flow"| 38
-    linkStyle 50 stroke:gray,color:gray;
+    linkStyle 54 stroke:gray,color:gray;
     38 -->|"reads"| 12
     38 -.->|"flow"| 43
-    linkStyle 52 stroke:gray,color:gray;
+    linkStyle 56 stroke:gray,color:gray;
     43 -.->|"flow"| 44
-    linkStyle 53 stroke:gray,color:gray;
+    linkStyle 57 stroke:gray,color:gray;
     44 -->|"reads"| 43
     44 -.->|"flow"| 46
-    linkStyle 55 stroke:gray,color:gray;
+    linkStyle 59 stroke:gray,color:gray;
     46 -.->|"flow"| 47
-    linkStyle 56 stroke:gray,color:gray;
+    linkStyle 60 stroke:gray,color:gray;
     47 -->|"reads"| 46
     47 -.->|"flow"| 48
-    linkStyle 58 stroke:gray,color:gray;
-    48 -->|"reads, arg, non-standard-evaluation"| 44
-    48 -->|"reads, arg, non-standard-evaluation"| 47
-    48 -->|"non-standard-evaluation"| 43
-    48 -->|"non-standard-evaluation"| 46
-    48 -.->|"reads, calls"| built-in:aes
-    linkStyle 63 stroke:gray;
+    linkStyle 62 stroke:gray,color:gray;
+    48 -->|"reads"| 43
+    48 -->|"arg"| 44
+    48 -->|"reads"| 46
+    48 -->|"arg"| 47
+    48 -->|"reads"| 3
+    48 -->|"reads"| 7
+    48 -->|"reads"| 11
     48 -.->|"flow"| 50
-    linkStyle 64 stroke:gray,color:gray;
+    linkStyle 70 stroke:gray,color:gray;
     50 -->|"reads, arg"| 48
+    50 -->|"reads"| 3
+    50 -->|"reads"| 7
+    50 -->|"reads"| 11
     50 -.->|"flow"| 52
-    linkStyle 66 stroke:gray,color:gray;
+    linkStyle 75 stroke:gray,color:gray;
     50 -->|"reads, arg"| 38
-    50 -.->|"reads, calls"| built-in:ggplot
-    linkStyle 68 stroke:gray;
     52 -->|"arg"| 38
     52 -->|"returns, arg"| 50
+    52 -->|"reads"| 7
+    52 -.->|"reads, calls"| built-in:dplyr:_37__62__37_
+    linkStyle 80 stroke:gray;
     52 -.->|"flow"| 54
-    linkStyle 71 stroke:gray,color:gray;
-    52 -.->|"reads, calls"| built-in:___
-    linkStyle 72 stroke:gray;
+    linkStyle 81 stroke:gray,color:gray;
+    54 -->|"reads"| 3
+    54 -->|"reads"| 7
+    54 -->|"reads"| 11
     54 -.->|"flow"| 55
-    linkStyle 73 stroke:gray,color:gray;
-    54 -.->|"reads, calls"| built-in:geom_point
-    linkStyle 74 stroke:gray;
-    54 -->|"reads"| 50
+    linkStyle 85 stroke:gray,color:gray;
     55 -->|"reads, arg"| 52
     55 -->|"reads, arg"| 54
-    55 -.->|"reads, calls"| built-in:_
-    linkStyle 78 stroke:gray;
+    55 -.->|"reads, calls"| built-in:_43_
+    linkStyle 88 stroke:gray;
     55 -.->|"flow"| 57
-    linkStyle 79 stroke:gray,color:gray;
+    linkStyle 89 stroke:gray,color:gray;
     57 -->|"reads"| 18
     57 -.->|"flow"| 58
-    linkStyle 81 stroke:gray,color:gray;
+    linkStyle 91 stroke:gray,color:gray;
     58 -.->|"flow"| 60
-    linkStyle 82 stroke:gray,color:gray;
+    linkStyle 92 stroke:gray,color:gray;
     60 -->|"reads, returns, arg"| 57
     60 -->|"reads, arg"| 58
-    60 -.->|"reads, calls"| built-in:_
-    linkStyle 85 stroke:gray;
+    60 -.->|"reads, calls"| built-in:_36_
+    linkStyle 95 stroke:gray;
     60 -.->|"flow"| 62
-    linkStyle 86 stroke:gray,color:gray;
+    linkStyle 96 stroke:gray,color:gray;
     62 -->|"reads"| 18
     62 -.->|"flow"| 63
-    linkStyle 88 stroke:gray,color:gray;
+    linkStyle 98 stroke:gray,color:gray;
     63 -.->|"flow"| 65
-    linkStyle 89 stroke:gray,color:gray;
+    linkStyle 99 stroke:gray,color:gray;
     65 -->|"reads, returns, arg"| 62
     65 -->|"reads, arg"| 63
-    65 -.->|"reads, calls"| built-in:_
-    linkStyle 92 stroke:gray;
+    65 -.->|"reads, calls"| built-in:_36_
+    linkStyle 102 stroke:gray;
     65 -.->|"flow"| 67
-    linkStyle 93 stroke:gray,color:gray;
+    linkStyle 103 stroke:gray,color:gray;
     67 -->|"reads, arg"| 60
     67 -->|"reads, arg"| 65
     67 -.->|"reads, calls"| built-in:plot
-    linkStyle 96 stroke:gray;
+    linkStyle 106 stroke:gray;
     67 -.->|"flow"| 69
-    linkStyle 97 stroke:gray,color:gray;
+    linkStyle 107 stroke:gray,color:gray;
     69 -->|"reads"| 18
     69 -.->|"flow"| 70
-    linkStyle 99 stroke:gray,color:gray;
+    linkStyle 109 stroke:gray,color:gray;
     70 -.->|"flow"| 72
-    linkStyle 100 stroke:gray,color:gray;
+    linkStyle 110 stroke:gray,color:gray;
     72 -->|"reads, returns, arg"| 69
     72 -->|"reads, arg"| 70
-    72 -.->|"reads, calls"| built-in:_
-    linkStyle 103 stroke:gray;
+    72 -.->|"reads, calls"| built-in:_36_
+    linkStyle 113 stroke:gray;
     72 -.->|"flow"| 74
-    linkStyle 104 stroke:gray,color:gray;
+    linkStyle 114 stroke:gray,color:gray;
     74 -->|"reads"| 18
     74 -.->|"flow"| 75
-    linkStyle 106 stroke:gray,color:gray;
+    linkStyle 116 stroke:gray,color:gray;
     75 -.->|"flow"| 77
-    linkStyle 107 stroke:gray,color:gray;
+    linkStyle 117 stroke:gray,color:gray;
     77 -->|"reads, returns, arg"| 74
     77 -->|"reads, arg"| 75
-    77 -.->|"reads, calls"| built-in:_
-    linkStyle 110 stroke:gray;
+    77 -.->|"reads, calls"| built-in:_36_
+    linkStyle 120 stroke:gray;
     77 -.->|"flow"| 79
-    linkStyle 111 stroke:gray,color:gray;
+    linkStyle 121 stroke:gray,color:gray;
     79 -->|"reads, arg"| 72
     79 -->|"reads, arg"| 77
     79 -.->|"reads, calls"| built-in:points
-    linkStyle 114 stroke:gray;
-    79 -.->|"flow"| 82
-    linkStyle 115 stroke:gray,color:gray;
+    linkStyle 124 stroke:gray;
     79 -->|"reads"| 67
+    79 -.->|"flow"| 82
+    linkStyle 126 stroke:gray,color:gray;
     82 -->|"reads"| 18
     82 -.->|"flow"| 83
-    linkStyle 118 stroke:gray,color:gray;
+    linkStyle 128 stroke:gray,color:gray;
     83 -.->|"flow"| 85
-    linkStyle 119 stroke:gray,color:gray;
+    linkStyle 129 stroke:gray,color:gray;
     85 -->|"reads, returns, arg"| 82
     85 -->|"reads, arg"| 83
+    85 -.->|"reads, calls"| built-in:_36_
+    linkStyle 132 stroke:gray;
     85 -.->|"flow"| 87
-    linkStyle 122 stroke:gray,color:gray;
-    85 -.->|"reads, calls"| built-in:_
-    linkStyle 123 stroke:gray;
+    linkStyle 133 stroke:gray,color:gray;
     87 -->|"reads, arg"| 85
     87 -.->|"reads, calls"| built-in:mean
-    linkStyle 125 stroke:gray;
+    linkStyle 135 stroke:gray;
     87 -.->|"flow"| 89
-    linkStyle 126 stroke:gray,color:gray;
+    linkStyle 136 stroke:gray,color:gray;
     89 -->|"reads, returns, arg"| 87
     89 -.->|"reads, calls"| built-in:print
-    linkStyle 128 stroke:gray;
+    linkStyle 138 stroke:gray;
 ```
 
-	
-(The analysis required _3.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
-
-
+(The analysis ran (parse and normalize with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) in the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted, so `library()` attaches no exports (base-R names are still qualified, e.g., `stats::acf`).)
 
 </details>
 
@@ -931,86 +1201,26 @@ For the specific use-case stated, you could use the [Call-Context Query](https:/
 
 Just as an example, the following [Call-Context Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context) finds all calls to `read_csv` that are not overwritten:
 
-
-
-
 ```json
-[
-  {
-    "type": "call-context",
-    "callName": "^read_csv$",
-    "callTargets": "global",
-    "kind": "input",
-    "subkind": "csv-file"
-  }
-]
+[ { "type": "call-context",   "callName": "^read_csv$",   "callTargets": "global",   "kind": "input",   "subkind": "csv-file" } ]
 ```
-
-
-
-
-
 
 _Results (prettified and summarized):_
 
 Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
-_All queries together required ≈3 ms (1ms accuracy, total 4 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _3.8 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis ran (including parsing and normalization and the query) within the generation environment.
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-
-
+The JSON contains the ids of the nodes in question (see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page).
 
 ```json
-{
-  "call-context": {
-    ".meta": {
-      "timing": 0
-    },
-    "kinds": {
-      "input": {
-        "subkinds": {
-          "csv-file": [
-            {
-              "id": 16,
-              "name": "read_csv",
-              "calls": [
-                "built-in"
-              ]
-            },
-            {
-              "id": 22,
-              "name": "read_csv",
-              "calls": [
-                "built-in"
-              ]
-            }
-          ]
-        }
-      }
-    }
-  },
-  ".meta": {
-    "timing": 3
-  }
-}
+{"call-context":{".meta":{},"kinds":{"input":{"subkinds":{"csv-file":[{"id":16,"name":"read_csv","calls":["built-in"]},{"id":22,"name":"read_csv","calls":["built-in"]}]}}}},".meta":{}}
 ```
 
-
-
 </details>
-
-
-
-
-
-	
 
 Every query is explained in detail on its own wiki page, linked from the overviews above.

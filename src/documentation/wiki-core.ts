@@ -1,6 +1,6 @@
 import { codeBlock } from './doc-util/doc-code';
 import { produceDataFlowGraph } from '../dataflow/extractor';
-import { parseRequests } from '../r-bridge/parser';
+import { parseRequests, type ParseStepOutputSingleFile } from '../r-bridge/parser';
 import { normalize, normalizeButNotDecorated } from '../r-bridge/lang-4.x/ast/parser/json/parser';
 import { documentReplSession } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
@@ -16,11 +16,7 @@ import { processRepeatLoop } from '../dataflow/internal/process/functions/call/b
 import { linkCircularRedefinitionsWithinALoop } from '../dataflow/internal/linker';
 import { DataflowInformation, filterOutLoopExitPoints } from '../dataflow/info';
 import { processDataflowFor } from '../dataflow/processor';
-import {
-	createDataflowPipeline,
-	createNormalizePipeline,
-	createParsePipeline
-} from '../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { fileProtocol, requestFromInput, retrieveParseDataFromRCode } from '../r-bridge/retriever';
 import { jsonReplacer } from '../util/json';
@@ -34,17 +30,17 @@ import { createPipeline } from '../core/steps/pipeline/pipeline';
 import { staticSlice } from '../slicing/static/static-slicer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
-import { contextFromInput } from '../project/context/flowr-analyzer-context';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { GasFeatureKey, GasLevel } from '../gas';
-import { ArgProp, CallProp, ExclusiveCallProps, SigDbInferable } from '../dataflow/environments/built-in-props';
+import { type ArgProps, type PropSelector, ArgProp, CallProp, ExclusiveCallProps, CallProps, SemanticCallTag, SigDbInferable } from '../dataflow/environments/built-in-props';
+import type { Identifier } from '../dataflow/environments/identifier';
+import { enumMembers } from '../util/objects';
 import { BuiltInIndex, inferFnProps } from '../dataflow/environments/query-fn-props';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { SemVer } from 'semver';
-import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import { processValue } from '../dataflow/internal/process/process-value';
 import { DataflowGraph } from '../dataflow/graph/graph';
 import { processAsNamedCall } from '../dataflow/internal/process/process-named-call';
@@ -70,20 +66,13 @@ async function extractStepsExample(analyzer: FlowrAnalyzer) {
 	return { normalizedAst, dataflow, cfg };
 }
 
-/**
- * Shows how to use the query API to perform a static slice (please do not simplify).
- */
+/** Shows how to use the query API to perform a static slice (please do not simplify). */
 async function sliceQueryExample(analyzer: FlowrAnalyzer) {
-	const result = await analyzer.query([{
-		type:     'static-slice',
-		criteria: ['1@y']
-	}]);
-	return result;
+	const { slice, reconstruct } = await analyzer.query({ type: 'static-slice', criteria: ['1@y'] });
+	return { slice, reconstruct };
 }
 
-/**
- * Shows how to inspect the context of an analyzer instance.
- */
+/** Shows how to inspect the context of an analyzer instance. */
 export function inspectContextExample(analyzer: FlowrAnalyzer) {
 	const ctx = analyzer.inspectContext();
 	console.log('dplyr version', ctx.deps.getDependency('dplyr'));
@@ -116,38 +105,71 @@ async function gasPluginExample() {
 		.build();
 }
 
-/** the names of the {@link CallProp} bits that make up a mask, as inline code */
-function propNames(mask: number): string {
-	return Object.entries(CallProp).filter(([, b]) => typeof b === 'number' && (b & mask) !== 0)
-		.map(([n]) => `\`${n}\``).join(', ');
+/** the names of the properties a selector includes, as inline code */
+function propNames(selector: PropSelector): string {
+	return CallProps.names(selector).map(n => `\`${n}\``).join(', ');
+}
+
+/** the {@link ArgProp} bits of a parameter as a definition writes them down, like `ArgProp.Value | ArgProp.Forced` */
+function argPropNames(props: ArgProps): string {
+	return enumMembers(ArgProp).filter(([, prop]) => (props & prop) !== 0).map(([name]) => `ArgProp.${name}`).join(' | ') || '0';
+}
+
+/** the call information about a built-in that is stated in the configuration */
+function statedOf(index: BuiltInIndex, name: Identifier) {
+	const entry = index.get(name);
+	const props = CallProps.names(entry?.props ?? 0);
+	const tags = CallProps.names(entry?.tags ?? []);
+	const sig = entry?.sig ?? [];
+
+	return {
+		/** the {@link CallProp} bits, as `Invisible | Generic` */
+		props: props.join(' | '),
+		/** the {@link SemanticCallTag}s, as `[Prints]` */
+		tags:  `[${tags.join(', ')}]`,
+		/** the `props`, `tags`, and `sig` of the definition, with the signature cut off after `sigLength` parameters */
+		config(sigLength = sig.length): string {
+			const params = sig.slice(0, sigLength).map(([param, argProps]) => `['${param}', ${argPropNames(argProps)}]`);
+			return [
+				props.length > 0 ? `props: ${props.map(name => `CallProp.${name}`).join(' | ')}` : undefined,
+				tags.length > 0 ? `tags: [${tags.map(name => `SemanticCallTag.${name}`).join(', ')}]` : undefined,
+				sig.length > 0 ? `sig: [${[...params, ...(sig.length > sigLength ? ['...'] : [])].join(', ')}]` : undefined
+			].filter(part => part !== undefined).join(', ');
+		}
+	};
 }
 
 /** The "Labeling the Built-Ins" section of the Core page, with a table per enum taken from the configuration. */
 function builtInLabelsSection(ctx: GeneralDocContext): string {
 	const index = BuiltInIndex.default();
-	/* the doc comment of a bit is its explanation, flattened to fit a table cell; bits nothing carries are left out */
-	const table = (type: 'CallProp' | 'ArgProp', of: (bit: number) => number) => [
-		`| ${type === 'CallProp' ? 'Call property' : 'Argument role'} | Built-ins | Meaning |`,
+	/* the examples below state what the configuration says about these calls, never a copy of it */
+	const [arith, print, lapply, readCsv] = ['+', 'print', 'lapply', 'read.csv'].map(name => statedOf(index, name));
+
+	const Enums = { CallProp, SemanticCallTag, ArgProp };
+	/* the doc comment of a property is its explanation, flattened to fit a table cell; properties nothing carries are left out */
+	const table = <Key extends keyof typeof Enums>(type: Key, header: string, of: (prop: PropSelector) => number) => [
+		`| ${header} | Built-ins | Meaning |`,
 		'| :-- | --: | :-- |',
-		...Object.entries(type === 'CallProp' ? CallProp : ArgProp)
-			.filter(([, bit]) => typeof bit === 'number' && of(bit) > 0)
-			.map(([name, bit]) => {
+		...(enumMembers(Enums[type]) as [string, PropSelector][]).filter(([, prop]) => of(prop) > 0)
+			.map(([name, prop]) => {
 				/* a `{@link}` has already become an anchor, so dropping the tags leaves the bare name and a stray space */
 				const doc = ctx.doc(`${type}::${name}`).replaceAll(/<[^>]*>/g, '').replaceAll(/\s+/g, ' ')
 					.replaceAll(/ ([),.;])/g, '$1').replaceAll('|', '\\|').trim();
-				const db = type === 'CallProp' && ((bit as number) & SigDbInferable) !== 0 ? '<sup>db</sup>' : '';
-				return `| \`${name}\`${db} | ${of(bit as number)} | ${doc} |`;
+				const db = type === 'CallProp' && ((prop as number) & SigDbInferable) !== 0 ? '<sup>db</sup>' : '';
+				return `| \`${name}\`${db} | ${of(prop)} | ${doc} |`;
 			})
 	].join('\n');
 
 	return `#### Labeling the Built-Ins
 
-Besides the processor, an entry says what the function *is*, in two label vocabularies:
+Besides the processor, an entry says what the function *is*, in three label vocabularies:
 
-* ${ctx.link('CallProp')} labels the call as a whole (\`props\`): whether it is pure, whether it throws, whether it
-  touches the file system, whether it dispatches, and so on. \`print\` is \`Invisible | Generic | Prints\`; R's
-  primitive generics (\`+\`, \`sin\`, \`length\`, ...) are \`Pure | Generic\`, and as they have no R body, the store is
+* ${ctx.link('CallProp')} labels how the called code behaves (\`props\`, a bitfield): whether it is pure, whether it
+  throws, whether it returns invisibly, whether it dispatches, what it does to the frames around it. R's
+  primitive generics (\`+\`, \`sin\`, \`length\`, ...) are \`${arith.props}\`, and as they have no R body, the store is
   the only place that can say they dispatch.
+* ${ctx.link('SemanticCallTag')} labels what semantic a call has (\`tags\`, an array): which resource it accesses,
+  what it produces, what it is used for. \`print\` is \`${print.props}\` with \`${print.tags}\`.
 * ${ctx.link('ArgProp')} labels each parameter (\`sig\`), in the order R declares them: which one carries the data,
   which one only selects a behavior, which one names a file, which one is called as a function.
 
@@ -162,37 +184,45 @@ So \`lapply\` is pure on its own but runs what it is handed, and says which argu
 ${codeBlock('ts', `{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['lapply', 'sapply', 'vapply']),
   processor: BuiltInProcName.Apply,
   config:    { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true,
-               props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['FUN', ArgProp.Callee]] } }`)}
+               ${lapply.config()} } }`)}
 
-The two tables below are generated from the configuration itself, so they always list every label that exists,
+while \`read.csv\` states what it does instead:
+
+${codeBlock('ts', `{ type: 'function', names: [Identifier.from(['read.csv', PkgName.Utils])],
+  processor: BuiltInProcName.DefaultReadAllArgs,
+  config:    { ${readCsv.config(2)} } }`)}
+
+The three tables below are generated from the configuration itself, so they always list every label that exists,
 what it means, and how many built-ins carry it.
 
 ${details('What each call property means', `<sup>db</sup> marks the bits the ${ctx.linkPage('wiki/Signature Database', 'signature database')}
 states for any package function on its own (${ctx.link(inferFnProps.name)} reads them off an entry and carries what a
 function calls over to the function calling it).
 
-${table('CallProp', bit => index.with(bit).length)}
+${table('CallProp', 'Call property', prop => index.with(prop).length)}`)}
 
-Most of these combine freely. The exceptions are ${ctx.link('ExclusiveCallProps')}, which a test checks the whole
-configuration against:
+${details('What each semantic property means', `
 
-${ExclusiveCallProps.map(([bit, forbidden]) => `* \`${CallProp[bit]}\` rules out ${propNames(forbidden)}`).join('\n')}
+${table('SemanticCallTag', 'Semantic property', prop => index.with(prop).length)}
 
 Two pairs read like refinements but are not: \`TempFile\` does not imply \`File\` (making up a path touches no file
 system, so a call doing both states both), and \`Reads\`/\`Writes\` say what happens to the resource an
-\`ArgProp.Resource\` argument names, so they only ever appear next to a resource bit.`)}
+\`ArgProp.Resource\` argument names, so they only ever appear next to a resource property.`)}
+
+Most of these properties combine freely. The exceptions are ${ctx.link('ExclusiveCallProps')}, which a
+test checks the whole configuration against:
+
+${ExclusiveCallProps.map(([prop, forbidden]) => `* ${propNames(prop)} rules out ${propNames(forbidden)}`).join('\n')}
 
 ${details('What each argument role means', `A role is stated per parameter in the ${ctx.link('FnSig')} of a built-in, in the order R declares
 them, with \`...\` covering every position from where it appears. The count is how many built-ins have at least one
 parameter in that role.
 
-${table('ArgProp', bit => new Set(index.params(bit).map(p => p.call)).size)}`)}
+${table('ArgProp', 'Argument role', prop => new Set(index.params(prop as number).map(p => p.call)).size)}`)}
 `;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Core
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Core */
 export class WikiCore extends DocMaker<'wiki/Core.md'> {
 	constructor() {
 		super('wiki/Core.md', module.filename, 'core');
@@ -209,9 +239,7 @@ If you think parts of the wiki are missing, wrong, or outdated, please do not he
 In case you are new and want to develop for flowR, please check out the relevant ${ctx.linkPage('wiki/Setup', 'Setup', '-developing-for-flowr')} wiki page
 and the [Contributing Guidelines](${RemoteFlowrFilePathBaseRef}.github/CONTRIBUTING.md).
 
-${block({
-	type:    'NOTE',
-	content: `
+${block('NOTE', `
 Essentially every step we explain here can be explored directly from flowR's REPL in an interactive fashion (see the ${ctx.linkPage('wiki/Interface', 'Interface', 'using-the-repl')} wiki page).
 We recommend to use commands like ${getReplCommand('parse')} or ${getReplCommand('dataflow*')} to explore the output of flowR using your own samples.
 As a quickstart you may use:
@@ -223,8 +251,7 @@ ${await documentReplSession(shell, [{
 	
 If you are brave (or desperate) enough, you can also try to use the ${getCliLongOptionOf('flowr', 'verbose')} option to be dumped with information about flowR's internals (please, never use this for benchmarking).
 See the ${ctx.linkPage('wiki/FAQ', 'FAQ')} (*How to get flowR to talk?*) for more information.
-`
-})}
+`)}
 	
 * [Creating and Using a flowR Analyzer Instance](#creating-and-using-a-flowr-analyzer-instance)
 * [Pipelines and their Execution](#pipelines-and-their-execution)
@@ -237,6 +264,9 @@ See the ${ctx.linkPage('wiki/FAQ', 'FAQ')} (*How to get flowR to talk?*) for mor
 * [Beyond the Dataflow Graph](#beyond-the-dataflow-graph)
   * [Static Backward Slicing](#static-backward-slicing)
 * [Gas (Resource Guard)](#gas-resource-guard)
+
+Whatever any of these steps hands you, the questions you may ask of it live on a helper object named after it;
+the ${ctx.linkPage('wiki/Helper Objects', 'Helper Objects')} page lists all of them, grouped by what they are about.
 
 ## Creating and Using a flowR Analyzer Instance
 
@@ -268,13 +298,10 @@ on a given input. In general, these pipeline steps are analysis agnostic and may
 the ${ctx.link('DEFAULT_DATAFLOW_PIPELINE')} and the ${ctx.link('TREE_SITTER_DATAFLOW_PIPELINE')} adequately cover the most common analysis steps 
 (differentiated only by the ${ctx.linkPage('wiki/Engines', 'Engine')} used).
 
-${block({
-	type:    'TIP',
-	content: `
+${block('TIP', `
 	You can hover over most links within these wiki pages to get access to the tsdoc comment of the respective element. 
 	The links should direct you to the up-to-date implementation.
-`
-})}
+`)}
 	
 Using the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')} you can request a dataflow analysis of a sample piece of R code like the following:
 
@@ -312,14 +339,11 @@ As the types may seem to be somewhat confusing or over-complicated, we recommend
 the ${ctx.link('PARSE_WITH_R_SHELL_STEP')} or the ${ctx.link('STATIC_DATAFLOW')} step.
 The pipeline executor should do a good job of scheduling these steps (usually using a topological sort), and inferring the required inputs in the type system (have a look at the ${ctx.link(createPipeline)} function if you want to know more).
 
-${block({
-	type:    'NOTE',
-	content: `
+${block('NOTE', `
 Under the hood there is a step-subtype called a decoration. Such a step can be added to a pipeline to decorate the output of another one (e.g., making it more precise, re-adding debug info, ...).
 To mark a step as a decoration, you can use the \`decorates\` field in the ${ctx.link('IPipelineStepOrder')} interface.
 However, as such steps are currently not relevant for any of flowR's core analyses we will not go into detail here. It suffices to know how "real" steps work.
-`
-})}
+`)}
 	
 ## How flowR Produces Dataflow Graphs
 
@@ -343,7 +367,7 @@ We can see that it relies on three steps:
 3. **${ctx.link('STATIC_DATAFLOW', { codeFont: false })}** ([dataflow](#dataflow-graph-generation)): Produces the actual ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} from the normalized AST.\\
    _Its main function linked as the processor is the ${ctx.link(produceDataFlowGraph, { codeFont: false })} function._
 
-To explore these steps, let's use the REPL with the (very simple and contrived) R code: \`${sampleCode}\`.
+To explore these steps, let's use the REPL with the (simple, contrived) R code: \`${sampleCode}\`.
 
 ${await documentReplSession(shell, [{
 	command:     `:parse "${sampleCode}"`,
@@ -359,45 +383,37 @@ ${await documentReplSession(shell, [{
 }
 ], { openOutput: false })}
 	
-${block({
-	type:    'TIP',
-	content: `
+${block('TIP', `
 	All of these commands accept file paths as well, so you can write longer R code within a file, and then pass 
-	the file path prefixed with \`${fileProtocol}\` (e.g., \`${fileProtocol}test/testfiles/example.R\`) to the commands.`
-})}
+	the file path prefixed with \`${fileProtocol}\` (e.g., \`${fileProtocol}test/testfiles/example.R\`) to the commands.`)}
 
 Especially when you are just starting with flowR, we recommend using the REPL to explore the output of the different steps.
 
-${block({
-	type:    'NOTE',
-	content: 'Maybe you are left with the question: What is tree-sitter doing differently? Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
+${block('NOTE', 'Maybe you are left with the question: What is tree-sitter doing differently? Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
 
 Essentially not much (from a user perspective, it does essentially everything and all differently under the hood)! Have a look at the ${ctx.linkPage('wiki/Engines', 'Engines')} wiki page for more information on the differences between the engines.
 Below you can see the Repl commands for the tree-sitter engine (using ${getCliLongOptionOf('flowr', 'default-engine')} to set the engine to tree-sitter):
 
-${await (async() => {
-	return await documentReplSession(treeSitter, [{
-		command:     `:parse "${sampleCode}"`,
-		description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${ctx.link(TreeSitterExecutor)}. See the ${ctx.linkPage('wiki/Engines', 'Engines')} wiki page for more information on the differences between the engines.`
-	},
-	{
-		command:     `:normalize* "${sampleCode}"`,
-		description: `Following the link output should show the following:\n${await printNormalizedAstForCode(treeSitter, sampleCode, { showCode: false })}`
-	},
-	{
-		command:     `:dataflow* "${sampleCode}"`,
-		description: `Following the link output should show the following:\n${await printDfGraphForCode(treeSitter, sampleCode, { showCode: false })}`
-	}], { openOutput: false, args: '--default-engine tree-sitter' });
-}
-)()}
-`) })}
+${await documentReplSession(treeSitter, [{
+	command:     `:parse "${sampleCode}"`,
+	description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${ctx.link(TreeSitterExecutor)}. See the ${ctx.linkPage('wiki/Engines', 'Engines')} wiki page for more information on the differences between the engines.`
+},
+{
+	command:     `:normalize* "${sampleCode}"`,
+	description: `Following the link output should show the following:\n${await printNormalizedAstForCode(treeSitter, sampleCode, { showCode: false })}`
+},
+{
+	command:     `:dataflow* "${sampleCode}"`,
+	description: `Following the link output should show the following:\n${await printDfGraphForCode(treeSitter, sampleCode, { showCode: false })}`
+}], { openOutput: false, args: '--default-engine tree-sitter' })}
+`))}
 
 ### Parsing
 
-The parsing step uses the ${ctx.link(RShell)} to parse the input program (or, of course, the ${ctx.link(TreeSitterExecutor)} when using the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')}).
+The parsing step uses the ${ctx.link(RShell)} to parse the input program (or the ${ctx.link(TreeSitterExecutor)} when using the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')}).
 To speed up the process, we use the ${ctx.link(initCommand)} function to compile the parsing function and rely on a 
 custom serialization, which outputs the information in a CSV-like format.
-This means, that the ${getReplCommand('parse')} command actually kind-of lies to you, as it does pretty print the serialized version which looks more like the following (this uses the ${ctx.link(retrieveParseDataFromRCode.name)} function with the sample code \`${sampleCode}\`):
+The ${getReplCommand('parse')} command pretty-prints the serialized version, which looks more like the following (this uses the ${ctx.link(retrieveParseDataFromRCode.name)} function with the sample code \`${sampleCode}\`):
 
 ${details(`Raw parse output for <code>${sampleCode}</code>`, `For the code \`${sampleCode}\`:\n\n` + codeBlock('csv', await retrieveParseDataFromRCode(requestFromInput(sampleCode), shell)))}
 
@@ -431,7 +447,7 @@ While looking at the mermaid visualization of such an AST is nice and usually su
 Let's have a look at the normalized AST for the sample code \`${sampleCode}\` (please refer to the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} wiki page for more information):
 
 ${details('Normalized AST for <code>x <- 1; print(x)</code>', codeBlock('json',
-	JSON.stringify((await createNormalizePipeline(shell, { context: contextFromInput(sampleCode) }).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
+	JSON.stringify((await (await new FlowrAnalyzerBuilder().setParser(shell).buildFor(sampleCode)).normalize()).ast, jsonReplacer, 4)
 ))}
 
 This is… a lot! We get the type from the ${ctx.link('RType')} enum, the lexeme, location information, an id, the children of the node, and their parents.
@@ -454,7 +470,7 @@ For single nodes, we use ${ctx.link(normalizeSingleNode)} which contains a catch
 The output of just this pass is listed below (using the ${ctx.link(normalizeButNotDecorated)} function):
 
 ${details('Ast for <code>x <- 1; print(x)</code> after the first normalization', codeBlock('json',
-	JSON.stringify(normalizeButNotDecorated((await createParsePipeline(shell, { context: contextFromInput(sampleCode) }).allRemainingSteps()).parse.files[0]), jsonReplacer, 4)
+	JSON.stringify(normalizeButNotDecorated((await (await new FlowrAnalyzerBuilder().setParser(shell).buildFor(sampleCode)).parse()).files[0] as ParseStepOutputSingleFile<string>), jsonReplacer, 4)
 ))}
 
 
@@ -505,11 +521,11 @@ While all of them are essentially empty when processing an “uninteresting leaf
 
 ${ctx.hierarchy(processValue, { maxDepth: 2, openTop: true })}
 
-Please note, that we add the ${ctx.linkPage('wiki/Dataflow Graph', 'value vertex', 'value-vertex')} to the newly created dataflow graph,
+Note that we add the ${ctx.linkPage('wiki/Dataflow Graph', 'value vertex', 'value-vertex')} to the newly created dataflow graph,
 which holds a reference to the constant. If you are confused with the use of the ${ctx.link('ParentInformation')} type, 
 this stems from the [AST decoration](#normalization) and signals that we have a decorated ${ctx.link(RNode)} (which may have additional information in \`OtherInfo\`).
 
-Yet again, this is not very interesting. When looking at the ${ctx.link('processors')} object you may be confused by
+When looking at the ${ctx.link('processors')} object you may be confused by
 many lines just mapping the node to the ${ctx.link(processAsNamedCall)} function.
 This is because during the dataflow analysis we actually "desugar" the AST, and treat syntax constructs like binary operators (e.g., \`x + y\`) as function calls (e.g. \`\` \`+\`(x, y) \`\`).
 We do this, because R does it the same way, and allows to even overwrite these operators (including \`if\`, \`<-\`, etc.) by their name.
@@ -545,18 +561,18 @@ Afterward, we take the \`processedArguments\`, perform another round of sanity c
 semantic effects of the repeat loop. We first use one of flowR's linkers to
 ${ctx.link(linkCircularRedefinitionsWithinALoop.name)} and then retrieve the active exit points with ${ctx.link(filterOutLoopExitPoints.name)}.
 
-Feel free to have a look around and explore the other handlers for now. Each of them uses the results of its children alongside the active backpack 
+Each of them uses the results of its children alongside the active backpack
 to produce a new dataflow information.
 
 ## Beyond the Dataflow Graph
 
 Given the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, you can do a lot more!
 You can issue ${ctx.linkPage('wiki/Query API', 'queries')} to explore the graph, ${ctx.linkPage('wiki/Search API', 'search')} for specific elements, or, for example, request a [static backward slice](#static-backward-slicing).
-Of course, all of these endeavors work not just with the ${ctx.link(RShell)} but also with the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')}.
+All of these work with both the ${ctx.link(RShell)} and the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')}.
 
 ### Static Backward Slicing
 
-The slicing is available as an extra step as you can see by inspecting he ${ctx.link('DEFAULT_SLICING_PIPELINE')}.
+The slicing is available as an extra step, see the ${ctx.link('DEFAULT_SLICING_PIPELINE')}.
 Besides ${ctx.link('STATIC_SLICE')} it contains a ${ctx.link('NAIVE_RECONSTRUCT')} to print the slice as (executable) R code.
 
 Your main point of interesting here is the ${ctx.link(staticSlice.name)} function which relies on a modified

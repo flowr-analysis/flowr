@@ -1,7 +1,7 @@
+import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { splitAtEscapeSensitive, splitOnNestingSensitive } from './text/args';
 import { isNotUndefined } from './assert';
 import { compactRecord } from './objects';
-import { removeRQuotes } from '../r-bridge/retriever';
 
 /** https://r-pkgs.org/description.html#sec-description-authors-at-r */
 export enum AuthorRole {
@@ -34,9 +34,7 @@ export interface RAuthorInfo {
 	readonly comment?: string[];
 }
 
-/**
- * Convert structured R author information into an R `Authors@R` string.
- */
+/** Convert structured R author information into an R `Authors@R` string. */
 export function rAuthorInfoToReadable(author: RAuthorInfo): string {
 	const nameStr = author.name.join(' ');
 	const emailStr = author.email ? ` <${author.email}>` : '';
@@ -132,14 +130,13 @@ function parseRoles(roleStr: string | undefined): AuthorRole[] {
 	const parts = splitVector(roleStr);
 	for(const part of parts) {
 		const trimmed = part.trim();
-		const roleValue = removeRQuotes(trimmed);
+		const roleValue = RString.unquote(trimmed);
 		if(Object.values(AuthorRole).includes(roleValue as AuthorRole)) {
 			roles.push(roleValue as AuthorRole);
 		}
 	}
 	return roles;
 }
-
 
 function parseComments(commentStr: string | undefined): { contents: string[], orcid: string | undefined } | undefined {
 	if(!commentStr) {
@@ -150,11 +147,11 @@ function parseComments(commentStr: string | undefined): { contents: string[], or
 	let orcid: string | undefined = undefined;
 	for(const part of parts) {
 		const trimmed = part.trim();
-		const commentValue = removeRQuotes(trimmed);
+		const commentValue = RString.unquote(trimmed);
 		if(/ORCID\s*=/ig.test(commentValue)) {
 			const orcidIndex = commentValue.indexOf('=');
 			if(orcidIndex !== -1) {
-				orcid = removeRQuotes(commentValue.slice(orcidIndex + 1).trim());
+				orcid = RString.unquote(commentValue.slice(orcidIndex + 1).trim());
 			}
 			continue;
 		}
@@ -163,13 +160,10 @@ function parseComments(commentStr: string | undefined): { contents: string[], or
 	return comments.length > 0 || orcid ? { contents: comments, orcid: orcid } : undefined;
 }
 
-function assignArg(argMap: Map<string, string | undefined>, split: {
-	name?: string;
-	value: string | undefined
-}) {
+function assignArg(argMap: Map<string, string | undefined>, split: { name?: string; value: string | undefined }) {
 	argMap.set(
 		split.name as (typeof defaultPosArgNames)[number],
-		split.value === undefined || split.value?.length === 0 ? undefined : removeRQuotes(split.value)
+		split.value === undefined || split.value?.length === 0 ? undefined : RString.unquote(split.value)
 	);
 }
 
@@ -232,13 +226,7 @@ function collectUntil(source: string, anyOf: RegExp): { collected: string; rest:
  * like `First Middle Last <email> [roles] (comment)...`. It does not support the full R `person()` syntax.
  */
 export function parseTextualAuthorString(authorString: string, addRoles: AuthorRole[] = []): RAuthorInfo[] {
-	const parts = splitOnNestingSensitive(authorString, 'and', {
-		'<': '>',
-		'[': ']',
-		'(': ')',
-		'"': '"',
-		"'": "'"
-	} as const);
+	const parts = splitOnNestingSensitive(authorString, 'and', { '<': '>', '[': ']', '(': ')', '"': '"', "'": "'" } as const);
 	const authors: RAuthorInfo[] = [];
 	for(const part of parts) {
 		const name = collectUntil(part.trim(), /[<[(]/);

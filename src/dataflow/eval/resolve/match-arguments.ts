@@ -1,11 +1,13 @@
-import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { BrandedIdentifier } from '../../environments/identifier';
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RUnaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 
 /** what one declared parameter was given: nothing, one argument, or -- for `...` -- every argument it collected */
-export type MatchedArgument = RNodeWithParent | readonly RNodeWithParent[] | undefined;
+export type MatchedArgument<Info = ParentInformation> = RNode<Info> | readonly RNode<Info>[] | undefined;
 
 /**
  * The arguments of a call, one slot per declared parameter, matched the way R does: a named argument goes to
@@ -18,7 +20,7 @@ export type MatchedArgument = RNodeWithParent | readonly RNodeWithParent[] | und
  * with no `...` to absorb it, one parameter given twice, or more arguments than there are slots. The value
  * solver relies on that, since a call it cannot match is one whose result it must not guess at.
  */
-export function matchCallArguments(node: RNodeWithParent, params: readonly string[], ignored: readonly string[] = []): MatchedArgument[] | undefined {
+export function matchCallArguments<Info>(node: RNode<Info>, params: readonly BrandedIdentifier[], ignored: readonly BrandedIdentifier[] = []): MatchedArgument<Info>[] | undefined {
 	if(RUnaryOp.is(node)) {
 		return [node.operand];
 	} else if(RBinaryOp.is(node)) {
@@ -27,10 +29,10 @@ export function matchCallArguments(node: RNodeWithParent, params: readonly strin
 		return undefined;
 	}
 	const rest = params.indexOf('...');
-	const matched: MatchedArgument[] = params.map(() => undefined);
+	const matched: MatchedArgument<Info>[] = params.map(() => undefined);
 	// what `...` collects, remembered with the position it was written at, since R keeps them in source order
-	const collected: { at: number, value: RNodeWithParent }[] = [];
-	const positional: { at: number, value: RNodeWithParent }[] = [];
+	const collected: { at: number, value: RNode<Info> }[] = [];
+	const positional: { at: number, value: RNode<Info> }[] = [];
 	// R matches every named argument before it gives a slot to a positional one, so this takes two passes
 	for(const [at, arg] of node.arguments.entries()) {
 		if(RArgument.isEmpty(arg) || arg.value === undefined) {

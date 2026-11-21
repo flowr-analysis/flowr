@@ -4,6 +4,6 @@ import type { FunctionInfo } from './function-info';
 export const SourceFunctions: FunctionInfo[] = [
 	{ package: 'base',     name: 'source',      argIdx: 0, argName: 'file', resolveValue: true, stringReplacements: { '': 'stdin' } },
 	{ package: 'base',     name: 'sys.source',  argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'devtools', name: 'source_url',  argIdx: 0, argName: 'url',  resolveValue: true },
-	{ package: 'devtools', name: 'source_gist', argIdx: 0, argName: 'id',   resolveValue: true }
+	{ package: 'devtools', name: 'source_url',  argIdx: 0, argName: 'url',  resolveValue: true, invisible: true },
+	{ package: 'devtools', name: 'source_gist', argIdx: 0, argName: 'id',   resolveValue: true, invisible: true }
 ] as const;

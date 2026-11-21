@@ -1,6 +1,5 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
-
 type MarkVertex = NodeId;
 type MarkEdge = `${string}->${string}`;
 
@@ -10,7 +9,6 @@ export interface MermaidMarkStyle {
 	readonly vertex: string
 	readonly edge:   string
 }
-
 
 export interface MermaidGraphPrinterInfo {
 	includeOnlyIds?: ReadonlySet<NodeId>,

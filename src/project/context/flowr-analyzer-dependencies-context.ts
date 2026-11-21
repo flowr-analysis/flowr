@@ -1,32 +1,25 @@
+import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
-import {
-	FlowrAnalyzerPackageVersionsPlugin,
-	type SigDbLoadedInfo
-} from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
+import { FlowrAnalyzerPackageVersionsPlugin, type SigDbLoadedInfo } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import { Package } from '../plugins/package-version-plugins/package';
 import type { PackageSignatureSource } from '../sigdb/reader';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../../dataflow/environments/identifier';
 import type { DecodedFunction } from '../sigdb/decode';
 import type { Range } from 'semver';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
-import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
-import { resetOnFullInvalidation } from '../cache/flowr-cache';
+import { type InvalidationEvent, type InvalidationEventReceiver, resetOnFullInvalidation } from '../cache/flowr-cache';
 import { isSigDbEnabled } from '../../config';
 import { RRange } from '../../util/r-version';
 import { uniqueArray } from '../../util/collections/arrays';
+import { withGuards } from '../sigdb/guarded-source';
 import { signatureDbOf, type SignatureDb } from '../sigdb/signature-db';
 
-/**
- * Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them.
- */
+/** Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them. */
 export interface ReadOnlyFlowrAnalyzerDependenciesContext {
-	/**
-	 * The name of this context.
-	 */
-	readonly name:             string;
-	/**
-	 * The functions context associated with this dependencies-context.
-	 */
+	/** The name of this context. */
+	readonly name:             BrandedNamespace;
+	/** The functions context associated with this dependencies-context. */
 	readonly functionsContext: ReadOnlyFlowrAnalyzerFunctionsContext;
 	/**
 	 * Get the dependency with the given name, if it exists.
@@ -37,9 +30,9 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * comes from the declared constraints.
 	 * @param name    - The name of the dependency to get.
 	 * @param version - Optional version constraint to pin the resolution to (exact version string or a {@link Range}).
-	 * @returns The dependency with the given name, or undefined if it does not exist.
+	 * @returns       The dependency with the given name, or undefined if it does not exist.
 	 */
-	getDependency(name: string, version?: string | Range): Readonly<Package> | undefined;
+	getDependency(name: BrandedNamespace, version?: string | Range): Readonly<Package> | undefined;
 
 	/**
 	 * The versions a dependency can possibly have: its {@link Package.derivedRange|derived range}, but only once
@@ -50,22 +43,18 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * {@link Package} from {@link getDependency}.
 	 * @param name - The name of the dependency.
 	 */
-	inferredRange(name: string): Range | undefined;
+	inferredRange(name: BrandedNamespace): Range | undefined;
 
-	/**
-	 * Get all dependencies known to this context.
-	 */
+	/** Get all dependencies known to this context. */
 	getDependencies(): readonly Readonly<Package>[];
 
 	/**
 	 * Every package name the project *declares* (`Depends`/`Imports`/`Suggests`/`LinkingTo`/`Enhances`), whether or
 	 * not it became a loadable dependency here. `Suggests` do not, yet they still name packages the project may install.
 	 */
-	declaredPackageNames(): readonly string[];
+	declaredPackageNames(): readonly BrandedNamespace[];
 
-	/**
-	 * Metadata of the signature databases the version plugins currently have loaded.
-	 */
+	/** Metadata of the signature databases the version plugins currently have loaded. */
 	loadedSignatureDatabases(): SigDbLoadedInfo[];
 
 	/**
@@ -86,7 +75,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * hint which `library()`/`::` might be missing for an otherwise-undefined symbol. Empty if no database is
 	 * available or the signature database is disabled.
 	 */
-	packagesExporting(name: string): readonly string[];
+	packagesExporting(name: BrandedIdentifier): readonly BrandedNamespace[];
 
 	/**
 	 * The way to reach the signature database programmatically.
@@ -100,7 +89,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * const db = analyzer.inspectContext().deps.signatures();
 	 * db.versionOf('dplyr');                              // the version the analysis assumes
 	 * db.functionOf(Identifier.make('lead', 'dplyr'));    // its database entry
-	 * db.parametersOf(Identifier.make('lead', 'dplyr'));  // its formals, ready for MatchArgs.toNames
+	 * db.parametersOf(Identifier.make('lead', 'dplyr'));  // its formals, ready for FunctionSemantics.call.match.toNames
 	 * ```
 	 */
 	signatures(): SignatureDb;
@@ -115,27 +104,27 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * The signature-database entry for the qualified call `id` (a `pkg::fn` {@link Identifier}) from the first
 	 * {@link signatureSources|source} that has it, resolving the package version from the project's dependency info
 	 * unless `version` overrides it. This is the easy way to obtain a function's parameters from a context: pass
-	 * `fn.signature` to {@link MatchArgs.toNames}. `undefined` if `id` is unqualified or no loaded source defines it.
+	 * `fn.signature` to {@link FunctionSemantics.call.match.toNames}. `undefined` if `id` is unqualified or no loaded source defines it.
 	 * @useInstead {@link SignatureDb.functionOf}
 	 */
 	signatureOf(id: Identifier, version?: string): DecodedFunction | undefined;
 }
 
-/**
- * Manages the project's dependencies, their versions, and their interplay with {@link FlowrAnalyzerPackageVersionsPlugin}s.
- */
+/** Manages the project's dependencies, their versions, and their interplay with {@link FlowrAnalyzerPackageVersionsPlugin}s. */
 export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-dependencies-context';
 
 	public readonly functionsContext: FlowrAnalyzerFunctionsContext;
 
-	private dependencies:  Map<string, Package> = new Map();
+	private dependencies:  Map<BrandedNamespace, Package> = new Map();
 	/** what {@link getDependency} resolved for a package the project does not depend on, so a lookup never makes it one */
-	private resolvedOnly:  Map<string, Package> = new Map();
+	private resolvedOnly:  Map<BrandedNamespace, Package> = new Map();
 	private staticsLoaded = false;
 	/** resolvers consulted lazily to fill in exports; `existing` carries version info from other plugins */
-	private lazyResolvers: ((name: string, existing?: Package) => Package | undefined)[] = [];
-	private resolvedMisses = new Set<string>();
+	private lazyResolvers: ((name: BrandedNamespace, existing?: Package) => Package | undefined)[] = [];
+	private resolvedMisses = new Set<BrandedNamespace>();
+	/** R version reported by the analysis engine, used when no project or config version is available */
+	private detectedR:     string | undefined;
 
 	public reset(): void {
 		this.dependencies = new Map();
@@ -145,8 +134,28 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		this.resolvedMisses = new Set();
 	}
 
+	fork(source: FlowrAnalyzerDependenciesContext) {
+		this.dependencies = new Map(source.dependencies);
+		this.resolvedOnly = new Map(source.resolvedOnly);
+		this.staticsLoaded = source.staticsLoaded;
+		this.lazyResolvers = source.lazyResolvers.slice();
+		this.resolvedMisses = new Set(source.resolvedMisses);
+		if(source.detectedR !== undefined) {
+			this.setDetectedRVersion(source.detectedR);
+		}
+		this.functionsContext.fork(source.functionsContext);
+	}
+
+	public setDetectedRVersion(version: string): void {
+		this.detectedR = version;
+	}
+
+	public getDetectedRVersion(): string | undefined {
+		return this.detectedR;
+	}
+
 	/** Register a resolver consulted by {@link getDependency} to fill in a package's exports lazily. */
-	public addLazyResolver(resolver: (name: string, existing?: Package) => Package | undefined): void {
+	public addLazyResolver(resolver: (name: BrandedNamespace, existing?: Package) => Package | undefined): void {
 		this.lazyResolvers.push(resolver);
 	}
 
@@ -165,17 +174,11 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return isSigDbEnabled(this.ctx.config) && this.plugins.some(p => p.loadedDatabases().length > 0);
 	}
 
-	public packagesExporting(name: string): readonly string[] {
+	public packagesExporting(name: BrandedIdentifier): readonly BrandedNamespace[] {
 		if(!isSigDbEnabled(this.ctx.config)) {
 			return [];
 		}
-		const out = new Set<string>();
-		for(const p of this.plugins) {
-			for(const pkg of p.packagesExporting(name)) {
-				out.add(pkg);
-			}
-		}
-		return [...out];
+		return uniqueArray(this.plugins.flatMap(p => [...p.packagesExporting(name)]));
 	}
 
 	public signatures(): SignatureDb {
@@ -186,7 +189,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		if(!isSigDbEnabled(this.ctx.config)) {
 			return [];
 		}
-		return this.plugins.flatMap(p => [...p.signatureSources(this.ctx.config)]);
+		return this.plugins.flatMap(p => p.signatureSources(this.ctx.config).map(source => withGuards(source)));
 	}
 
 	public signatureOf(id: Identifier, version?: string): DecodedFunction | undefined {
@@ -197,15 +200,13 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		const name = Identifier.getName(id);
 		const ver = version ?? this.getDependency(pkg)?.resolvedVersion;
 		for(const src of this.signatureSources()) {
-			if(!src.has(pkg)) {
-				continue; // avoids touching a package this source lacks
-			}
-			// decode only the one function (not the whole package), falling back to the source's latest version
-			const fn = src.functionByName(pkg, name, ver) ?? src.functionByName(pkg, name);
+			/* decode only the one function (not the whole package), falling back to the source's latest version */
+			const fn = src.has(pkg) ? src.functionByName(pkg, name, ver) ?? src.functionByName(pkg, name) : undefined;
 			if(fn) {
 				return fn;
 			}
 		}
+
 		return undefined;
 	}
 
@@ -228,6 +229,13 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		for(const p of this.plugins) {
 			await p.addDatabaseSource(source);
 		}
+	}
+
+	/** Lets every version plugin wait for what the dataflow of `ast` will ask of it, see {@link FlowrAnalyzerPackageVersionsPlugin#prepare}. */
+	public async prepare(ast: NormalizedAst): Promise<void> {
+		await Promise.all(this.plugins.map(p => p.prepare(this.ctx, ast)));
+		/* a package a plugin could not name before may resolve now */
+		this.resolvedMisses.clear();
 	}
 
 	/** Eagerly mount every version plugin's signature database up front (see `solver.sigdb.eagerlyLoad`). */
@@ -276,10 +284,8 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return this;
 	}
 
-	public getDependency(name: string, version?: string | Range): Package | undefined {
-		if(!this.staticsLoaded) {
-			this.resolveStaticDependencies();
-		}
+	public getDependency(name: BrandedNamespace, version?: string | Range): Package | undefined {
+		this.ensureStaticsLoaded();
 		if(version !== undefined) {
 			return this.resolvePinnedDependency(name, typeof version === 'string' ? RRange.parse('=' + version) : version);
 		}
@@ -304,7 +310,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	/** Like {@link getDependency}, but for a package the code pulls in (`library(p)`): the result joins the project's {@link getDependencies|dependencies}. */
-	public loadDependency(name: string): Package | undefined {
+	public loadDependency(name: BrandedNamespace): Package | undefined {
 		const found = this.getDependency(name);
 		const cached = this.resolvedOnly.get(name);
 		if(cached !== undefined) {
@@ -315,7 +321,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	/** Resolve `name` constrained to `range` via the plugins (uncached); falls back to the cached dependency. */
-	private resolvePinnedDependency(name: string, range: Range | undefined): Package | undefined {
+	private resolvePinnedDependency(name: BrandedNamespace, range: Range | undefined): Package | undefined {
 		const pin = new Package({ name, versionConstraints: range ? [range] : [] });
 		for(const resolve of this.lazyResolvers) {
 			const resolved = resolve(name, pin);
@@ -326,26 +332,24 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return this.getDependency(name);
 	}
 
-	public inferredRange(name: string): Range | undefined {
+	public inferredRange(name: BrandedNamespace): Range | undefined {
 		const pkg = this.getDependency(name);
 		return pkg?.hasSatisfiableVersion() ? pkg.derivedRange : undefined;
 	}
 
 	public getDependencies(): Package[] {
-		if(!this.staticsLoaded) {
-			this.resolveStaticDependencies();
-		}
+		this.ensureStaticsLoaded();
 		return Array.from(this.dependencies.values());
 	}
 
-	public declaredPackageNames(): string[] {
+	public declaredPackageNames(): BrandedNamespace[] {
 		this.ensureStaticsLoaded();
 		const declared: readonly (readonly Package[] | undefined)[] = Object.values(this.ctx.meta.getDeclaredPackages());
 		return uniqueArray(declared.flatMap(group => group?.map(p => p.name) ?? []));
 	}
 }
 
-function mergeIntoMap(map: Map<string, Package>, pkg: Package): void {
+function mergeIntoMap(map: Map<BrandedNamespace, Package>, pkg: Package): void {
 	const existing = map.get(pkg.name);
 	if(existing) {
 		existing.mergeInPlace(pkg);

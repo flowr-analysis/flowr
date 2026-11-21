@@ -2,11 +2,11 @@ import { SourceLocation, SourceRange } from '../../../src/util/range';
 import { allPermutations } from '../../../src/util/collections/arrays';
 import { describe, assert, test } from 'vitest';
 import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { withTreeSitter } from '../_helper/shell';
 import { isNotUndefined } from '../../../src/util/assert';
 import type { RNodeWithParent } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { analyze } from '../_helper/analyzer';
 
 describe('Range', () => {
 	describe('SourceRange.from', () => {
@@ -82,6 +82,11 @@ describe('Range', () => {
 		assertOverlap('lines apart', SourceRange.from(1, 5, 1, 9), SourceRange.from(3, 1, 3, 2), false);
 	});
 	describe('SourceLocation', () => {
+		test('a location never is the range it is made of', () => {
+			const range = SourceRange.from(1, 1, 2, 4);
+			assert.notStrictEqual(SourceLocation.from(range), range);
+			assert.deepStrictEqual(SourceLocation.from(range), range);
+		});
 		const located = SourceLocation.from(SourceRange.from(1, 1, 2, 4), 'a.R');
 		test('the range of a location carries no file', () => {
 			assert.deepStrictEqual(SourceLocation.getRange(located), SourceRange.from(1, 1, 2, 4));
@@ -175,11 +180,11 @@ describe('Range', () => {
 		});
 	});
 	describe('rangeStartsCompletelyBefore', () => {
-		const assertStarts = (
+		function assertStarts(
 			a: SourceRange,
 			b: SourceRange,
 			yesNo: boolean
-		): void => {
+		): void {
 			test(`${SourceRange.format(a)} ${yesNo ? '<' : 'not <'} ${SourceRange.format(b)}`, () => {
 				assert.strictEqual(
 					SourceRange.startsCompletelyBefore(a, b),
@@ -189,7 +194,7 @@ describe('Range', () => {
 					)})`
 				);
 			});
-		};
+		}
 		describe('identical ranges', () => {
 			for(const sameRange of [SourceRange.from(1, 1, 1, 1), SourceRange.from(2, 1, 4, 7)]) {
 				assertStarts(sameRange, sameRange, false);
@@ -200,7 +205,6 @@ describe('Range', () => {
 			assertStarts(SourceRange.from(1, 1, 1, 1), SourceRange.from(1, 1, 1, 2), false);
 			assertStarts(SourceRange.from(1, 1, 1, 1), SourceRange.from(1, 2, 1, 1), true);
 			assertStarts(SourceRange.from(1, 1, 1, 1), SourceRange.from(1, 1, 2, 1), false);
-			assertStarts(SourceRange.from(1, 1, 1, 1), SourceRange.from(1, 1, 1, 2), false);
 			assertStarts(SourceRange.from(1, 1, 2, 1), SourceRange.from(4, 2, 9, 3), true);
 		});
 		describe('smaller right', () => {
@@ -208,31 +212,30 @@ describe('Range', () => {
 			assertStarts(SourceRange.from(1, 1, 1, 2), SourceRange.from(1, 1, 1, 1), false);
 			assertStarts(SourceRange.from(1, 2, 1, 1), SourceRange.from(1, 1, 1, 1), false);
 			assertStarts(SourceRange.from(1, 1, 2, 1), SourceRange.from(1, 1, 1, 1), false);
-			assertStarts(SourceRange.from(1, 1, 1, 2), SourceRange.from(1, 1, 1, 1), false);
 			assertStarts(SourceRange.from(4, 2, 9, 3), SourceRange.from(1, 1, 2, 1), false);
 		});
 	});
 	describe('addRanges', () => {
-		const assertAdd = (
+		function assertAdd(
 			expected: SourceRange,
 			a: SourceRange,
 			b: SourceRange
-		): void => {
+		): void {
 			assert.deepStrictEqual(
 				SourceRange.add(a, b),
 				expected,
 				`addRanges(${JSON.stringify(a)}, ${JSON.stringify(b)})`
 			);
-		};
+		}
 
-		const assertIndependentOfOrder = (
+		function assertIndependentOfOrder(
 			expected: SourceRange,
 			a: SourceRange,
 			b: SourceRange
-		): void => {
+		): void {
 			assertAdd(expected, a, b);
 			assertAdd(expected, b, a);
-		};
+		}
 		test('with zero', () => {
 			assertIndependentOfOrder(
 				SourceRange.from(1, 1, 1, 1),
@@ -262,8 +265,7 @@ describe('Range', () => {
 	describe('innermost', withTreeSitter(ts => {
 		function check(code: string, provide: readonly SlicingCriterion[], expect: readonly SlicingCriterion[], treatChildAsInner = true) {
 			test(`${code} (${treatChildAsInner ? 'child' : 'both'})`, async() => {
-				const a = await new FlowrAnalyzerBuilder().setParser(ts).build();
-				a.addRequest(code);
+				const a = await analyze(ts, code);
 				const nast = await a.normalize();
 				const [provNodes, expectNodes] = [provide, expect].map(e =>
 					e.map(p => nast.idMap.get(SlicingCriterion.parse(p, nast.idMap)))
@@ -311,8 +313,7 @@ describe('Range', () => {
 
 	describe('node sets', () => {
 		/** the parts of a node these two look at: its range, its id, and who its parent is */
-		const node = (id: NodeId, range: SourceRange | undefined, parent?: NodeId): RNodeWithParent =>
-			({ info: { id, parent, ...(range ? { fullRange: range } : {}) } }) as unknown as RNodeWithParent;
+		const node = (id: NodeId, range: SourceRange | undefined, parent?: NodeId): RNodeWithParent => ({ info: { id, parent, ...(range ? { fullRange: range } : {}) } }) as unknown as RNodeWithParent;
 		const ids = (nodes: readonly RNodeWithParent[]): NodeId[] => nodes.map(n => n.info.id);
 
 		describe('nodesContaining', () => {
@@ -397,6 +398,87 @@ describe('Range', () => {
 				const nodes = [node(1, SourceRange.from(1, 1, 1, 4)), node(2, SourceRange.from(2, 1, 2, 4))];
 				assert.deepStrictEqual(ids(SourceRange.innermostNodes(nodes)), [1, 2]);
 			});
+		});
+	});
+	describe('undefined-tolerant accessors', () => {
+		const range = SourceRange.from(2, 3, 5, 7);
+		const located: SourceLocation = SourceLocation.from(range, 'a.R');
+		const absent: SourceLocation | undefined = undefined;
+		test('read a range without unwrapping it first', () => {
+			assert.strictEqual(SourceRange.getStartLine(range), 2);
+			assert.strictEqual(SourceRange.getStartColumn(range), 3);
+			assert.strictEqual(SourceRange.getEndLine(range), 5);
+			assert.strictEqual(SourceRange.getEndColumn(range), 7);
+			assert.deepStrictEqual(SourceRange.getStart(range), [2, 3]);
+			assert.deepStrictEqual(SourceRange.getEnd(range), [5, 7]);
+		});
+		test('a location is readable like a range, file included', () => {
+			assert.strictEqual(SourceLocation.getStartLine(located), 2);
+			assert.strictEqual(SourceLocation.getEndColumn(located), 7);
+			assert.strictEqual(SourceLocation.getFile(located), 'a.R');
+			assert.deepStrictEqual(SourceLocation.getRange(located), range);
+			// the range functions accept the location as-is
+			assert.strictEqual(SourceRange.getStartLine(located), 2);
+		});
+		test('an absent location yields undefined instead of throwing', () => {
+			assert.isUndefined(SourceRange.getStartLine(absent));
+			assert.isUndefined(SourceRange.getEndLine(absent));
+			assert.isUndefined(SourceRange.getStart(absent));
+			assert.isUndefined(SourceLocation.getRange(absent));
+			assert.isUndefined(SourceLocation.getFile(absent));
+			assert.isUndefined(SourceLocation.view(absent));
+			assert.isFalse(SourceRange.isValid(absent));
+		});
+		test('validity and shape', () => {
+			assert.isTrue(SourceRange.isValid(range));
+			assert.isFalse(SourceRange.isValid(SourceRange.invalid()));
+			assert.isFalse(SourceRange.isSingleLine(range));
+			assert.strictEqual(SourceRange.lineCount(range), 4);
+			assert.isTrue(SourceRange.isSingleLine(SourceRange.from(1, 1, 1, 9)));
+			assert.strictEqual(SourceRange.lineCount(SourceRange.from(1, 1, 1, 9)), 1);
+		});
+	});
+	describe('SourceLocationView', () => {
+		const located: SourceLocation = SourceLocation.from(SourceRange.from(2, 3, 5, 7), 'a.R');
+		const view = SourceLocation.view(located);
+		test('exposes the tuple as properties without copying it', () => {
+			assert.strictEqual(view.startLine, 2);
+			assert.strictEqual(view.startColumn, 3);
+			assert.strictEqual(view.endLine, 5);
+			assert.strictEqual(view.endColumn, 7);
+			assert.strictEqual(view.file, 'a.R');
+			assert.deepStrictEqual(view.start, [2, 3]);
+			assert.deepStrictEqual(view.end, [5, 7]);
+			assert.deepStrictEqual(view.range, SourceRange.from(2, 3, 5, 7));
+			assert.strictEqual(view.raw, located);
+			assert.isTrue(view.isValid);
+			assert.isFalse(view.isSingleLine);
+			assert.strictEqual(view.lineCount, 4);
+		});
+		test('serializes back to the plain location', () => {
+			assert.strictEqual(JSON.stringify(view), JSON.stringify(located));
+			assert.strictEqual(view.toString(), SourceLocation.format(located));
+			assert.deepStrictEqual([...view], [...located]);
+		});
+		test('predicates accept both views and tuples', () => {
+			const inner = SourceLocation.view(SourceLocation.from(SourceRange.from(3, 1, 4, 1), 'a.R'));
+			assert.isTrue(view.containsRange(inner));
+			assert.isTrue(view.containsRange(inner.raw));
+			assert.isTrue(inner.isSubsetOf(view));
+			assert.isFalse(inner.isSubsetOf(view.withFile('b.R')));
+			assert.isTrue(view.overlaps(inner));
+			assert.isTrue(view.contains(3));
+			assert.isFalse(view.contains(1));
+			assert.isTrue(view.equals(located));
+			assert.isFalse(view.equals(view.withFile('b.R')));
+			assert.strictEqual(view.compareTo(inner), -1);
+			assert.isTrue(SourceLocation.view(SourceRange.from(1, 1, 1, 2)).startsCompletelyBefore(view));
+		});
+		test('merging keeps the file and fails across files', () => {
+			const merged = view.merge(SourceLocation.from(SourceRange.from(1, 1, 1, 2), 'a.R'));
+			assert.deepStrictEqual(merged?.raw, SourceLocation.from(SourceRange.from(1, 1, 5, 7), 'a.R'));
+			assert.isUndefined(view.merge(view.withFile('b.R')));
+			assert.strictEqual(view.withFile(undefined).file, undefined);
 		});
 	});
 });

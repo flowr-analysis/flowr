@@ -1,45 +1,33 @@
-import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
-import { FlowrFile } from '../../../context/flowr-file';
+import { type FileRole, type FlowrFileProvider, FlowrFile } from '../../../context/flowr-file';
 import fs from 'fs';
 import { assertUnreachable } from '../../../../util/assert';
 import { RFunTabOffsets } from './r-fun-tab';
-import { RShellExecutor } from '../../../../r-bridge/shell-executor';
+import { log } from '../../../../util/log';
+import { SecureMode } from '../../../../util/secure-mode';
 
-/**
- * This decorates a text file and provides access to its content in the format of an {@link RObjectData}.
- */
+const rdaLog = log.getSubLogger({ name: 'flowr-rda-file' });
+
+/** This decorates a text file and provides access to its content in the format of an {@link RObjectData}. */
 export class FlowrRDAFile extends FlowrFile<RObjectData[]> {
 	private readonly wrapped:  FlowrFileProvider;
 	private readonly shortcut: boolean;
 
-	/**
-	 * Prefer the static {@link FlowrRDAFile.from} method to create instances of this class as it will not re-create if already a description file
-	 * and handle role assignments.
-	 * @param file     - The underlying file provider whose path points to an RDA file.
-	 * @param shortcut - When `true`, only top-level object names and types are
-	 *                   collected during parsing. Payload data is skipped.
-	 */
+	/** Prefer {@link FlowrRDAFile.from}, which avoids re-wrapping and handles roles. `shortcut` collects only top-level names/types and skips payloads when `true`. */
 	constructor(file: FlowrFileProvider, shortcut: boolean = true) {
 		super(file.path(), file.roles);
 		this.wrapped = file;
 		this.shortcut = shortcut;
 	}
 
-	/**
-	 * Loads and parses the content of the wrapped file as an RDA structure.
-	 * @see {@link parse} for details on the parsing logic.
-	 * @returns An array of top-level {@link RObjectData}s or `[{}]` when the
-	 *          file contains no R objects.
-	 */
+	/** See {@link RDAParser.parse}. Answers top-level {@link RObjectData}s, or `[{}]` when the file holds no R objects. */
 	protected loadContent(): RObjectData[] {
 		return new RDAParser(this.wrapped, this.shortcut).parse() ?? [{}];
 	}
 
 	/**
-	 * RDA file lifter, this does not re-create if already an RDA file.
-	 * @param file - A raw {@link FlowrFileProvider} or an existing {@link FlowrRDAFile}.
-	 * @param role - Optional {@link FileRole} to assign before returning.
-	 * @returns The (possibly newly created) {@link FlowrRDAFile}.
+	 * Lifts a file to a {@link FlowrRDAFile}, reusing it if already one and assigning roles.
+	 * @param file - The file to lift or return if already an RDA file
+	 * @param role - An optional role to assign to the file
 	 */
 	public static from(file: FlowrFileProvider | FlowrRDAFile, role?: FileRole): FlowrRDAFile {
 		if(role) {
@@ -132,6 +120,17 @@ const SerializationMagic: Readonly<Record<string, SerializationTypeTag>> = {
 	'RDX3\n': SerializationTypeTag.MagicXdrV3,
 };
 
+/**
+ * Whether `buf` is a bare serialization stream rather than a saved workspace: an `.rds` written by `saveRDS`
+ * carries no `RDX3\n` magic and no pairlist of names, it starts straight at the format byte.
+ */
+function isBareSerializationStream(buf: Buffer): boolean {
+	return buf.length >= 2 && buf[1] === 0x0a && SerializationFormatOfByte.has(String.fromCodePoint(buf[0]));
+}
+
+/** The control characters an ASCII-format string spells with a backslash escape; any other escaped character stands for itself. */
+const AsciiEscapes: Readonly<Record<string, string>> = { n: '\n', t: '\t', v: '\v', b: '\b', r: '\r', f: '\f', a: '\x07' };
+
 /** The variants {@link RDAParser.deserialize} handles. */
 const SupportedSerializationTypes: ReadonlySet<SerializationTypes> = new Set([
 	SerializationTypeTag.MagicAsciiV2, SerializationTypeTag.MagicBinaryV2, SerializationTypeTag.MagicXdrV2,
@@ -143,7 +142,7 @@ const VersionOneSerializationTypes: ReadonlySet<SerializationTypes> = new Set([
 	SerializationTypeTag.MagicAsciiV1, SerializationTypeTag.MagicBinaryV1, SerializationTypeTag.MagicXdrV1
 ]);
 
-type RObject = RValues.NilValue | RObjectData;
+export type RObject = RValues.NilValue | RObjectData;
 
 type Real = number | RValues.NilValue | RValues.NaReal | RValues.NaN | RValues.PosInf | RValues.NegInf;
 type Complex = { r: Real, i: Real };
@@ -263,269 +262,240 @@ export enum SerializationFormat {
 	Binary = 'BINARY',
 }
 
+/** pairlist-based SEXP types {@link RDAParser.readItemIterative} unrolls iteratively rather than recursing per element. */
+const IterativeSexpTypes: ReadonlySet<SexpType> = new Set([
+	SexpType.ListSxp, SexpType.LangSxp, SexpType.CloSxp, SexpType.PromSxp, SexpType.DotSxp
+]);
+
+/** the `{ value, type }` every parameterless special SEXP marker in {@link RDAParser.readItemRecursive} decodes to directly. */
+const SpecialValueSxps: ReadonlyMap<SexpType, { readonly value: RValues, readonly type: SexpType }> = new Map([
+	[SexpType.NilValueSxp,      { value: RValues.NilValue,      type: SexpType.NilSxp }],
+	[SexpType.EmptyEnvSxp,      { value: RValues.EmptyEnv,      type: SexpType.EnvSxp }],
+	[SexpType.BaseEnvSxp,       { value: RValues.BaseEnv,       type: SexpType.EnvSxp }],
+	[SexpType.GlobalEnvSxp,     { value: RValues.GlobalEnv,     type: SexpType.EnvSxp }],
+	[SexpType.UnboundValueSxp,  { value: RValues.UnboundValue,  type: SexpType.EnvSxp }],
+	[SexpType.MissingArgSxp,    { value: RValues.MissingArg,    type: SexpType.EnvSxp }],
+	[SexpType.BaseNamespaceSxp, { value: RValues.BaseNamespace, type: SexpType.EnvSxp }],
+]);
+
+/** The parts of the (untyped) `bzip2` package we use. */
+export interface Bzip2 {
+	array(bytes: Uint8Array): unknown
+	header(bits: unknown): number
+	/** decompresses the next block (stopping after `len` bytes), `-1` after the last one */
+	decompress(bits: unknown, size: number, len?: number): Uint8Array | -1
+}
+
+/** Decompresses a bzip2 stream block by block, throwing a `RangeError` if it would yield more than `limit` bytes. */
+export function bunzip(bzip2: Bzip2, content: Buffer, limit = Infinity): Buffer {
+	const bits = bzip2.array(content);
+	const size = bzip2.header(bits);
+	const chunks: Uint8Array[] = [];
+	let total = 0;
+	for(let chunk = bzip2.decompress(bits, size, limit - total + 1); chunk !== -1; chunk = bzip2.decompress(bits, size, limit - total + 1)) {
+		total += chunk.byteLength;
+		if(total > limit) {
+			throw new RangeError(`Refusing to decompress more than ${limit} bytes`);
+		}
+		chunks.push(chunk);
+	}
+	return Buffer.concat(chunks);
+}
+
+/** the list-like SEXP types {@link RDAParser.VECTOR_ELT} and {@link RDAParser.SET_VECTOR_ELT} accept */
+const ListSexpTypes: ReadonlySet<SexpType | undefined> = new Set([SexpType.VecSxp, SexpType.ExprSxp, SexpType.WeakRefSxp]);
+
+/** the bytecode constant types {@link RDAParser.ReadBCLang} decodes as language objects */
+const BCLangTypes: ReadonlySet<number | string> = new Set([SexpType.LangSxp, SexpType.ListSxp, SexpType.BcRepDef, SexpType.BcRepRef, SexpType.AltLangSxp, SexpType.AttrListSxp]);
+
+/** the base types an ALTREP object of an unregistered class is read back as, as a length zero vector */
+const AltVecSexpTypes: ReadonlySet<SexpType> = new Set([
+	SexpType.LglSxp, SexpType.IntSxp, SexpType.RealSxp, SexpType.CplxSxp, SexpType.StrSxp, SexpType.RawSxp, SexpType.VecSxp, SexpType.ExprSxp
+]);
+
+/** the ASCII words that spell the special doubles */
+const AsciiReals: ReadonlyMap<string, Real> = new Map([['NA', RValues.NaReal], ['NaN', RValues.NaN], ['Inf', RValues.PosInf], ['-Inf', RValues.NegInf]]);
+
+/** the format byte a serialization stream opens with */
+const SerializationFormatOfByte: ReadonlyMap<string, SerializationFormat> = new Map([['A', SerializationFormat.Ascii], ['B', SerializationFormat.Binary], ['X', SerializationFormat.Xdr]]);
+
 /**
  * Parser for RDA files.
  * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c | R source: serialize.c}
  * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c | R source: saveload.c}
  */
-export class RDAParser{
-	private readonly file:                 FlowrFileProvider;
-	private readonly shortcut:             boolean;
-	private buffer!:                       Buffer;
-	private currentDepth:                  number = 0;
-	private static readonly INITIAL_DEPTH: number = 1;
-	private lastName:                      string | undefined = undefined;
+export class RDAParser {
+	private buffer!:           Buffer;
 	private offset = 0;
 	private static readonly R_CODE_SET_MAX = 2 ** 6 - 1;
-	private RWeakRefs:                     null | RObjectData = null;
 	private static readonly SIZE_OF_DOUBLE = 2 ** 3;
 	private static readonly WORD_SIZE = 2 ** 7;
 	private static readonly MAX_VECTOR_LENGTH = 2 ** 16;
-	private format!:                       SerializationFormat;
-	private readonly refTable:             RObject[] = [];
-	private Registry:                      RObjectData | null = null;
+	private format!:           SerializationFormat;
+	private readonly refTable: RObject[] = [];
 
-	/**
-	 * @param file     - The RDA file to read.
-	 * @param shortcut - When `true`, only top-level object names and types are collected, payloads are skipped.
-	 */
-	constructor(file: FlowrFileProvider, shortcut: boolean = true) {
-		this.file = file;
-		this.shortcut = shortcut;
-	}
+	constructor(private readonly file: FlowrFileProvider, private readonly shortcut: boolean = true) {}
 
-	/**
-	 * Parses an RDA file.
-	 *
-	 * The file is decompressed, deserialized, and converted into a flattened object representation,
-	 * as far as the `shortcut` the parser was constructed with asks for.
-	 * @returns List of found {@link RObjectData} or `null` if the file is empty.
-	 */
+	/** Decompresses, deserializes, and flattens (per the constructor's `shortcut`) the file. Answers found {@link RObjectData}s, `null` if the file is empty. */
 	parse(): RObjectData[] | null {
-		const fileContent = fs.readFileSync(this.file.path());
-		const compressionType = this.detectCompression(fileContent);
-		this.buffer = this.decompress(fileContent, compressionType);
-		const result = this.deserialize2();
-		if(result === RValues.NilValue) {
-			return null;
-		} else {
-			return this.flattenRObject(result, this.shortcut);
-		}
+		const result = this.parseObject();
+		return result === RValues.NilValue ? null : this.flattenRObject(result, this.shortcut);
 	}
 
 	/**
-	 * Detects the compression algorithm used for an RDA file.
-	 * @param buf      - Raw file buffer.
-	 * @param withZlib - Whether a bare zlib header should count as gzip, see {@link CompressionSignatures}.
-	 * @returns The first {@link CompressionSignatures} entry the buffer matches, {@link CompressionType.CompUnknownOrNo} if none does.
-	 * @throws Error if the file is of a recognized but unreadable kind.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/connections.c#L2675-L2710 | R source: comp_type_from_memory}
+	 * Parses the file into the single R object it serializes (what an `.rds` holds), without the flattening
+	 * {@link parse} applies. Answers the deserialized object, {@link RValues.NilValue} for an empty file.
+	 */
+	parseObject(): RObject {
+		const fileContent = fs.readFileSync(this.file.path());
+		this.buffer = this.decompress(fileContent, this.detectCompression(fileContent));
+		return this.deserialize2();
+	}
+
+	/**
+	 * First {@link CompressionSignatures} entry `buf` matches, {@link CompressionType.CompUnknownOrNo} if none does.
+	 * Throws Error if the file is of a recognized but unreadable kind. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/connections.c#L2675-L2710 | R source: comp_type_from_memory}
 	 */
 	detectCompression(buf: Buffer, withZlib: boolean = false): CompressionType {
-		for(const signature of CompressionSignatures) {
-			if(!startsWithMagic(buf, signature.magic) || ('zlibOnly' in signature && signature.zlibOnly && !withZlib)) {
-				continue;
-			} else if('unsupported' in signature) {
-				throw new Error(signature.unsupported);
-			}
-			return signature.type;
+		const signature = CompressionSignatures.find(s => startsWithMagic(buf, s.magic) && !('zlibOnly' in s && s.zlibOnly && !withZlib));
+		if(signature && 'unsupported' in signature) {
+			throw new Error(signature.unsupported);
 		}
-		return CompressionType.CompUnknownOrNo;
+		return signature?.type ?? CompressionType.CompUnknownOrNo;
 	}
 
-	/**
-	 * Decompresses the given RDA file buffer.
-	 * @param fileContent - Raw compressed file buffer.
-	 * @param compressionType - {@link CompressionType} as returned by {@link detectCompression}.
-	 * @returns Decompressed buffer.
-	 * @throws Error for unsupported compression types.
-	 */
+	/** Decompresses `fileContent` per the {@link detectCompression} result `compressionType`. Throws error for unsupported compression types. */
 	decompress(fileContent: Buffer, compressionType: CompressionType): Buffer {
-		let buffer: Buffer;
-
+		// the file belongs to the (possibly hostile) project, so the secure mode bounds what it may decompress to
+		const limit = SecureMode.decompressionLimit();
 		switch(compressionType) {
 			case CompressionType.CompGz: {
-				// eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-unsafe-assignment
-				const zlib = require('zlib');
+				// eslint-disable-next-line @typescript-eslint/no-require-imports -- loaded on demand, so bundles without gzip files do not pull in zlib
+				const zlib = require('zlib') as typeof import('zlib');
 				try {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-					buffer = zlib.gunzipSync(fileContent);
-				} catch{
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-					buffer = zlib.inflateSync(fileContent);
+					return zlib.gunzipSync(fileContent, { maxOutputLength: limit });
+				} catch(e) {
+					if((e as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE') {
+						throw e;
+					}
+					return zlib.inflateSync(fileContent, { maxOutputLength: limit });
 				}
-				break;
 			}
-
-			case CompressionType.CompBz: {
-				// eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-unsafe-assignment
-				const bzip2 = require('bzip2');
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-				const decompressed = bzip2.simple(bzip2.array(fileContent));
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				buffer = Buffer.from(decompressed);
-				break;
-			}
-
+			case CompressionType.CompBz:
+				// eslint-disable-next-line @typescript-eslint/no-require-imports -- the untyped `bzip2` package has no module declaration, and is loaded on demand
+				return bunzip(require('bzip2') as Bzip2, fileContent, limit);
 			case CompressionType.CompXz:
 			case CompressionType.CompLzma:
 			case CompressionType.CompZstd:
 				throw new Error(`${compressionType} is not supported yet.`);
-
 			case CompressionType.CompUnknownOrNo:
-				buffer = fileContent;
-				break;
+				return fileContent;
 			default:
 				assertUnreachable(compressionType);
 		}
-
-		return buffer;
 	}
 
 	/**
-	 * Detects the serialization type used for the RDA-file.
-	 * @param buf - Buffer with decompressed RDA-file content
-	 * @returns The identified {@link SerializationTypes} of decompressed RDA-file
+	 * Identifies the {@link SerializationTypes} of a decompressed RDA-file buffer.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c#L1808-L1858 | R source: R_ReadMagic}
 	 */
 	determineSerializationType(buf: Buffer): SerializationTypes {
 		if(buf.length < 5) {
-			if(buf.length === 0) {
-				return SerializationTypeTag.MagicEmpty;
-			} else {
-				return SerializationTypeTag.MagicCorrupt;
-			}
+			return buf.length === 0 ? SerializationTypeTag.MagicEmpty : SerializationTypeTag.MagicCorrupt;
 		}
-
 		const magic = buf.toString('ascii', 0, 5);
 		if(magic in SerializationMagic) {
 			return SerializationMagic[magic];
-		} else if(magic.startsWith('RD')) {
-			return SerializationTypeTag.MagicMaybeTooNew;
 		}
-		/* no magic at all: the first four bytes are the version number of a pre-magic workspace */
-		return Number(buf.toString('ascii', 0, 4));
+		/* without any magic, the first four bytes are the version number of a pre-magic workspace */
+		return magic.startsWith('RD') ? SerializationTypeTag.MagicMaybeTooNew : Number(buf.toString('ascii', 0, 4));
 	}
 
 	/**
-	 * Deserializes a decompressed RDA-file.
-	 * @returns Deserialized RDA-file as {@link RObject} or {@link RValues.NilValue}, if the deserialization fails
+	 * Deserializes a decompressed RDA-file. Answers {@link RObject}, or {@link RValues.NilValue} if deserialization fails.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c#L1923-L1972 | R source: R_LoadFromFile}
 	 */
-	deserialize2(): RObject{
+	deserialize2(): RObject {
 		this.offset = 0;
+		/* an `.rds` holds a single object as a bare stream: no workspace magic, no pairlist of names */
+		if(isBareSerializationStream(this.buffer)) {
+			return this.deserialize();
+		}
 		const serializationType = this.determineSerializationType(this.buffer);
 		this.offset += 5;
-
-		if(
-			serializationType === SerializationTypeTag.MagicCorrupt ||
-			serializationType === SerializationTypeTag.MagicEmpty   ||
-			serializationType === SerializationTypeTag.MagicMaybeTooNew
-		) {
+		if(([SerializationTypeTag.MagicCorrupt, SerializationTypeTag.MagicEmpty, SerializationTypeTag.MagicMaybeTooNew] as SerializationTypes[]).includes(serializationType)) {
 			throw new Error('Could not determine serialization type');
 		}
-
 		if(SupportedSerializationTypes.has(serializationType)) {
 			return this.deserialize();
 		} else if(VersionOneSerializationTypes.has(serializationType)) {
-			console.warn('Version one rda files are not supported yet');
+			rdaLog.warn('Version one rda files are not supported yet');
 		}
 		return RValues.NilValue;
 	}
 
-	/**
-	 * Deserializes a decompressed RDA-file.
-	 * @returns Deserialized RDA-file as {@link RObject}
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2237-L2292 | R source: R_Unserialize}
-	 */
+	/** Deserializes a decompressed RDA-file. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2237-L2292 | R source: R_Unserialize} */
 	deserialize(): RObject {
-
-		switch(String.fromCodePoint(this.buffer[this.offset])) {
-			case 'A': this.format = SerializationFormat.Ascii; break;
-			case 'B': this.format = SerializationFormat.Binary; break;
-			case 'X': this.format = SerializationFormat.Xdr; break;
-			case '\n':
-				/* an ASCII stream may leave a trailing newline behind, so the format follows in the next two bytes */
-				if(String.fromCodePoint(this.buffer[this.offset + 1]) !== 'A') {
-					throw new Error('unknown input format');
-				}
-				this.format = SerializationFormat.Ascii;
-				this.offset += 2;
-				break;
-			default:
-				throw new Error('unknown input format');
+		let formatByte = String.fromCodePoint(this.buffer[this.offset]);
+		/* an ASCII stream may leave a trailing newline behind, so the format follows in the next two bytes */
+		if(formatByte === '\n' && String.fromCodePoint(this.buffer[this.offset + 1]) === 'A') {
+			formatByte = 'A';
+			this.offset += 2;
 		}
-
+		const format = SerializationFormatOfByte.get(formatByte);
+		if(format === undefined) {
+			throw new Error('unknown input format');
+		}
+		this.format = format;
 		this.offset += 2;
 
-		const version = this.assertInteger(this.inInteger());
-		const writerVersion = this.assertInteger(this.inInteger());
-		const minReaderVersion = this.assertInteger(this.inInteger());
-
-		switch(version) {
-			case 2: break;
-			case 3:
-			{
-				const neLen = this.assertInteger(this.inInteger());
-				if(neLen > RDAParser.R_CODE_SET_MAX || neLen < 0)  {
-					throw new Error('invalid length of encoding name');
-				}
-				const _nativeEncoding = this.inString(neLen);
-				break;
+		const version = this.readInt();
+		const writerVersion = this.readInt();
+		const minReaderVersion = this.readInt();
+		if(version === 3) {
+			const neLen = this.readInt();
+			if(neLen > RDAParser.R_CODE_SET_MAX || neLen < 0) {
+				throw new Error('invalid length of encoding name');
 			}
-			default:
-			{
-				const [vw, pw, sw] = this.decodeVersion(writerVersion);
-				if(minReaderVersion < 0) {
-					throw new Error(`cannot read unreleased workspace version ${version} written by experimental R ${vw}.${pw}.${sw}`);
-				} else {
-					const [vm, pm, sm] = this.decodeVersion(minReaderVersion);
-					throw new Error(`cannot read unreleased workspace version ${version} written by experimental R ${vw}.${pw}.${sw}; need R ${vm}.${pm}.${sm} or newer`);
-				}
+			this.inString(neLen);
+		} else if(version !== 2) {
+			const [vw, pw, sw] = this.decodeVersion(writerVersion);
+			const unreleased = `cannot read unreleased workspace version ${version} written by experimental R ${vw}.${pw}.${sw}`;
+			if(minReaderVersion < 0) {
+				throw new Error(unreleased);
 			}
+			const [vm, pm, sm] = this.decodeVersion(minReaderVersion);
+			throw new Error(`${unreleased}; need R ${vm}.${pm}.${sm} or newer`);
 		}
-
 		return this.readItem();
 	}
 
-	/**
-	 * Reads a serialized integer value from the current buffer position.
-	 * @returns Parsed integer value or {@link RValues.NaInteger}.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L396-L420 | R source: inInteger}
-	 */
+	/** Reads a serialized integer. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L396-L420 | R source: inInteger} */
 	inInteger(): number | RValues.NaInteger {
-		switch(this.format) {
-			case SerializationFormat.Ascii: {
-				const word = this.inWord(128);
-				if(word === 'NA') {
-					return RValues.NaInteger;
-				}
-				const i = Number.parseInt(word, 10);
-				if(Number.isNaN(i)) {
-					throw new TypeError(`${word} (or ${i}) is not a number`);
-				}
-				return i;
-			}
-			case SerializationFormat.Binary: {
-				const i = this.buffer.readInt32LE(this.offset);
-				this.offset += 4;
-				return i;
-			}
-			case SerializationFormat.Xdr:{
-				const i = this.buffer.readInt32BE(this.offset);
-				this.offset += 4;
-				return i;
-			}
-			default:
+		if(this.format === SerializationFormat.Ascii) {
+			const word = this.inWord(128);
+			if(word === 'NA') {
 				return RValues.NaInteger;
+			}
+			const i = Number.parseInt(word, 10);
+			if(Number.isNaN(i)) {
+				throw new TypeError(`${word} (or ${i}) is not a number`);
+			}
+			return i;
+		} else if(this.format === SerializationFormat.Binary || this.format === SerializationFormat.Xdr) {
+			const i = this.format === SerializationFormat.Binary ? this.buffer.readInt32LE(this.offset) : this.buffer.readInt32BE(this.offset);
+			this.offset += 4;
+			return i;
 		}
+		return RValues.NaInteger;
 	}
 
-	/**
-	 * Advances the buffer offset past a serialized integer value.
-	 *
-	 * Mirrors {@link inInteger}.
-	 */
+	/** Reads a serialized integer that must not be {@link RValues.NaInteger}. */
+	readInt(): number {
+		return this.assertInteger(this.inInteger());
+	}
+
+	/** Advances past a serialized integer. Mirrors {@link inInteger}. */
 	skipInteger(): void {
 		if(this.format === SerializationFormat.Ascii) {
 			this.skipWord();
@@ -534,12 +504,7 @@ export class RDAParser{
 		}
 	}
 
-	/**
-	 * Ensures that the given value is not {@link RValues.NaInteger}.
-	 * @param value - Integer value to be tested.
-	 * @returns The validated integer value.
-	 * @throws Error if the value equals `RValues.NaInteger`.
-	 */
+	/** . Throws error if `value` is {@link RValues.NaInteger}. */
 	assertInteger(value: number | RValues.NaInteger): number {
 		if(value === RValues.NaInteger) {
 			throw new Error('Unexpected NA integer');
@@ -547,12 +512,7 @@ export class RDAParser{
 		return value;
 	}
 
-	/**
-	 * Ensures that the given object is not {@link RValues.NilValue}.
-	 * @param obj - R object to validate.
-	 * @returns The validated {@link RObjectData}.
-	 * @throws Error if the object equals {@link RValues.NilValue}.
-	 */
+	/** . Throws error if `obj` is {@link RValues.NilValue}. */
 	assertRObjectData(obj: RObject): RObjectData {
 		if(obj === RValues.NilValue) {
 			throw new Error('Unexpected NilValue');
@@ -561,142 +521,87 @@ export class RDAParser{
 	}
 
 	/**
-	 * Reads an ASCII word from the input buffer.
-	 * @param size - Maximum allowed word size.
-	 * @returns The parsed word.
-	 * @throws Error if EOF is reached or the word exceeds the allowed size.
+	 * Reads an ASCII word of at most `size` bytes. Throws error on EOF or overflow.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L378-L394 | R source: inWord}
 	 */
 	inWord(size: number): string {
-		let i = 0;
 		let c;
-		const word = new Array(size);
-
 		do{
 			c = this.inChar();
-			if(c === -1){
+			if(c === -1) {
 				throw new Error('Read character is -1.');
 			}
 		} while(this.isSpace(c));
-
-		while(!this.isSpace(c) && i < size) {
-			word[i++] = String.fromCodePoint(c);
+		let word = '';
+		while(!this.isSpace(c) && word.length < size) {
+			word += String.fromCodePoint(c);
 			c = this.inChar();
 		}
-		if(i >= size) {
-			throw new Error(`${i} >= ${size} when reading word.`);
+		if(word.length >= size) {
+			throw new Error(`${word.length} >= ${size} when reading word.`);
 		}
-
-		return word.join('');
+		return word;
 	}
 
-	/**
-	 * Skips an ASCII word in the input buffer.
-	 *
-	 * Mirrors {@link inWord}
-	 * @returns An empty string.
-	 * @throws Error if EOF is reached or the word exceeds {@link RDAParser.WORD_SIZE}.
-	 */
-	skipWord(): string {
+	/** Skips an ASCII word. Mirrors {@link inWord}. Throws error on EOF or overflow past {@link RDAParser.WORD_SIZE}. */
+	skipWord(): void {
 		this.inWord(RDAParser.WORD_SIZE);
-		return '';
 	}
 
-	/**
-	 * Reads the next character from the input buffer.
-	 * @returns The next character or `-1` on EOF.
-	 */
+	/** . Answers the next character, or `-1` on EOF. */
 	inChar(): number {
-		if(this.offset >= this.buffer.length) {
-			return -1;
-		}
-
-		const char = this.buffer[this.offset];
-		this.offset++;
-		return char;
+		return this.offset >= this.buffer.length ? -1 : this.buffer[this.offset++];
 	}
 
-	/**
-	 * Checks whether the given byte represents a whitespace character.
-	 * @param c - Character code to check.
-	 * @returns `true` if the character is whitespace.
-	 */
+	/** Whether `c` is a whitespace byte. */
 	isSpace(c: number): boolean {
 		return c >= 9 && c <= 13 || c === 32;
 	}
 
 	/**
-	 * Reads a serialized string from the buffer.
-	 * @param len - Length of the serialized string.
-	 * @returns Decoded string.
+	 * Reads a serialized string of `len` bytes.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L505-L550 | R source: inString}
 	 */
 	inString(len: number): string {
-		if(this.format === SerializationFormat.Ascii) {
-			if(len > 0){
-				const result = [];
-
-				while(this.offset < this.buffer.length) {
-					const c = this.buffer[this.offset++];
-					if(!this.isSpace(c)) {
-						break;
-					}
-				}
-
-				this.offset--;
-
-				for(let i = 0; i < len; i++) {
-					let c = String.fromCodePoint(this.buffer[this.offset++]);
-					if(c === '\\'){
-						c = String.fromCodePoint(this.buffer[this.offset++]);
-						switch(c){
-							case 'n': result.push('\n'); break;
-							case 't': result.push('\t'); break;
-							case 'v': result.push('\v'); break;
-							case 'b': result.push('\b'); break;
-							case 'r': result.push('\r'); break;
-							case 'f': result.push('\f'); break;
-							case 'a': result.push('\x07'); break; // \a
-							case '\\': result.push('\\'); break;
-							case '?': result.push('?'); break;
-							case '\'': result.push('\''); break;
-							case '"': result.push('"'); break;
-							case '0': case '1': case '2': case '3':
-							case '4': case '5': case '6': case '7': {
-								let d = 0;
-								let j = 0;
-								while('0' <= c && c < '8' && j < 3) {
-									d = d * 8 + (Number.parseInt(c));
-									c = String.fromCodePoint(this.buffer[this.offset++]);
-									j++;
-								}
-								result.push(String.fromCodePoint(d));
-								this.offset--;
-								break;
-							}
-							default:
-								result.push(c);
-						}
-					} else {
-						result.push(c);
-					}
-				}
-				return result.join('');
-			}
-			return '';
-		} else {
+		if(this.format !== SerializationFormat.Ascii) {
 			const bytes = this.buffer.subarray(this.offset, this.offset + len);
 			this.offset += len;
 			return bytes.toString('latin1');
+		} else if(len <= 0) {
+			return '';
 		}
+		while(this.offset < this.buffer.length) {
+			if(!this.isSpace(this.buffer[this.offset++])) {
+				break;
+			}
+		}
+		this.offset--;
+		const result: string[] = [];
+		for(let i = 0; i < len; i++) {
+			let c = String.fromCodePoint(this.buffer[this.offset++]);
+			if(c !== '\\') {
+				result.push(c);
+				continue;
+			}
+			c = String.fromCodePoint(this.buffer[this.offset++]);
+			if(c in AsciiEscapes) {
+				result.push(AsciiEscapes[c]);
+			} else if('0' <= c && c < '8') {
+				let d = 0;
+				for(let j = 0; '0' <= c && c < '8' && j < 3; j++) {
+					d = d * 8 + Number.parseInt(c);
+					c = String.fromCodePoint(this.buffer[this.offset++]);
+				}
+				result.push(String.fromCodePoint(d));
+				this.offset--;
+			} else {
+				result.push(c);
+			}
+		}
+		return result.join('');
 	}
 
-	/**
-	 * Skips a serialized string depending on the current serialization format.
-	 *
-	 * Mirrors {@link inString}
-	 * @param len - Length of the serialized string.
-	 */
+	/** Skips a serialized string of `len` bytes. Mirrors {@link inString}. */
 	skipString(len: number): void {
 		if(this.format === SerializationFormat.Ascii) {
 			// the escape handling makes the consumed length depend on the content, so we have to decode it
@@ -707,683 +612,344 @@ export class RDAParser{
 	}
 
 	/**
-	 * Decodes an R writer version integer into v, p, and s.
-	 * @param writerVersion - Encoded writer version.
-	 * @returns Tuple containing version components `[v,p,s]`.
+	 * Decodes an encoded R writer version into `[v, p, s]`.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2230-L2235 | R source: decodeVersion}
 	 */
 	decodeVersion(writerVersion: number): number[] {
-		const v = Math.trunc(writerVersion / RDAParser.MAX_VECTOR_LENGTH);
-		writerVersion = writerVersion % RDAParser.MAX_VECTOR_LENGTH;
-		const p = Math.trunc(writerVersion / 2 ** 8);
-		writerVersion = writerVersion % 2 ** 8;
-		const s = writerVersion;
-
-		return [v, p, s];
+		const rest = writerVersion % RDAParser.MAX_VECTOR_LENGTH;
+		return [Math.trunc(writerVersion / RDAParser.MAX_VECTOR_LENGTH), Math.trunc(rest / 2 ** 8), rest % 2 ** 8];
 	}
 
 	/**
-	 * Reads the next flags and dispatches to {@link readItemRecursive}.
-	 * This is the main recursive entry point called for every R object encountered
-	 * during deserialization.
+	 * Reads the next flags and dispatches to {@link readItemRecursive}; the main recursive entry point for every R
+	 * object encountered during deserialization.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2117-L2121 | R source: ReadItem}
 	 */
 	readItem(): RObject {
-		const flags = this.assertInteger(this.inInteger());
-		return this.readItemRecursive(flags);
+		return this.readItemRecursive(this.readInt());
+	}
+
+	/** Reads the next item, or with `skip` advances past it via {@link skipItem}. */
+	private nextItem(skip: boolean): RObject {
+		return skip ? this.skipItem() : this.readItem();
 	}
 
 	/**
-	 * Resolves a namespace reference by name using `getNamespace()` in R.
-	 * Simpler variant of {@link R_FindNamespace1}.
-	 * @param info - The {@link RObjectData} holding the namespace/package info.
-	 * @returns An {@link RObjectData} of type {@link SexpType.EnvSxp} whose
-	 *          `value` is set to the resolved environment. Currently only
-	 *          `R_GlobalEnv` is handled; other results are logged as warnings.
+	 * Resolves a namespace reference by name. Simpler variant of {@link R_FindNamespace1}.
+	 * R would load the namespace (`getNamespace()`), but flowR analyzes R code and data without running it: the name comes
+	 * from the (untrusted) file, and loading a namespace runs the package's code. Hence, this answers an `EnvSxp` standing
+	 * for the (unknown) namespace environment without consulting R.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3795-L3804 | R source: R_FindNamespace}
 	 */
 	R_FindNamespace(info: RObjectData): RObjectData {
-		const namespaceName = (info.value as RObjectData).name as string;
-
-		const code = `getNamespace("${namespaceName}")`;
-		const shell = new RShellExecutor();
-		const result = shell.run(code);
-		shell.close();
-
-		const val: RObjectData = {};
-		val.type = SexpType.EnvSxp;
-
-		if(result === '<environment: R_GlobalEnv>') {
-			val.value = RValues.GlobalEnv;
-		}
-
-		return val;
+		rdaLog.trace(`Not loading namespace ${JSON.stringify((info.value as RObjectData | undefined)?.name)} of a serialized object`);
+		return { type: SexpType.EnvSxp };
 	}
 
 	/**
-	 * Resolves a serialized namespace reference by executing R at runtime.
-	 * @param info - The {@link RObjectData} holding the namespace/package info.
-	 * @returns An {@link RObjectData} of type {@link SexpType.EnvSxp} whose
-	 *          `value` is set to the resolved environment. Currently only
-	 *          `R_GlobalEnv` is handled; other results are logged as warnings.
+	 * Resolves a serialized namespace reference, see {@link R_FindNamespace} for why this does not ask R.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1785-L1796 | R source: R_FindNamespace1}
 	 */
 	R_FindNamespace1(info: RObjectData): RObjectData {
-		const where: RObjectData = {};
-		where.type = SexpType.CharSxp;
-		where.value = this.lastName;
-		const code = `..getNamespace("${(info.value as RObjectData[])[0].name as string}", "${where.value as string}")`;
-		const shell = new RShellExecutor();
-		const result = shell.run(code);
-		shell.close();
-		const val: RObjectData = {};
-		val.type = SexpType.EnvSxp;
-		if(result == '<environment: R_GlobalEnv>') {
-			val.value = RValues.GlobalEnv;
-		}
-		return val;
+		return this.R_FindNamespace({ ...info, value: (info.value as RObjectData[] | undefined)?.[0] });
 	}
 
 	/**
-	 * Deserializes a single SEXP node recursively.
-	 *
-	 * The method dispatches to the corresponding deserialization logic
-	 * depending on the encoded {@link SexpType}.
-	 * @param flags - Serialized SEXP flags word.
-	 * @returns Deserialized {@link RObjectData}.
+	 * Deserializes a single SEXP node, dispatching on its encoded {@link SexpType}.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1871-L2115 | R source: ReadItem_Recursive}
 	 */
 	readItemRecursive(flags: number): RObjectData {
-		const [type, levels, object, hasAttribute, _hasTag] = this.unpackFlags(flags);
-
-		let s: RObjectData = {};
-
-		switch(type) {
-			case SexpType.NilValueSxp:
-				s.value = RValues.NilValue;
-				s.type = SexpType.NilSxp;
-				return s;
-			case SexpType.EmptyEnvSxp:
-				s.value = RValues.EmptyEnv;
-				s.type = SexpType.EnvSxp;
-				return s;
-			case SexpType.BaseEnvSxp:
-				s.value = RValues.BaseEnv;
-				s.type = SexpType.EnvSxp;
-				return s;
-			case SexpType.GlobalEnvSxp:
-				s.value = RValues.GlobalEnv;
-				s.type = SexpType.EnvSxp;
-				return s;
-			case SexpType.UnboundValueSxp:
-				s.value = RValues.UnboundValue;
-				s.type = SexpType.EnvSxp;
-				return s;
-			case SexpType.MissingArgSxp:
-				s.value = RValues.MissingArg;
-				s.type = SexpType.EnvSxp;
-				return s;
-			case SexpType.BaseNamespaceSxp:
-				s.value = RValues.BaseNamespace;
-				s.type = SexpType.EnvSxp;
-				return s;
-			case SexpType.RefSxp: return this.getReadRef(this.inRefIndex(flags));
-			case SexpType.PersistSxp: {
-				s = this.inStringVec();
-				this.addReadRef(s);
-				return s;
-			}
-			case SexpType.AltRepSxp:
-			{
-				this.currentDepth++;
-				console.warn('AltReps are not supported yet!');
-				const info = this.readItem() as RObjectData;
-				const state = this.readItem() as RObjectData;
-				const attr = this.readItem() as RObjectData;
-				s.type = (((info.cdr as RObjectData).cdr as RObjectData).car as RObjectData).type;
-				s = this.AltRepUnserializeEx(info, state, attr, object, levels);
-				this.currentDepth--;
-				return s;
-			}
-			case SexpType.SymSxp: {
-				this.currentDepth++;
-				s = this.assertRObjectData(this.readItem());
-				this.currentDepth--;
-				s.type = SexpType.SymSxp;
-				this.addReadRef(s);
-				return s;
-			}
-			case SexpType.PackageSxp:
-			{
-				s = this.inStringVec();
-				s = this.rFindPackageEnv(s);
-				this.addReadRef(s);
-				return s;
-			}
-			case SexpType.NamespaceSxp:
-				s = this.inStringVec();
-				s = this.R_FindNamespace1(s);
-				this.addReadRef(s);
-				return s;
-			case SexpType.EnvSxp:
-			{
-				const locked = this.inInteger();
-				s.type = SexpType.EnvSxp;
-				this.addReadRef(s);
-
-				this.currentDepth++;
-				this.SetEnClos(s, this.assertRObjectData(this.readItem()));
-				s.frame = this.readItem();
-				s.hashTab = this.readItem();
-				s.attributes = this.assertRObjectData(this.readItem()).attributes;
-
-				this.currentDepth--;
-
-				if(s.attributes?.some(e => e.name === RValues.ClassSymbol)){
-					s._isObject = true;
-				}
-				// R_RestoreHashCount(s);
-				if(locked) {
-					s._isLocked = false;
-				}
-				if(!s.enClos || s.enClos === RValues.NilValue) {
-					this.SetEnClos(s, {
-						value:  RValues.BaseEnv,
-						type:   SexpType.EnvSxp,
-						enClos: RValues.NilValue
-					});
-				}
-				return s;
-			}
-			case SexpType.ListSxp:
-			case SexpType.LangSxp:
-			case SexpType.CloSxp:
-			case SexpType.PromSxp:
-			case SexpType.DotSxp:
-				return this.readItemIterative(flags);
-			default:
-				switch(type) {
-					case SexpType.ExtPtrSxp: {
-						s.type = type;
-						this.addReadRef(s);
-						s.address = null;
-						this.currentDepth++;
-						s.protected = this.readItem();
-						s.tag = this.readItem();
-						this.currentDepth--;
-						break;
-					}
-					case SexpType.WeakRefSxp:
-						s.value = this.R_MakeWeakRef(
-							{ type: SexpType.NilSxp, value: RValues.NilValue },
-							RValues.NilValue,
-							{ type: SexpType.NilSxp, value: RValues.NilValue },
-							false);
-						this.addReadRef(s);
-						break;
-					case SexpType.SpecialSxp:
-					case SexpType.BuiltInSxp:
-						{
-							const len = this.assertInteger(this.inInteger());
-							if(len < 0) {
-								throw new Error('invalid length');
-							}
-							const name = this.inString(len);
-							if(!(name in RFunTabOffsets)) {
-								throw new Error(`unrecognized internal function name "${name}"`);
-							}
-							const index = (RFunTabOffsets as Record<string, string | number>)[name] as number;
-							s = this.mkPrimSxp(index, type === SexpType.BuiltInSxp ? 1 : 0);
-						}
-						break;
-					case SexpType.CharSxp: {
-						const len = this.assertInteger(this.inInteger());
-						if(len < -1) {
-							throw new Error(`Invalid length ${len} of string.`);
-						} else if(len == -1) {
-							s.name = RValues.NaString;
-						} else {
-							s.name = this.readChar(len, levels);
-						}
-						break;
-					}
-					case SexpType.LglSxp:
-					case SexpType.IntSxp:
-					{
-						const len = this.readLength();
-						s.type = type;
-						s.value = this.inIntegerVec(len);
-						break;
-					}
-					case SexpType.RealSxp:
-					{
-						const len = this.readLength();
-						s.type = type;
-						s.value = this.inRealVec(len);
-						break;
-					}
-					case SexpType.CplxSxp: {
-						const len = this.readLength();
-						s.type = type;
-						s.value = this.inComplexVec(len);
-						break;
-					}
-					case SexpType.StrSxp: {
-						const len = this.readLength();
-						s.type = type;
-						s.value = new Array(len);
-						this.currentDepth++;
-						for(let count = 0; count < len; ++count) {
-							this.SET_STRING_ELT(s, count, this.assertRObjectData(this.readItem()));
-						}
-						this.currentDepth--;
-
-						break;
-					}
-					case SexpType.VecSxp:
-					case SexpType.ExprSxp: {
-						const len = this.readLength();
-						s.type = type;
-						s.value = new Array(len);
-						this.currentDepth++;
-						for(let count = 0; count < len; ++count) {
-							this.SET_VECTOR_ELT(s, count, this.readItem());
-						}
-						this.currentDepth--;
-						break;
-					}
-					case SexpType.BcodesSxp:
-						s = this.readBC() as RObjectData;
-						break;
-					case SexpType.ClassRefSxp:
-						throw new Error('this version of R cannot read class references');
-					case SexpType.GenericRefSxp:
-						throw new Error('this version of R cannot read generic function references');
-					case SexpType.RawSxp: {
-						const len = this.readLength();
-						s.type = type;
-						s.value = this.inRaw(len);
-						break;
-					}
-					case SexpType.ObjSxp:
-						s.type = SexpType.ObjSxp;
-						break;
-					default:
-						throw new Error(`ReadItem: unknown type ${type}, perhaps written by later version of R`);
-				}
-				if(type !== SexpType.CharSxp) {
-					s.levels = levels;
-				}
-				s.object = object;
-				if(s.type === SexpType.CharSxp) {
-					this.currentDepth++;
-					if(hasAttribute) {
-						this.readItem();
-					}
-					this.currentDepth--;
-				} else {
-					this.currentDepth++;
-					s.attributes = hasAttribute ? [this.readItem()] as RObjectData[] : undefined;
-					this.currentDepth--;
-				}
-				if(s.type === SexpType.BcodesSxp && !this.R_BCVersionOK(s)) {
-					return this.R_BytecodeExpr(s) as RObjectData;
-				}
-				return s;
+		const [type, levels, object, hasAttribute] = this.unpackFlags(flags);
+		const special = SpecialValueSxps.get(type);
+		if(special) {
+			return { ...special };
 		}
-	}
-
-	/**
-	 * Skips a serialized SEXP node, only filling in its type and calling other skip methods to
-	 * advance the buffer position.
-	 *
-	 * Mirrors the structure of {@link readItemRecursive} but skips payload data.
-	 * @returns A minimal {@link RObjectData} with little to no payload.
-	 */
-	skipItem(): RObjectData {
-		const flags = this.assertInteger(this.inInteger());
-		const [type, levels, _object, hasAttribute, _hasTag] = this.unpackFlags(flags);
-
-		let s: RObjectData = {};
-
 		switch(type) {
-			case SexpType.NilValueSxp:
-			case SexpType.EmptyEnvSxp:
-			case SexpType.BaseEnvSxp:
-			case SexpType.GlobalEnvSxp:
-			case SexpType.UnboundValueSxp:
-			case SexpType.MissingArgSxp:
-			case SexpType.BaseNamespaceSxp:
-				s.type = SexpType.EnvSxp;
-				return s;
 			case SexpType.RefSxp:
 				return this.getReadRef(this.inRefIndex(flags));
-			case SexpType.NamespaceSxp:
-				this.skipStringVec();
-				s.type = SexpType.EnvSxp;
-				this.addReadRef(s);
-				return s;
-			case SexpType.PackageSxp:
-			case SexpType.PersistSxp: {
-				this.skipStringVec();
-				s.type = SexpType.CharSxp;
-				return s;
-			}
+			case SexpType.PersistSxp:
+				return this.addReadRef(this.inStringVec());
 			case SexpType.AltRepSxp:
-			{
-				this.currentDepth++;
-				const info = this.skipItem();
-				const _state = this.skipItem();
-				const _attr = this.skipItem();
-
-				s.type = (((info.cdr as RObjectData).cdr as RObjectData).car as RObjectData).type;
-				this.currentDepth--;
-				return s;
-			}
-			case SexpType.SymSxp: {
-				this.currentDepth++;
-				s = this.skipItem();
-				this.currentDepth--;
-				s.type = SexpType.SymSxp;
-				this.addReadRef(s);
-				return s;
-			}
+				rdaLog.warn('AltReps are not supported yet!');
+				return this.readOrSkipAltRep(object, levels, false);
+			case SexpType.SymSxp:
+				return this.readOrSkipSym(false);
+			case SexpType.PackageSxp:
+				return this.addReadRef(this.rFindPackageEnv(this.inStringVec()));
+			case SexpType.NamespaceSxp:
+				return this.addReadRef(this.R_FindNamespace1(this.inStringVec()));
 			case SexpType.EnvSxp:
-			{
-				this.skipInteger();
-				s.type = SexpType.EnvSxp;
-				this.addReadRef(s);
-
-				this.currentDepth++;
-				this.SetEnClos(s, this.assertRObjectData(this.skipItem()));
-				s.frame = this.skipItem();
-				s.hashTab = this.skipItem();
-				s.attributes = this.assertRObjectData(this.skipItem()).attributes;
-
-				this.currentDepth--;
-
-				if(!s.enClos || s.enClos === RValues.NilValue) {
-					this.SetEnClos(s, {
-						value:  RValues.BaseEnv,
-						type:   SexpType.EnvSxp,
-						enClos: RValues.NilValue
-					});
-				}
-				return s;
-			}
-			case SexpType.ListSxp:
-			case SexpType.LangSxp:
-			case SexpType.CloSxp:
-			case SexpType.PromSxp:
-			case SexpType.DotSxp:
-				return this.readItemIterative(flags);
+				return this.readOrSkipEnv(false);
 			default:
-				switch(type) {
-					case SexpType.ExtPtrSxp: {
-						s.type = type;
-						this.addReadRef(s);
-						this.currentDepth++;
-						s.protected = this.skipItem();
-						s.tag = this.skipItem();
-						this.currentDepth--;
-						break;
-					}
-					case SexpType.WeakRefSxp:
-						s.value = this.R_MakeWeakRef(
-							{ type: SexpType.NilSxp, value: RValues.NilValue },
-							RValues.NilValue,
-							{ type: SexpType.NilSxp, value: RValues.NilValue },
-							false);
-						this.addReadRef(s);
-						break;
-					case SexpType.SpecialSxp:
-					case SexpType.BuiltInSxp:
-						{
-							s.type = type;
-							const len = this.assertInteger(this.inInteger());
-							if(len < 0) {
-								throw new Error('invalid length');
-							}
-							this.skipString(len);
-						}
-						break;
-					case SexpType.CharSxp: {
-						const len = this.assertInteger(this.inInteger());
-						if(len < -1) {
-							throw new Error(`Invalid length ${len} of string.`);
-						} else if(len == -1) {
-							s.name = RValues.NaString;
-						} else {
-							s.name = this.readChar(len, levels);
-						}
-						break;
-					}
-					case SexpType.LglSxp:
-					case SexpType.IntSxp:
-					{
-						const len = this.readLength();
-						s.type = type;
-						s.value = this.skipIntegerVec(len);
-						break;
-					}
-					case SexpType.RealSxp:
-					{
-						const len = this.readLength();
-						s.type = type;
-						s.value = this.skipRealVec(len);
-						break;
-					}
-					case SexpType.CplxSxp: {
-						const len = this.readLength();
-						s.type = type;
-						this.skipComplexVec(len);
-						break;
-					}
-					case SexpType.StrSxp:
-					case SexpType.VecSxp:
-					case SexpType.ExprSxp: {
-						const len = this.readLength();
-						s.type = type;
-						this.currentDepth++;
-						for(let count = 0; count < len; ++count) {
-							this.skipItem();
-						}
-						this.currentDepth--;
-						break;
-					}
-					case SexpType.BcodesSxp:
-						this.skipBC();
-						s.type = SexpType.VecSxp;
-						break;
-					case SexpType.ClassRefSxp:
-						throw new Error('this version of R cannot read class references');
-					case SexpType.GenericRefSxp:
-						throw new Error('this version of R cannot read generic function references');
-					case SexpType.RawSxp: {
-						const len = this.readLength();
-						s.type = type;
-						this.skipRaw(len);
-						break;
-					}
-					case SexpType.ObjSxp:
-						s.type = SexpType.ObjSxp;
-						break;
-					default:
-						throw new Error(`ReadItem: unknown type ${type}, perhaps written by later version of R`);
-				}
-				if(s.type === SexpType.CharSxp) {
-					this.currentDepth++;
-					if(hasAttribute) {
-						this.skipItem();
-					}
-					this.currentDepth--;
-				} else {
-					this.currentDepth++;
-					s.attributes = hasAttribute ? [this.skipItem()] : undefined;
-					this.currentDepth--;
-				}
-				return s;
+				return IterativeSexpTypes.has(type) ? this.readItemIterative(flags) : this.readOrSkipLeaf(type, levels, object, hasAttribute, false);
 		}
 	}
 
-	/**
-	 * Reads `len` raw bytes from the buffer into a number array.
-	 * @param len - Number of raw bytes to read.
-	 * @returns Array of unsigned byte values.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2062-L2084 | R source: ReadItem_Recursive}
-	 */
-	inRaw(len: number): number[]{
-		const result = [];
-		switch(this.format) {
-			case SerializationFormat.Ascii:
-				for(let ix = 0; ix < len; ix++) {
-					const word = this.inWord(128);
-					result[ix] = Number.parseInt(word, 16);
-				}
-				break;
-			default: {
-				for(let i = 0; i < len; i++) {
-					result[i] = this.buffer[this.offset++];
-				}
-			}
-		}
-		return result;
+	/** Reads (or with `skip`, discards) a `SymSxp` symbol. Shared by {@link readItemRecursive} and {@link skipItem}. */
+	readOrSkipSym(skip: boolean): RObjectData {
+		const s = skip ? this.skipItem() : this.assertRObjectData(this.readItem());
+		s.type = SexpType.SymSxp;
+		return this.addReadRef(s);
 	}
 
 	/**
-	 * Advances the buffer offset past `len` raw bytes without reading values.
-	 *
-	 * Mirrors {@link inRaw}.
-	 * @param len - Number of raw bytes to skip.
+	 * Reads (or with `skip`, discards) an `AltRepSxp`. Only `skip === false` attempts {@link AltRepUnserializeEx};
+	 * discarding it just derives the base type its payload triple encodes. Shared by {@link readItemRecursive} and {@link skipItem}.
 	 */
-	skipRaw(len: number): void{
-		if(this.format === SerializationFormat.Ascii) {
-			for(let ix = 0; ix < len; ix++) {
-				this.skipWord();
-			}
+	readOrSkipAltRep(object: boolean, levels: number, skip: boolean): RObjectData {
+		const info = this.nextItem(skip) as RObjectData;
+		const state = this.nextItem(skip) as RObjectData;
+		const attr = this.nextItem(skip) as RObjectData;
+		return skip ? { type: (((info.cdr as RObjectData).cdr as RObjectData).car as RObjectData).type } : this.AltRepUnserializeEx(info, state, attr, object, levels);
+	}
+
+	/**
+	 * Reads (or with `skip`, discards) an `EnvSxp` environment frame; the locked/class-object bookkeeping only matters when kept.
+	 * Shared by {@link readItemRecursive} and {@link skipItem}.
+	 */
+	readOrSkipEnv(skip: boolean): RObjectData {
+		let locked: number | RValues.NaInteger = 0;
+		if(skip) {
+			this.skipInteger();
 		} else {
-			this.offset += len;
+			locked = this.inInteger();
 		}
-	}
-
-	/**
-	 * Resolves package environments.
-	 * @param s - String-vec {@link RObject} identifying the package.
-	 *
-	 * Not implemented yet!
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3732-L3741 | R source: R_FindPackageEnv}
-	 */
-	rFindPackageEnv(s: RObjectData): RObjectData {
-		console.warn('Resolving package environments was triggered, but is not implemented yet!');
+		const s = this.addReadRef<RObjectData>({ type: SexpType.EnvSxp });
+		this.SetEnClos(s, this.assertRObjectData(this.nextItem(skip)));
+		s.frame = this.nextItem(skip);
+		s.hashTab = this.nextItem(skip);
+		s.attributes = this.assertRObjectData(this.nextItem(skip)).attributes;
+		if(!skip) {
+			if(s.attributes?.some(e => e.name === RValues.ClassSymbol)) {
+				s._isObject = true;
+			}
+			if(locked) {
+				s._isLocked = false;
+			}
+		}
 		return s;
 	}
 
 	/**
-	 * Decodes the SEXP flags.
-	 * @param flags - Raw 32-bit flags word.
-	 * @returns `[type, levels, isObject, hasAttribute, hasTag]`.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L748-L756 | R source: UnpackFlags}
+	 * Reads (or with `skip`, discards) the payload of a leaf SEXP node, shared by {@link readItemRecursive} and {@link skipItem}.
+	 * `skip` mirrors their field-by-field differences exactly; see the branches below.
 	 */
-	unpackFlags(flags: number): [number, number, boolean, boolean, boolean] {
-		const pType = flags & 255;
-		const pLevels = flags >> 12;
-		const pIsObj = (flags & (1 << 8)) !== 0;
-		const pHasAttr =  (flags & (1 << 9)) !== 0;
-		const pHasTag =  (flags & (1 << 10)) !== 0;
+	readOrSkipLeaf(type: number, levels: number, object: boolean, hasAttribute: boolean, skip: boolean): RObjectData {
+		let s: RObjectData = {};
+		switch(type) {
+			case SexpType.ExtPtrSxp:
+				s.type = type;
+				this.addReadRef(s);
+				if(!skip) {
+					s.address = null;
+				}
+				s.protected = this.nextItem(skip);
+				s.tag = this.nextItem(skip);
+				break;
+			case SexpType.WeakRefSxp:
+				s.value = { type: SexpType.WeakRefSxp };
+				this.addReadRef(s);
+				break;
+			case SexpType.SpecialSxp:
+			case SexpType.BuiltInSxp: {
+				const len = this.readInt();
+				if(len < 0) {
+					throw new Error('invalid length');
+				}
+				if(skip) {
+					s.type = type;
+					this.skipString(len);
+				} else {
+					const name = this.inString(len);
+					if(!(name in RFunTabOffsets)) {
+						throw new Error(`unrecognized internal function name "${name}"`);
+					}
+					s = this.mkPrimSxp((RFunTabOffsets as Record<string, string | number>)[name] as number, type === SexpType.BuiltInSxp ? 1 : 0);
+				}
+				break;
+			}
+			case SexpType.CharSxp: {
+				const len = this.readInt();
+				if(len < -1) {
+					throw new Error(`Invalid length ${len} of string.`);
+				}
+				s.name = len === -1 ? RValues.NaString : this.readChar(len, levels);
+				break;
+			}
+			case SexpType.LglSxp:
+			case SexpType.IntSxp:
+			case SexpType.RealSxp: {
+				const len = this.readLength();
+				s.type = type;
+				s.value = type === SexpType.RealSxp ? this.inRealVec(len, skip) : this.inIntegerVec(len, skip);
+				break;
+			}
+			case SexpType.CplxSxp:
+			case SexpType.RawSxp: {
+				const len = this.readLength();
+				s.type = type;
+				const value = type === SexpType.CplxSxp ? this.inComplexVec(len, skip) : this.inRaw(len, skip);
+				if(!skip) {
+					s.value = value;
+				}
+				break;
+			}
+			case SexpType.StrSxp:
+			case SexpType.VecSxp:
+			case SexpType.ExprSxp: {
+				const len = this.readLength();
+				s.type = type;
+				if(!skip) {
+					s.value = new Array(len);
+				}
+				for(let count = 0; count < len; ++count) {
+					if(skip) {
+						this.skipItem();
+					} else if(type === SexpType.StrSxp) {
+						this.SET_STRING_ELT(s, count, this.assertRObjectData(this.readItem()));
+					} else {
+						this.SET_VECTOR_ELT(s, count, this.readItem());
+					}
+				}
+				break;
+			}
+			case SexpType.BcodesSxp:
+				if(skip) {
+					this.skipBC();
+					s.type = SexpType.VecSxp;
+				} else {
+					s = this.readBC() as RObjectData;
+				}
+				break;
+			case SexpType.ClassRefSxp:
+				throw new Error('this version of R cannot read class references');
+			case SexpType.GenericRefSxp:
+				throw new Error('this version of R cannot read generic function references');
+			case SexpType.ObjSxp:
+				s.type = SexpType.ObjSxp;
+				break;
+			default:
+				throw new Error(`ReadItem: unknown type ${type}, perhaps written by later version of R`);
+		}
+		if(!skip) {
+			if(type !== SexpType.CharSxp) {
+				s.levels = levels;
+			}
+			s.object = object;
+		}
+		if(s.type !== SexpType.CharSxp) {
+			s.attributes = hasAttribute ? [skip ? this.skipItem() : this.assertRObjectData(this.readItem())] : undefined;
+		} else if(hasAttribute) {
+			this.nextItem(skip);
+		}
+		return !skip && s.type === SexpType.BcodesSxp ? this.R_BytecodeExpr(s) as RObjectData : s;
+	}
 
-		return [pType, pLevels, pIsObj, pHasAttr, pHasTag];
+	/** Advances past a serialized SEXP node, filling in only its type. Mirrors {@link readItemRecursive}'s structure, but skips payload data. */
+	skipItem(): RObjectData {
+		const flags = this.readInt();
+		const [type, levels, object, hasAttribute] = this.unpackFlags(flags);
+		if(SpecialValueSxps.has(type)) {
+			return { type: SexpType.EnvSxp };
+		}
+		switch(type) {
+			case SexpType.RefSxp:
+				return this.getReadRef(this.inRefIndex(flags));
+			case SexpType.NamespaceSxp:
+				this.inStringVec(true);
+				return this.addReadRef({ type: SexpType.EnvSxp });
+			case SexpType.PackageSxp:
+			case SexpType.PersistSxp:
+				this.inStringVec(true);
+				return { type: SexpType.CharSxp };
+			case SexpType.AltRepSxp:
+				return this.readOrSkipAltRep(object, levels, true);
+			case SexpType.SymSxp:
+				return this.readOrSkipSym(true);
+			case SexpType.EnvSxp:
+				return this.readOrSkipEnv(true);
+			default:
+				return IterativeSexpTypes.has(type) ? this.readItemIterative(flags) : this.readOrSkipLeaf(type, levels, object, hasAttribute, true);
+		}
 	}
 
 	/**
-	 * Retrieves an object from the reference table.
-	 * @param index - 1-based reference index.
-	 * @returns A registered {@link RObjectData}.
-	 * @throws Error if the index is out of range.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1461-L1469 | R source: GetReadRef}
+	 * Reads (or with `skip`, discards) `len` raw bytes into a number array.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2062-L2084 | R source: ReadItem_Recursive}
 	 */
-	getReadRef(index: number): RObjectData {
-		const i = index - 1;
+	inRaw(len: number, skip: boolean = false): number[] {
+		if(this.format === SerializationFormat.Ascii) {
+			const result: number[] = [];
+			for(let ix = 0; ix < len; ix++) {
+				if(skip) {
+					this.skipWord();
+				} else {
+					result.push(Number.parseInt(this.inWord(128), 16));
+				}
+			}
+			return result;
+		}
+		const start = this.offset;
+		this.offset += len;
+		return skip ? [] : Array.from({ length: len }, (_, i) => this.buffer[start + i]);
+	}
 
-		if(i < 0 || i >= this.refTable.length) {
+	/** Resolves package environments. Not implemented yet!. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3732-L3741 | R source: R_FindPackageEnv} */
+	rFindPackageEnv(s: RObjectData): RObjectData {
+		rdaLog.warn('Resolving package environments was triggered, but is not implemented yet!');
+		return s;
+	}
+
+	/** Decodes a raw SEXP flags word into `[type, levels, isObject, hasAttribute, hasTag]`. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L748-L756 | R source: UnpackFlags} */
+	unpackFlags(flags: number): [number, number, boolean, boolean, boolean] {
+		return [flags & 255, flags >> 12, (flags & (1 << 8)) !== 0, (flags & (1 << 9)) !== 0, (flags & (1 << 10)) !== 0];
+	}
+
+	/** Retrieves the registered object at 1-based reference `index`. Throws error if out of range. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1461-L1469 | R source: GetReadRef} */
+	getReadRef(index: number): RObjectData {
+		if(index < 1 || index > this.refTable.length) {
 			throw new Error('reference index out of range');
 		}
-		return this.refTable[i] as RObjectData;
+		return this.refTable[index - 1] as RObjectData;
 	}
 
 	/**
-	 * Extracts the reference index from the given flags.
-	 *
-	 * When bits 8–31 are non-zero they encode the index directly;
-	 * otherwise the index is read as the next integer from the stream.
-	 * @param flags - Raw 32-bit flags word.
-	 * @returns A 1-based reference index.
+	 * The 1-based reference index encoded in `flags`: bits 8-31 encode it directly when non-zero, otherwise it is read as the next stream integer.
 	 * @see {@link http://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L782-L789 | R source: InRefIndex}
 	 */
 	inRefIndex(flags: number): number {
 		const i = flags >> 8;
-		if(i === 0) {
-			return this.assertInteger(this.inInteger());
-		} else {
-			return i;
-		}
+		return i === 0 ? this.readInt() : i;
 	}
 
-	/**
-	 * Appends an object to the reference table so it can be resolved later by {@link getReadRef}.
-	 * @param value - The {@link RObject} to register.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1471-L1490 | R source: AddReadRef}
-	 */
-	addReadRef(value: RObject): void {
+	/** Appends `value` to the reference table so it can be resolved later by {@link getReadRef}, and answers it. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1471-L1490 | R source: AddReadRef} */
+	addReadRef<T extends RObject>(value: T): T {
 		this.refTable.push(value);
+		return value;
 	}
 
 	/**
-	 * Reads a persistent string vector from the stream.
-	 * @returns An {@link RObjectData} of type `CharSxp` whose `value` array holds the deserialized string items.
-	 * @throws Error if the names flag is non-zero.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1492-L1504 | R source: InStringVec}
+	 * Reads (or with `skip`, discards) a persistent string vector. Answers a `CharSxp` {@link RObjectData} whose
+	 * `value` array holds the deserialized items, empty when skipped. Throws Error if the names flag is non-zero.
+	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1492-L1504 | R source: InStringVec}
 	 */
-	inStringVec(): RObjectData {
+	inStringVec(skip: boolean = false): RObjectData {
 		if(this.inInteger() !== 0) {
 			throw new Error('names in persistent strings are not supported yet');
 		}
-		const len = this.assertInteger(this.inInteger());
-		const s: RObjectData = {};
-		s.type = SexpType.CharSxp;
-		s.value = new Array<RObject>(len);
-		this.currentDepth++;
+		const len = this.readInt();
+		const value = new Array<RObject>(skip ? 0 : len);
 		for(let i = 0; i < len; i++) {
-			(s.value)[i] = this.readItem();
+			if(skip) {
+				this.skipItem();
+			} else {
+				value[i] = this.readItem();
+			}
 		}
-		this.currentDepth--;
-		return s;
+		return { type: SexpType.CharSxp, value };
 	}
 
-	/**
-	 * Advances the buffer past a persistent string vector without reading values.
-	 *
-	 * Mirrors {@link inStringVec}.
-	 * @throws Error if the names flag is non-zero.
-	 */
-	skipStringVec(): void {
-		if(this.inInteger() !== 0) {
-			throw new Error('names in persistent strings are not supported yet');
-		}
-		const len = this.assertInteger(this.inInteger());
-		this.currentDepth++;
-		for(let i = 0; i < len; i++) {
-			this.skipItem();
-		}
-		this.currentDepth--;
-	}
-
-	/**
-	 * Sets the enclosing environment of an environment object.
-	 * @param x - Environment whose enclosure should be set.
-	 * @param v - Parent environment.
-	 * @throws Error if the parent is invalid or would introduce a cycle.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4677-L4690 | R source: SET_ENCLOS}
-	 */
+	/** Sets `x`'s enclosing environment to `v`. Throws error if `v` is invalid or would introduce a cycle. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4677-L4690 | R source: SET_ENCLOS} */
 	SetEnClos(x: RObjectData, v: RObjectData): void {
 		if(v.value === undefined || v.value === RValues.NilValue) {
 			v.value = RValues.EmptyEnv;
@@ -1391,8 +957,7 @@ export class RDAParser{
 		if(v.type !== SexpType.EnvSxp) {
 			throw new Error("'parent' is not an environment");
 		}
-
-		for(let e: RObject = v; e !== RValues.NilValue; e = e.enClos ?? RValues.NilValue){
+		for(let e: RObject = v; e !== RValues.NilValue; e = e.enClos ?? RValues.NilValue) {
 			if(e === x) {
 				throw new Error('cycles in parent chains are not allowed');
 			}
@@ -1401,471 +966,186 @@ export class RDAParser{
 	}
 
 	/**
-	 * Iteratively deserializes linked-list based SEXP structures.
-	 * @param flags - Initial flags.
-	 * @returns Head node of the reconstructed pairlist chain as {@link RObjectData}.
-	 * @throws Error if the initial type is not a valid pairlist type.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1800-L1868 | R source: ReadItem_Iterative}
+	 * Iteratively deserializes linked-list based SEXP structures. Answers head node of the reconstructed pairlist
+	 * chain. Throws Error if the initial type is not a valid pairlist type.
+	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1800-L1868 | R source: ReadItem_Iterative}
 	 */
-	readItemIterative(flags: number): RObjectData{
-		let sFirst: RObjectData | null = null;
-		let sLast: RObjectData = {};
-
+	readItemIterative(flags: number): RObjectData {
 		let type = flags & 255;
-
-		const validIterativeTypes = new Set([
-			SexpType.ListSxp,   // 2
-			SexpType.LangSxp,   // 6
-			SexpType.CloSxp,    // 3
-			SexpType.PromSxp,   // 5
-			SexpType.DotSxp     // 17
-		]);
-
-		if(!validIterativeTypes.has(type)) {
+		if(!IterativeSexpTypes.has(type)) {
 			throw new Error('Wrong type.');
 		}
-
-		while(validIterativeTypes.has(type)) {
-			const unpackedFlags = this.unpackFlags(flags);
-			type = unpackedFlags[0];
-			const levels = unpackedFlags[1];
-			const isObject = unpackedFlags[2];
-			const hasAttr = unpackedFlags[3];
-			const hasTag = unpackedFlags[4];
-			const s: RObjectData = {};
-
-			s.type = type;
-			s.levels = levels;
-			s.object = isObject;
-			this.currentDepth++;
-
+		const head: RObjectData = {};
+		let last = head;
+		while(IterativeSexpTypes.has(type)) {
+			const [, levels, object, hasAttr, hasTag] = this.unpackFlags(flags);
+			const s: RObjectData = { type, levels, object };
 			s.attributes = hasAttr ? [this.shortcut ? this.skipItem() : this.assertRObjectData(this.readItem())] : undefined;
 			s.tag = hasTag ? this.readItem() : RValues.NilValue;
-
-			if(hasTag && this.currentDepth == RDAParser.INITIAL_DEPTH && typeof s.tag === 'object') {
-				this.lastName = s.tag.name;
-			}
-
-			s.car = this.shortcut ? this.skipItem() : this.readItem();
-			this.currentDepth--;
-
-			if(sFirst === null) {
-				sFirst = s;
-			} else {
-				sLast.cdr = s;
-			}
-			sLast = s;
-
-			if(type === SexpType.CloSxp && (!s.enClos || s.cloEnv === RValues.NilValue)) {
+			s.car = this.nextItem(this.shortcut);
+			if(type === SexpType.CloSxp) {
 				s.cloEnv = RValues.EmptyEnv;
-			} else if(type === SexpType.PromSxp && (!s.prEnv || s.prEnv === RValues.NilValue)) {
+			} else if(type === SexpType.PromSxp) {
 				s.prEnv = RValues.BaseEnv;
 			}
-
-			flags = this.assertInteger(this.inInteger());
+			last.cdr = s;
+			last = s;
+			flags = this.readInt();
 			type = flags & 255;
 		}
-
-		this.currentDepth++;
-		const s = this.readItemRecursive(flags);
-		this.currentDepth--;
-		sLast.cdr = s;
-		return sFirst as RObjectData;
+		last.cdr = this.readItemRecursive(flags);
+		return head.cdr as RObjectData;
 	}
 
 	/**
-	 * Creates a weak reference object.
-	 * @param key - Weak reference key object.
-	 * @param val - Referenced value.
-	 * @param fin - Finalizer function or NULL.
-	 * @param onexit - Whether the finalizer should run on exit.
-	 * @returns The created weak reference object as {@link RObject}.
-	 * @throws Error if the finalizer type is invalid.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L1424-L1435 | R source: R_MakeWeakRef}
-	 */
-	R_MakeWeakRef(key: RObjectData, val: RObject, fin: RObjectData, onexit: boolean): RObject {
-		switch(fin.type) {
-			case SexpType.NilSxp:
-			case SexpType.CloSxp:
-			case SexpType.BuiltInSxp:
-			case SexpType.SpecialSxp:
-				break;
-			default:
-				throw new Error('finalizer must be a function or NULL');
-		}
-		return this.newWeakRef(key, val, fin, onexit);
-	}
-
-	/**
-	 * Allocates and initializes a weak reference object.
-	 * @param key - Weak reference key object.
-	 * @param val - Referenced value.
-	 * @param fin - Finalizer function.
-	 * @param onexit - Whether the finalizer should run on exit.
-	 * @returns The initialized weak reference object as {@link RObject}.
-	 * @throws Error if the key type is invalid.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L1388-L1422 | R source: NewWeakRef}
-	 */
-	newWeakRef(key: RObjectData, val: RObject, fin: RObjectData, onexit: boolean): RObject{
-		switch(key.type) {
-			case SexpType.NilSxp:
-			case SexpType.EnvSxp:
-			case SexpType.ExtPtrSxp:
-			case SexpType.BcodesSxp:
-				break;
-			default:
-				throw new Error('can only weakly reference/finalize reference objects');
-		}
-
-		//     PROTECT(val = MAYBE_REFERENCED(val) ? duplicate(val) : val);
-		//     w = allocVector(VECSXP, WEAKREF_SIZE);
-		//     SET_TYPEOF(w, WEAKREFSXP);
-		const w: RObjectData = {};
-
-		w.type = SexpType.WeakRefSxp;
-
-		if(key.value !== RValues.NilValue){
-			w.key = key;
-			w.value = val;
-			w.finalizer = fin;
-			w.next = this.RWeakRefs;
-			// CLEAR_READY_TO_FINALIZE(w);
-			if(w.gp) {
-				w.gp &= ~1;
-			}
-
-			if(onexit){
-				if(w.gp) {
-					w.gp |= 2;
-				}
-			} else {
-				if(w.gp) {
-					w.gp &= ~2;
-				}
-			}
-
-			this.RWeakRefs = w;
-		}
-		return w;
-	}
-
-	/**
-	 * Creates or retrieves a cached primitive function object.
-	 * @param index - Primitive function table index.
-	 * @param evaluation - Non-zero for {@link SexpType.BuiltInSxp}, zero for {@link SexpType.SpecialSxp}.
-	 * @returns of type {@link SexpType.BuiltInSxp} or {@link SexpType.SpecialSxp}.
-	 * @throws Error if the index is out of range or the cached type mismatches.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/dstruct.c#L37-L68 | R source: mkPRIMSXP}
+	 * Creates or retrieves a cached primitive function object of type {@link SexpType.BuiltInSxp} (`evaluation` non-zero)
+	 * or {@link SexpType.SpecialSxp}, from `index` into the primitive function table. Throws Error if out of range.
+	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/dstruct.c#L37-L68 | R source: mkPRIMSXP}
 	 */
 	mkPrimSxp(index: number, evaluation: number): RObjectData {
 		if(index < 0 || index >= Object.keys(RFunTabOffsets).length) {
 			throw new Error('offset is out of R_FunTab range');
 		}
-		return {
-			type:   evaluation ? SexpType.BuiltInSxp : SexpType.SpecialSxp,
-			offset: index
-		};
+		return { type: evaluation ? SexpType.BuiltInSxp : SexpType.SpecialSxp, offset: index };
 	}
 
 	/**
-	 * Reads `len` bytes as a character string and applies encoding from the GP bits.
-	 *
-	 * Encoding flags: bit 3 = UTF-8, bit 2 = Latin-1, bit 1 = raw bytes, bit 6 = ASCII (native-safe).
-	 * @param len - Number of bytes to read.
-	 * @param levels - GP levels bits from the `CharSxp` flags word.
-	 * @returns The decoded string, or `''` when the encoding is not yet handled.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1689-L1759 | R source: ReadChar}
+	 * Reads `len` bytes as a character string, decoded per the encoding flags in `levels` (bit 3 UTF-8, bit 2 Latin-1,
+	 * bit 1 raw bytes, bit 6 ASCII); answers `''` for a native encoding, which is not yet handled.
+	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1689-L1759 | R source: ReadChar}
 	 */
-	readChar(len: number, levels: number): string{
-		const cBuf = this.inString(len);
-		const bytes = Buffer.from(cBuf, 'latin1');
-
-		if(levels & (1 << 3))  {
+	readChar(len: number, levels: number): string {
+		const bytes = Buffer.from(this.inString(len), 'latin1');
+		if(levels & (1 << 3)) {
 			return new TextDecoder('utf-8').decode(bytes);
-		}
-		if(levels & (1 << 2)) {
+		} else if(levels & (1 << 2)) {
 			return new TextDecoder('iso-8859-1').decode(bytes);
-		}
-		if(levels & (1 << 1) || levels & (1 << 6)) {
+		} else if(levels & (1 << 1) || levels & (1 << 6)) {
 			return bytes.toString('latin1');
 		}
-		console.warn('Native encoding detected! Native encoding not supported yet! Value will be empty');
+		rdaLog.warn('Native encoding detected! Native encoding not supported yet! Value will be empty');
 		return '';
 	}
 
 	/**
-	 * Reads a vector length from the stream.
-	 * @returns The vector length.
-	 * @throws Error for negative lengths or an invalid high-word value.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1761-L1782 | R source: ReadLENGTH}
+	 * Reads a vector length from the stream. Throws Error for negative lengths or an invalid high-word value.
+	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1761-L1782 | R source: ReadLENGTH}
 	 */
 	readLength(): number {
-		const len = this.assertInteger(this.inInteger());
+		const len = this.readInt();
 		if(len < -1) {
 			throw new Error('negative serialized length for vector');
-		}
-		if(len == -1) {
-			const len1 = this.assertInteger(this.inInteger());
-			const len2 = this.assertInteger(this.inInteger());
-			/* sanity check for now */
-			if(len1 > RDAParser.MAX_VECTOR_LENGTH) {
-				throw new Error('invalid upper part of serialized vector length');
-			}
-			/* both halves are written as unsigned; a shift would wrap at 32 bit, so the high half is scaled instead */
-			return len1 * 2 ** 32 + (len2 >>> 0);
-		} else {
+		} else if(len !== -1) {
 			return len;
 		}
-	}
-
-	/**
-	 * Reads `len` integers from the buffer.
-	 * @param len - Number of integers to read.
-	 * @returns Array of integer values or {@link RValues.NaInteger}.
-	 * @throws Error for BINARY format or XDR buffer overrun.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1507-L1541 | R source: InIntegerVec}
-	 */
-	inIntegerVec(len: number): (number | RValues.NaInteger)[]{
-		switch(this.format) {
-			case SerializationFormat.Xdr:
-			{
-				const result: number[] = [];
-				for(let cnt = 0; cnt < len; cnt++) {
-					if(this.offset + 4 > this.buffer.length) {
-						throw new Error('XDR read failed');
-					}
-					result[cnt] = this.buffer.readInt32BE(this.offset);
-					this.offset += 4;
-				}
-				return result;
-			}
-			case SerializationFormat.Binary:
-			{
-				throw new Error('No binary support yet.');
-			}
-			default: {
-				const result: (number | RValues.NaInteger)[] = [];
-				for(let cnt = 0; cnt < len; cnt++) {
-					result[cnt] = this.inInteger();
-				}
-				return result;
-			}
+		const len1 = this.readInt();
+		const len2 = this.readInt();
+		if(len1 > RDAParser.MAX_VECTOR_LENGTH) {
+			throw new Error('invalid upper part of serialized vector length');
 		}
+		/* both halves are written as unsigned; a shift would wrap at 32 bit, so the high half is scaled instead */
+		return len1 * 2 ** 32 + (len2 >>> 0);
 	}
 
 	/**
-	 * Advances the buffer past `len` serialized integers without reading values.
-	 *
-	 * Mirrors {@link inIntegerVec}.
-	 * @param len - Number of integers to skip.
-	 * @returns An empty array.
-	 * @throws Error for BINARY format or XDR buffer overrun.
+	 * Reads (or with `skip`, discards) `len` integers. Throws Error for BINARY format or XDR buffer overrun.
+	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1507-L1541 | R source: InIntegerVec}
 	 */
-	skipIntegerVec(len: number): (number | RValues.NaInteger)[] {
-		switch(this.format) {
-			case SerializationFormat.Xdr:
-			{
-				if(this.offset + 4 * len > this.buffer.length) {
-					throw new Error('XDR read failed');
-				}
-				this.offset += 4 * len;
-				break;
-			}
-			case SerializationFormat.Binary:
-			{
-				throw new Error('No binary support yet.');
-			}
-			default: {
-				for(let cnt = 0; cnt < len; cnt++) {
-					this.skipInteger();
-				}
-			}
-		}
-		return [];
-	}
-
-	/**
-	 * Reads `len` doubles from the buffer.
-	 * @param len - Number of doubles to read.
-	 * @returns Array of numbers or {@link RValues}.
-	 * @throws Error for BINARY format.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1543-L1577 | R source: InRealVec}
-	 */
-	inRealVec(len: number): (number | RValues)[] | null[]{
-		switch(this.format) {
-			case SerializationFormat.Xdr: {
-				const result = [];
-				for(let i = 0; i < len; i++) {
-					result.push(this.buffer.readDoubleBE(this.offset));
-					this.offset += RDAParser.SIZE_OF_DOUBLE;
-				}
-				return result;
-			}
-			case SerializationFormat.Binary:
-			{
-				throw new Error('No binary support yet.');
-			}
-			default: {
-				const result: (Real)[] = [];
-				for(let cnt = 0; cnt < len; cnt++) {
-					result[cnt] = this.inReal();
-				}
-				return result;
-			}
-		}
-	}
-
-	/**
-	 * Advances the buffer past `len` serialized doubles without reading values.
-	 *
-	 * Mirrors {@link inRealVec}.
-	 * @param len - Number of doubles to skip.
-	 * @returns An empty array.
-	 * @throws Error for BINARY format.
-	 */
-	skipRealVec(len: number): (number | RValues)[] | null[] {
-		switch(this.format) {
-			case SerializationFormat.Xdr: {
-				this.offset += len * RDAParser.SIZE_OF_DOUBLE;
-				break;
-			}
-			case SerializationFormat.Binary:
-			{
-				throw new Error('No binary support yet.');
-			}
-			default: {
-				for(let cnt = 0; cnt < len; cnt++) {
-					this.skipReal();
-				}
-			}
-		}
-		return [];
-	}
-
-	/**
-	 * Reads the next double from the buffer.
-	 * @returns A number or an {@link RValues}.
-	 * @throws TypeError if the ASCII token is not a valid float.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L427-L463 | R source: InReal}
-	 */
-	inReal(): Real {
-		switch(this.format){
-			case SerializationFormat.Ascii: {
-				const word = this.inWord(128);
-
-				if(word === 'NA') {
-					return RValues.NaReal;
-				} else if(word === 'NaN') {
-					return RValues.NaN;
-				} else if(word === 'Inf') {
-					return RValues.PosInf;
-				} else if(word === '-Inf') {
-					return RValues.NegInf;
-				} else {
-					const d = Number.parseFloat(word);
-					if(Number.isNaN(d)) {
-						throw new TypeError('Read error: Invalid numeric ASCII format');
-					}
-					return d;
-				}
-			}
-			case SerializationFormat.Binary: {
-				const d = this.buffer.readDoubleLE(this.offset);
-				this.offset += 8;
-				return d;
-			}
-			case SerializationFormat.Xdr: {
-				const d = this.buffer.readDoubleBE(this.offset);
-				this.offset += 8;
-				return d;
-			}
-			default:
-				return RValues.NilValue;
-		}
-	}
-
-	/**
-	 * Advances the buffer past the next serialized double without reading it.
-	 *
-	 * Mirrors {@link inReal}.
-	 */
-	skipReal(): void {
-		if(this.format === SerializationFormat.Ascii) {
-			this.skipWord();
-		} else if(this.format === SerializationFormat.Binary || this.format === SerializationFormat.Xdr) {
-			this.offset += 8;
-		}
-	}
-
-	/**
-	 * Reads `len` complex numbers from the buffer.
-	 *
-	 * Each value is read as two consecutive doubles via {@link inComplex}.
-	 * @param len - Number of complex values to read.
-	 * @returns Array of {@link Complex} objects.
-	 * @throws Error for BINARY format.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1579-L1616 | R source: InComplexVec}
-	 */
-	inComplexVec(len: number): Complex[] {
+	inIntegerVec(len: number, skip: boolean = false): (number | RValues.NaInteger)[] {
 		if(this.format === SerializationFormat.Binary) {
 			throw new Error('No binary support yet.');
+		} else if(this.format === SerializationFormat.Xdr) {
+			if(this.offset + 4 * len > this.buffer.length) {
+				throw new Error('XDR read failed');
+			}
+			const start = this.offset;
+			this.offset += 4 * len;
+			return skip ? [] : Array.from({ length: len }, (_, i) => this.buffer.readInt32BE(start + 4 * i));
 		}
-		const result: Complex[] = [];
+		const result: (number | RValues.NaInteger)[] = [];
 		for(let cnt = 0; cnt < len; cnt++) {
-			result[cnt] = this.inComplex();
+			if(skip) {
+				this.skipInteger();
+			} else {
+				result.push(this.inInteger());
+			}
 		}
 		return result;
 	}
 
 	/**
-	 * Advances the buffer past `len` serialized complex numbers.
-	 *
-	 * Mirrors {@link inComplexVec}.
-	 * @param len - Number of complex values to skip.
-	 * @throws Error for BINARY format.
+	 * Reads (or with `skip`, discards) `len` doubles. Throws Error for BINARY format.
+	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1543-L1577 | R source: InRealVec}
 	 */
-	skipComplexVec(len: number): void {
+	inRealVec(len: number, skip: boolean = false): Real[] {
+		if(this.format === SerializationFormat.Binary) {
+			throw new Error('No binary support yet.');
+		} else if(this.format === SerializationFormat.Xdr) {
+			const start = this.offset;
+			this.offset += len * RDAParser.SIZE_OF_DOUBLE;
+			return skip ? [] : Array.from({ length: len }, (_, i) => this.buffer.readDoubleBE(start + i * RDAParser.SIZE_OF_DOUBLE));
+		}
+		const result = Array.from({ length: len }, () => this.inReal(skip));
+		return skip ? [] : result;
+	}
+
+	/**
+	 * Reads (or with `skip`, discards) the next double. Throws TypeError if the ASCII token is not a valid float.
+	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L427-L463 | R source: InReal}
+	 */
+	inReal(skip: boolean = false): Real {
+		if(this.format === SerializationFormat.Ascii) {
+			if(skip) {
+				this.skipWord();
+				return RValues.NilValue;
+			}
+			const word = this.inWord(128);
+			const special = AsciiReals.get(word);
+			if(special !== undefined) {
+				return special;
+			}
+			const d = Number.parseFloat(word);
+			if(Number.isNaN(d)) {
+				throw new TypeError('Read error: Invalid numeric ASCII format');
+			}
+			return d;
+		} else if(this.format === SerializationFormat.Binary || this.format === SerializationFormat.Xdr) {
+			const d = skip ? RValues.NilValue : this.format === SerializationFormat.Binary ? this.buffer.readDoubleLE(this.offset) : this.buffer.readDoubleBE(this.offset);
+			this.offset += 8;
+			return d;
+		}
+		return RValues.NilValue;
+	}
+
+	/**
+	 * Reads (or with `skip`, discards) `len` complex numbers, each as two consecutive doubles via {@link inComplex}. Throws Error for BINARY format.
+	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1579-L1616 | R source: InComplexVec}
+	 */
+	inComplexVec(len: number, skip: boolean = false): Complex[] {
 		if(this.format === SerializationFormat.Binary) {
 			throw new Error('No binary support yet.');
 		}
-		for(let cnt = 0; cnt < len; cnt++) {
-			this.skipComplex();
-		}
+		const result = Array.from({ length: len }, () => this.inComplex(skip));
+		return skip ? [] : result;
 	}
 
 	/**
-	 * Reads a single complex number as two consecutive real values.
-	 * @returns A {@link Complex} object with `r` (real) and `i` (imaginary) parts.
+	 * Reads (or with `skip`, discards) a single complex number as two consecutive real values.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L465-L471 | R source: InComplex}
 	 */
-	inComplex(): Complex {
-		return { r: this.inReal(), i: this.inReal() };
+	inComplex(skip: boolean = false): Complex {
+		return { r: this.inReal(skip), i: this.inReal(skip) };
 	}
 
 	/**
-	 * Advances the buffer past a single serialized complex number (two doubles).
-	 *
-	 * Mirrors {@link inComplex}.
-	 */
-	skipComplex(): void {
-		this.skipReal();
-		this.skipReal();
-	}
-
-	/**
-	 * Sets the `i`-th element of a character vector.
-	 * @param x - The character vector with type {@link SexpType.StrSxp} to modify.
-	 * @param i - index to set.
-	 * @param v - The {@link SexpType.CharSxp} {@link RObjectData} whose `name` is stored.
-	 * @throws Error if `x` is not a {@link SexpType.StrSxp} or `i` is out of bounds.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4283-L4301 | R source: SET_STRING_ELT}
+	 * Sets the `i`-th element of a {@link SexpType.StrSxp} character vector to `v.name`. Throws Error if `x` is not
+	 * a {@link SexpType.StrSxp} or `i` is out of bounds. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4283-L4301 | R source: SET_STRING_ELT}
 	 */
 	SET_STRING_ELT(x: RObjectData, i: number, v: RObjectData): void {
 		if(x.type !== SexpType.StrSxp) {
 			throw new Error(`SET_STRING_ELT() can only be applied to a 'character vector', not a '${x.type}'`);
 		}
 		const arr = x.value as (string | RValues)[];
-
 		if(i < 0 || i >= arr.length) {
 			throw new Error(`attempt to set index ${i}/${arr.length} in SET_STRING_ELT`);
 		}
@@ -1873,508 +1153,190 @@ export class RDAParser{
 	}
 
 	/**
-	 * Sets the `i`-th element of a generic list or vector.
-	 *
-	 * Mirrors R's `SET_VECTOR_ELT` macro.
-	 * @param x - The list or vector to modify.
-	 * @param i - index to set.
-	 * @param v - The {@link RObject} to store at position `i`.
-	 * @throws Error if `x` is not a list type or `i` is out of bounds.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4303-L4322 | R source: SET_VECTOR_ELT}
+	 * Sets the `i`-th element of a generic list or vector. Mirrors R's `SET_VECTOR_ELT` macro. Throws Error if `x`
+	 * is not a list type or `i` is out of bounds. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4303-L4322 | R source: SET_VECTOR_ELT}
 	 */
 	SET_VECTOR_ELT(x: RObjectData, i: number, v: RObject): void {
-		if(x.type !== SexpType.VecSxp &&
-			x.type !== SexpType.ExprSxp &&
-			x.type !== SexpType.WeakRefSxp) {
+		if(!ListSexpTypes.has(x.type)) {
 			throw new Error(`SET_VECTOR_ELT() can only be applied to a 'list', not a '${x.type}'`);
 		}
-		if(i < 0 || i >= (x.value as Array<RObject>).length) {
-			throw new Error(`attempt to set index ${i}/${(x.value as Array<RObject>).length} in SET_VECTOR_ELT`);
+		const arr = x.value as RObject[];
+		if(i < 0 || i >= arr.length) {
+			throw new Error(`attempt to set index ${i}/${arr.length} in SET_VECTOR_ELT`);
 		}
-
-		(x.value as RObject[])[i] = v;
+		arr[i] = v;
 	}
 
-	/**
-	 * Deserializes an R bytecode object.
-	 * @returns A {@link SexpType.BcodesSxp} {@link RObject}.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2221-L2228 | R source: ReadBC}
-	 */
+	/** Deserializes an R bytecode object. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2221-L2228 | R source: ReadBC} */
 	readBC(): RObject {
-		const reps: RObjectData = {};
-		reps.type = SexpType.VecSxp;
-		reps.value = new Array(this.assertInteger(this.inInteger()));
-		return this.readBC1(reps);
+		return this.readBC1({ type: SexpType.VecSxp, value: new Array(this.readInt()) });
 	}
 
-	/**
-	 * Advances the buffer past a bytecode object without reading it.
-	 *
-	 * Mirrors {@link readBC}.
-	 */
-	skipBC(): void{
+	/** Advances past a bytecode object. Mirrors {@link readBC}. */
+	skipBC(): void {
 		this.skipInteger();
 		this.skipBC1();
 	}
 
-	/**
-	 * Advances past a single bytecode.
-	 *
-	 * Mirrors {@link readBC1}.
-	 */
+	/** Advances past a single bytecode. Mirrors {@link readBC1}. */
 	skipBC1(): void {
-		this.currentDepth++;
 		this.skipItem();
-		this.currentDepth--;
-		this.skipBCConsts();
+		this.readOrSkipBCConsts(undefined, true);
 	}
 
-	/**
-	 * Advances past all bytecode constants.
-	 *
-	 * Mirrors {@link ReadBCConsts}.
-	 */
-	skipBCConsts(): void {
-		const n = this.assertInteger(this.inInteger());
-		for(let i = 0; i < n; i++) {
-			const type = this.inInteger();
-			switch(type) {
-				case SexpType.BcodesSxp: {
-					this.skipBC1();
-					break;
-				}
-				case SexpType.LangSxp:
-				case SexpType.ListSxp:
-				case SexpType.BcRepDef:
-				case SexpType.BcRepRef:
-				case SexpType.AltLangSxp:
-				case SexpType.AttrListSxp: {
-					this.skipBCLang(type);
-					break;
-				}
-				default:
-					this.currentDepth++;
-					this.skipItem();
-					this.currentDepth--;
-			}
-		}
-	}
-
-	/**
-	 * Registers a bytecode object after encoding.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L8820-L8885 | R source: R_registerBC}
-	 */
-	R_registerBC(_bytes: RObject, _s: RObject) {
-		throw new Error('BC not implemented yet');
-	}
-
-	/**
-	 * Deserializes a single bytecode object.
-	 * @param reps - Pre-allocated repetition table shared across all constants.
-	 * @returns A {@link SexpType.BcodesSxp} {@link RObjectData}.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2205-L2219 | R source: ReadBC1}
-	 */
+	/** Deserializes a single bytecode object, `reps` is the repetition table shared across all constants. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2205-L2219 | R source: ReadBC1} */
 	readBC1(reps: RObjectData): RObjectData {
-		const s: RObjectData = {};
-		s.type = SexpType.BcodesSxp;
-		this.currentDepth++;
-		s.car = this.readItem();
-		this.currentDepth--;
-		const _bytes = s.car;
-		// s.car = R_bcEncode(bytes);
-		s.cdr = this.ReadBCConsts(reps);
-		s.tag = RValues.NilValue;
-		// R_registerBC(bytes, s);
-		return s;
+		return { type: SexpType.BcodesSxp, car: this.readItem(), cdr: this.readOrSkipBCConsts(reps, false), tag: RValues.NilValue };
 	}
 
 	/**
-	 * Encodes bytecode instructions.
-	 * @param _bytes - integer array
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L8723-L8771 | R source: R_bcEncode}
+	 * Reads (or with `skip`, discards) the `n` constants of a bytecode object into a `VecSxp`, `reps` resolves `BcRepDef`/`BcRepRef`.
+	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2173-L2203 | R source: ReadBCConsts}
 	 */
-	_R_bcEncode(_bytes: Int32Array){
-		throw new Error('Not implemented');
-	}
-
-	/**
-	 * Reads the constants of a bytecode object.
-	 * @param reps - Shared repetition table for `BcRepDef`/`BcRepRef` resolution.
-	 * @returns A `VecSxp` {@link RObjectData} holding all `n` constants.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2173-L2203 | R source: ReadBCConsts}
-	 */
-	ReadBCConsts(reps: RObjectData): RObjectData {
-		const n = this.assertInteger(this.inInteger());
-		const ans: RObjectData = {};
-		ans.type = SexpType.VecSxp;
-		ans.value = new Array(n);
+	readOrSkipBCConsts(reps: RObjectData | undefined, skip: boolean): RObjectData {
+		const n = this.readInt();
+		const ans: RObjectData = { type: SexpType.VecSxp, value: new Array(n) };
 		for(let i = 0; i < n; i++) {
 			const type = this.inInteger();
-			switch(type) {
-				case SexpType.BcodesSxp: {
-					const c = this.readBC1(reps);
-					this.SET_VECTOR_ELT(ans, i, c);
-					break;
-				}
-				case SexpType.LangSxp:
-				case SexpType.ListSxp:
-				case SexpType.BcRepDef:
-				case SexpType.BcRepRef:
-				case SexpType.AltLangSxp:
-				case SexpType.AttrListSxp: {
-					const c = this.ReadBCLang(type, reps);
-					this.SET_VECTOR_ELT(ans, i, c);
-					break;
-				}
-				default:
-					this.currentDepth++;
-					this.SET_VECTOR_ELT(ans, i, this.readItem());
-					this.currentDepth--;
+			if(!skip) {
+				this.SET_VECTOR_ELT(ans, i, type === SexpType.BcodesSxp ? this.readBC1(reps as RObjectData) : BCLangTypes.has(type) ? this.ReadBCLang(type as SexpType, reps as RObjectData) : this.readItem());
+			} else if(type === SexpType.BcodesSxp) {
+				this.skipBC1();
+			} else if(BCLangTypes.has(type)) {
+				this.skipBCLang(type as SexpType);
+			} else {
+				this.skipItem();
 			}
 		}
 		return ans;
 	}
 
-	/**
-	 * Reads a single language object from bytecode constants.
-	 * @param type - {@link SexpType} read from the constants.
-	 * @param reps - Shared repetition table.
-	 * @returns The deserialized language {@link RObjectData}.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2125-L2171 | R source: ReadBCLang}
-	 */
+	/** Reads a single language object from bytecode constants, `reps` is the shared repetition table. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2125-L2171 | R source: ReadBCLang} */
 	ReadBCLang(type: SexpType, reps: RObjectData): RObjectData {
-		switch(type) {
-			case SexpType.BcRepRef:
-				return this.VECTOR_ELT(reps, this.assertInteger(this.inInteger())) as RObjectData;
-			case SexpType.BcRepDef:
-			case SexpType.LangSxp:
-			case SexpType.ListSxp:
-			case SexpType.AltLangSxp:
-			case SexpType.AttrListSxp:
-			{
-				let pos = -1;
-				let hasAttr = false;
-				if(type == SexpType.BcRepDef) {
-					pos = this.assertInteger(this.inInteger());
-					type = this.assertInteger(this.inInteger());
-				}
-				switch(type) {
-					case SexpType.AltLangSxp: type = SexpType.LangSxp; hasAttr = true; break;
-					case SexpType.AttrListSxp: type = SexpType.ListSxp; hasAttr = true; break;
-				}
-				const ans: RObjectData = {};
-				ans.type = type;
-				if(pos >= 0) {
-					this.SET_VECTOR_ELT(reps, pos, ans);
-				}
-				this.currentDepth++;
-				if(hasAttr) {
-					ans.attributes ??= [];
-					ans.attributes.push(this.assertRObjectData(this.readItem()));
-				}
-				ans.tag = this.readItem();
-				this.currentDepth--;
-				ans.car = this.ReadBCLang(this.assertInteger(this.inInteger()), reps);
-				ans.cdr = this.ReadBCLang(this.assertInteger(this.inInteger()), reps);
-				return ans;
-			}
-			default:
-			{
-				this.currentDepth++;
-				const res = this.readItem() as RObjectData;
-				this.currentDepth--;
-				return res;
-			}
+		if(type === SexpType.BcRepRef) {
+			return this.VECTOR_ELT(reps, this.readInt()) as RObjectData;
+		} else if(!BCLangTypes.has(type)) {
+			return this.readItem() as RObjectData;
 		}
+		let pos = -1;
+		if(type === SexpType.BcRepDef) {
+			pos = this.readInt();
+			type = this.readInt();
+		}
+		const hasAttr = type === SexpType.AltLangSxp || type === SexpType.AttrListSxp;
+		const ans: RObjectData = { type: type === SexpType.AltLangSxp ? SexpType.LangSxp : type === SexpType.AttrListSxp ? SexpType.ListSxp : type };
+		if(pos >= 0) {
+			this.SET_VECTOR_ELT(reps, pos, ans);
+		}
+		if(hasAttr) {
+			ans.attributes = [this.assertRObjectData(this.readItem())];
+		}
+		ans.tag = this.readItem();
+		ans.car = this.ReadBCLang(this.readInt(), reps);
+		ans.cdr = this.ReadBCLang(this.readInt(), reps);
+		return ans;
+	}
+
+	/** Advances past a single language object. Mirrors {@link ReadBCLang}. */
+	skipBCLang(type: SexpType): void {
+		if(type === SexpType.BcRepRef) {
+			this.skipInteger();
+			return;
+		} else if(!BCLangTypes.has(type)) {
+			this.skipItem();
+			return;
+		}
+		if(type === SexpType.BcRepDef) {
+			this.skipInteger();
+			type = this.readInt();
+		}
+		if(type === SexpType.AltLangSxp || type === SexpType.AttrListSxp) {
+			this.skipItem();
+		}
+		this.readItem();
+		this.skipItem();
+		this.skipBCLang(this.readInt());
+		this.skipBCLang(this.readInt());
 	}
 
 	/**
-	 * Advances the buffer past a single language object.
-	 *
-	 * Mirrors {@link ReadBCLang}.
-	 * @param type - read {@link SexpType}.
+	 * Retrieves the `i`-th element of a generic list or vector. Throws Error if `x` is not a list type or `i` is out of bounds.
+	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4122-L4142 | R source: VECTOR_ELT}
 	 */
-	skipBCLang(type: SexpType) {
-		switch(type) {
-			case SexpType.BcRepRef:
-				this.skipInteger();
-				break;
-			case SexpType.BcRepDef:
-			case SexpType.LangSxp:
-			case SexpType.ListSxp:
-			case SexpType.AltLangSxp:
-			case SexpType.AttrListSxp:
-			{
-				let hasAttr = false;
-				if(type == SexpType.BcRepDef) {
-					this.skipInteger();
-					type = this.assertInteger(this.inInteger());
-				}
-				/* eslint-disable no-useless-assignment -- mirrors the read path */
-				switch(type) {
-					case SexpType.AltLangSxp: type = SexpType.LangSxp; hasAttr = true; break;
-					case SexpType.AttrListSxp: type = SexpType.ListSxp; hasAttr = true; break;
-				}
-				/* eslint-enable no-useless-assignment */
-
-				this.currentDepth++;
-				if(hasAttr) {
-					this.skipItem();
-				}
-				this.readItem();
-				this.skipItem();
-				this.currentDepth--;
-				this.skipBCLang(this.assertInteger(this.inInteger()));
-				this.skipBCLang(this.assertInteger(this.inInteger()));
-				break;
-			}
-			default:
-			{
-				this.currentDepth++;
-				this.skipItem();
-				this.currentDepth--;
-			}
-		}
-	}
-
-	/**
-	 * Retrieves the `i`-th element of a generic list or vector.
-	 * @param x - The list / expression / weak-ref vector.
-	 * @param i - The index to retrieve.
-	 * @returns The {@link RObject} at position `i`.
-	 * @throws Error if `x` is not a list type or `i` is out of bounds.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4122-L4142 | R source: VECTOR_ELT}
-	 */
-	VECTOR_ELT(x: RObjectData,  i: number): RObject {
-		if(x.type !== SexpType.VecSxp &&
-			x.type !== SexpType.ExprSxp &&
-			x.type !== SexpType.WeakRefSxp) {
+	VECTOR_ELT(x: RObjectData, i: number): RObject {
+		if(!ListSexpTypes.has(x.type)) {
 			throw new Error(`VECTOR_ELT() can only be applied to a 'list', not a '${x.type}'`);
 		}
-		// "VECTOR_ELT", "list", R_typeToChar(x));
 		if(i < 0 || i >= (x.value as RObject[])?.length) {
 			throw new Error('attempt access index %lld/%lld in VECTOR_ELT');
 		}
-		// (long long)i, (long long)XLENGTH(x));
-		if(x.altRep) {
-			const ans = (x.value as RObject[])[i];
-			/* the element is marked as not mutable since complex
-			   assignment can't see reference counts on any intermediate
-			   containers in an ALTREP */
-			// MARK_NOT_MUTABLE(ans);
-			return ans;
-		} else {
-			return (x.value as RObject[])[i];
-		}
+		return (x.value as RObject[])[i];
 	}
 
-	/**
-	 * Checks whether a bytecode object's version is within the supported range.
-	 * @param s - The {@link SexpType.BcodesSxp} {@link RObjectData} to check.
-	 * @returns `true` if the version is supported.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L7166-L7175 | R source: R_BCVersionOK}
-	 */
-	R_BCVersionOK(s: RObjectData): boolean{
-		if(s.type !== SexpType.BcodesSxp) {
-			return false;
-		}
-
-		// const pc = s.code;
-		const pc = 0;
-		const version = pc;
-
-		return (version >= 9 && version <= 12);
-	}
-
-	/**
-	 * Returns the source-language expression for an unsupported bytecode object.
-	 * @param s - The {@link SexpType.BcodesSxp} {@link RObjectData}.
-	 * @returns First constant pool entry if available, otherwise {@link RValues.NilValue}.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L5566-L5574 | R source: bytecodeExpr}
-	 */
+	/** Source-language expression for an unsupported bytecode object: its first constant pool entry, or {@link RValues.NilValue}. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L5566-L5574 | R source: bytecodeExpr} */
 	R_BytecodeExpr(s: RObjectData): RObject {
-		if(s.type === SexpType.BcodesSxp) {
-			if(((s.cdr as RObjectData).value as RObject[])?.length > 0) {
-				return this.VECTOR_ELT(s.cdr as RObjectData, 0);
-			} else {
-				return RValues.NilValue;
-			}
-		} else {
+		if(s.type !== SexpType.BcodesSxp) {
 			return s;
 		}
+		return ((s.cdr as RObjectData).value as RObject[])?.length > 0 ? this.VECTOR_ELT(s.cdr as RObjectData, 0) : RValues.NilValue;
 	}
 
 	/**
-	 * Attempts to unserialize an ALTREP object.
-	 * @param info - The info to be unserialized.
-	 * @param _state - Serialized state.
-	 * @param _attr - Serialized attributes.
-	 * @param _objf - IS_OBJECT flag.
-	 * @param _levs - GP levels bits.
-	 * @returns The {@link RObjectData} or .
-	 * @throws Error if the base type is not a supported vector type.
+	 * Attempts to unserialize an ALTREP object. As flowR registers no ALTREP classes, an object of a supported vector
+	 * base type is read back as a length zero vector of that type. Throws error for any other base type.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/altrep.c#L298-L338 | R source: ALTREP_UNSERIALIZE_EX}
 	 */
 	AltRepUnserializeEx(info: RObjectData, _state: RObjectData, _attr: RObjectData, _objf: boolean, _levs: number): RObjectData {
-		const cSym = info.car;
-		const pSym = (info.cdr as RObjectData).car;
 		const type = (((info.cdr as RObjectData).cdr as RObjectData).car as RObjectData).type as SexpType;
-
-		const clss = this.ALTREP_UNSERIALIZE_CLASS(info);
-		if(clss == undefined) {
-			switch(type) {
-				case SexpType.LglSxp:
-				case SexpType.IntSxp:
-				case SexpType.RealSxp:
-				case SexpType.CplxSxp:
-				case SexpType.StrSxp:
-				case SexpType.RawSxp:
-				case SexpType.VecSxp:
-				case SexpType.ExprSxp:
-					console.warn(`cannot unserialize ALTVEC object of class '${(cSym as RObjectData).name}'
-					from package '${(pSym as RObjectData).name}' returning length zero vector`);
-					info.type = type;
-					info.value = [];
-					return info;
-				default:
-					throw new Error('cannot unserialize this ALTREP object');
-			}
+		if(!AltVecSexpTypes.has(type)) {
+			throw new Error('cannot unserialize this ALTREP object');
 		}
-		return {};
+		rdaLog.warn(`cannot unserialize ALTVEC object of class '${(info.car as RObjectData).name}' from package '${((info.cdr as RObjectData).car as RObjectData).name}' returning length zero vector`);
+		info.type = type;
+		info.value = [];
+		return info;
 	}
 
-	/**
-	 * Looks up the ALTREP class for the given class/package symbol pair.
-	 * @param info - The info to be looked up.
-	 * @returns The class {@link RObjectData} when found, `undefined` if unregistered, or `null` if `info` is not a `ListSxp`.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/altrep.c#L279-L296 | R source: ALTREP_UNSERIALIZE_CLASS}
-	 */
-	ALTREP_UNSERIALIZE_CLASS(info: RObjectData) {
-		if(info.type == SexpType.ListSxp) {
-			const cSym = info.car as RObjectData;
-			const  pSym = (info.cdr as RObjectData).car as RObjectData;
-			let clss = this.LookupClass(cSym, pSym);
-			if(clss === undefined) {
-				const pName = this.ScalarString(pSym.name as string);
-				try {
-					this.R_FindNamespace(pName);
-				} catch(e){
-					console.log(`${pName.value as string} ${e as string}`);
-				}
-				clss = this.LookupClass(cSym, pSym);
-			}
-			return clss;
-		}
-		return null;
-	}
-
-	/**
-	 * Looks up an ALTREP class entry by class and package symbol.
-	 * @param cSym - Class symbol.
-	 * @param pSym - Package symbol.
-	 * @returns The {@link RObjectData} or `undefined` if not registered.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/altrep.c#L90-L94 | R source: LookupClass}
-	 */
-	LookupClass(cSym: RObjectData, pSym: RObjectData) {
-		const entry = this.LookupClassEntry(cSym, pSym);
-		return entry === undefined || entry === null ? undefined : entry.car as RObjectData;
-	}
-
-	/**
-	 * Searches the ALTREP class registry for an entry matching the given symbols.
-	 * @param cSym - Class symbol to match.
-	 * @param pSym - Package symbol to match.
-	 * @returns The matching registry node or `null` if not found.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/altrep.c#L53-L59 | R source: LookupClassEntry}
-	 */
-	LookupClassEntry(cSym: RObject, pSym: RObject): RObjectData | null{
-		if(!this.Registry) {
-			return null;
-		}
-
-		for(let chain: RObjectData | null = (this.Registry).cdr as RObjectData || null; chain; chain = chain.cdr as RObjectData | null) {
-			if((chain.car as RObjectData).tag == cSym && ((chain.car as RObjectData).cdr as RObjectData).car === pSym) {
-				return chain.car as RObjectData;
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Creates a length-1 character vector wrapping the given string.
-	 * @param x - The string value to wrap.
-	 * @returns A {@link SexpType.StrSxp} {@link RObjectData} with one element.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/include/Rinlinedfuns.h#L1044-L1052 | R source: ScalarString}
-	 */
-	ScalarString(x: string): RObjectData{
-		const ans: RObjectData = {};
-		ans.type = SexpType.StrSxp;
-		ans.value = new Array(1);
-		this.SET_STRING_ELT(ans, 0, { name: x });
-		return ans;
-	}
-
-	/**
-	 * Recomputes and restores the cached hash-table priority count for an environment.
-	 * @param s - The {@link RObjectData} whose hash table is to be repaired.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3685-L3698 | R source: R_RestoreHashCount}
-	 */
-	restoreHashCount(s: RObjectData): void{
-		if(s.hashTab !== RValues.NilValue) {
-			const table = s.hashTab as RObjectData;
-			const size = (table.value as RObject[]).length;
-			let _count = 0;
-			for(let i = 0; i < size; i++) {
-				if(this.VECTOR_ELT(table, i) !== RValues.NilValue) {
-					_count++;
-				}
-			}
-			// SET_HASHPRI(table, count);
-		}
-	}
-
-	/**
-	 * Converts a linked-list based R object tree into a flat array representation.
-	 * @param node - Root node of the deserialized object tree.
-	 * @param shortcut - Whether payload values should be omitted.
-	 * @returns Flattened array of top-level objects.
-	 */
+	/** Converts a linked-list based R object tree into a flat array of top-level objects, omitting payloads when `shortcut`. */
 	flattenRObject(node: RObject, shortcut: boolean): RObjectData[] {
-		const result:  RObjectData[] = [];
-
-		function walk(n: RObject | null, shortcut: boolean) {
-			if(!n || n === RValues.NilValue) {
-				return;
-			}
-
-			const name = (n.tag as RObjectData)?.name;
-
+		const result: RObjectData[] = [];
+		for(let n: RObject | undefined = node; n && n !== RValues.NilValue; n = n.cdr) {
+			const name = (n.tag as RObjectData | undefined)?.name;
+			const car = n.car as RObjectData;
 			if(name !== undefined) {
-				let copy: RObjectData;
-				if(shortcut) {
-					copy = {
-						name: (n.tag as RObjectData).name,
-						type: (n.car as RObjectData).type,
-					};
-				} else {
-					copy = {
-						name:         (n.tag as RObjectData).name,
-						value:        (n.car as RObjectData).value,
-						hasAttribute: !!n.hasAttribute,
-						attributes:   n.attributes,
-						type:         (n.car as RObjectData).type,
-						tag:          RValues.NilValue
-					};
-				}
-				result.push(copy);
-			}
-
-			if(n.cdr && n.cdr !== RValues.NilValue) {
-				walk(n.cdr, shortcut);
+				result.push(shortcut ? { name, type: car.type }
+					: { name, value: car.value, hasAttribute: !!n.hasAttribute, attributes: n.attributes, type: car.type, tag: RValues.NilValue });
 			}
 		}
-		walk(node, shortcut);
-
 		return result;
 	}
+}
+
+/** the value of the R attribute `name`, which hangs off an object as a chain of pairlist cells */
+export function attributeOf(obj: RObject | undefined, name: string): RObjectData | undefined {
+	for(const attribute of (typeof obj === 'object' && obj !== null ? obj.attributes : undefined) ?? []) {
+		for(let cell: RObjectData | undefined = attribute; cell !== undefined; cell = cell.cdr as RObjectData | undefined) {
+			if((cell.tag as RObjectData | undefined)?.name === name) {
+				return cell.car as RObjectData | undefined;
+			}
+		}
+	}
+	return undefined;
+}
+
+/** the strings of a character vector, empty for anything that is not one */
+export function stringsOf(obj: RObjectData | undefined): string[] {
+	return obj?.type === SexpType.StrSxp && Array.isArray(obj.value) ? (obj.value as unknown[]).filter(v => typeof v === 'string') : [];
+}
+
+/** the `names` attribute of a serialized object, empty when it states none */
+export function namesOf(obj: RObject | undefined): string[] {
+	return stringsOf(attributeOf(obj, 'names'));
+}
+
+/** the element called `name` of a serialized named list */
+export function elementOf(obj: RObject | undefined, name: string): RObject | undefined {
+	const at = namesOf(obj).indexOf(name);
+	const elements = typeof obj === 'object' && obj !== null ? obj.value : undefined;
+	return at < 0 || !Array.isArray(elements) ? undefined : elements[at] as RObject;
 }

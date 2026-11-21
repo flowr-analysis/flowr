@@ -1,7 +1,7 @@
 import { assert, beforeAll, describe, test } from 'vitest';
 import { withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { uniqueArray } from '../../../../../src/util/collections/arrays';
 
 /**
@@ -16,7 +16,7 @@ interface Claim {
 	readonly holds:        string
 	/** the claim is skipped when one of these is not installed */
 	readonly needs?:       readonly string[]
-	readonly capabilities: readonly SupportedFlowrCapabilityId[]
+	readonly capabilities: readonly FlowrCapabilityId[]
 }
 
 /** what R says when the version at hand does not offer the function or argument a claim uses */
@@ -148,7 +148,7 @@ describe('R semantics we model', { concurrent: false }, withShell(shell => {
 		assert.strictEqual(said, 'TRUE', `R disagrees with what we model: ${claim.is}`);
 	});
 
-	test(label('every claim carries the capability it grounds', ['function-calls'], ['other']), () => {
+	test(label('every claim carries the capability it grounds', [], ['other']), () => {
 		assert.isTrue(Claims.every(c => c.capabilities.length > 0));
 	});
 }));

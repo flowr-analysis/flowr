@@ -1,8 +1,8 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
-import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep, PipelineStepStage, requires } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { DataflowInformation } from '../../../../dataflow/info';
-import { SlicingCriteria } from '../../../../slicing/criterion/parse';
+import { type SlicingCriteria, SlicingCriterion } from '../../../../slicing/criterion/parse';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { staticSlice } from '../../../../slicing/static/static-slicer';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
@@ -28,7 +28,7 @@ function processor(results: { dataflow?: DataflowInformation, normalize?: Normal
 	const direction = input.direction ?? SliceDirection.Backward;
 	const threshold = input.threshold ?? input.context?.config.solver.slicer?.threshold;
 	const n = results.normalize as NormalizedAst;
-	return staticSlice({ ctx: input.context as ReadOnlyFlowrAnalyzerContext, info: results.dataflow as DataflowInformation, ast: n, ids: SlicingCriteria.convertAll(input.criterion as SlicingCriteria, n.idMap), direction, threshold, includeCallees: input.includeCallees });
+	return staticSlice({ ctx: input.context as ReadOnlyFlowrAnalyzerContext, info: results.dataflow as DataflowInformation, ast: n, ids: SlicingCriterion.convertAll(input.criterion as SlicingCriteria, n.idMap), direction, threshold, includeCallees: input.includeCallees });
 }
 
 export const STATIC_SLICE = {
@@ -37,9 +37,7 @@ export const STATIC_SLICE = {
 	description:       'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
 	processor,
 	executed:          PipelineStepStage.OncePerRequest,
-	printer:           {
-		[StepOutputFormat.Internal]: internalPrinter
-	},
-	dependencies:  [ 'dataflow' ],
-	requiredInput: undefined as unknown as SliceRequiredInput
+	printer:           { [StepOutputFormat.Internal]: internalPrinter },
+	dependencies:      ['dataflow'],
+	requiredInput:     requires<SliceRequiredInput>()
 } as const satisfies DeepReadonly<IPipelineStep<'slice', typeof processor>>;

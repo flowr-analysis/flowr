@@ -5,7 +5,7 @@ import {
 	printNormalizedAstToMermaid,
 	printNormalizedAstToMermaidUrl
 } from '../../../print/normalize-printer';
-import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep, PipelineStepStage, requires } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import { normalize } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser';
 import type { IdGenerator } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -39,6 +39,6 @@ export const NORMALIZE = {
 	processor,
 	executed:          PipelineStepStage.OncePerFile,
 	printer:           NormalizePrinters,
-	dependencies:      [ 'parse' ],
-	requiredInput:     undefined as unknown as NormalizeRequiredInput
+	dependencies:      ['parse'],
+	requiredInput:     requires<NormalizeRequiredInput>()
 } as const satisfies DeepReadonly<IPipelineStep<'normalize', typeof processor>>;

@@ -8,9 +8,9 @@ import { getCliLongOptionOf } from '../../doc-util/doc-cli-option';
 import { setMinLevelOfAllLogs } from '../../../../test/functionality/_helper/log';
 import { expensiveTrace, FlowrLogger } from '../../../util/log';
 
-
 /**
- *
+ * Registers the wiki's frequently asked questions, so a page may link to one by id.
+ * @param ctx - the documentation context to register them with
  */
 export function registerFaqs(ctx: GeneralDocContext): FaqStore {
 	const wikiFaq = new FaqStore();
@@ -18,12 +18,27 @@ export function registerFaqs(ctx: GeneralDocContext): FaqStore {
 	wikiFaq.withTopic('flowr.development')
 		.addFaq('What are *test labels*?', `
 Tests are labeled based on the *flowR* capabilities that they test for.
-The list of supported capabilities can be found on the ${ctx.linkPage('wiki/Capabilities', 'Capabilities')} wiki page.
+The list of supported capabilities can be found on the ${ctx.linkPage('flowr:capabilities', 'capabilities page')}.
 For more extensive information on test labels, see the ${ctx.linkPage('wiki/Linting and Testing', 'test labels wiki section', 'test-labels')}.
 `)
 		.addFaq('How do I run *all checks* before pushing?', `
-Run \`npm run checkup\`: it runs the linter, the functionality and system tests, the wiki generation, and the docker image build + smoke test concurrently, then prints one pass/fail summary.
+Run \`npm run checkup\`: it runs the linter, the functionality, system, and mutation tests, the wiki and landing page generation, and the docker image build + smoke test concurrently (the landing pages wait for the functionality and mutation test results), then prints one pass/fail summary.
 Run a subset with the job ids (e.g. \`npm run checkup -- lint tests\`) or skip the container build with \`npm run checkup -- --no-docker\`.
+`)
+		.addFaq('Why does `npm run test` not run *all tests*?', `
+By default, \`npm run test\` only runs the tests affected by your uncommitted changes, using [\`vitest --changed\`](https://vitest.dev/guide/cli#changed).
+A test is affected if it imports a changed file, directly or through other files.
+This already works on the very first run, without a complete run beforehand, and runs nothing if you have no changes.
+If you name test files, directories, or a name filter (\`-t\`), it runs exactly those instead.
+To choose a different set of tests, use one of these scripts (\`test:related\` uses [\`vitest related\`](https://vitest.dev/guide/cli#vitest-related)):
+${codeBlock('shell', `npm run test:all                     # every test, like CI
+npm run test:branch                  # the tests affected by all changes against main
+npm run test:related -- src/x.ts     # the tests depending on the given files`)}
+CI, \`npm run test:full\`, and \`npm run checkup\` always run every test, so nothing is skipped before a release.
+Keep in mind that most tests share the test helpers and the setup, so the selection is often broader than you might expect.
+Changes to the test setup, the files under \`test/testfiles\`, the vitest configuration, or \`package.json\` run every test.
+Other data files and generated files are not visible in the imports, so they may select too few tests. Run \`npm run test:all\` whenever you are unsure.
+For more ways to run only some tests, see the ${ctx.linkPage('wiki/Linting and Testing', 'testing wiki section', 'running-only-some-tests')}.
 `)
 		.addFaq('How to get a REPL with debug-info/*hot-reload*?', `
 	To enter the development repl, execute \`npm run main-dev\` in contrast to \`npm run flowr\`
@@ -66,7 +81,7 @@ If you are an implementor and want to add logging, please make sure there are no
 Have a look at the ${ctx.link(expensiveTrace)} function for example, which uses a function to generate the log message only when the log level is reached.
 `)
 		.addFaq('How to run *tests* with *verbose* logging?', `
-Use the dedicated npm script to run all tests with trace-level log output:
+Use the dedicated npm script to run all tests with trace-level log output (unlike \`npm run test\`, it runs every test):
 ${codeBlock('shell', 'npm run test:verbose')}
 Alternatively, set the \`FLOWR_VERBOSE\` environment variable directly:
 ${codeBlock('shell', 'FLOWR_VERBOSE=true npm run test')}
@@ -79,6 +94,14 @@ To add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.
 	;
 
 	wikiFaq.withTopic('flowr.use')
+		.addFaq('Where do I find *all the helper objects*?', `
+flowR stores its data as plain values and puts the behavior beside it in a helper object named after the
+thing it is about (${ctx.link({ name: 'SourceLocation' }, undefined, { type: 'variable' })},
+${ctx.link({ name: 'DfgVertex' }, undefined, { type: 'variable' })},
+${ctx.link({ name: 'Identifier' }, undefined, { type: 'variable' })}, ...).
+The ${ctx.linkPage('wiki/Helper Objects', 'Helper Objects')} wiki page lists every one of them, grouped by what
+it is about, so you can find the one that answers your question without knowing where it lives.
+`)
 		.addFaq('How to *watch* a file for changes in the REPL?', `
 Replace the \`file://\` prefix with \`watch://\` when passing a path to any REPL command.
 flowR will run the command immediately and then re-run it every time the file (or any file inside the specified folder) changes.
@@ -96,9 +119,7 @@ If you want to create your own project using flowR as a library, check out the
 Use ${ctx.linkConfig('specializeConfig')}: it overwrites (parts of) the configuration depending on the kind of project flowR detects (e.g. \`${ProjectKind.ShinyApp}\`).
 This is how a shiny app gets its ${ctx.linkConfig('project.implicitSources')} out of the box, as shiny loads these files without any \`source()\` call:
 ${codeBlock('json', JSON.stringify({
-	specializeConfig: {
-		[ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } }
-	}
+	specializeConfig: { [ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } } }
 }, null, 2))}
 Anything you configure directly wins over the value the project kind defaults to, so setting \`project.implicitSources\` yourself overrides the list above.
 `);
@@ -116,12 +137,12 @@ sections in the output of \`sessionInfo()\`.
 		.addFaq('How to get *documentation* for a function or package?', `
 There are a couple of ways to get documentation for a function or package.
 
-🖥️ Firstly, if you have already installed the package the function originated from you can simply run \`?<package name>::<function name>\` in an R session to print the
+🖥️ Firstly, if you have already installed the package the function originated from you can run \`?<package name>::<function name>\` in an R session to print the
 relevant documentation. If you don't know the origin of the package, you can use
 \`??<function name>\` in an R shell to fuzzy find all documentations containing
 \`<function name>\` or something similar.
 
-🌐 Secondly, if you don't have or don't want to install the package you can simply google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
+🌐 Secondly, if you don't have or don't want to install the package you can google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
 or [rdocumentation.org](https://rdocumentation.org/). Additionally, the package documentation PDF can also
 be downloaded directly from [cran](https://cran.r-project.org/).
 `)

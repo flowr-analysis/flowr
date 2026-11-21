@@ -1,4 +1,5 @@
 import { RNumberPool, RStringPool } from '../../_helper/provider';
+import { contentOf, unescapeRString } from '../../../../src/dataflow/eval/values/string/string-constants';
 import {
 	boolean2ts,
 	isBoolean,
@@ -105,6 +106,32 @@ describe('Bidirectional Value Translation', () => {
 					assert.deepStrictEqual(RStringValue.fromRLexeme(string.str), string.val);
 				});
 			}
+			/* each expectation is what R's parser makes of the literal, undefined where R rejects it or stores a byte */
+			test.each([
+				[String.raw`^[^\\.]\\.*$`, String.raw`^[^\.]\.*$`],
+				[String.raw`a\tb\n`, 'a\tb\n'],
+				[String.raw`\a\b\f\v\r`, '\x07\b\f\v\r'],
+				[String.raw`q\'s \"d\" \` \ x`, 'q\'s "d" `  x'],
+				[String.raw`\x41\101\x4`, 'AA\x04'],
+				[String.raw`\u00e9\U0001F600\U{41}\u{e9}`, '\u00e9\u{1F600}A\u00e9'],
+				[String.raw`\1234`, 'S4'],
+				[String.raw`\u12345`, '\u12345'],
+				[String.raw`\x41g`, 'Ag'],
+				[String.raw`\x41\u00e9`, 'A\u00e9'],
+				[String.raw`\.`, undefined],
+				[String.raw`\d`, undefined],
+				[String.raw`\x`, undefined],
+				[String.raw`\0`, undefined],
+				[String.raw`\xff`, undefined],
+				[String.raw`\u{1F600}`, undefined],
+				[String.raw`\u{D800}`, undefined],
+				['\\', undefined]
+			])('the value of "%s" is what R makes of it', (str, value) => {
+				assert.strictEqual(unescapeRString(str), value);
+			});
+			test('a raw string keeps its backslashes', () => {
+				assert.strictEqual(contentOf({ str: String.raw`\d+`, quotes: '"', flag: 'raw' }), String.raw`\d+`);
+			});
 		});
 	});
 });

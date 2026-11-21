@@ -2,22 +2,27 @@
  * Provides an environment structure similar to R.
  * @module
  */
-import { jsonReplacer } from '../../util/json';
+import { builtInEnvJsonReplacer, isDefaultBuiltInEnvironment } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
-import type {
-	BrandedIdentifier,
-	BrandedNamespace,
-	IdentifierDefinition,
-	InGraphIdentifierDefinition
+import {
+	type BrandedNamespace,
+	type BrandedIdentifier,
+	type IdentifierDefinition,
+	type ReferenceType,
+	Identifier,
+	PkgName
 } from './identifier';
-import { Identifier, PkgName } from './identifier';
-import { guard } from '../../util/assert';
-import type { ControlDependency } from '../info';
-import { happensInEveryBranch } from '../info';
-import { uniqueMergeValuesInDefinitions } from './append';
+import { anyRemovalMarker, removalMarkerOf } from './removal-marker';
+import { ControlDependency, happensInEveryBranch } from '../info';
+import { appendEnvironment, uniqueMergeValuesInDefinitions } from './append';
+import { define as defineInEnvironment } from './define';
+import { overwriteEnvironment } from './overwrite';
+import { cloneEnvironmentInformation } from './clone';
+import { cleanEnvOf, framesVisibleTo, popLocalEnvironment, pushLocalEnvironment } from './scoping';
+import { Frame, LazyBindings, type MemoryView } from './frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { log } from '../../util/log';
-import { Resolve } from './resolve-helper';
+import { DefaultMap } from '../../util/collections/defaultmap';
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
@@ -26,62 +31,90 @@ export interface IEnvironment {
 	/** Lexical parent of the environment, if any (can be manipulated by R code) */
 	parent:      IEnvironment
 	/** Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions */
-	memory:      BuiltInMemory
+	memory:      MemoryView
 	/** Built-in environment that must not change; only for the top-most envs. */
 	builtInEnv?: true | undefined
 }
 
-export enum EnvType{
+export enum EnvType {
 	Namespace = 'ns',
 	Imports = 'imp',
 	/** `requireNamespace("pkg")`: `pkg::fn` resolves, bare `fn` does not */
-	LoadedNamespace = 'lns'
+	LoadedNamespace = 'lns',
+	/** A package `solver.assumeAttachedPackages` states as attached; a `library()` in the analyzed code still attaches it in full over this. */
+	AssumedNamespace = 'ans',
+	/** Data `attach(what)` put on the search path, a list, data frame, or environment */
+	Attached = 'att'
 }
 
-export interface Jsonified {
+interface Jsonified {
 	id:          NodeId;
 	parent:      Jsonified | undefined;
 	builtInEnv?: true;
-	memory:      BuiltInMemory;
-	n?:          string;
+	memory:      ReadonlyMap<BrandedIdentifier, IdentifierDefinition[]>;
+	n?:          BrandedNamespace;
 	t?:          EnvType;
 	globalEnv?:  true;
 }
 
-/**
- * Use only if you do not know the object type; otherwise rely on {@link IEnvironment#builtInEnv}.
- */
-export function isDefaultBuiltInEnvironment(obj: unknown) {
-	return typeof obj === 'object' && obj !== null && ((obj as Record<string, unknown>).builtInEnv === true);
-}
+export { isDefaultBuiltInEnvironment, builtInEnvJsonReplacer };
 
 let environmentIdCounter = 1; // Zero is reserved for built-in environment
+
+/** whether two definitions are the same one, made by the same node under the same control dependencies */
+function sameDefinition(a: IdentifierDefinition, b: IdentifierDefinition): boolean {
+	const [ca, cb] = [a.cds ?? [], b.cds ?? []];
+	return a.nodeId === b.nodeId && a.type === b.type && ControlDependency.minus(ca, cb).length === 0 && ControlDependency.minus(cb, ca).length === 0;
+}
 
 /** @see REnvironmentInformation */
 export class Environment implements IEnvironment {
 	readonly id:           number;
 	/** Optional name for namespaced/non-anonymous environments, please only set if you know what you are doing */
-	n?:                    string;
+	n?:                    BrandedNamespace;
 	/** which search-path layer this env is (package/namespace/imports), if any */
 	t?:                    EnvType;
+	/** the load (`library()`) that attached this package layer, set for a package shipping data sets, which the load binds as lazy data */
+	d?:                    NodeId;
 	/** if created by a closure, the node id of that closure */
 	private c?:            NodeId;
 	parent:                Environment;
-	memory:                BuiltInMemory;
+	/** where this environment's names live; shared with every clone until one of them writes */
+	private frame:         Frame;
 	cache?:                Map<Identifier, IdentifierDefinition[]>;
+	/** what a resolution found below this frame, by target and name; only frames nothing writes keep one */
+	tailCache?:            Map<ReferenceType, Map<BrandedIdentifier, readonly IdentifierDefinition[] | undefined>>;
 	builtInEnv?:           true;
+	/** set on the built-in environment once a definition below binds a promise or a text connection, which reads then look for */
+	forcing?:              true;
+	/** set on the built-in environment once a call may have locked a binding or an environment, so binding a name may fail from then on */
+	locking?:              true;
+	/** set on the built-in environment once the code binds a method of a built-in generic (`length.foo`), which a call of the generic looks for from then on */
+	methods?:              true;
+	/** on the built-in environment, the calls binding names we cannot tell, each of which may be a method of any generic */
+	unknownMethodsAt?:     NodeId[];
 	/** {@link memory} is shared with a clone; writing needs {@link writableMemory} to unshare it first */
 	private sharedMemory?: true;
 	/** {@link parent} is shared with the environment this was cloned from; writing through it needs {@link writableParent} */
 	private sharedParent?: true;
 	/** marks the global environment (`.GlobalEnv`); attached packages (see {@link EnvType}) live below it */
 	globalEnv?:            true;
+	/** What the lexical frame this stands in for held when its closure was created; `<<-` binds lexically, so defining super needs this. */
+	superMemory?:          MemoryView;
+	/** What the configuration states about packages R does not attach on startup, by package; only the built-in env carries it (see {@link statedIn}). */
+	namespaces?:           ReadonlyMap<BrandedNamespace, BuiltInMemory>;
 
-	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined, memory?: BuiltInMemory) {
+	/** The environment below which nothing else lies, the only one without a parent. */
+	public static root(): Environment {
+		return new Environment(undefined as unknown as Environment, true);
+	}
+
+	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined, frame?: Frame) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
 		this.parent = parent;
-		/* a clone hands its own (then shared) memory in, so the fresh map a new frame needs is not allocated to be dropped */
-		this.memory = memory ?? new Map<BrandedIdentifier, IdentifierDefinition[]>();
+		this.frame = frame ?? Frame.empty();
+		/* a clone hands its frame in and the empty one is everybody's, so the first write forks either way */
+		this.sharedMemory = true;
 		// do not store if not needed!
 		if(isBuiltInDefault) {
 			this.builtInEnv = isBuiltInDefault;
@@ -89,7 +122,7 @@ export class Environment implements IEnvironment {
 	}
 
 	/** Marks this as an attached-package layer (see {@link EnvType}) for package `name`. */
-	public asLibrary(name: string, type: EnvType): this {
+	public asLibrary(name: BrandedNamespace, type: EnvType): this {
 		this.n = name;
 		this.t = type;
 		return this;
@@ -98,6 +131,12 @@ export class Environment implements IEnvironment {
 	/** Marks this as the global environment (`.GlobalEnv`); see {@link globalEnv}. */
 	public asGlobal(): this {
 		this.globalEnv = true;
+		return this;
+	}
+
+	/** Records the lexical frame this one stands in for; see {@link superMemory}. */
+	public standsInFor(memory: MemoryView): this {
+		this.superMemory = memory;
 		return this;
 	}
 
@@ -111,11 +150,7 @@ export class Environment implements IEnvironment {
 		return this.c;
 	}
 
-	/**
-	 * The parent, unshared first when a write is about to go through it. A `clone(true)` hands out the original
-	 * chain and lets it materialize one frame at a time here, because a removal usually reaches a frame or two,
-	 * not the ~20 an attached-package search path is deep.
-	 */
+	/** The parent, unshared first when a write is about to go through it. */
 	public get writableParent(): Environment {
 		if(this.sharedParent) {
 			const parent = this.parent.clone(false);
@@ -126,37 +161,59 @@ export class Environment implements IEnvironment {
 		return this.parent;
 	}
 
-	/**
-	 * This environment's {@link memory}, ready to be written to. Every in-place write must go through this
-	 * rather than through {@link memory} directly, as {@link clone} hands the map itself to the clone and only
-	 * the first writer of either side copies it (copy-on-write).
-	 */
-	public get writableMemory(): BuiltInMemory {
-		if(this.sharedMemory) {
-			this.memory = new Map(this.memory);
-			this.sharedMemory = undefined;
-		}
-		return this.memory;
+	/** What this frame binds. */
+	public get memory(): MemoryView {
+		return this.frame;
 	}
 
-	/**
-	 * Create a clone of this environment.
-	 *
-	 * The clone shares this environment's {@link memory} until either side writes to it (see
-	 * {@link writableMemory}); cloning a frame is therefore independent of how many definitions it holds, which
-	 * matters because attached packages contribute frames with thousands of them.
-	 * @param recurseParents     - Whether to also clone parent environments
-	 */
+	/** Whether `other` holds the very bindings this does. */
+	public sameMemoryAs(other: Environment): boolean {
+		return this === other || this.frame === other.frame;
+	}
+
+	/** What `name` holds here; the chain walks of name resolution take this rather than {@link memory}. */
+	public lookup(name: BrandedIdentifier): IdentifierDefinition[] | undefined {
+		return this.frame.get(name);
+	}
+
+	/** The definitions of `name` in this frame and the frames around it, looking into what an emptied frame stood in for (see {@link superMemory}). */
+	public lookupLexically(name: BrandedIdentifier): IdentifierDefinition[] | undefined {
+		if(this.builtInEnv) {
+			return undefined;
+		}
+		return this.lookup(name) ?? this.superMemory?.get(name) ?? this.parent?.lookupLexically(name);
+	}
+
+	/** Takes `map` as the bindings, sharing it until something writes. */
+	public adoptMap(map: MemoryView): void {
+		this.frame = Frame.of(map);
+		this.sharedMemory = true;
+	}
+
+	/** Takes `frame` as the bindings, owned outright unless `shared`, where a write has to fork it first. */
+	private adoptFrame(frame: Frame, shared?: boolean): void {
+		this.frame = frame;
+		this.sharedMemory = shared ? true : undefined;
+		this.tailCache = undefined;
+	}
+
+	/** {@link memory} ready to be written to. Every write goes through here, since {@link clone} shares the frame. */
+	public get writableMemory(): Frame {
+		this.tailCache = undefined;
+		if(this.sharedMemory) {
+			this.frame = this.frame.forWrite();
+			this.sharedMemory = undefined;
+		}
+		return this.frame;
+	}
+
+	/** Clones this, sharing {@link memory} until either side writes; the cost is the same for a frame of any size. */
 	public clone(recurseParents: boolean): Environment {
 		if(this.builtInEnv) {
 			return this; // do not clone the built-in environment
 		}
 
-		const clone = new Environment(this.parent, this.builtInEnv, this.memory);
-		clone.c = this.c;
-		clone.n = this.n;
-		clone.t = this.t;
-		clone.globalEnv = this.globalEnv;
+		const clone = this.derive(this.parent, this.frame);
 		clone.sharedMemory = this.sharedMemory = true;
 		if(recurseParents && !this.parent.builtInEnv) {
 			clone.sharedParent = true;
@@ -164,10 +221,18 @@ export class Environment implements IEnvironment {
 		return clone;
 	}
 
-	/**
-	 * Define a new identifier definition within this environment.
-	 * @param definition  - The definition to add.
-	 */
+	private derive(parent: Environment, frame?: Frame): Environment {
+		const env = new Environment(parent, undefined, frame);
+		env.c = this.c;
+		env.n = this.n;
+		env.t = this.t;
+		env.d = this.d;
+		env.globalEnv = this.globalEnv;
+		env.superMemory = this.superMemory;
+		return env;
+	}
+
+	/** Define a new identifier definition within this environment. */
 	public define(definition: IdentifierDefinition & { name: Identifier }): Environment {
 		const [name, ns] = Identifier.toArray(definition.name);
 		if(ns !== undefined && this.n !== ns) {
@@ -178,10 +243,7 @@ export class Environment implements IEnvironment {
 		return newEnvironment;
 	}
 
-	/**
-	 * Define several identifiers at once in a more performant fashion.
-	 * @param definitions - The definitions to add.
-	 */
+	/** Define several identifiers at once in a more performant fashion. */
 	public defineAll(definitions: Iterable<IdentifierDefinition & { name: Identifier }>): Environment {
 		let env = this.clone(false);
 		for(const definition of definitions) {
@@ -197,54 +259,36 @@ export class Environment implements IEnvironment {
 
 	/** Only sound on an environment nobody else holds yet. */
 	private apply(name: BrandedIdentifier, definition: IdentifierDefinition & { name: Identifier }): void {
-		/* isolate the cds from the originating reference, which may still be updated in place */
-		if(definition.cds !== undefined) {
-			definition = { ...definition, cds: definition.cds.slice() };
+		if(anyRemovalMarker(name)) {
+			const marker = removalMarkerOf(name);
+			this.writableMemory.delete(marker);
+			this.cache?.delete(marker);
 		}
-		// When there are defined indices, merge the definitions
-		if(definition.cds === undefined) {
-			this.writableMemory.set(name, [definition]);
-		} else {
-			const existing = this.memory.get(name);
-			const inGraphDefinition = definition as InGraphIdentifierDefinition;
-			if(
-				existing !== undefined &&
-                inGraphDefinition.cds === undefined
-			) {
-				this.writableMemory.set(name, [inGraphDefinition]);
-			} else if(existing === undefined || definition.cds === undefined) {
-				this.writableMemory.set(name, [definition]);
-			} else {
-				/* the array may be shared with clones, so replace instead of push */
-				this.writableMemory.set(name, [...existing, definition]);
-			}
-		}
+		definition = isolateCds(definition);
+		/* a maybe definition joins the existing ones; the array may be shared with clones, so replace instead of push */
+		const existing = definition.cds === undefined ? undefined : this.lookup(name);
+		this.writableMemory.set(name, existing === undefined ? [definition] : [...existing, definition]);
 	}
 
 	private defineInNamespace(definition: IdentifierDefinition & { name: Identifier }, ns: BrandedNamespace): Environment {
 		if(this.n === ns) {
 			return this.define(definition);
 		}
-		// navigate to parent until either before built-in or matching namespace
 		const newEnvironment = this.clone(false);
 		let current = newEnvironment;
-		/* the match has to be re-checked after every step: a post-condition on `current.n` would end the loop on
-		 * the very layer it was looking for, before the body could define anything in it */
+		/* the match has to be re-checked after every step: a post-condition on `current.n` would end the loop on the very layer it was looking for, before the body could define anything in it */
 		for(;;) {
 			if(current.n === ns) {
-				/* every layer walked here is a fresh clone, and `apply` copies the shared memory on write,
-				 * so this adds to the layer in place -- `define` would clone and the definition would be lost */
+				/* every layer walked here is a fresh clone, and `apply` copies the shared memory on write, so this adds to the layer in place -- `define` would clone and the definition would be lost */
 				current.apply(Identifier.getName(definition.name), definition);
 				return newEnvironment;
 			} else if(current.parent && !current.parent.builtInEnv) {
-				// clone parent
 				current.parent = current.parent.clone(false);
 				current = current.parent;
 			} else {
 				break;
 			}
 		}
-		// we did not find the namespace, so we inject a new environment here
 		log.warn(`Defining ${Identifier.getName(definition.name)} in namespace ${ns}, which did not exist yet in the environment chain => create (r should fail or we miss attachment).`);
 		const env = new Environment(current.parent);
 		env.n = ns;
@@ -252,179 +296,155 @@ export class Environment implements IEnvironment {
 		return newEnvironment;
 	}
 
-	public defineSuper(definition: IdentifierDefinition & { name: Identifier }): Environment {
-		const [name, ns] = Identifier.toArray(definition.name);
-		/* isolate the cds from the originating reference, see {@link define} */
-		if(definition.cds !== undefined) {
-			definition = { ...definition, cds: definition.cds.slice() };
+	/**
+	 * Forgets what an earlier analysis noted on this (built-in) environment, {@link forcing}, {@link locking}, {@link methods}, and {@link unknownMethodsAt}:
+	 * the built-in environment is shared by every analysis of a context, but what these say holds for one program only.
+	 */
+	public forgetProgramMarks(): void {
+		this.forcing = undefined;
+		this.locking = undefined;
+		this.methods = undefined;
+		this.unknownMethodsAt = undefined;
+	}
+
+	/**
+	 * What this frame binds `name` to for a `<<-` from a function written in it: its own binding, or, for the emptied stand-in of a function
+	 * around it, what the frame it stands in for held when the closure was created (see {@link superMemory}).
+	 */
+	public boundForSuper(name: BrandedIdentifier): readonly IdentifierDefinition[] | undefined {
+		return this.lookup(name) ?? this.superMemory?.get(name);
+	}
+
+	/** The binding a `<<-` from this frame replaces in a function frame around it, `undefined` if it binds globally, see {@link defineSuper}. */
+	public superTargetIn(name: BrandedIdentifier): readonly IdentifierDefinition[] | undefined {
+		for(let frame = this.parent; !frame.globalEnv && !frame.builtInEnv; frame = frame.parent) {
+			const bound = frame.boundForSuper(name);
+			if(bound !== undefined) {
+				return bound;
+			}
 		}
+		return undefined;
+	}
+
+	public defineSuper(definition: IdentifierDefinition & { name: Identifier }, append = false): Environment {
+		const [name, ns] = Identifier.toArray(definition.name);
+		definition = isolateCds(definition);
 		const newEnvironment = this.clone(false);
 		if(ns !== undefined && this.n !== ns) {
 			newEnvironment.parent = newEnvironment.parent.defineInNamespace(definition, ns);
 			return newEnvironment;
 		}
+		const holdsName = (env: Environment) => env.boundForSuper(name) !== undefined;
 		let current = newEnvironment;
-		let last = undefined;
-		let found = false;
-		do{
-			if(current.memory.has(name)) {
-				current.writableMemory.set(name, [definition]);
-				found = true;
-				break;
-			}
-			// `<<-` falls back to the global env, never an attached package below it
-			if(current.globalEnv) {
-				current.writableMemory.set(name, [definition]);
-				found = true;
-				break;
-			}
-			last = current;
+		// `<<-` starts its search in the parent of the frame it runs in, a local binding of the same name is not its target, and falls back to the global env, never an attached package below it
+		while((current === newEnvironment || !holdsName(current)) && !current.globalEnv) {
+			const last = current;
 			current.parent = current.parent.clone(false);
 			current = current.parent;
-		} while(!current.builtInEnv);
-		if(!found) {
-			guard(last !== undefined, () => `Could not find global scope for ${name}`);
-			last.writableMemory.set(name, [definition]);
+			if(current.builtInEnv) {
+				current = last;
+				break;
+			}
 		}
+		const existing = append ? current.lookup(name) ?? [] : [];
+		/* a definition the name already has under the same conditions adds nothing, while keeping it would double the list with every merge of two states */
+		current.writableMemory.set(name, existing.some(d => sameDefinition(d, definition)) ? existing : [...existing, definition]);
 		return newEnvironment;
 	}
 
-	/**
-	 * Definitions within `other` replace those here by name; if all of `other`'s are maybe, they are appended instead (turning existing ones maybe too), like {@link appendEnvironment}. Always recurses parents.
-	 */
+	/** Definitions within `other` replace those here by name; if all of `other`'s are maybe, they are appended instead (turning existing ones maybe too). Always recurses parents. */
 	public overwrite(other: Environment | undefined, applyCds?: readonly ControlDependency[]): Environment {
+		return this.merge(other, false, applyCds);
+	}
+
+	/** Adds all writes of `other` to this environment (`other`'s operations *might* happen). Always recurses parents. */
+	public append(other: Environment | undefined): Environment {
+		return this.merge(other, true);
+	}
+
+	private merge(other: Environment | undefined, append: boolean, applyCds?: readonly ControlDependency[]): Environment {
 		if(!other || this === other) {
 			return this;
 		}
-		const shortcut = this.mergeShortcut(other);
+		const shortcut = this.mergeShortcut(other, append, applyCds);
 		if(shortcut !== undefined) {
 			return shortcut;
 		}
-		const map = new Map(this.memory);
+		/* nothing on the other side leaves these bindings as the result, so they are shared rather than merged */
+		const keep = other.memory.size === 0;
+		const frame = keep ? this.frame : this.frame.forWrite();
+		/* the result may keep this frame as its base, so a later write here has to fork */
+		this.sharedMemory = true;
 		for(const [key, values] of other.memory) {
-			const hasMaybe = applyCds === undefined ? values.length === 0 || values.some(v => v.cds !== undefined) : true;
-			if(hasMaybe) {
-				const old = map.get(key);
-				if(!old && applyCds === undefined) {
-					map.set(key, values);
-					continue;
-				}
+			/* an overwrite by definite definitions replaces the old ones, so they are not even looked up */
+			const hasMaybe = values.length === 0 || values.some(v => v.cds !== undefined);
+			const joinsOld = append || applyCds !== undefined || hasMaybe;
+			const old = joinsOld ? frame.get(key) : undefined;
+			if(old === undefined && applyCds === undefined) {
+				frame.set(key, values);
+			} else if(append || applyCds === undefined) {
+				frame.set(key, uniqueMergeValuesInDefinitions(old ?? [], values));
+			} else {
 				// we need to make a copy to avoid side effects for old reference in other environments
 				const updated: IdentifierDefinition[] = old?.slice() ?? [];
 				for(const v of values) {
-					const { nodeId, definedAt } = v;
-					if(updated.some(o => o.nodeId === nodeId && o.definedAt === definedAt)) {
-						continue;
-					}
-					if(applyCds === undefined) {
-						updated.push(v);
-					} else {
-						updated.push({
-							...v,
-							cds: v.cds ? applyCds.concat(v.cds) : applyCds.slice()
-						});
+					if(!updated.some(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)) {
+						updated.push({ ...v, cds: v.cds ? applyCds.concat(v.cds) : applyCds.slice() });
 					}
 				}
-				map.set(key, updated);
-			} else {
-				map.set(key, values);
+				frame.set(key, updated);
 			}
 		}
-
-		const out = new Environment(this.parent.overwrite(other.parent, applyCds));
-		out.c = this.c;
-		out.n = this.n;
-		out.t = this.t;
-		out.globalEnv = this.globalEnv;
-		out.memory = map;
+		const out = this.derive(append ? this.parent.append(other.parent) : this.parent.overwrite(other.parent, applyCds));
+		out.superMemory ??= other.superMemory;
+		out.adoptFrame(frame, keep);
 		return out;
 	}
 
-	/**
-	 * Adds all writes of `other` to this environment (`other`'s operations *might* happen). Always recurses parents.
-	 */
-	public append(other: Environment | undefined): Environment {
-		if(!other || this === other) {
-			return this;
-		}
-		const shortcut = this.mergeShortcut(other);
-		if(shortcut !== undefined) {
-			return shortcut;
-		}
-		const map = new Map(this.memory);
-		for(const [key, value] of other.memory) {
-			const old = map.get(key);
-			if(old) {
-				map.set(key, uniqueMergeValuesInDefinitions(old, value));
-			} else {
-				map.set(key, value);
-			}
-		}
-
-		const out = new Environment(this.parent.append(other.parent));
-		out.c = this.c;
-		out.n = this.n;
-		out.t = this.t;
-		out.globalEnv = this.globalEnv;
-		out.memory = map;
-		return out;
-	}
-
-	/**
-	 * The environment a merge with `other` settles on without touching either memory, `undefined` if the
-	 * memories have to be merged. Package blocks are always unioned, never overwritten or appended to.
-	 */
-	private mergeShortcut(other: Environment): Environment | undefined {
+	/** The environment a merge with `other` settles on without touching either memory, `undefined` if the memories have to be merged. */
+	private mergeShortcut(other: Environment, append: boolean, applyCds: readonly ControlDependency[] | undefined): Environment | undefined {
 		if(this.t !== undefined || other.t !== undefined) {
-			return this.mergePackageBlocks(other);
+			return this.mergePackageBlocks(other, append, applyCds);
 		}
 		return this.builtInEnv || this.n !== other.n ? this : undefined;
 	}
 
-	/**
-	 * Unions two attached-package blocks, keeping every package once (memory merged for a package in both).
-	 */
-	private mergePackageBlocks(other: Environment): Environment {
+	/** Unions two attached-package blocks, keeping every package once (memory merged for a package in both). */
+	private mergePackageBlocks(other: Environment, append: boolean, applyCds: readonly ControlDependency[] | undefined): Environment {
 		const [thisLayers, thisBase] = splitLibraryLayers(this);
 		const [otherLayers, otherBase] = splitLibraryLayers(other);
+		const oneSided = (layer: Environment, fromOther: boolean): Environment | undefined => append ? maybeLayer(layer) : fromOther && applyCds !== undefined ? maybeLayer(layer, applyCds) : undefined;
 
-		/*
-		 * One block is the other plus the packages attached since (blocks grow at the front), so their union is
-		 * the longer one and it is already in R's order: the most recently attached package is searched first,
-		 * `library(a); library(b)` resolves `b` before `a`. This is the overwhelmingly common case, since every
-		 * statement after a `library` call merges two environments that still hold its layers.
-		 */
+		/* One block is the other plus the packages attached since (blocks grow at the front), so their union is the longer one and it is already in R's order: the most recently attached package is searched first, `library(a); library(b)` resolves `b` before `a`. */
 		const keep = layersEndWith(thisLayers, otherLayers) ? thisLayers
 			: layersEndWith(otherLayers, thisLayers) ? otherLayers : undefined;
 		if(keep !== undefined) {
 			const base = thisBase.append(otherBase);
-			if(keep === thisLayers && base === thisBase) {
+			const onlyInKeep = keep.length - (keep === thisLayers ? otherLayers : thisLayers).length;
+			const front = keep.slice(0, onlyInKeep).map(l => oneSided(l, keep === otherLayers));
+			if(front.every(l => l === undefined) && keep === thisLayers && base === thisBase) {
 				return this;
 			}
-			return relinkLayers(keep.map(l => l.clone(false)), base);
+			return relinkLayers(keep.map((l, i) => front[i] ?? l.clone(false)), base);
 		}
 
-		/*
-		 * Neither block is recognizably an extension of the other, so union them. The longer attach history goes
-		 * first so its order survives and the other block only contributes what it alone saw: R searches the most
-		 * recently attached package first, and only the longer block still records that order.
-		 * Keyed by type and then by name, rather than by a `t:n` string built for every layer of every merge.
-		 */
+		/* Neither block is recognizably an extension of the other, so union them. */
 		const order: Environment[] = [];
-		const merged = new Map<EnvType | undefined, Map<string | undefined, Environment>>();
+		const inBoth = new Set<Environment>();
+		const fromOther = new Set<Environment>();
+		const merged = new DefaultMap<EnvType | undefined, Map<BrandedNamespace | undefined, Environment>>(() => new Map());
 		for(const layers of thisLayers.length > otherLayers.length ? [thisLayers, otherLayers] : [otherLayers, thisLayers]) {
 			for(const layer of layers) {
-				let byName = merged.get(layer.t);
-				if(byName === undefined) {
-					byName = new Map();
-					merged.set(layer.t, byName);
-				}
+				const byName = merged.get(layer.t);
 				const existing = byName.get(layer.n);
 				if(existing === undefined) {
 					const cloned = layer.clone(false);
 					byName.set(layer.n, cloned);
 					order.push(cloned);
-				} else if(existing.memory !== layer.memory) {
+					if(layers === otherLayers) {
+						fromOther.add(cloned);
+					}
+				} else if(inBoth.add(existing) && !existing.sameMemoryAs(layer)) {
 					for(const [name, value] of layer.memory) {
 						const old = existing.memory.get(name);
 						if(old !== value) {
@@ -435,7 +455,7 @@ export class Environment implements IEnvironment {
 			}
 		}
 
-		return relinkLayers(order, thisBase.append(otherBase));
+		return relinkLayers(order.map(l => inBoth.has(l) ? l : oneSided(l, fromOther.has(l)) ?? l), thisBase.append(otherBase));
 	}
 
 	public remove(id: Identifier) {
@@ -447,17 +467,14 @@ export class Environment implements IEnvironment {
 			this.writableParent.remove(id);
 			return this;
 		}
-		const definition = this.memory.get(name);
-		let cont = true;
+		const definition = this.lookup(name);
 		if(definition !== undefined) {
 			this.writableMemory.delete(name);
 			this.cache?.delete(name);
-			cont = !definition.every(d => happensInEveryBranch(d.cds));
 		}
-		if(cont) {
+		if(!definition?.every(d => happensInEveryBranch(d.cds))) {
 			this.writableParent.remove(name);
 		}
-
 		return this;
 	}
 
@@ -474,28 +491,21 @@ export class Environment implements IEnvironment {
 	}
 
 	toJSON(): Jsonified {
-		return this.builtInEnv ? {
-			id:         this.id,
-			parent:     this.parent,
-			builtInEnv: this.builtInEnv,
-			memory:     this.memory,
-		} : {
+		return this.builtInEnv ? { id: this.id, parent: this.parent, builtInEnv: this.builtInEnv, memory: new Map(this.memory) } : {
 			id:        this.id,
 			parent:    this.parent,
-			memory:    this.memory,
+			memory:    new Map(this.memory),
 			// markers needed to rebuild the search path after a round-trip (undefined values are dropped by JSON.stringify)
 			n:         this.n,
 			t:         this.t,
 			globalEnv: this.globalEnv,
 		};
 	}
+}
 
-	toPersistedJSON(): Jsonified & { c?: NodeId } {
-		return {
-			...this.toJSON(),
-			c: this.c
-		};
-	}
+/** the definition with its cds isolated from the originating reference, which may still be updated in place */
+function isolateCds<D extends IdentifierDefinition>(definition: D): D {
+	return definition.cds === undefined ? definition : { ...definition, cds: definition.cds.slice() };
 }
 
 /** Walks up to the global environment (see {@link Environment#globalEnv}), falling back to the last non-builtin env. */
@@ -505,6 +515,18 @@ function findGlobalEnvironment(this: void, env: Environment): Environment {
 		current = current.parent;
 	}
 	return current;
+}
+
+/** The frames from `env` outwards, excluding the built-in environment. */
+function* framesOf(this: void, env: Environment): Generator<Environment, void, undefined> {
+	for(let e = env; !e.builtInEnv; e = e.parent) {
+		yield e;
+	}
+}
+
+/** The frames below the global environment of `env`, i.e. the layers of the `search()` path, innermost first. */
+function searchPathOf(this: void, env: Environment): Generator<Environment, void, undefined> {
+	return framesOf(findGlobalEnvironment(env).parent);
 }
 
 /** Walks up to the built-in environment. */
@@ -525,43 +547,72 @@ export const SearchPathPackagePrefix = 'package:';
 /** Name of the global environment in R's `search()` list. */
 export const GlobalEnvEntryName = '.GlobalEnv';
 
-/**
- * Splices a package block (`blockTop`..`blockBottom`) into the search path at the 1-based `search()` position `pos`
- * ({@link DefaultAttachPosition|2} being directly below the global environment, the default). A position past the end
- * of the search path attaches directly above the built-in environment, mirroring R's clamping. Returns a fresh
- * `current`, cloning only the path down to the insertion point.
- */
+/** Splices a package block (`blockTop`..`blockBottom`) into the search path at the 1-based `search()` position `pos` ({@link DefaultAttachPosition|2} by default); a position past the end attaches above the built-in env, mirroring R's clamping. */
 function attachPackageAt(this: void, current: Environment, blockTop: Environment, blockBottom: Environment, pos: number = DefaultAttachPosition): Environment {
-	const clonedCurrent = current.clone(false);
-	let anchor = clonedCurrent;
-	while(!anchor.globalEnv && !anchor.parent.builtInEnv) {
-		anchor.parent = anchor.parent.clone(false);
-		anchor = anchor.parent;
+	const [clonedCurrent, anchor] = cloneToPosition(current, pos);
+	blockBottom.parent = anchor.parent; // the built-in env, or the packages attached further down
+	anchor.parent = blockTop;
+	return clonedCurrent;
+}
+
+/** Removes the entry at the 1-based `search()` position `pos` (`detach`), with its imports layer; `current` itself if there is none. */
+function detachPackageAt(this: void, current: Environment, pos: number = DefaultAttachPosition): Environment {
+	const [clonedCurrent, anchor] = cloneToPosition(current, pos);
+	const entry = anchor.parent;
+	if(entry.builtInEnv || entry.t === undefined) {
+		return current;
 	}
-	/* walk past the `pos - 2` search entries below the global; an imports layer belongs to the entry above it and is never one itself */
+	anchor.parent = entry.parent.t === EnvType.Imports && entry.parent.n === entry.n ? entry.parent.parent : entry.parent;
+	return clonedCurrent;
+}
+
+/** A copy of the frames from `current` down to the frame right above the 1-based `search()` position `pos`, walking past the `pos - 2` entries below the global; an imports layer belongs to the entry above it and is never one itself. */
+function cloneToPosition(this: void, current: Environment, pos: number): [Environment, Environment] {
+	const [cloned, global] = cloneToGlobal(current);
+	let anchor = global;
 	for(let skip = pos - DefaultAttachPosition; skip > 0 && !anchor.parent.builtInEnv; skip--) {
 		do{
 			anchor.parent = anchor.parent.clone(false);
 			anchor = anchor.parent;
 		} while(anchor.parent.t === EnvType.Imports);
 	}
-	blockBottom.parent = anchor.parent; // the built-in env, or the packages attached further down
-	anchor.parent = blockTop;
-	return clonedCurrent;
+	return [cloned, anchor];
 }
 
-/**
- * The 1-based `search()` position of the entry called `name` (`.GlobalEnv`, `package:x`, or a bare package name),
- * or `undefined` if no such entry is on the search path. `package:base` resolves to the built-in environment at the
- * very bottom if base R is not attached as its own layer.
- */
-function searchPositionOf(this: void, env: Environment, name: string): number | undefined {
+/** A copy of the frames from `current` down to the global environment, so the search path below it can be changed; returns the copy and its global frame. */
+function cloneToGlobal(this: void, current: Environment): [Environment, Environment] {
+	const cloned = current.clone(false);
+	let global = cloned;
+	while(!global.globalEnv && !global.parent.builtInEnv) {
+		global.parent = global.parent.clone(false);
+		global = global.parent;
+	}
+	return [cloned, global];
+}
+
+/** `target` with the packages `source` attached as well: the search path is global, so what code evaluated in another environment attaches (`local(library(x), envir = e)`) is attached for the caller, too. */
+function adoptSearchPathOf(this: void, target: Environment, source: Environment): Environment {
+	const into = findGlobalEnvironment(target), from = findGlobalEnvironment(source);
+	if(!into.globalEnv || !from.globalEnv || into.parent === from.parent) {
+		return target;
+	}
+	const block = into.parent.overwrite(from.parent);
+	if(block === into.parent) {
+		return target;
+	}
+	const [cloned, global] = cloneToGlobal(target);
+	global.parent = block;
+	return cloned;
+}
+
+/** The 1-based `search()` position of the entry called `name` (`.GlobalEnv`, `package:x`, or a bare package name), or `undefined` if absent; `package:base` resolves to the built-in env at the bottom if base R is not attached as its own layer. */
+function searchPositionOf(this: void, env: Environment, name: BrandedIdentifier): number | undefined {
 	const target = name.startsWith(SearchPathPackagePrefix) ? name.slice(SearchPathPackagePrefix.length) : name;
 	if(target === GlobalEnvEntryName) {
 		return 1;
 	}
 	let pos = 1;
-	for(let e = findGlobalEnvironment(env).parent; !e.builtInEnv; e = e.parent) {
+	for(const e of searchPathOf(env)) {
 		if(e.t === EnvType.Imports) {
 			continue; // internal layer, not a search-path entry
 		}
@@ -573,13 +624,10 @@ function searchPositionOf(this: void, env: Environment, name: string): number | 
 	return target === PkgName.Base ? pos + 1 : undefined; // base is the built-in env when it is not attached as a layer
 }
 
-/**
- * The packages attached below the global environment, i.e. those whose exports R resolves without a namespace.
- * Base is always among them, as it backs the built-in environment even when it is no layer of its own.
- */
-function attachedPackagesOf(this: void, env: Environment): Set<string> {
-	const attached = new Set<string>([PkgName.Base]);
-	for(let e = findGlobalEnvironment(env).parent; !e.builtInEnv; e = e.parent) {
+/** The packages attached below the global environment, i.e. those whose exports R resolves without a namespace. */
+function attachedPackagesOf(this: void, env: Environment): Set<BrandedNamespace> {
+	const attached = new Set<BrandedNamespace>([PkgName.Base]);
+	for(const e of searchPathOf(env)) {
 		if(e.t !== EnvType.Imports && e.n !== undefined) {
 			attached.add(e.n);
 		}
@@ -589,6 +637,7 @@ function attachedPackagesOf(this: void, env: Environment): Set<string> {
 
 /**
  * Helpers for navigating and manipulating {@link REnvironmentInformation|environments} around the global environment and attached-package search path.
+ * @helper api
  */
 export const REnvironment = {
 	name:             'REnvironment',
@@ -596,24 +645,39 @@ export const REnvironment = {
 	findGlobal:       findGlobalEnvironment,
 	/** Walks up to the built-in environment; see {@link findBuiltInEnvironment}. */
 	findBuiltIn:      findBuiltInEnvironment,
+	/** The frames from an environment outwards, without the built-in one; see {@link framesOf}. */
+	frames:           framesOf,
+	/** The layers below the global environment, innermost first; see {@link searchPathOf}. */
+	searchPath:       searchPathOf,
 	/** Attaches a package block at a `search()` position, below the global by default; see {@link attachPackageAt}. */
 	attachAt:         attachPackageAt,
+	/** Removes the entry at a `search()` position, the topmost by default; see {@link detachPackageAt}. */
+	detachAt:         detachPackageAt,
+	/** Takes over what another evaluation attached to the (global) search path; see {@link adoptSearchPathOf}. */
+	adoptSearchPath:  adoptSearchPathOf,
 	/** The `search()` position of a named entry; see {@link searchPositionOf}. */
 	searchPosition:   searchPositionOf,
 	/** The packages on the search path; see {@link attachedPackagesOf}. */
 	attachedPackages: attachedPackagesOf,
+	/** Defines an identifier in the environment, as a super assignment if asked; returns the new environment information. */
+	define:           defineInEnvironment,
+	/** Adds all writes of `next` to `base` as things that might happen; see {@link appendEnvironment}. */
+	append:           appendEnvironment,
+	/** Lets the definitions of `next` replace those of `base` by name; see {@link overwriteEnvironment}. */
+	overwrite:        overwriteEnvironment,
+	/** Clones the environment information, with or without its parents; see {@link cloneEnvironmentInformation}. */
+	clone:            cloneEnvironmentInformation,
+	/** Adds a local scope on top, see {@link REnvironment.popLocal} for the counterpart; see {@link pushLocalEnvironment}. */
+	pushLocal:        pushLocalEnvironment,
+	/** Removes the top local scope, see {@link REnvironment.pushLocal} for the counterpart; see {@link popLocalEnvironment}. */
+	popLocal:         popLocalEnvironment,
+	/** The frames a function body at a level sees of an environment, those it was defined in; see {@link framesVisibleTo}. */
+	visibleTo:        framesVisibleTo,
+	/** The search path of the environment with an empty global frame: attached packages stay visible, global binds do not; see {@link cleanEnvOf}. */
+	cleanOf:          cleanEnvOf,
 } as const;
 
-/**
- * Whether the package block `layers` ends with `tail`, i.e. `tail` is `layers` without some of the attachments
- * made since. A block grows at the front ({@link attachPackageAt} inserts at `search()` position 2), so this is
- * the shape two branches take when one of them attached more packages than the other. Equal blocks qualify.
- *
- * Frames cloned from one another keep the same {@link Environment#memory} map until one of them is written to
- * (see {@link Environment#clone}), so comparing the maps by identity recognizes untouched blocks without
- * scanning them; blocks that only happen to hold equal definitions are treated as different, which merely costs
- * the general union below.
- */
+/** Whether the package block `layers` ends with `tail` (a block grows at the front, so this is the shape two branches take when one attached more packages); compares frames by {@link Environment#memory} identity, cheap since clones share it. */
 function layersEndWith(this: void, layers: readonly Environment[], tail: readonly Environment[]): boolean {
 	const offset = layers.length - tail.length;
 	if(offset < 0) {
@@ -621,7 +685,7 @@ function layersEndWith(this: void, layers: readonly Environment[], tail: readonl
 	}
 	for(let i = 0; i < tail.length; i++) {
 		const l = layers[offset + i], t = tail[i];
-		if(l !== t && (l.t !== t.t || l.n !== t.n || l.memory !== t.memory)) {
+		if(l !== t && (l.t !== t.t || l.n !== t.n || !l.sameMemoryAs(t))) {
 			return false;
 		}
 	}
@@ -638,6 +702,20 @@ function relinkLayers(this: void, layers: readonly Environment[], base: Environm
 	return current;
 }
 
+/** A copy of the package layer whose bindings hold under `cds`, or, without, only maybe (the empty cds, no branch named). */
+function maybeLayer(this: void, layer: Environment, cds?: readonly ControlDependency[]): Environment {
+	const out = layer.clone(false);
+	const memory = layer.memory;
+	const asMaybe = (defs: readonly IdentifierDefinition[]): IdentifierDefinition[] => defs.map(d => cds !== undefined
+		? { ...d, cds: cds.concat(d.cds ?? []) }
+		: happensInEveryBranch(d.cds) ? { ...d, cds: d.cds?.slice() ?? [] } : d);
+	const lazy = memory instanceof Frame ? memory.lazy() : undefined;
+	out.adoptMap(lazy === undefined
+		? new Map([...memory].map(([name, defs]) => [name, asMaybe(defs)]))
+		: new LazyBindings(new Set(lazy.keys()), name => asMaybe(lazy.get(name) ?? []), `maybe|${ControlDependency.key(cds)}|${lazy.origin}`));
+	return out;
+}
+
 /** Splits a package block (a contiguous run of attached-package layers, see {@link EnvType}) into its layers and the env below them. */
 function splitLibraryLayers(this: void, env: Environment): [Environment[], Environment] {
 	const layers: Environment[] = [];
@@ -649,32 +727,10 @@ function splitLibraryLayers(this: void, env: Environment): [Environment[], Envir
 	return [layers, current];
 }
 
-/**
- * An environment describes a ({@link IEnvironment#parent|scoped}) mapping of names to their definitions ({@link BuiltIns}).
- *
- * The {@link BuiltIns|BuiltInEnvironment} holds R's built-in functions and constants; during serialization use {@link builtInEnvJsonReplacer} to avoid inlining it.
- * @see {@link define} - to define a new {@link IdentifierDefinition|identifier definition} within an environment
- * @see {@link Resolve.byNameAndType} - to resolve an {@link Identifier|identifier/name} to its {@link IdentifierDefinition|definitions} within an environment
- * @see {@link makeReferenceMaybe} - to attach control dependencies to a reference
- * @see {@link pushLocalEnvironment} - to create a new local scope
- * @see {@link popLocalEnvironment} - to remove the current local scope
- * @see {@link appendEnvironment} - to append an environment to the current one
- * @see {@link overwriteEnvironment} - to overwrite the definitions in the current environment with those of another one
- */
+/** A ({@link IEnvironment#parent|scoped}) mapping of names to their definitions ({@link BuiltIns}). */
 export interface REnvironmentInformation {
 	/** The currently active environment (the stack is represented by the {@link IEnvironment#parent} chain). */
 	readonly current: Environment
 	/** nesting level of the environment, will be `0` for the global/root environment */
 	readonly level:   number
 }
-
-/** Serializes an environment, replacing the built-in environment with a placeholder. */
-export function builtInEnvJsonReplacer(k: unknown, v: unknown): unknown {
-	if(isDefaultBuiltInEnvironment(v)) {
-		return '<BuiltInEnvironment>';
-	} else {
-		return jsonReplacer(k, v);
-	}
-}
-
-

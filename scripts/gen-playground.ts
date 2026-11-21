@@ -3,16 +3,20 @@
  * wasm files the tree-sitter parser needs. Like the signature browser, the result is a few megabytes
  * and therefore never committed; the documentation job builds it onto the `gh-pages` branch.
  */
+import { bakeRoutine, type BakedRoutine } from './playground/native-links';
+import { Identifier  } from '../src/dataflow/environments/identifier';
 import fs from 'fs';
 import path from 'path';
-import { build, type Plugin } from 'esbuild';
+import { build, context, type BuildOptions, type Plugin } from 'esbuild';
 import { builtinModules } from 'module';
 import { openDatabase } from './sigdb-index';
 import { rSourceUrl, helpPageUrl } from '../src/queries/catalog/signature-query/signature-query-executor';
-import { fillVersion, versionMarker } from './version-marker';
+import { template, writePage, committedNote } from './html-page';
+import { serveWiki } from './serve-wiki';
+import { webRManifest, WebRBase, WebRVersion } from './playground/webr-pin';
+import { arraySum } from '../src/util/collections/arrays';
 import { FlowrConfig } from '../src/config';
 import { DefaultBuiltinConfig } from '../src/dataflow/environments/default-builtin-config';
-import { Identifier } from '../src/dataflow/environments/identifier';
 
 /* flowR's CLI modules read `process` while they are being imported, so one has to exist */
 const ProcessShim = 'globalThis.process ??= { argv: [], argv0: "browser", env: {}, platform: "browser",'
@@ -93,10 +97,10 @@ function topPackages(): string[] {
  * stays unknown. Base R plus the packages flowR carries definitions for is what a script typed into the
  * page actually loads, and their export lists are small enough to ride along.
  */
-async function packageExports(): Promise<string> {
+async function packageExports(): Promise<{ readonly exports: string, readonly natives: string }> {
 	const db = await openDatabase();
 	if(db === undefined) {
-		return '';
+		return { exports: '', natives: '' };
 	}
 	const wanted = new Set(db.packageNames().filter(name => db.isBaseR(name)));
 	/* what a script typed into the page actually loads: base R, what flowR carries definitions for, and
@@ -113,15 +117,21 @@ async function packageExports(): Promise<string> {
 		}
 	}
 	const out: Record<string, readonly string[]> = {};
+	/* the native routines of the same packages, so a `.Call` completes them and a click jumps to their source */
+	const natives: Record<string, readonly BakedRoutine[]> = {};
 	for(const pkg of wanted) {
 		const known = db.lookup(pkg);
 		if(known !== undefined && known.exported.length > 0) {
 			/* the version and its release date first: the exports were read from that release, and saying so
 			   is what keeps a query from reporting the package as one no database knows */
 			out[pkg] = [known.version, db.releaseDate(pkg)?.toISOString().slice(0, 10) ?? '', ...known.exported];
+			const routines = db.nativeRoutines?.(pkg, known.version) ?? [];
+			if(routines.length > 0) {
+				natives[pkg] = routines.map(bakeRoutine);
+			}
 		}
 	}
-	return JSON.stringify(out);
+	return { exports: JSON.stringify(out), natives: JSON.stringify(natives) };
 }
 
 /**
@@ -130,7 +140,7 @@ async function packageExports(): Promise<string> {
  */
 function configDocs(): string {
 	const out: Record<string, { t?: string, d?: string, v?: string[] }> = {};
-	const walk = (node: { type?: string, flags?: { description?: string }, keys?: Record<string, unknown>, allow?: unknown[] }, path: string[]): void => {
+	function walk(node: { type?: string, flags?: { description?: string }, keys?: Record<string, unknown>, allow?: unknown[] }, path: string[]): void {
 		if(path.length > 0) {
 			const valids = (node.allow ?? []).filter(v => typeof v === 'string' || typeof v === 'number').map(String);
 			out[path.join('.')] = {
@@ -143,20 +153,15 @@ function configDocs(): string {
 		for(const [key, child] of Object.entries(node.keys ?? {})) {
 			walk(child as never, [...path, key]);
 		}
-	};
+	}
 	walk(FlowrConfig.Schema.describe() as never, []);
 	return JSON.stringify(out);
 }
 
-async function main(): Promise<void> {
-	if(process.env.FLOWR_LANDING_ONLY) {
-		console.log('  FLOWR_LANDING_ONLY is set, skipping the playground');
-		return;
-	}
-	fs.mkdirSync(Target, { recursive: true });
-	const result = await build({
+function bundleOptions(outfile?: string) {
+	return {
 		entryPoints:   [path.join('scripts', 'playground', 'main.ts')],
-		outfile:       path.join(Target, 'bundle.js'),
+		...(outfile === undefined ? { write: false, outdir: Target } : { outfile }),
 		bundle:        true,
 		minify:        process.env.FLOWR_PLAYGROUND_DEBUG ? false : true,
 		sourcemap:     process.env.FLOWR_PLAYGROUND_DEBUG ? 'inline' : false,
@@ -171,25 +176,87 @@ async function main(): Promise<void> {
 		plugins:       [stubNodeBuiltins],
 		loader:        { '.wasm': 'dataurl' },
 		metafile:      true
-	});
+	} satisfies BuildOptions;
+}
+
+/** Bundles the playground script into `outfile`, or into memory without one. */
+export function bundlePlayground(outfile?: string) {
+	return build(bundleOptions(outfile));
+}
+
+/** The playground page with its baked-in data. */
+export function playgroundPage(signatures: string, exports: string, natives: string, startBytes: number): string {
+	/* the script the page opens with, kept as an R file so the documentation links to the same one */
+	const sample = fs.readFileSync(path.join('scripts', 'playground', 'sample.R'), 'utf8').trim();
+	const examples = (JSON.parse(fs.readFileSync(path.join('scripts', 'playground', 'examples', 'index.json'), 'utf8')) as { label: string, title: string, files: Record<string, string> }[])
+		.map(e => ({ ...e, files: Object.entries(e.files).map(([name, from]) => [name, fs.readFileSync(path.join('scripts', 'playground', from), 'utf8').trim()]) }));
+	return template('playground', 'index.html')
+		/* the text of a script element ends at `</`, and nothing else in it has to be escaped */
+		.replace('<!--SAMPLE-->', sample.replaceAll('</', '<\\/'))
+		.replace('<!--EXAMPLES-->', JSON.stringify(examples).replaceAll('</', '<\\/'))
+		.replace('<!--SIGS-->', signatures)
+		.replace('<!--PKGS-->', exports)
+		.replace('<!--NATIVES-->', natives)
+		.replace('<!--CFGDOCS-->', configDocs())
+		.replace('<!--WEBR-START-BYTES-->', String(startBytes));
+}
+
+async function main(): Promise<void> {
+	if(process.env.FLOWR_LANDING_ONLY) {
+		console.log('  FLOWR_LANDING_ONLY is set, skipping the playground');
+		return;
+	}
+	fs.mkdirSync(Target, { recursive: true });
+	const watching = process.argv.includes('--watch');
+	const result = await bundlePlayground(path.join(Target, 'bundle.js'));
 
 	/* the wasm rides along inside the bundle as a data url, so the page has nothing to fetch and works
 	   from a file:// url as well as over GitHub Pages */
-	const page = fs.readFileSync(path.join('scripts', 'playground', 'index.html'), 'utf8');
 	const signatures = await baseSignatures();
-	const exports = await packageExports();
-	/* the script the page opens with, kept as an R file so the documentation links to the same one */
-	const sample = fs.readFileSync(path.join('scripts', 'playground', 'sample.R'), 'utf8').trim();
-	fs.writeFileSync(path.join(Target, 'index.html'), fillVersion(page
-		/* the text of a script element ends at `</`, and nothing else in it has to be escaped */
-		.replace('<!--SAMPLE-->', sample.replaceAll('</', '<\\/'))
-		.replace('<!--SIGS-->', signatures)
-		.replace('<!--PKGS-->', exports)
-		.replace('<!--CFGDOCS-->', configDocs()), versionMarker()));
+	const { exports, natives } = await packageExports();
+	/* what lies outside `vfs/` is what every start of R downloads */
+	const manifest = await webRManifest().catch((e: unknown) => {
+		console.warn(`  could not pin webR, the playground cannot run R: ${e instanceof Error ? e.message : String(e)}`);
+		return undefined;
+	});
+	const startBytes = arraySum(Object.entries(manifest ?? {}).filter(([file]) => !file.startsWith('vfs/')).map(([, pinned]) => pinned.size));
+	const writeIndex = () => writePage(path.join(Target, 'index.html'), playgroundPage(signatures, exports, natives, startBytes));
+	writeIndex();
 	const size = Object.values(result.metafile.outputs).reduce((sum, o) => sum + o.bytes, 0);
 	console.log(`  wrote ${Target} (${(size / 1024 / 1024).toFixed(1)} MB bundle, `
 		+ `${Math.round(signatures.length / 1024)} kB of base R signatures, `
-		+ `${Math.round(exports.length / 1024)} kB of package exports, not committed)`);
+		+ `${Math.round(exports.length / 1024)} kB of package exports, ${Math.round(natives.length / 1024)} kB of native routines${committedNote(Target)})`);
+	/* without the guard the page refuses to run R, it never runs a webR it cannot check */
+	const guard = path.join(Target, 'webr-guard.js');
+	fs.rmSync(guard, { force: true });
+	if(manifest !== undefined) {
+		fs.writeFileSync(guard, fs.readFileSync(path.join('scripts', 'playground', 'webr-guard.js'), 'utf8')
+			.replace('<!--WEBR-BASE-->', WebRBase)
+			.replace('<!--WEBR-MANIFEST-->', JSON.stringify(manifest)));
+		console.log(`  pinned ${Object.keys(manifest).length} files of webR ${WebRVersion}, verified against its npm signature`);
+	}
+	if(watching) {
+		await watch(writeIndex);
+	}
 }
 
-void main();
+/** serves the playground, rebuilding and reloading open pages on every change */
+async function watch(writeIndex: () => void): Promise<void> {
+	const reload = serveWiki('playground/', 8000, true);
+	const rebuilt = { name: 'reload', setup: (b: { onEnd(f: () => void): void }) => b.onEnd(reload) };
+	const options = bundleOptions(path.join(Target, 'bundle.js'));
+	await (await context({ ...options, plugins: [...options.plugins, rebuilt] })).watch();
+	let pending: NodeJS.Timeout | undefined;
+	for(const dir of [path.join('scripts', 'playground'), path.join('scripts', 'partials')]) {
+		fs.watch(dir, { recursive: true }, (_event, file) => {
+			if(file !== null && !file.endsWith('.ts')) {
+				clearTimeout(pending);
+				pending = setTimeout(() => (writeIndex(), reload()), 100);
+			}
+		});
+	}
+}
+
+if(require.main === module) {
+	void main();
+}

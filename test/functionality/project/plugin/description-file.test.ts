@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import { label } from '../../_helper/label';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import {
 	FlowrAnalyzerDescriptionFilePlugin
@@ -111,7 +112,7 @@ describe('DESCRIPTION-file', function() {
 					?.test('1.4.0')
 			);
 		});
-		test('Loading-Order-Plugin', () => {
+		test(label('Loading-Order-Plugin', ['project-description'], ['other']), () => {
 			assert.deepStrictEqual(
 				ctx.files.computeLoadingOrder()[0],
 				{ request: 'file', content: 'pete.R' }
@@ -154,7 +155,7 @@ describe('DESCRIPTION-file', function() {
 		test('Enhances Retrieval', () => {
 			assert.deepStrictEqual(getDescContent(ctx).enhances()?.map(n => n.name), ['something']);
 		});
-		test('Declared package names span every dependency field', () => {
+		test(label('Declared package names span every dependency field', ['project-description'], ['other']), () => {
 			// `Suggests`/`Enhances` do not become loadable dependencies, but they still name packages the project declares
 			assert.includeMembers(ctx.deps.declaredPackageNames(), ['R', 'dplyr', 'ggplot2', 'testthat', 'vdiffr', 'something']);
 		});

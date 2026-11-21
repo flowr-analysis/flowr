@@ -1,25 +1,19 @@
 import type { RShell } from './shell';
-import { startAndEndsWith } from '../util/text/strings';
 import type { AsyncOrSync } from 'ts-essentials';
 import { guard } from '../util/assert';
 import { RShellExecutor } from './shell-executor';
 import { normalize } from './lang-4.x/ast/parser/json/parser';
-import { ErrorMarker } from './init';
+import { ErrorMarker, PipeBindDisabledMarker } from './init';
+import { ParseError } from './lang-4.x/ast/parser/main/normalizer-data';
 import { ts2r } from './lang-4.x/convert-values';
 import { type NormalizedAst, deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
 import { RawRType } from './lang-4.x/ast/model/type';
-import { log } from '../util/log';
-import fs from 'fs';
-import path from 'path';
 
 export const fileProtocol = 'file://';
 
 export interface RParseRequestFromFile {
 	readonly request: 'file';
-	/**
-	 * The path to the file represented in the {@link FlowrAnalyzerFilesContext}.
-	 * See {@link RParseRequests} for multiple files.
-	 */
+	/** The path to the file represented in the {@link FlowrAnalyzerFilesContext}. See {@link RParseRequests} for multiple files. */
 	readonly content: string;
 }
 
@@ -39,24 +33,11 @@ export interface RParseRequestFromText {
 	readonly content: string
 }
 
-/**
- * A provider for an {@link RParseRequests} that can be used, for example, to override source file parsing behavior in tests
- */
-export interface RParseRequestProvider {
-	/** returns the path if it exists, otherwise undefined */
-	exists(path: string, ignoreCase: boolean):        string | undefined
-	createRequest(path: string):                      RParseRequest
-}
-
 export type RParseRequest = RParseRequestFromFile | RParseRequestFromText;
-/**
- * Several requests that can be passed along to {@link retrieveParseDataFromRCode}.
- */
+/** Several requests that can be passed along to {@link retrieveParseDataFromRCode}. */
 export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>;
 
-/**
- * Type guard for {@link RParseRequest}
- */
+/** Type guard for {@link RParseRequest} */
 export function isParseRequest(request: unknown): request is RParseRequest {
 	if(typeof request !== 'object' || request === null) {
 		return false;
@@ -83,81 +64,16 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}` | stri
 	const file = content.startsWith(fileProtocol);
 
 	if(file) {
-		return {
-			request: 'file',
-			content: content.slice(fileProtocol.length),
-		};
+		return { request: 'file', content: content.slice(fileProtocol.length) };
 	} else {
-		return {
-			request: 'text',
-			content
-		};
+		return { request: 'text', content };
 	}
 }
 
-/**
- * Creates a {@link RParseRequestProvider} that reads from the file system.
- * Uses `fs.existsSync` to check for file existence.
- * @see {@link requestProviderFromText} for a provider that reads from a text map.
- */
-export function requestProviderFromFile(): RParseRequestProvider {
-	return {
-		exists(p: string, ignoreCase: boolean): string | undefined {
-			try {
-				if(!ignoreCase) {
-					return fs.existsSync(p) ? p : undefined;
-				}
-				// walk the directory and find the first match
-				const dir = path.dirname(p);
-				if(!fs.existsSync(dir)) {
-					return undefined;
-				}
-				const file = path.basename(p);
-				const files = fs.readdirSync(dir);
-				const found = files.find(f => f.toLowerCase() === file.toLowerCase());
-				return found ? path.join(dir, found) : undefined;
-			} catch(e) {
-				log.warn(`Could not resolve '${p}': ${e instanceof Error ? e.message : String(e)}`);
-				return undefined;
-			}
-		},
-		createRequest(path: string): RParseRequest {
-			return {
-				request: 'file',
-				content: path,
-			};
-		}
-	};
-}
-
-/**
- * Creates a {@link RParseRequestProvider} that reads from the given text map.
- * @see {@link requestProviderFromFile} for a provider that reads from the file system.
- */
-export function requestProviderFromText(text: Readonly<{ [path: string]: string }>): RParseRequestProvider {
-	return {
-		exists(path: string, ignoreCase: boolean): string | undefined {
-			if(ignoreCase) {
-				return Object.keys(text).find(p => p.toLowerCase() === path.toLowerCase());
-			}
-			return text[path] !== undefined ? path : undefined;
-		},
-		createRequest(path: string): RParseRequest {
-			return {
-				request: 'text',
-				content: text[path] ?? ''
-			};
-		}
-	};
-}
-
-/**
- * Checks whether the given {@link RParseRequest} is empty (has no content).
- */
+/** Checks whether the given {@link RParseRequest} is empty (has no content). */
 export function isEmptyRequest(request: RParseRequest): boolean {
 	return request.content.trim().length === 0;
 }
-
 
 export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell): Promise<string>;
 export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShellExecutor): string;
@@ -205,20 +121,7 @@ export async function retrieveNormalizedAstFromRCode(request: RParseRequest, she
 	}, deterministicCountingIdGenerator(0));
 }
 
-/**
- * If the string has (R-)quotes around it, they will be removed; otherwise the string is returned unchanged.
- */
-export function removeRQuotes(str: string): string {
-	if(str.length > 1 && (startAndEndsWith(str, '\'') || startAndEndsWith(str, '"'))) {
-		return str.slice(1, -1);
-	} else {
-		return str;
-	}
-}
-
-/**
- * Needs to be called *after* {@link retrieveParseDataFromRCode} (or {@link retrieveNormalizedAstFromRCode})
- */
+/** Needs to be called *after* {@link retrieveParseDataFromRCode} (or {@link retrieveNormalizedAstFromRCode}) */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell, ignoreComments = false): Promise<number> {
 	const rows = ignoreComments ? `flowr_output[flowr_output$token != "${RawRType.Comment}", ]` : 'flowr_output';
 	const result = await shell.sendCommandWithOutput(`cat(nrow(${rows}),${ts2r(shell.options.eol)})`);
@@ -227,6 +130,10 @@ export async function retrieveNumberOfRTokensOfLastParse(shell: RShell, ignoreCo
 }
 
 function guardRetrievedOutput(output: string, request: RParseRequest): string {
+	if(output === PipeBindDisabledMarker) {
+		throw new ParseError('the experimental pipe-bind "=>" is disabled by default (R gates it behind '
+			+ '_R_USE_PIPEBIND_); enable the "engine.r-shell.pipeBind" configuration option to analyze it with the r-shell engine');
+	}
 	guard(output !== ErrorMarker,
 		() => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`);
 	return output;

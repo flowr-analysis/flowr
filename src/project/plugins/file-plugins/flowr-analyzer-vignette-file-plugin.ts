@@ -2,7 +2,7 @@ import { FlowrAnalyzerRoleFilePlugin, PathPart } from './flowr-analyzer-file-plu
 import { SemVer } from 'semver';
 import { FileRole } from '../../context/flowr-file';
 
-const VignettePathPattern = /vignettes?/i;
+const VignettePathPattern = /(^|\/)vignettes?(\/|$)/i;
 
 /**
  * This plugin provides supports for the loading of Vignette files.

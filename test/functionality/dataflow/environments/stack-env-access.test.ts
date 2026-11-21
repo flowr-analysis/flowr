@@ -2,23 +2,23 @@ import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
-import { VariableDefinitionVertex } from '../../../../src/dataflow/graph/vertex';
-import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
-import { NoEdges } from '../../../../src/dataflow/graph/graph';
+import { DfgVertex } from '../../../../src/dataflow/graph/vertex';
+import type { FlowrCapabilityId } from '../../../../src/r-bridge/data/get';
+import { analyze } from '../../_helper/analyzer';
 
 describe('access on stack environments', withTreeSitter(ts => {
 	/** Asserts that the access at `at` reads exactly the variable definitions given by `expected`. */
-	function assertReads(name: string, ids: readonly SupportedFlowrCapabilityId[], code: string, at: SlicingCriterion, expected: readonly SlicingCriterion[]): void {
+	function assertReads(name: string, ids: readonly FlowrCapabilityId[], code: string, at: SlicingCriterion, expected: readonly SlicingCriterion[]): void {
 		test(label(name, ids, ['dataflow']), async() => {
-			const analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
-			const { idMap } = analysis.normalize;
-			const graph = analysis.dataflow.graph;
-			const got = [...graph.outgoingEdges(SlicingCriterion.parse(at, idMap)) ?? NoEdges]
-				.filter(([target, e]) => DfEdge.includesType(e, EdgeType.Reads) && VariableDefinitionVertex.is(graph.getVertex(target)))
+			const analyzer = await analyze(ts, code);
+			const dataflow = await analyzer.dataflow();
+			const normalize = await analyzer.normalize();
+			const { idMap } = normalize;
+			const graph = dataflow.graph;
+			const got = [...graph.edgesFrom(SlicingCriterion.parse(at, idMap))]
+				.filter(([target, e]) => DfEdge.includesType(e, EdgeType.Reads) && DfgVertex.isVariableDefinition(graph.getVertex(target)))
 				.map(([target]) => String(target)).sort();
 			assert.deepStrictEqual(got, expected.map(e => String(SlicingCriterion.parse(e, idMap))).sort(),
 				`${code}\n${Dataflow.visualize.mermaid.url(graph)}`);

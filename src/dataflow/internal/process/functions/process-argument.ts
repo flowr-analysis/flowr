@@ -10,9 +10,7 @@ import { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argum
 import { VertexType } from '../../../graph/vertex';
 import { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
-/**
- * Links all reads that occur before the argument to the argument root node.
- */
+/** Links all reads that occur before the argument to the argument root node. */
 export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: readonly IdentifierReference[], graph: DataflowGraph) {
 	const rid = root.info.id;
 	const allIdsBeforeArguments = new Set(RNode.collectAllIdsWithStop(root, n => RArgument.is(n) && n.info.id !== rid));
@@ -24,9 +22,7 @@ export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentIn
 	}
 }
 
-/**
- * Processes the dataflow information for a function argument.
- */
+/** Processes the dataflow information for a function argument. */
 export function processFunctionArgument<OtherInfo>(
 	argument: RArgument<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
@@ -48,11 +44,7 @@ export function processFunctionArgument<OtherInfo>(
 	const argumentName = argument.name?.content;
 	let entryPoint = value?.entryPoint;
 	if(argumentName) {
-		graph.addVertex({
-			tag: VertexType.Use,
-			id:  argument.info.id,
-			cds: data.cds
-		}, data.ctx.env.makeCleanEnv());
+		graph.addVertex({ tag: VertexType.Use, id: argument.info.id, cds: data.cds }, data.ctx.env.cleanEnv);
 		entryPoint = argument.info.id;
 	}
 

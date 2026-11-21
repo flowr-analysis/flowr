@@ -39,9 +39,17 @@ const local = {
 };
 
 export default [...flowr, {
-	/* what the browser build puts in place of node's built-ins is plain JS, outside the TypeScript project */
-	ignores: ['scripts/playground/empty.js', 'scripts/playground/path-shim.js']
+	/* the browser build's stand-ins for node's built-ins, the playground's service worker, and the install guard are plain JS, outside the TypeScript project, and the generated data files are not hand-formatted */
+	ignores: ['scripts/playground/empty.js', 'scripts/playground/path-shim.js', 'scripts/playground/webr-guard.js', 'scripts/prepare.js', 'scripts/test-docker.js', 'scripts/test-changed.mjs', 'scripts/test-select.mjs', 'src/data/*.generated.ts']
 }, {
 	plugins: { local },
-	rules:   { 'local/no-orphaned-doc-comment': 'error' },
+	rules:   {
+		'local/no-orphaned-doc-comment': 'error',
+		/* one statement per module, with inline `type` specifiers instead of a separate `import type` */
+		'import-x/no-duplicates':        ['error', { considerQueryString: true, 'prefer-inline': true }]
+	},
+}, {
+	/* a semantic type must not silently turn into a plain string or number */
+	files: ['src/**/*.ts', 'test/**/*.ts'],
+	rules: { 'flowr/no-semantic-widening': 'error' },
 }];

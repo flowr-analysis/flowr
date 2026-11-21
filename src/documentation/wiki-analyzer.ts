@@ -5,12 +5,8 @@ import { FlowrGithubBaseRef, FlowrGithubGroupName } from './doc-util/doc-files';
 import { FlowrAnalyzerQmdFilePlugin } from '../project/plugins/file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 import { BuiltInPlugins, makePlugin, registerPluginMaker } from '../project/plugins/plugin-registry';
 import { codeInline } from './doc-util/doc-code';
-import {
-	FlowrAnalyzerProjectDiscoveryPlugin
-} from '../project/plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
-import {
-	FlowrAnalyzerDescriptionFilePlugin
-} from '../project/plugins/file-plugins/flowr-analyzer-description-file-plugin';
+import { FlowrAnalyzerProjectDiscoveryPlugin } from '../project/plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
+import { FlowrAnalyzerDescriptionFilePlugin } from '../project/plugins/file-plugins/flowr-analyzer-description-file-plugin';
 import {
 	FlowrAnalyzerPackageVersionsDescriptionFilePlugin
 } from '../project/plugins/package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
@@ -18,12 +14,8 @@ import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from '../project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
 import { FlowrAnalyzerFilePlugin } from '../project/plugins/file-plugins/flowr-analyzer-file-plugin';
-import {
-	FlowrAnalyzerPackageVersionsPlugin
-} from '../project/plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
-import {
-	FlowrAnalyzerLoadingOrderPlugin
-} from '../project/plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
+import { FlowrAnalyzerPackageVersionsPlugin } from '../project/plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
+import { FlowrAnalyzerLoadingOrderPlugin } from '../project/plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
 import { contextFromInput, contextFromSources, FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { requestFromInput } from '../r-bridge/retriever';
 import { FlowrAnalyzerFilesContext } from '../project/context/flowr-analyzer-files-context';
@@ -31,14 +23,14 @@ import { FlowrAnalyzerLoadingOrderContext } from '../project/context/flowr-analy
 import { FlowrAnalyzerDependenciesContext } from '../project/context/flowr-analyzer-dependencies-context';
 import { FlowrAnalyzerCache } from '../project/cache/flowr-analyzer-cache';
 import { PipelineExecutor } from '../core/pipeline-executor';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import { FlowrAnalyzerRmdFilePlugin } from '../project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerPlugin } from '../project/plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerEnvironmentContext } from '../project/context/flowr-analyzer-environment-context';
 import { FlowrAnalyzerFunctionsContext } from '../project/context/flowr-analyzer-functions-context';
 import { FlowrAnalyzerMetaContext } from '../project/context/flowr-analyzer-meta-context';
 import { FlowrAnalyzerIncrementalAnalysisContext } from '../project/context/flowr-analyzer-incremental-analysis-context';
+import { DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin } from '../project/plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
 import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { FlowrConfig } from '../config';
@@ -55,8 +47,8 @@ async function analyzerQuickExample() {
 	// obtain the identified loading order
 	console.log(analyzer.inspectContext().files.loadingOrder.getLoadingOrder());
 	// run a dependency query
-	const results = await analyzer.query([{ type: 'dependencies' }]);
-	return { analyzer, df, results };
+	const dependencies = await analyzer.query({ type: 'dependencies' });
+	return { analyzer, df, dependencies };
 }
 
 async function analyzerQuickExampleToRegisterPlugins() {
@@ -70,47 +62,26 @@ async function analyzerQuickExampleToRegisterPlugins() {
 	return analyzer;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Analyzer
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Analyzer */
 export class WikiAnalyzer extends DocMaker<'wiki/Analyzer.md'> {
 	constructor() {
 		super('wiki/Analyzer.md', module.filename, 'analyzer');
 	}
 
 	public text({ ctx }: DocMakerArgs): string {
+		const builderMethods = (pick: (name: string) => boolean) => Object.getOwnPropertyNames(FlowrAnalyzerBuilder.prototype).filter(pick).sort()
+			.map(key => `- ${ctx.link(`${FlowrAnalyzerBuilder.name}::${key}`)}\\\n${ctx.doc(`${FlowrAnalyzerBuilder.name}::${key}`)}`).join('\n');
 		return `
 ${
 	collapsibleToc({
-		'Overview': {
-			'Overview of the Analyzer': undefined,
-			'Conducting Analyses':      undefined
+		'Overview':              ['Overview of the Analyzer', 'Conducting Analyses'],
+		'Builder Configuration': ['Configuring flowR', 'Configuring the Engine', 'Configuring Plugins', 'Builder Reference'],
+		'Plugins':               {
+			'Plugin Types':            ['Dependency Identification', 'Project Discovery', 'File Loading', 'Loading Order'],
+			'How to add a new plugin': undefined
 		},
-		'Builder Configuration': {
-			'Configuring flowR':      undefined,
-			'Configuring the Engine': undefined,
-			'Configuring Plugins':    undefined,
-			'Builder Reference':      undefined
-		},
-		'Plugins': {
-			'Plugin Types': {
-				'Dependency Identification': undefined,
-				'Project Discovery':         undefined,
-				'File Loading':              undefined,
-				'Loading Order':             undefined
-			},
-			'How to add a new plugin': undefined,
-		},
-		'Context Information': {
-			'Files Context':                undefined,
-			'Loading Order Context':        undefined,
-			'Dependencies Context':         undefined,
-			'Environment Context':          undefined,
-			'Meta Context':                 undefined,
-			'Gas Context':                  undefined,
-			'Incremental Analysis Context': undefined,
-		},
-		'Caching': undefined
+		'Context Information': ['Files Context', 'Loading Order Context', 'Dependencies Context', 'Environment Context', 'Meta Context', 'Gas Context', 'Incremental Analysis Context'],
+		'Caching':             undefined
 	})
 }
 
@@ -150,13 +121,10 @@ With the [files context](#Files_Context), you can also add virtual files to the 
 For this, have a look at the
 ${ctx.linkM(FlowrAnalyzer, 'addFile')} method.
 
-	${block({
-		type:    'NOTE',
-		content: `If you want to quickly try out the analyzer, you can use the following code snippet that analyzes a simple R expression:
+	${block('NOTE', `If you want to quickly try out the analyzer, you can use the following code snippet that analyzes a simple R expression:
 
 ${ctx.code(analyzerQuickExample, { dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true })}
-`
-	})}
+`)}
 
 To reset the analysis (e.g., to provide new requests) you can use ${ctx.linkM(FlowrAnalyzer, 'reset')}.
 If you need to pre-compute analysis results (e.g., to speed up future queries), you can use ${ctx.linkM(FlowrAnalyzer, 'runFull')}.
@@ -178,7 +146,8 @@ Again, ${ctx.linkM(FlowrAnalyzer, 'peekDataflow', { codeFont: true, realNameWrap
 Also, ${ctx.linkM(FlowrAnalyzer, 'peekControlflow', { codeFont: true, realNameWrapper: 'i' })} returns the control flow graph if it was already computed but without triggering a computation.
 * ${ctx.linkM(FlowrAnalyzer, 'callGraph')} to compute the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')} of the analyzed code\\
 Likewise, ${ctx.linkM(FlowrAnalyzer, 'peekCallGraph', { codeFont: true, realNameWrapper: 'i' })} allows you to inspect the call graph if it was already computed (but without triggering a computation).
-* ${ctx.linkM(FlowrAnalyzer, 'query')} to run ${ctx.linkPage('wiki/Query API', 'queries')} on the analyzed code.
+* ${ctx.linkM(FlowrAnalyzer, 'query')} to run ${ctx.linkPage('wiki/Query API', 'queries')} on the analyzed code.\\
+Pass a single query object to get its result directly (e.g., the slice of a \`static-slice\` query), or a list of queries to get a record of their results by query type.
 * ${ctx.linkM(FlowrAnalyzer, 'runSearch')} to run a search query on the analyzed code using the ${ctx.linkPage('wiki/Search API', 'search API')}
 
 We work on providing a set of example repositories that demonstrate how to use the analyzer in different scenarios:
@@ -207,11 +176,8 @@ With the builder you can either provide a complete configuration or amend the de
 
 By default, the builder uses flowR's standard configuration obtained with ${ctx.linkO(FlowrConfig, 'default')}.
 
-${block({
-	type:    'NOTE',
-	content: `During the analysis with the ${ctx.link(FlowrAnalyzer)}, you can also access the configuration with
-		 the ${ctx.link(FlowrAnalyzerContext)}.`
-})}
+${block('NOTE', `During the analysis with the ${ctx.link(FlowrAnalyzer)}, you can also access the configuration with
+		 the ${ctx.link(FlowrAnalyzerContext)}.`)}
 
 ${section('Configuring the Engine', 3)}
 
@@ -248,16 +214,13 @@ Please note, that by passing \`false\` to the builder constructor, no default pl
 If you want to unregister specific plugins, you can use the ${ctx.linkM(FlowrAnalyzerBuilder, 'unregisterPlugins')} method.
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 If you directly access the API, please prefer creating the objects yourself by instantiating the respective classes instead of relying on the plugin registry.
 This avoids the indirection *and* potential issues with naming collisions in the registry.
 Moreover, this allows you to directly provide custom configuration to the plugin constructors in a readable fashion,
 *and* to re-use plugin instances.
 Instantiation by text is mostly for serialized communications (e.g., via a CLI or config format).
-`.trim()
-	})
+`.trim())
 }
 
 For more information on the different plugin types and how to create new plugins, please refer to the [Plugins](#Plugins) section below.
@@ -266,19 +229,11 @@ ${section('Builder Reference', 3)}
 
 The builder provides a plethora of methods to configure the resulting analyzer instance:
 
-${
-	Object.getOwnPropertyNames(FlowrAnalyzerBuilder.prototype).filter(c => c !== 'constructor' && !c.startsWith('build')).sort().map(
-		key => `- ${ctx.link( `${FlowrAnalyzerBuilder.name}::${key}`)}\\\n${ctx.doc(`${FlowrAnalyzerBuilder.name}::${key}`)}`
-	).join('\n')
-}
+${builderMethods(c => c !== 'constructor' && !c.startsWith('build'))}
 
 To build the analyzer after you have configured the builder, you can use one of the following:
 
-${
-	Object.getOwnPropertyNames(FlowrAnalyzerBuilder.prototype).filter(c => c.startsWith('build')).sort().map(
-		key => `- ${ctx.link( `${FlowrAnalyzerBuilder.name}::${key}`)}\\\n${ctx.doc(`${FlowrAnalyzerBuilder.name}::${key}`)}`
-	).join('\n')
-}
+${builderMethods(c => c.startsWith('build'))}
 
 ${section('Plugins', 2)}
 
@@ -328,7 +283,7 @@ ${section('Project Discovery', 4)}
 These plugins trigger when confronted with a project analysis request (see, ${ctx.link('RProjectAnalysisRequest')}).
 Their job is to identify the files that belong to the project and add them to the analysis.
 flowR provides the ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin)} with a
-${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin.name)} as the default implementation that simply collects all R source files in the given folder.
+${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin.name)} as the default implementation that collects all R source files in the given folder.
 
 Please note that all project discovery plugins should conform to the ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin)} base class.
 
@@ -387,14 +342,11 @@ These sub-contexts are described in more detail below.
 
 For the general structure from an implementation perspective, please have a look at ${ctx.link(FlowrAnalyzerContext)}.
 ${
-	block({
-		type:    'TIP',
-		content: `
+	block('TIP', `
 If you need a context for testing or to create analyses with lower-level components, you can use
 either ${ctx.link(contextFromInput)} to create a context from input data (which lifts the old ${ctx.link(requestFromInput)}) or
 ${ctx.link(contextFromSources)} to create a context from source files (e.g., if you need a virtual file system).
-`.trim()
-	})
+`.trim())
 }
 
 If for whatever reason you need to reset the context during an analysis, you can use
@@ -419,13 +371,10 @@ ${ctx.linkM(FlowrAnalyzerFilesContext, 'consideredFilesList', { codeFont: true, 
 ${section('Loading Order Context', 3)}
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 Please be aware that the loading order is inherently tied to the files context (as it determines which files are available for ordering).
 Hence, the ${ctx.link(FlowrAnalyzerLoadingOrderContext)} is accessible (only) via the ${ctx.link(FlowrAnalyzerFilesContext)}.
-`.trim()
-	})
+`.trim())
 }
 
 Here is the structure of the ${ctx.link(FlowrAnalyzerLoadingOrderContext)} that provides access to the identified loading order of files:
@@ -505,14 +454,11 @@ writeable context (\`analyzer.context().gas.reset()\`). To bound a single call, 
 ${ctx.linkM(FlowrAnalyzerGasContext, 'scope', { codeFont: true, realNameWrapper: 'i' })}.
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 Gas is disabled for every feature by default, and with no gas plugins registered
 ${ctx.linkM(FlowrAnalyzerGasContext, 'checkGas', { codeFont: true, realNameWrapper: 'i' })} returns \`GasLevel.Normal\` without measuring anything.
 See the ${ctx.linkPage('wiki/Core', 'gas section of the Core wiki page', 'gas-resource-guard')} for the levels, the configuration, and how to write a gas plugin.
-`.trim()
-	})
+`.trim())
 }
 
 ${section('Incremental Analysis Context', 3)}
@@ -523,7 +469,7 @@ ${ctx.hierarchy(FlowrAnalyzerIncrementalAnalysisContext, { showImplSnippet: fals
 
 This context is not an analysis-result cache by itself.
 Instead, it carries forward the minimal state needed by future incremental phases after an invalidation happened.
-At the moment, it is used for incremental parsing with Tree-sitter, but it is intended to become the shared context for additional incremental analysis stages as well.
+It is used for incremental parsing with Tree-sitter and for the incremental dataflow analysis, see below.
 
 If the analyzer or context is reset, the incremental information is discarded via
 ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'reset', { codeFont: true, realNameWrapper: 'i' })}.
@@ -558,7 +504,10 @@ For one file, the incremental state follows a fixed lifecycle:
 
 ${section('Incremental Dataflow', 4)}
 
-This context is planned to also support future incremental dataflow graph computation.
+With ${ctx.linkConfig('incremental.dataflow.activated')}, the dataflow analysis continues the last one instead of starting over.
+The ${ctx.link(DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin)} classifies the change (${ctx.link('IncrementalUpdateType')}).
+Unchanged files are reused, and a single file resumes after its last unchanged statement if a checkpoint exists there (see ${ctx.linkConfig('incremental.dataflow.checkpoints')}).
+${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getLastAppliedIncrementalUpdate', { codeFont: true, realNameWrapper: 'i' })} tells you what the last analysis reused.
 
 
 ${section('Caching', 2)}

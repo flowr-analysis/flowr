@@ -4,7 +4,7 @@ import type { AnyAbstractDomain } from '../../../../src/abstract-interpretation/
 /**
  * The type of an object containing the expected results for the operations on abstract values of an abstract domain.
  */
-export interface DomainTestExpectation<AbstractValue>{
+export interface DomainTestExpectation<AbstractValue> {
 	readonly equal:   boolean,
 	readonly leq:     boolean,
 	readonly join:    AbstractValue,
@@ -15,12 +15,12 @@ export interface DomainTestExpectation<AbstractValue>{
 
 /**
  * Asserts that an abstract domain implementation satisfies the expected properties for the given abstract values.
- * @param create  - A function to create an instance of the abstract domain from an abstract value
- * @param value1  - The first abstract value to test
- * @param value2  - The second abstract value to test
- * @param expected - An object containing the expected results for the operations on the abstract values
  * @template AbstractValue - The type of the abstract values provided
  * @template Domain        - The type of the abstract domain being tested
+ * @param    create        - A function to create an instance of the abstract domain from an abstract value
+ * @param    value1        - The first abstract value to test
+ * @param    value2        - The second abstract value to test
+ * @param    expected      - An object containing the expected results for the operations on the abstract values
  */
 export function assertAbstractDomain<AbstractValue, Domain extends AnyAbstractDomain>(
 	create: (value: AbstractValue) => Domain,

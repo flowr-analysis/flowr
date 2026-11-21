@@ -1,14 +1,14 @@
 name: Check for Broken Links and Publish Wiki
 
 'on':
-  push:
-    branches: [ main ]
   pull_request:
     types: [ opened, synchronize, reopened ]
     branches: [ main ]
   workflow_dispatch:
+  # QA tests every push to main and the release tests release commits, so publishing waits for them and reuses
+  # their test label details instead of running the same tests again
   workflow_run:
-    workflows: ["Release Action"]
+    workflows: ["QA", "Release Action"]
     branches: [ main ]
     types:
       - completed
@@ -18,7 +18,6 @@ name: Check for Broken Links and Publish Wiki
 
 env:
   PUBLISH: ${{ github.event_name == 'workflow_dispatch'
-    || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
 
 permissions:
@@ -26,14 +25,19 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  # a newer push to a pull request makes its older run pointless, but a publishing run must not stop halfway
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 65
-    if: ${{ !(github.event_name == 'push' && startsWith(github.event.head_commit.message, '[release:'))
-      && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
+    # QA runs on release commits as well, but those are published once the release is done
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' && (
+          (github.event.workflow_run.name == 'QA' && github.event.workflow_run.event == 'push'
+            && !startsWith(github.event.workflow_run.head_commit.message, '[release:'))
+        || (github.event.workflow_run.name == 'Release Action'
+            && startsWith(github.event.workflow_run.head_commit.message, '[release:'))) }}
     outputs:
       publish: ${{ steps.gate.outputs.publish }}
     steps:
@@ -66,56 +70,79 @@ jobs:
         timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-
-      - name: "📦 Install R Packages"
-        uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          cache: 'true'
-          cache-version: '1'
-          extra-packages: |
-            any::dplyr
-            any::readr
+          packages: 'true'
 
       - name: "🛒 Checkout LFS"
         if: ${{ success() && env.PUBLISH == 'true' }}
         # just as a time-proven safety measure
         run: git lfs checkout
 
+      # before the tests, which check the database-backed examples of the pages, and before the pages themselves
+      - name: "⬇️ Setup the Signature Database"
+        uses: ./.github/actions/setup-sigdb
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "⬇️ Get the Test Label Details from the Triggering Run"
+        if: ${{ github.event_name == 'workflow_run' }}
+        uses: actions/download-artifact@v6
+        continue-on-error: true
+        with:
+          # QA uploads the mutation suite's details apart from the others, the release run all of them in one
+          pattern: test-label-details*
+          merge-multiple: true
+          path: coverage/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.RELEASE_TOKEN }}
+
+      # only a publishing run without the details of a triggering run tests for them, a pull request
+      # does not publish and gen-capabilities keeps the committed page when the details are missing
       - name: "⚗️ Test Suite (full, for data)"
+        if: ${{ env.PUBLISH == 'true' && hashFiles('coverage/flowr-test-details.json') == '' }}
         # we make sure we have a clean run
         run: |
           rm -rf "coverage/"
           rm -f "/tmp/flowr-label-summary.json"
           bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
 
-      - name: "💾 Cache the Signature Database Bundles"
-        uses: actions/cache@v4
-        with:
-          # only the bundles, the shards unpacked next to them are re-derived on demand
-          path: ~/.cache/flowr/sigdb/bundles
-          key: sigdb-bundles-${{ hashFiles('src/data/sigdb/sigdb.remote.json') }}
+      # the run above excludes this suite, so without it the capabilities page below (and the one the
+      # documentation job builds from the artifact) would be missing every label the mutation tests claim
+      - name: "⚗️ Mutation Tests (for data)"
+        if: ${{ env.PUBLISH == 'true' && hashFiles('coverage/flowr-test-details-mutations.json') == '' }}
+        run: npx vitest --run --config test/mutations/vitest.config.mts -- --make-summary
 
-      - name: "⬇️ Sync the Signature Database"
-        # without it every sigdb-backed page says "No signature database is loaded" instead of showing a result
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run sync:sigdb
+      - name: "⬆️ Upload the Test Label Details"
+        if: ${{ env.PUBLISH == 'true' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: wiki-test-label-details
+          path: coverage/flowr-test-details*.json
+          if-no-files-found: warn
+
+      # the release workflow produces the data but does not commit it, so it lands in the same commit as the pages
+      - name: "⬇️ Get the Benchmark Data from the Release Run"
+        if: ${{ github.event_name == 'workflow_run' }}
+        uses: actions/download-artifact@v6
+        continue-on-error: true
+        with:
+          name: benchmark-data
+          path: wiki/stats/benchmark/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: "🛠️ Update the Generated Pages"
         run: |
-          # npm ci is done by the full test run before
+          # npm ci is done by the signature database sync before
           CHANGED_ANY=false
           CHANGED_FILES=()
           
           # Generate all wiki pages
           npm run wiki
-          # the landing page is generated too, from real flowR output; the signature browser is megabytes,
-          # so the documentation job builds that one straight onto gh-pages instead
-          FLOWR_LANDING_ONLY=1 npm run gen:landing
-          # the signature browser is gitignored on purpose (megabytes); only the page and its samples are committed
-          for LANDING in index.html wiki/landing/index.html; do
-              if [ -n "$(git status --porcelain -- "$LANDING")" ]; then CHANGED_FILES+=("$LANDING"); fi
-          done
+          # the capabilities page is committed, so it is regenerated here, with the test details the run above
+          # produced; the landing page, the benchmark page, the signature browser and the playground are
+          # gitignored on purpose (megabytes) and the documentation job builds those straight onto gh-pages
+          npx ts-node --transpile-only scripts/gen-capabilities.ts
+          if [ -n "$(git status --porcelain -- wiki/capabilities/index.html)" ]; then CHANGED_FILES+=("wiki/capabilities/index.html"); fi
           # read in everything from /tmp/flowr-wiki-changed-files.txt and add to CHANGED_FILES
           if [ -f /tmp/flowr-wiki-changed-files.txt ]; then
                 while IFS= read -r line; do
@@ -132,6 +159,17 @@ jobs:
               echo "CHANGED=true" >> $GITHUB_ENV
           else
               echo "No Wiki pages were changed!"
+          fi
+
+          echo "====== Benchmark Data (if any) ======"
+          if [ -n "$(git status --porcelain -- wiki/stats/benchmark/)" ]; then
+              echo "New benchmark data!"
+              git add wiki/stats/benchmark/
+              CHANGED_ANY=true
+              echo "CHANGED=true" >> $GITHUB_ENV
+              CHANGED_FILES+=("benchmark-data")
+          else
+              echo "No new benchmark data!"
           fi
 
           echo "====== Producing Update (if necessary) ======"
@@ -225,6 +263,9 @@ jobs:
             submodules: true
             lfs: true
             ref: main
+            # the version marker compares HEAD against the release tag, which a shallow clone without tags cannot do
+            fetch-tags: true
+            fetch-depth: 0
 
       - name: "🌍 Load Versions to Use"
         run: bash .github/workflows/scripts/global-configuration.sh
@@ -241,23 +282,14 @@ jobs:
         timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-
-      - name: "📦 Install R Packages"
-        uses: r-lib/actions/setup-r-dependencies@v2
-        timeout-minutes: 20
-        with:
-          cache: 'true'
-          cache-version: '1'
-          extra-packages: |
-            any::dplyr
-            any::readr
+          packages: 'true'
 
       - name: "📦 Install Node Dependencies"
         # the sync below runs through ts-node, so the dependencies have to be there before it
         run: npm ci
 
       - name: "💾 Cache the Signature Database Bundles"
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           # only the bundles, the shards unpacked next to them are re-derived on demand
           path: ~/.cache/flowr/sigdb/bundles
@@ -267,7 +299,16 @@ jobs:
         # the signature browser is built from it; without the shards it is skipped and the page 404s
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run sync:sigdb
+        run: npm run sigdb:sync
+
+      # the upload warns rather than fails when the run produced no label file, so there may be no artifact to
+      # get; the page then keeps the test summaries it was committed with instead of the deploy going down
+      - name: "⬇️ Get the Test Label Details from the Wiki Run"
+        uses: actions/download-artifact@v6
+        continue-on-error: true
+        with:
+          name: wiki-test-label-details
+          path: coverage/
 
       - name: "🛠️ Build the documentation"
         run: bash .github/workflows/scripts/run-flowr-command.sh doc

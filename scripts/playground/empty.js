@@ -9,6 +9,8 @@ const stub = new Proxy(function() {}, {
 			case Symbol.toPrimitive: return () => 0;
 			case Symbol.toStringTag: return 'stub';
 			case Symbol.iterator: return function* () { /* nothing to iterate */ };
+			/* a browser has no file system, so no file is there, whatever a stub call would otherwise answer */
+			case 'existsSync': return () => false;
 			default:           return stub;
 		}
 	},

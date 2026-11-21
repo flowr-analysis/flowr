@@ -1,126 +1,136 @@
-import { assert, it } from 'vitest';
+import { assert, test } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import type { DeepWritable } from 'ts-essentials';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../../../src/project/flowr-analyzer';
 import { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { fileProtocol } from '../../../../../src/r-bridge/retriever';
-import type { FlowrConfig } from '../../../../../src/config';
-import {
-	IncrementalUpdateType,
-	type IncrementalUpdateResult
-} from '../../../../../src/project/plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
-import { type IncrementalMutationType, resolveMutation } from './incremental-mutations';
+import type { IncrementalUpdateResult, IncrementalUpdateType } from '../../../../../src/project/plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
 import { resolveOracle } from './incremental-oracles';
 
-export interface IncrementalDataflowTestOptions {
-	readonly allowedMutations: IncrementalMutationType[];
-	readonly oracle?:          string;
-	/**
-	 * `true`: the detector must trigger exactly `expectedType`.
-	 * `false`: the detector may trigger `expectedType` or fall back to `Full`.
-	 */
-	readonly strict?:          boolean;
+/** The files of one step of an {@link assertIncrementalSequence}, by file name, the first file is the one analyzed. */
+export type IncrementalFiles = Readonly<Record<string, string>>;
+
+export interface IncrementalStep {
+	readonly files:    IncrementalFiles;
+	/** the update type the classification must produce for this step */
+	readonly type?:    IncrementalUpdateType;
+	/** whether the incremental analysis must (not) reuse anything for this step */
+	readonly applied?: boolean;
 }
 
-async function buildAnalyzer(request: string, amend: (config: DeepWritable<FlowrConfig>) => void): Promise<FlowrAnalyzer> {
+export interface IncrementalSequenceOptions {
+	/** the oracles to compare with, see {@link resolveOracle}, `:dataflow` by default */
+	readonly oracles?:      readonly string[];
+	/** see {@link FlowrConfig.incremental.dataflow.checkpoints} */
+	readonly checkpoints?:  number;
+	/** analyze all files of a step as requests, rather than only the first one */
+	readonly allRequested?: boolean;
+	/**
+	 * Compare with a fresh analyzer for every step rather than with one that analyzes the steps one after the other without incrementality.
+	 * An analyzer learns about the project as it analyzes it (e.g., the files a source call reads classify the project), so a repeated analysis may differ from a fresh one.
+	 */
+	readonly fresh?:        boolean;
+}
+
+async function buildAnalyzer(dir: string, files: IncrementalFiles, incremental: boolean, options: IncrementalSequenceOptions): Promise<FlowrAnalyzer> {
 	const analyzer = await new FlowrAnalyzerBuilder()
 		.setParser(new TreeSitterExecutor())
-		.amendConfig(amend)
+		.amendConfig(c => {
+			c.incremental.dataflow.activated = incremental;
+			if(options.checkpoints !== undefined) {
+				c.incremental.dataflow.checkpoints = options.checkpoints;
+			}
+		})
 		.build();
-	analyzer.addRequest(request);
+	const names = options.allRequested ? Object.keys(files) : [Object.keys(files)[0]];
+	for(const name of names) {
+		analyzer.addRequest(`${fileProtocol}${path.join(dir, name)}`);
+	}
 	return analyzer;
 }
 
-function writeFileSet(dir: string, files: Record<string, string[]>): void {
-	for(const [name, content] of Object.entries(files)) {
-		fs.writeFileSync(path.join(dir, name), content.join('\n'));
+function writeFiles(dir: string, before: IncrementalFiles, after: IncrementalFiles): string[] {
+	const touched: string[] = [];
+	/* every file is written again, as saving it in an editor does, so that unchanged files are invalidated too */
+	for(const [name, content] of Object.entries(after)) {
+		fs.writeFileSync(path.join(dir, name), content);
+		touched.push(name);
 	}
-}
-
-/** Writes the new file contents, removes files no longer present, and returns the set of touched file names. */
-function applyFileChanges(dir: string, oldFiles: Record<string, string[]>, newFiles: Record<string, string[]>): Set<string> {
-	const touched = new Set<string>();
-	for(const [name, content] of Object.entries(newFiles)) {
-		fs.writeFileSync(path.join(dir, name), content.join('\n'));
-		touched.add(name);
-	}
-	for(const name of Object.keys(oldFiles)) {
-		if(!(name in newFiles)) {
+	for(const name of Object.keys(before)) {
+		if(!(name in after)) {
 			fs.rmSync(path.join(dir, name), { force: true });
-			touched.add(name);
+			touched.push(name);
 		}
 	}
 	return touched;
 }
 
-function assertExpectedUpdateType(appliedUpdate: IncrementalUpdateResult | undefined, expectedUpdateType: IncrementalUpdateType, mutationType: string, strict: boolean | undefined): void {
-	const hitExpectedType = appliedUpdate?.types.includes(expectedUpdateType) ?? false;
-	const safeFallback = strict === false && appliedUpdate !== undefined && !appliedUpdate.applied;
-	assert(
-		hitExpectedType || safeFallback,
-		`mutation "${mutationType}" should trigger ${expectedUpdateType}${strict === false ? ' or safely fall back to a full recompute' : ''}, got ${appliedUpdate ? `[${appliedUpdate.types.join(', ')}] (${appliedUpdate.applied ? 'applied' : 'not applied'})` : 'no incremental attempt'}`
-	);
-	if(strict !== false && hitExpectedType && expectedUpdateType !== IncrementalUpdateType.Full) {
-		assert(appliedUpdate?.applied, `mutation "${mutationType}" triggered ${expectedUpdateType} but the orchestrator fell back to a full recompute instead of patching it`);
-	}
+function describeStep(i: number, step: IncrementalStep): string {
+	return `step ${i} with files ${JSON.stringify(step.files)}`;
 }
 
 /**
- * Applies each of `options.allowedMutations` to `files` in turn, and asserts that the resulting
- * incremental dataflow update matches the mutation's expected {@link IncrementalUpdateType} (or,
- * unless `strict`, safely falls back to a full recompute).
+ * Analyzes the steps one after the other with one incremental analyzer, and after every step compares it with a full analysis
+ * of the same files, using every oracle in {@link IncrementalSequenceOptions#oracles}.
+ * @returns the update the incremental analysis applied for every step after the first
  */
-export function assertIncrementalDataflowGraphMatches(files: Record<string, string>, options: IncrementalDataflowTestOptions): void {
-	const oracle = resolveOracle(options.oracle ?? ':dataflow');
-	const lineMap: Record<string, string[]> = Object.fromEntries(Object.entries(files).map(([name, content]) => [name, content.split('\n')]));
-	const rootName = Object.keys(files)[0];
-
-	if(options.allowedMutations.length === 0) {
-		it.skip('no mutations configured yet', () => {});
-		return;
-	}
-
-	for(const mutationType of options.allowedMutations) {
-		const mutation = resolveMutation(mutationType);
-		const mutated = mutation.apply(lineMap);
-		const expectedUpdateType = mutation.expectedType;
-
-		if(mutated === undefined) {
-			it.skip(`${mutationType} (not applicable to this setup)`, () => {});
-			continue;
-		}
-		const { oldFiles, newFiles } = mutated;
-
-		it(mutationType, async() => {
-			const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-incremental-mutation-'));
-			try {
-				writeFileSet(dir, oldFiles);
-				const request = `${fileProtocol}${path.join(dir, rootName)}`;
-				const analyzerIncremental = await buildAnalyzer(request, c => {
-					c.incremental.dataflow.activated = true;
-				});
-				const analyzerNoIncremental = await buildAnalyzer(request, c => {
-					c.incremental.dataflow.activated = false;
-				});
-
-				await oracle.run(analyzerIncremental);
-
-				const touched = applyFileChanges(dir, oldFiles, newFiles);
-				for(const name of touched) {
-					analyzerIncremental.context().files.getFileByPath(path.join(dir, name))?.invalidate();
+export async function runIncrementalSequence(steps: readonly IncrementalStep[], options: IncrementalSequenceOptions = {}): Promise<(IncrementalUpdateResult | undefined)[]> {
+	const oracles = (options.oracles ?? [':dataflow']).map(resolveOracle);
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-incremental-'));
+	const applied: (IncrementalUpdateResult | undefined)[] = [];
+	try {
+		writeFiles(dir, {}, steps[0].files);
+		const incremental = await buildAnalyzer(dir, steps[0].files, true, options);
+		const repeated = options.fresh ? undefined : await buildAnalyzer(dir, steps[0].files, false, options);
+		for(let i = 0; i < steps.length; i++) {
+			const step = steps[i];
+			if(i > 0) {
+				const before = steps[i - 1].files;
+				const touched = writeFiles(dir, before, step.files);
+				for(const analyzer of repeated ? [incremental, repeated] : [incremental]) {
+					for(const name of touched) {
+						analyzer.inspectContext().files.getFileByPath(path.join(dir, name))?.invalidate();
+					}
+					if(options.allRequested) {
+						for(const name of Object.keys(step.files).filter(n => !(n in before))) {
+							analyzer.addRequest(`${fileProtocol}${path.join(dir, name)}`);
+						}
+					}
 				}
-
-				const incremental = await oracle.run(analyzerIncremental);
-				assertExpectedUpdateType(analyzerIncremental.context().inc.getLastAppliedIncrementalUpdate(), expectedUpdateType, mutationType, options.strict);
-
-				const full = await oracle.run(analyzerNoIncremental);
-				oracle.assertMatches(incremental, full);
-			} finally {
-				fs.rmSync(dir, { recursive: true, force: true });
 			}
-		});
+			const full = repeated ?? await buildAnalyzer(dir, step.files, false, options);
+			for(const oracle of oracles) {
+				const got = await oracle.run(incremental);
+				const expected = await oracle.run(full);
+				oracle.assertMatches(got, expected, `${describeStep(i, step)} (${oracle.name})`);
+			}
+			if(i > 0) {
+				const update = incremental.inspectContext().inc.getLastAppliedIncrementalUpdate();
+				applied.push(update);
+				if(step.type !== undefined) {
+					assert.include(update?.types ?? [], step.type, `${describeStep(i, step)}: expected update type ${step.type}, got ${JSON.stringify(update)}`);
+				}
+				if(step.applied !== undefined) {
+					assert.strictEqual(update?.applied ?? false, step.applied, `${describeStep(i, step)}: expected the incremental analysis ${step.applied ? '' : 'not '}to reuse the analysis before, got ${JSON.stringify(update)}`);
+				}
+			}
+		}
+	} finally {
+		fs.rmSync(dir, { recursive: true, force: true });
 	}
+	return applied;
+}
+
+/** Registers a test running {@link runIncrementalSequence}. */
+export function assertIncrementalSequence(name: string, steps: readonly IncrementalStep[], options: IncrementalSequenceOptions = {}): void {
+	test(name, async() => {
+		await runIncrementalSequence(steps, options);
+	});
+}
+
+/** A sequence of steps for a single file named `script.R`, one per code. */
+export function singleFileSteps(...codes: readonly (string | Omit<IncrementalStep, 'files'> & { code: string })[]): IncrementalStep[] {
+	return codes.map(c => typeof c === 'string' ? { files: { 'script.R': c } } : { ...c, files: { 'script.R': c.code } });
 }

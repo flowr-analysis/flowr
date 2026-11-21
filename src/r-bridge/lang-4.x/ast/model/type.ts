@@ -1,7 +1,7 @@
 /**
  * Token types as they are produced by the R parser.
  * Not all of them are directly handled by the normalize step.
- * Some of them are also listed as part of the {@link OperatorDatabase}.
+ * Some of them are also listed as part of the operator facts of the built-in configuration (`BuiltInOperators`).
  * @see RType
  */
 export enum RawRType {
@@ -113,6 +113,8 @@ export enum RawRType {
 	SymbolSub = 'SYMBOL_SUB',
 	/** T54 */
 	SymbolFormals = 'SYMBOL_FORMALS',
+	/** the `_` of a pipe, `x |> f(y = _)`, which flowR reads as the symbol `_` */
+	Placeholder = 'PLACEHOLDER',
 	/** T55 */
 	Comment = 'COMMENT',
 	/** T56 */
@@ -201,20 +203,16 @@ export enum RType {
 	/* ------ special types ------ */
 	/** {@link RProject} */
 	Project = 'RProject',
-	/**
-	 * {@link RDelimiter}.
-	 * Is not part of the normalized AST but can be found in
-	 * {@link Source#adToks}.
-	 */
+	/** {@link RDelimiter}. Is not part of the normalized AST but can be found in {@link Source#adToks}. */
 	Delimiter = 'RDelimiter',
 }
-
 
 export const ValidRTypes: Set<string> = new Set(Object.values(RType));
 export const ValidRTypesReverse = Object.fromEntries(Object.entries(RType).map(([k, v]) => [v, k]));
 
 const validSymbolTypes = new Set([
 	RawRType.Symbol,
+	RawRType.Placeholder,
 	RawRType.SymbolPackage,
 	RawRType.SymbolFunctionCall,
 	RawRType.NullConst,

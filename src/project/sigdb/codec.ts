@@ -36,9 +36,6 @@ function requireZstd(): ZstdZlib {
 /** on-disk compression codec for a sigdb bundle */
 export type SigDbCodec = 'brotli' | 'zstd';
 
-/** the richer codec, preferred by readers when this Node supports it (writers always additionally emit `.br`) */
-export const DefaultSigDbCodec: SigDbCodec = 'zstd';
-
 /** compressed extensions a reader understands (outer compression only); `.gz` is read-only legacy */
 export const CompressedExts = ['.br', '.zst', '.gz'] as const;
 
@@ -112,11 +109,6 @@ export const ZstdCodec: SigDbCodecSpec = {
 	compressSync:   (buf, opts = {}) => requireZstd().zstdCompressSync(buf, { params: zstdParams(opts) }),
 	createCompress: (opts = {}) => requireZstd().createZstdCompress({ params: zstdParams(opts) })
 };
-
-/** the codec spec for a codec name (used when writing) */
-export function codecFor(codec: SigDbCodec): SigDbCodecSpec {
-	return codec === 'zstd' ? ZstdCodec : BrotliCodec;
-}
 
 /**
  * The codec specs a writer emits: brotli `.br` always (the universal fallback -- every Node ships it), plus

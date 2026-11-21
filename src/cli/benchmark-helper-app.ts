@@ -32,10 +32,7 @@ export interface SingleBenchmarkCliOptions {
 
 const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [], {
 	subtitle: 'Will slice for all possible variables, signal by exit code if slicing was successful, and can be run standalone',
-	examples: [
-		'{italic example-file.R} --output {italic output.json}',
-		'{bold --help}'
-	]
+	examples: ['{italic example-file.R} --output {italic output.json}', '{bold --help}']
 });
 
 if(options.verbose) {
@@ -54,7 +51,7 @@ async function benchmark() {
 	guard((options['file-id'] === undefined) === (options['run-num'] === undefined), 'When giving a file-id or run-num, both have to be given');
 
 	// prefix for printing to console, includes file id and run number if present
-	const prefix = `[${options.input }${options['file-id'] === undefined ? '' : ` (file ${options['file-id']}, run ${options['run-num']})`}]`;
+	const prefix = `[${options.input}${options['file-id'] === undefined ? '' : ` (file ${options['file-id']}, run ${options['run-num']})`}]`;
 	console.log(`${prefix} Appending output to ${options.output}`);
 	const directory = path.parse(options.output).dir;
 	// ensure the directory exists if the path contains one
@@ -125,12 +122,7 @@ async function benchmark() {
 		}
 
 		const { stats } = slicer.finish();
-		const output = {
-			filename:  options.input,
-			'file-id': options['file-id'],
-			'run-num': options['run-num'],
-			stats
-		};
+		const output = { filename: options.input, 'file-id': options['file-id'], 'run-num': options['run-num'], stats };
 
 		// append line by line
 		console.log(`Appending benchmark of ${options.input} to ${options.output}`);

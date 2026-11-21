@@ -4,14 +4,9 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { type FoldFunctions, foldAst } from '../../../r-bridge/lang-4.x/ast/model/processing/fold';
 import type { ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { type RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
-export const DefaultAllVariablesFilter: SlicingCriteriaFilter = {
-	minimumSize: 1,
-	maximumSize: 1,
-	collectAll:  defaultAllVariablesCollector
-};
+export const DefaultAllVariablesFilter: SlicingCriteriaFilter = { minimumSize: 1, maximumSize: 1, collectAll: defaultAllVariablesCollector };
 
 const onLeaf = () => [];
 const onBinary = (_: unknown, lhs: NodeId[], rhs: NodeId[]) => [...lhs, ...rhs];
@@ -31,10 +26,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 		foldNext:   onLeaf,
 		foldBreak:  onLeaf
 	},
-	other: {
-		foldComment:       onLeaf,
-		foldLineDirective: onLeaf
-	},
+	other:          { foldComment: onLeaf, foldLineDirective: onLeaf },
 	foldIfThenElse: (_: unknown, a: NodeId[], b: NodeId[], c: NodeId[] | undefined) => [...a, ...b, ...(c ?? [])],
 	foldExprList:   (_: unknown, _grouping: unknown, a: NodeId[][]) => a.flat(),
 	functions:      {
@@ -42,7 +34,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 		foldFunctionCall:       (c: RFunctionCall, a: NodeId[], b: (NodeId[] | typeof EmptyArgument)[]) => {
 			const args = b.flatMap(b => b !== EmptyArgument ? b.flat() : []);
 			if(c.named) {
-				return Identifier.getName(c.functionName.content) === 'library' ? args.slice(1) : args;
+				return RFunctionCall.isNamed(c, 'library') ? args.slice(1) : args;
 			} else {
 				return [...a.filter(x => x !== EmptyArgument), ...args];
 			}

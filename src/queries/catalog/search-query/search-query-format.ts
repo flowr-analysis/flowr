@@ -1,14 +1,28 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { summarizeIdsIfTooLong } from '../../query-print';
+import { summarizeIdsIfTooLong, queryHeader } from '../../query-print';
 import type { FlowrSearch } from '../../../search/flowr-search-builder';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { executeSearch } from './search-query-executor';
 import { flowrSearchToMermaid } from '../../../search/flowr-search-printer';
 import { Mermaid } from '../../../util/mermaid/mermaid';
+import { metaSince } from '../../query-meta';
+import { runSearch } from '../../../search/flowr-search-executor';
+
+/** Executes the given search queries using the provided analyzer. */
+export async function executeSearch({ analyzer }: BasicQueryData, queries: readonly SearchQuery[]): Promise<SearchQueryResult> {
+	const start = Date.now();
+	const results: { ids: NodeId[], search: FlowrSearch }[] = [];
+	for(const query of queries) {
+		const { search } = query;
+
+		const searchResult = await runSearch(search, analyzer);
+
+		results.push({ ids: searchResult.getElements().map(({ node }) => node.info.id), search });
+	}
+
+	return { ...metaSince(start), results };
+}
 
 export interface SearchQuery extends BaseQueryFormat {
 	readonly type:   'search';
@@ -24,7 +38,7 @@ export const SearchQueryDefinition = {
 	executor:        executeSearch,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'search'>['search'];
-		result.push(`Query: ${bold('search', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(queryHeader('search', formatter, out['.meta'].timing));
 		for(const [, { ids, search }] of out.results.entries()) {
 			result.push(`   ╰ [query](${Mermaid.codeToUrl(flowrSearchToMermaid(search))}): {${summarizeIdsIfTooLong(formatter, ids)}}`);
 		}

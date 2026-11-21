@@ -32,6 +32,7 @@ const literal = (v: string, n?: string | RDF.NamedNode) => n3().DataFactory.lite
 import { log } from './log';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type * as RDF from '@rdfjs/types';
+import { CacheScope, GlobalCaches } from './global-caches';
 
 const domain = 'https://uni-ulm.de/r-ast/';
 
@@ -47,37 +48,29 @@ export type QuadIgnoreIf = (key: string, value: unknown) => boolean;
 
 /**
  * Deterministically retrieve a unique id for a given object.
- * @param obj - The object to retrieve the id for
+ * @param obj     - The object to retrieve the id for
  * @param context - to provide unique ids even for different contexts, we add the context to the id.
  */
 export type QuadIdRetriever = (obj: unknown, context: ContextForQuad) => string;
 
-/**
- * Either a constant string or a supplier depending on the object in question
- */
+/** Either a constant string or a supplier depending on the object in question */
 export type QuadContextRetriever = ContextForQuad | ((obj: DataForQuad) => ContextForQuad);
 
-/**
- * A deterministic counting id generator for quads.
- */
+/** A deterministic counting id generator for quads. */
 export function defaultQuadIdGenerator(): QuadIdRetriever {
 	let counter = 0;
-	const idMap = new DefaultMap<unknown, number>( () => counter++ );
+	const idMap = new DefaultMap<unknown, number>(() => counter++);
 	return (elem: unknown, context: ContextForQuad) => `${context}/${idMap.get(elem)}`;
 }
 
 const ignoredKeysArray = ['complexNumber', 'markedAsInt', 'info'];
 
-/**
- * A default ignore function that ignores undefined values and some common keys.
- */
+/** A default ignore function that ignores undefined values and some common keys. */
 export function defaultQuadIgnoreIf(): QuadIgnoreIf {
 	return (key: string, value: unknown) => value === undefined || ignoredKeysArray.includes(key);
 }
 
-/**
- * See {@link DefaultQuadSerializationConfiguration} for defaults.
- */
+/** See {@link DefaultQuadSerializationConfiguration} for defaults. */
 export interface QuadSerializationConfiguration extends MergeableRecord {
 	/**
 	 * Ignore certain keys or values when serializing to quads.
@@ -89,13 +82,9 @@ export interface QuadSerializationConfiguration extends MergeableRecord {
 	 * @see defaultQuadIdGenerator
 	 */
 	getId?:  QuadIdRetriever
-	/**
-	 * The context of the serialized quads, probably the file-name (constant) or whatever is desired.
-	 */
+	/** The context of the serialized quads, probably the file-name (constant) or whatever is desired. */
 	context: QuadContextRetriever
-	/**
-	 * The basic domain name to use for the quads.
-	 */
+	/** The basic domain name to use for the quads. */
 	domain?: string
 }
 
@@ -110,15 +99,13 @@ function retrieveContext(context: QuadContextRetriever, obj: DataForQuad): strin
 	return typeof context === 'string' ? context : context(obj);
 }
 
-
 let cachedWriter: Writer | undefined;
 const writer = (): Writer => cachedWriter ??= new (n3().Writer)({ format: 'N-Quads' });
 
 /**
  * Serializes the given object or array to rdf quads.
  * @param obj    - The object to serialize (must be a Record and no array etc.)
- * @param config - Further configuration options
- * @returns the serialized quads
+ * @returns      the serialized quads
  * @see graph2quads
  */
 export function serialize2quads(obj: RecordForQuad, config: QuadSerializationConfiguration): string {
@@ -126,9 +113,13 @@ export function serialize2quads(obj: RecordForQuad, config: QuadSerializationCon
 	guard(isObjectOrArray(obj), 'cannot serialize non-object to rdf!');
 	guard(!Array.isArray(obj), 'cannot serialize arrays (must wrap in object)!');
 
-	store = new Set();
 	const quads: Quad[] = [];
-	serializeObject(obj, quads, useConfig);
+	try {
+		serializeObject(obj, quads, useConfig);
+	} finally {
+		/* the objects seen are the analysis serialized, which must not outlive the call */
+		store.clear();
+	}
 	return writer().quadsToString(quads);
 }
 
@@ -161,7 +152,6 @@ export function graph2quads<AdditionalVertexInformation extends MergeableRecord,
 	return serialize2quads(graph, config);
 }
 
-
 function processArrayEntries(key: string, values: unknown[], obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
 	for(const [index, element] of values.entries()) {
 		if(element !== null && element !== undefined && isObjectOrArray(element)) {
@@ -186,7 +176,7 @@ function processArrayEntries(key: string, values: unknown[], obj: DataForQuad, q
 			serializeObject(element as DataForQuad, quads, config);
 		} else {
 			// for the time being, the index does not seem of interest for the graph summary team.
-			processLiteralEntry(element, key, obj, quads, config, undefined);
+			processLiteralEntry(element, key, obj, quads, config);
 		}
 	}
 }
@@ -214,37 +204,14 @@ function objToType(value: unknown): NamedNode | undefined {
 	return suffix ? namedNode(`http://www.w3.org/2001/XMLSchema#${suffix}`) : undefined;
 }
 
-function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>, index: number | undefined) {
+function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
 	const context = retrieveContext(config.context, obj);
-	// we have to create an object if there is an index, so that we can link the index!
-	if(index !== undefined) {
-		const newId = `${key}-${index}`;
-		quads.push(quad(
-			namedNode(domain + config.getId(obj, context)),
-			namedNode(domain + key),
-			namedNode(domain + config.getId(newId, context)),
-			namedNode(context)
-		));
-		quads.push(quad(
-			namedNode(domain + config.getId(newId, context)),
-			namedNode(domain + 'value'),
-			literal(String(value), objToType(value)),
-			namedNode(context)
-		));
-		quads.push(quad(
-			namedNode(domain + newId),
-			namedNode(domain + 'order'),
-			literal(String(index), namedNode('http://www.w3.org/2001/XMLSchema#integer')),
-			namedNode(context)
-		));
-	} else {
-		quads.push(quad(
-			namedNode(domain + config.getId(obj, context)),
-			namedNode(domain + key),
-			literal(String(value), objToType(value)),
-			namedNode(context)
-		));
-	}
+	quads.push(quad(
+		namedNode(domain + config.getId(obj, context)),
+		namedNode(domain + key),
+		literal(String(value), objToType(value)),
+		namedNode(context)
+	));
 }
 
 function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
@@ -267,11 +234,13 @@ function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads
 			processObjectEntries(key, value, obj, quads, config);
 		}
 	} else {
-		processLiteralEntry(value, key, obj, quads, config, undefined);
+		processLiteralEntry(value, key, obj, quads, config);
 	}
 }
 
-let store = new Set();
+/** the objects already serialized by the running {@link serialize2quads}, against cycles */
+const store = new Set<unknown>();
+GlobalCaches.register('quad-cycle-guard', CacheScope.Analysis, () => store.size, () => store.clear());
 
 function guardCycle(obj: unknown) {
 	// @ts-expect-error we do not care about the type here

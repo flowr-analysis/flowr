@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import { label } from '../../_helper/label';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import {
@@ -513,7 +514,7 @@ to gracefully prepare for changes in the next major release.
   returns input unaltered (@teunbrand, #5800).
 	`));
 
-	test('Parse the News!', () => {
+	test(label('Parse the News!', ['project-news'], ['other']), () => {
 		const files = ctx.files.getFilesByRole(FileRole.News);
 		assert.lengthOf(files, 1, 'There should be exactly one NEWS file');
 

@@ -101,16 +101,16 @@ function signatureDatabaseEntries(counts: SigDbCounts | undefined): BenchmarkGra
 		return [];
 	}
 	const data: BenchmarkGraphEntry[] = [];
-	const count = (name: string, value: number | undefined) => {
+	function count(name: string, value: number | undefined) {
 		if(typeof value === 'number') {
 			data.push({ name: `${SigDbPrefix} ${name}`, unit: '#', value });
 		}
-	};
-	const bytes = (name: string, value: number | undefined) => {
+	}
+	function bytes(name: string, value: number | undefined) {
 		if(typeof value === 'number') {
 			data.push({ name: `${SigDbPrefix} ${name}`, unit: 'KiB', value: kib(value) });
 		}
-	};
+	}
 	count('bundles', counts.bundles);
 	for(const [kind, value] of Object.entries(counts.bundlesByKind ?? {})) {
 		count(`bundles (${kind})`, value);
@@ -137,7 +137,6 @@ function signatureDatabaseEntries(counts: SigDbCounts | undefined): BenchmarkGra
 
 /**
  * Write the graph output for the ultimate slicer stats to a file
- * @param ultimate - The ultimate slicer stats
  * @param outputGraphPath - The path to write the graph output to
  */
 export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath: string) {
@@ -186,6 +185,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 	for(const [name, value] of [
 		['linting rules', features.lintingRules],
 		['queries', features.queries],
+		['plugins', features.plugins],
 		['built-in definitions', features.builtinDefinitions],
 		['built-in definitions (default handler)', features.builtinDefinitionsDefault],
 		['built-in definitions (own handler)', features.builtinDefinitionsCustom],
@@ -200,16 +200,14 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 			data.push({ name: `linting rules (${tag})`, unit: '#', value });
 		}
 	}
-	data.push({
-		name:  'number of files',
-		unit:  '#',
-		value: ultimate.totalRequests
-	});
-	data.push({
-		name:  'number of slices',
-		unit:  '#',
-		value: ultimate.totalSlices
-	});
+	/* the names ride along in `extra`, so the page can say which plugins a type stands for */
+	for(const [type, names] of Object.entries<readonly string[]>(features.pluginsByType ?? {})) {
+		if(Array.isArray(names)) {
+			data.push({ name: `plugins (${type})`, unit: '#', value: names.length, extra: names.slice().sort().join(', ') });
+		}
+	}
+	data.push({ name: 'number of files', unit: '#', value: ultimate.totalRequests });
+	data.push({ name: 'number of slices', unit: '#', value: ultimate.totalSlices });
 
 	// what the analysis works on and produces, so a change in runtime can be related to a change in size
 	for(const [name, measurement] of [
@@ -224,13 +222,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 		['control flow edges', ultimate.controlFlow?.numberOfEdges]
 	] as const) {
 		if(measurement) {
-			data.push({
-				name,
-				unit:  '#',
-				value: plotValue(measurement),
-				range: String(measurement.std),
-				extra: plotExtra(measurement)
-			});
+			data.push({ name, unit: '#', value: plotValue(measurement), range: String(measurement.std), extra: plotExtra(measurement) });
 		}
 	}
 	// what the data frame shape inference sees and how precise it is, so a change in its precision becomes visible
@@ -274,11 +266,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 		value: ultimate.failedToRepParse,
 		extra: `out of ${ultimate.totalSlices} slices`
 	});
-	data.push({
-		name:  'times hit threshold',
-		unit:  '#',
-		value: ultimate.timesHitThreshold
-	});
+	data.push({ name: 'times hit threshold', unit: '#', value: ultimate.timesHitThreshold });
 	// the reduction without comments and empty lines tells a different story than the raw one
 	for(const [name, measurement] of [
 		['reduction (lines)', ultimate.reduction.numberOfLines],
@@ -287,12 +275,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 		['reduction no fluff (normalized tokens)', ultimate.reductionNoFluff.numberOfNormalizedTokens]
 	] as const) {
 		if(measurement) {
-			data.push({
-				name,
-				unit:  '#',
-				value: plotValue(measurement),
-				extra: plotExtra(measurement, 4)
-			});
+			data.push({ name, unit: '#', value: plotValue(measurement), extra: plotExtra(measurement, 4) });
 		}
 	}
 	data.push({

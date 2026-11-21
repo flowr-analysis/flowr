@@ -1,10 +1,9 @@
 import { FlowrAnalyzerPlugin, PluginType } from '../flowr-analyzer-plugin';
 import type { PathLike } from 'fs';
-import type { FlowrFileProvider } from '../../context/flowr-file';
-import { FileRole } from '../../context/flowr-file';
+import { type FlowrFileProvider, FileRole } from '../../context/flowr-file';
 import { SemVer } from 'semver';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
-import { platformBasename, platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import { RPath, rPackageSourceRegex } from '../../../util/files';
 
 /**
  * This is the base class for all plugins that load and possibly transform files when they are loaded.
@@ -22,9 +21,7 @@ import { platformBasename, platformDirname } from '../../../dataflow/internal/pr
 export abstract class FlowrAnalyzerFilePlugin extends FlowrAnalyzerPlugin<FlowrFileProvider, FlowrFileProvider | [file: FlowrFileProvider, cont: boolean]> {
 	public readonly type = PluginType.FileLoad;
 
-	/**
-	 * Determine whether this plugin applies to the given file.
-	 */
+	/** Determine whether this plugin applies to the given file. */
 	public abstract applies(file: PathLike): boolean;
 
 	public static override defaultPlugin(): FlowrAnalyzerFilePlugin {
@@ -43,7 +40,7 @@ class DefaultFlowrAnalyzerFilePlugin extends FlowrAnalyzerFilePlugin {
 
 	public process(_ctx: FlowrAnalyzerContext, arg: FlowrFileProvider<string>): FlowrFileProvider {
 		const path = arg.path().toString();
-		if(/\.r$/i.test(path)) {
+		if(/\.r$/i.test(path) || rPackageSourceRegex.test(path)) {
 			// we just assign the role :D
 			arg.assignRole(FileRole.Source);
 		}
@@ -53,9 +50,11 @@ class DefaultFlowrAnalyzerFilePlugin extends FlowrAnalyzerFilePlugin {
 /** Which part of a path a {@link FlowrAnalyzerPatternFilePlugin} matches its pattern against. */
 export const PathPart = {
 	/** The file name including its extension. */
-	Basename: platformBasename,
+	Basename: RPath.basename,
 	/** The directory portion of the path. */
-	Dirname:  platformDirname
+	Dirname:  RPath.dirname,
+	/** The whole path, for patterns that need both the folder and the file name. */
+	Full:     (p: string) => p
 } as const;
 
 /**

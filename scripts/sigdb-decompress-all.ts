@@ -8,10 +8,7 @@ if(!fs.existsSync(dir)) {
 	process.exit(0);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
-const zlibAny = zlib as any;
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-const hasZstd = typeof zlibAny.zstdDecompressSync === 'function';
+const zstdDecompress = (zlib as { zstdDecompressSync?: (buf: Buffer) => Buffer }).zstdDecompressSync;
 
 let done = 0;
 for(const file of fs.readdirSync(dir)) {
@@ -29,7 +26,7 @@ for(const file of fs.readdirSync(dir)) {
 		done++;
 		console.log(`  decompress ${file} -> ${path.basename(to)} (${(plain.length / 1e6).toFixed(2)} MB)`);
 	} else if(file.endsWith('.zst')) {
-		if(!hasZstd) {
+		if(typeof zstdDecompress !== 'function') {
 			console.log(`  skip ${file} (zstd not supported in this Node version)`);
 			continue;
 		}
@@ -38,13 +35,10 @@ for(const file of fs.readdirSync(dir)) {
 		if(fs.existsSync(to)) {
 			continue;
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-		const plain = zlibAny.zstdDecompressSync(fs.readFileSync(from));
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		const plain = zstdDecompress(fs.readFileSync(from));
 		fs.writeFileSync(to, plain);
 		fs.rmSync(from);
 		done++;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		console.log(`  decompress ${file} -> ${path.basename(to)} (${(plain.length / 1e6).toFixed(2)} MB)`);
 	}
 }

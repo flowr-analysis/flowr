@@ -1,12 +1,11 @@
 import type { NoInfo, RNode } from '../model';
 import { RType } from '../type';
 import { assertUnreachable } from '../../../../../util/assert';
-import type { EmptyArgument } from '../nodes/r-function-call';
+import { EmptyArgument } from '../nodes/r-function-call';
 import { RAccess } from '../nodes/r-access';
-import { FunctionArgument } from '../../../../../dataflow/graph/graph';
 
 /** Return `true` to stop visiting from this node (i.e., do not continue to visit this node *and* the children) */
-// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- visitors that only observe return nothing, and we never stop for them
 export type OnEnter<OtherInfo> = (node: RNode<OtherInfo>) => (boolean | void);
 /** Similar to {@link OnEnter} but called when leaving a node. Can't stop exploration as the subtree is already visited! */
 export type OnExit<OtherInfo> = (node: RNode<OtherInfo>) => void;
@@ -101,7 +100,7 @@ export class NodeVisitor<OtherInfo = NoInfo> {
 		if(Array.isArray(nodes)) {
 			const n = nodes as readonly (RNode<OtherInfo> | null | undefined | typeof EmptyArgument)[];
 			for(const node of n) {
-				if(node && FunctionArgument.isNotEmpty(node)) {
+				if(node && node !== EmptyArgument) {
 					this.visitSingle(node);
 				}
 			}

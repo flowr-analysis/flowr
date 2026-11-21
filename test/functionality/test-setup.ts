@@ -1,14 +1,16 @@
 import { LogLevel } from '../../src/util/log';
 import { setMinLevelOfAllLogs } from './_helper/log';
-import { checkNetworkConnection } from './_helper/network';
-import { RShell } from '../../src/r-bridge/shell';
-import type { SemVer } from 'semver';
-import { afterAll } from 'vitest';
+import semver, { type SemVer } from 'semver';
+import { afterAll, inject } from 'vitest';
 import { TheGlobalLabelMap } from './_helper/label';
 import fs from 'fs';
 import { jsonReplacer } from '../../src/util/json';
 import { GlobalSummaryFile } from './summary-def';
+import { ensureTestTmp } from '../test-tmp.mjs';
 import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+
+// another run's teardown or a tmp cleaner may have removed the folder since the global setup
+ensureTestTmp();
 
 // the tests use controlled package information; do not let the shipped CRAN signature database leak in
 process.env.FLOWR_DISABLE_DEFAULT_SIGDB ??= '1';
@@ -21,26 +23,14 @@ declare global {
 }
 
 
-globalThis.hasNetwork = false;
-globalThis.produceLabelSummary = false;
-
+const rVersion = inject('rVersion');
+globalThis.hasNetwork = inject('hasNetwork');
+globalThis.rVersion = rVersion === undefined ? undefined : semver.parse(rVersion);
+globalThis.produceLabelSummary = process.argv.includes('--make-summary');
+const isVerbose = process.env['FLOWR_VERBOSE'] === 'true';
+setMinLevelOfAllLogs(isVerbose ? LogLevel.Trace : LogLevel.Error, isVerbose);
+/* suites construct parsers while they are collected, so this must not wait for a hook (the wrapping keeps tsc's commonjs check quiet) */
 await (async() => {
-	const isVerbose = process.env['FLOWR_VERBOSE'] === 'true';
-	setMinLevelOfAllLogs(isVerbose ? LogLevel.Trace : LogLevel.Error, isVerbose);
-	globalThis.produceLabelSummary = process.argv.includes('--make-summary');
-
-	globalThis.hasNetwork = await checkNetworkConnection();
-	let shell: RShell | undefined;
-	try {
-		shell = new RShell();
-		shell.tryToInjectHomeLibPath();
-		globalThis.rVersion = await shell.usedRVersion();
-	} catch(e) {
-		console.error(e);
-	} finally {
-		shell?.close();
-	}
-
 	await TreeSitterExecutor.initTreeSitter();
 })();
 

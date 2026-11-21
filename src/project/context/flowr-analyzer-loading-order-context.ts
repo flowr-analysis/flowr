@@ -12,30 +12,20 @@ import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
  * If you are a {@link FlowrAnalyzerLoadingOrderPlugin} and want to modify the available orders, you can use the {@link FlowrAnalyzerLoadingOrderContext} directly.
  */
 export interface ReadOnlyFlowrAnalyzerLoadingOrderContext {
-	/**
-	 * The name of this context.
-	 */
+	/** The name of this context. */
 	readonly name: string;
 	/**
 	 * Peek whether we have a loading order known or guessed, this does not trigger any plugin runs.
 	 * If you want to get the current loading order, including potential recompoutations, use {@link getLoadingOrder} instead.
 	 */
 	peekLoadingOrder(): readonly RParseRequest[] | undefined;
-	/**
-	 * Get the current loading order of requests, potentially triggering a re-computation if new requests have been added since the last computation.
-	 */
+	/** Get the current loading order of requests, potentially triggering a re-computation if new requests have been added since the last computation. */
 	getLoadingOrder(): readonly RParseRequest[];
-	/**
-	 * Get all requests that have been added to this context, but for which no loading order is known or guessed.
-	 */
+	/** Get all requests that have been added to this context, but for which no loading order is known or guessed. */
 	getUnorderedRequests(): readonly RParseRequest[];
-	/**
-	 * Get the current guesses for the loading order, if any. These are populated by {@link FlowrAnalyzerLoadingOrderPlugin}s.
-	 */
+	/** Get the current guesses for the loading order, if any. These are populated by {@link FlowrAnalyzerLoadingOrderPlugin}s. */
 	currentGuesses(): readonly (readonly RParseRequest[])[];
-	/**
-	 * Get the current known loading order, if any. This is populated by {@link FlowrAnalyzerLoadingOrderPlugin}s if they have a source of identifying the order definitively.
-	 */
+	/** Get the current known loading order, if any. This is populated by {@link FlowrAnalyzerLoadingOrderPlugin}s if they have a source of identifying the order definitively. */
 	currentKnownOrder(): readonly RParseRequest[] | undefined;
 }
 
@@ -47,7 +37,7 @@ const loadingOrderLog = log.getSubLogger({ name: 'loading-order' });
  * If you are interested in inspecting these orders, refer to {@link ReadOnlyFlowrAnalyzerLoadingOrderContext}.
  * Plugins, however, can use this context directly to modify order guesses.
  */
-export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerLoadingOrderPlugin> implements ReadOnlyFlowrAnalyzerLoadingOrderContext{
+export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerLoadingOrderPlugin> implements ReadOnlyFlowrAnalyzerLoadingOrderContext {
 	public readonly name = 'flowr-analyzer-loading-order-context';
 
 	private rerunRequired: boolean;
@@ -70,6 +60,24 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 		this.unordered.length = 0;
 		this.seen.clear();
 		this.rerunRequired = this.plugins.length > 0;
+	}
+
+	public fork(source: FlowrAnalyzerLoadingOrderContext): void {
+		this.unordered.push(...source.unordered);
+		this.seen.clear();
+		for(const request of source.seen) {
+			this.seen.add(request);
+		}
+
+		for(const guess of source.guesses) {
+			this.guesses.push([...guess]);
+		}
+
+		if(source.knownOrder) {
+			this.knownOrder = source.knownOrder.slice();
+		}
+
+		this.rerunRequired = source.rerunRequired;
 	}
 
 	/**

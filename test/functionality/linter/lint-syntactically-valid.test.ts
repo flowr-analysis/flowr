@@ -1,17 +1,18 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
+import { label } from '../_helper/label';
 import { assertLinter } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('syntactically-valid', () => {
-		assertLinter('valid code has no syntax errors', parser, 'x <- c(1, 2)\nprint(x)',
+		assertLinter(label('valid code has no syntax errors', ['syntax-errors'], ['linter']), parser, 'x <- c(1, 2)\nprint(x)',
 			'syntactically-valid',
 			[],
 			{ parser: 'tree-sitter', errors: 0, fixable: 0 }
 		);
 
-		assertLinter('missing closing parenthesis', parser, 'x <- c(1, 2',
+		assertLinter(label('missing closing parenthesis', ['syntax-errors'], ['linter']), parser, 'x <- c(1, 2',
 			'syntactically-valid',
 			[{
 				certainty: LintingResultCertainty.Certain,
@@ -23,7 +24,44 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ parser: 'tree-sitter', errors: 1, fixable: 1 }
 		);
 
-		assertLinter('unbalanced brace', parser, '{ 1',
+		// the missing `)` belongs at the end of the head, before the body, not after everything that came with it
+		assertLinter(label('missing closing parenthesis of a for head', ['syntax-errors'], ['linter']), parser, 'for(i in 1:10 {\n  print(i)\n}\n',
+			'syntactically-valid',
+			[{
+				certainty: LintingResultCertainty.Certain,
+				kind:      'error',
+				message:   'Unexpected `for(i in 1:10 { print(i) }`',
+				loc:       [1, 1, 3, 1],
+				quickFix:  [{ type: 'replace', loc: [1, 14, 1, 13], description: 'Add missing closing `)` after the head', replacement: ')' }]
+			}],
+			{ parser: 'tree-sitter', errors: 1, fixable: 1 }
+		);
+
+		assertLinter(label('missing closing parenthesis of a while head', ['syntax-errors'], ['linter']), parser, 'while(x < 3 {\n  x <- x + 1\n}',
+			'syntactically-valid',
+			[{
+				certainty: LintingResultCertainty.Certain,
+				kind:      'error',
+				message:   'Unexpected `while(x < 3 { x <- x + 1 }`',
+				loc:       [1, 1, 3, 1],
+				quickFix:  [{ type: 'replace', loc: [1, 12, 1, 11], description: 'Add missing closing `)` after the head', replacement: ')' }]
+			}],
+			{ parser: 'tree-sitter', errors: 1, fixable: 1 }
+		);
+
+		assertLinter(label('a call that holds a block keeps the fix at the end', ['syntax-errors'], ['linter']), parser, 'f({\n  1\n}',
+			'syntactically-valid',
+			[{
+				certainty: LintingResultCertainty.Certain,
+				kind:      'missing',
+				message:   'Missing `)`',
+				loc:       [3, 2, 3, 1],
+				quickFix:  [{ type: 'replace', loc: [3, 2, 3, 1], description: 'Insert missing `)`', replacement: ')' }]
+			}],
+			{ parser: 'tree-sitter', errors: 1, fixable: 1 }
+		);
+
+		assertLinter(label('unbalanced brace', ['syntax-errors'], ['linter']), parser, '{ 1',
 			'syntactically-valid',
 			[{
 				certainty: LintingResultCertainty.Certain,
@@ -74,7 +112,6 @@ describe('flowR linter', withTreeSitter(parser => {
 		);
 
 		// an unfinished pipe must not complete to `%%`, which parses but silently means modulo
-		/* @ignore-in-wiki */
 		assertLinter('completes an unfinished pipe', parser, 'a %> b',
 			'syntactically-valid',
 			[{
@@ -146,7 +183,6 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ parser: 'tree-sitter', errors: 1, fixable: 1 }
 		);
 
-		/* @ignore-in-wiki */
 		assertLinter('stray closers spanning lines', parser, 'c(1,2))\n]',
 			'syntactically-valid',
 			[{
@@ -172,7 +208,6 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ parser: 'tree-sitter', errors: 1, fixable: 1 }
 		);
 
-		/* @ignore-in-wiki */
 		assertLinter('a leading `>=` is not a prompt', parser, '>= 3',
 			'syntactically-valid',
 			[{
@@ -204,14 +239,12 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ parser: 'tree-sitter', errors: 2, fixable: 2 }
 		);
 
-		/* @ignore-in-wiki */
 		assertLinter('an indexing line is not console output', parser, 'x[1] <- 2',
 			'syntactically-valid',
 			[],
 			{ parser: 'tree-sitter', errors: 0, fixable: 0 }
 		);
 
-		/* @ignore-in-wiki */
 		assertLinter('unterminated string', parser, 'x <- "abc',
 			'syntactically-valid',
 			[{

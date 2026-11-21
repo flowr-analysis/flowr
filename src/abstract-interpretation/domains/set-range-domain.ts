@@ -5,7 +5,6 @@ import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, Top, TopSymbol } from './lattice';
 import { SetComparator, type SetDomain } from './value-abstract-domain';
 
-
 /** The Top element of the set range domain with an empty set as must set and {@link Top} as may set */
 export const SetRangeTop = { must: new Set<never>(), may: Top } as const satisfies SetRangeValue<unknown>;
 
@@ -71,32 +70,24 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		return new SetRangeDomain(value, this.limit, this.setType) as this;
 	}
 
-	/**
-	 * The set of values that must be present in the set.
-	 */
+	/** The set of values that must be present in the set. */
 	public get must(): SetRangeMustSet<T, Value> {
 		return (this.isValue() ? this.value.must : Bottom) as SetRangeMustSet<T, Value>;
 	}
 
-	/**
-	 * The set of values that may be present in the set (can be {@link Top}).
-	 */
+	/** The set of values that may be present in the set (can be {@link Top}). */
 	public get may(): SetRangeMaySet<T, Value> {
 		return (this.isValue() ? this.value.may : Bottom) as SetRangeMaySet<T, Value>;
 	}
 
-	/**
-	 * The lower bound of the set range representing all values that must be present (equals the must set).
-	 */
+	/** The lower bound of the set range representing all values that must be present (equals the must set). */
 	public lower(this: SetRangeDomain<T, SetRangeValue<T>>): ReadonlySet<T>;
 	public lower(this: SetRangeDomain<T, SetRangeLift<T>>): ReadonlySet<T> | typeof Bottom;
 	public lower(): ReadonlySet<T> | typeof Bottom {
 		return this.must;
 	}
 
-	/**
-	 * The upper bound of the set range representing all values that can possibly be present (union of must set and may set).
-	 */
+	/** The upper bound of the set range representing all values that can possibly be present (union of must set and may set). */
 	public upper(this: SetRangeDomain<T, SetRangeFinite<T>>): ReadonlySet<T>;
 	public upper(this: SetRangeDomain<T, SetRangeValue<T>>): ReadonlySet<T> | typeof Top;
 	public upper(this: SetRangeDomain<T, SetRangeLift<T>>): ReadonlySet<T> | typeof Top | typeof Bottom;
@@ -155,22 +146,35 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		return otherLower.isSubsetOf(thisLower) && (otherUpper === Top || (thisUpper !== Top && thisUpper.isSubsetOf(otherUpper)));
 	}
 
+	/** Builds a {@link SetRangeValue} from a must set and an upper bound, deriving the may set as the upper bound minus the must set. */
+	private toRangeValue(must: ReadonlySet<T>, upper: ReadonlySet<T> | typeof Top): SetRangeValue<T> {
+		return { must, may: upper === Top ? Top : upper.difference(must) };
+	}
+
+	/** The upper bound of the union of two sets bounded by `thisUpper` and `otherUpper` ({@link Top} if either is unbounded). Shared by {@link joinValue} and {@link union}. */
+	private unionUpperBound(thisUpper: ReadonlySet<T> | typeof Top, otherUpper: ReadonlySet<T> | typeof Top): ReadonlySet<T> | typeof Top {
+		if(thisUpper === Top || otherUpper === Top) {
+			return Top;
+		}
+		return thisUpper.union(otherUpper);
+	}
+
+	/** The upper bound of the intersection of two sets bounded by `thisUpper` and `otherUpper`. Shared by {@link meetValue} and {@link intersect}. */
+	private intersectUpperBound(thisUpper: ReadonlySet<T> | typeof Top, otherUpper: ReadonlySet<T> | typeof Top): ReadonlySet<T> | typeof Top {
+		if(thisUpper === Top) {
+			return otherUpper;
+		} else if(otherUpper === Top) {
+			return thisUpper;
+		}
+		return thisUpper.intersection(otherUpper);
+	}
+
 	protected joinValue(this: this & SetRangeDomain<T, SetRangeValue<T>>, other: SetRangeDomain<T, SetRangeValue<T>>): this {
 		const thisLower = this.lower(), thisUpper = this.upper();
 		const otherLower = other.lower(), otherUpper = other.upper();
 
 		const joinLower = thisLower.intersection(otherLower);
-		let joinUpper;
-
-		if(thisUpper === Top || otherUpper === Top) {
-			joinUpper = Top;
-		} else {
-			joinUpper = thisUpper.union(otherUpper);
-		}
-		return this.create({
-			must: joinLower,
-			may:  joinUpper === Top ? Top : joinUpper.difference(joinLower)
-		});
+		return this.create(this.toRangeValue(joinLower, this.unionUpperBound(thisUpper, otherUpper)));
 	}
 
 	protected meetValue(this: this & SetRangeDomain<T, SetRangeValue<T>>, other: SetRangeDomain<T, SetRangeValue<T>>): this {
@@ -178,22 +182,12 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		const otherLower = other.lower(), otherUpper = other.upper();
 
 		const meetLower = thisLower.union(otherLower);
-		let meetUpper;
+		const meetUpper = this.intersectUpperBound(thisUpper, otherUpper);
 
-		if(thisUpper === Top) {
-			meetUpper = otherUpper;
-		} else if(otherUpper === Top) {
-			meetUpper = thisUpper;
-		} else {
-			meetUpper = thisUpper.intersection(otherUpper);
-		}
 		if(meetUpper !== Top && !meetLower.isSubsetOf(meetUpper)) {
 			return this.bottom();
 		}
-		return this.create({
-			must: meetLower,
-			may:  meetUpper === Top ? Top : meetUpper.difference(meetLower)
-		});
+		return this.create(this.toRangeValue(meetLower, meetUpper));
 	}
 
 	public union(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
@@ -206,17 +200,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		const otherLower = other.lower(), otherUpper = other.upper();
 
 		const unionLower = thisLower.union(otherLower);
-		let unionUpper;
-
-		if(thisUpper === Top || otherUpper === Top) {
-			unionUpper = Top;
-		} else {
-			unionUpper = thisUpper.union(otherUpper);
-		}
-		return this.create({
-			must: unionLower,
-			may:  unionUpper === Top ? Top : unionUpper.difference(unionLower)
-		});
+		return this.create(this.toRangeValue(unionLower, this.unionUpperBound(thisUpper, otherUpper)));
 	}
 
 	public intersect(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
@@ -229,19 +213,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		const otherLower = other.lower(), otherUpper = other.upper();
 
 		const intersectLower = thisLower.intersection(otherLower);
-		let intersectUpper;
-
-		if(thisUpper === Top) {
-			intersectUpper = otherUpper;
-		} else if(otherUpper === Top) {
-			intersectUpper = thisUpper;
-		} else {
-			intersectUpper = thisUpper.intersection(otherUpper);
-		}
-		return this.create({
-			must: intersectLower,
-			may:  intersectUpper === Top ? Top : intersectUpper.difference(intersectLower)
-		});
+		return this.create(this.toRangeValue(intersectLower, this.intersectUpperBound(thisUpper, otherUpper)));
 	}
 
 	public subtract(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
@@ -269,10 +241,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		} else {
 			subtractUpper = thisUpper.difference(otherUpper);
 		}
-		return this.create({
-			must: subtractLower,
-			may:  subtractUpper === Top ? Top : subtractUpper.difference(subtractLower)
-		});
+		return this.create(this.toRangeValue(subtractLower, subtractUpper));
 	}
 
 	protected widenValue(this: this & SetRangeDomain<T, SetRangeValue<T>>, other: SetRangeDomain<T, SetRangeValue<T>>): this {
@@ -293,10 +262,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		} else {
 			widenUpper = Top;
 		}
-		return this.create({
-			must: widenLower,
-			may:  widenUpper === Top ? Top : widenUpper.difference(widenLower)
-		});
+		return this.create(this.toRangeValue(widenLower, widenUpper));
 	}
 
 	protected narrowValue(this: this & SetRangeDomain<T, SetRangeValue<T>>, other: SetRangeDomain<T, SetRangeValue<T>>): this {
@@ -320,10 +286,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		} else {
 			narrowUpper = thisUpper;
 		}
-		return this.create({
-			must: narrowLower,
-			may:  narrowUpper === Top ? Top : narrowUpper.difference(narrowLower)
-		});
+		return this.create(this.toRangeValue(narrowLower, narrowUpper));
 	}
 
 	public satisfies(set: ReadonlySet<T> | T[], comparator: SetComparator = SetComparator.Equal): Ternary {
@@ -366,9 +329,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		}
 	}
 
-	/**
-	 * Extends the must set of the current abstract value down to the empty set.
-	 */
+	/** Extends the must set of the current abstract value down to the empty set. */
 	public widenDown(): this {
 		if(this.isValue()) {
 			return this.create({ must: new this.setType(), may: this.upper() });
@@ -376,9 +337,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		return this.bottom();
 	}
 
-	/**
-	 * Extends the may set of the current abstract value up to {@link Top}.
-	 */
+	/** Extends the may set of the current abstract value up to {@link Top}. */
 	public widenUp(): this {
 		if(this.isValue()) {
 			return this.create({ must: this.must, may: Top });

@@ -5,9 +5,7 @@ import { expensiveTrace } from './log';
 import type { ILogObj, Logger } from 'tslog';
 import { FlowrFilter } from '../search/flowr-search-filters';
 
-/**
- * checks if `item` is an object (it may be an array, ...)
- */
+/** checks if `item` is an object (it may be an array, ...) */
 export function isObjectOrArray(item: unknown): boolean {
 	return typeof item === 'object';
 }
@@ -45,22 +43,34 @@ export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable 
 		throw new Error('illegal types for deepMergeObject!');
 	}
 
-	assertSameType(base, addon);
+	return deepMergeObjectCore(base, addon, false);
+}
 
-	const result: MergeableRecord = { ...base };
+/**
+ * The merge logic shared by {@link deepMergeObject} and {@link deepMergeObjectInPlace}, `inPlace` decides whether
+ * `base` is written to and returned, or left untouched in favor of a new object/array.
+ */
+function deepMergeObjectCore(base: Mergeable, addon: Mergeable, inPlace: boolean): Mergeable {
+	assertSameType(base, addon);
 
 	const baseIsArray = Array.isArray(base);
 	const addonIsArray = Array.isArray(addon);
 
 	if(!baseIsArray && !addonIsArray) {
+		const result: MergeableRecord = inPlace ? base : { ...base };
 		deepMergeObjectWithResult(addon, base, result);
+		return result;
 	} else if(baseIsArray && addonIsArray) {
+		if(inPlace) {
+			for(const item of addon) {
+				base.push(item);
+			}
+			return base;
+		}
 		return base.concat(addon);
 	} else {
 		throw new Error('cannot merge object with array!');
 	}
-
-	return result;
 }
 
 function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord, result: MergeableRecord): void {
@@ -101,22 +111,7 @@ export function deepMergeObjectInPlace(base?: Mergeable, addon?: Mergeable): Mer
 		throw new Error('illegal types for deepMergeObjectInPlace!');
 	}
 
-	assertSameType(base, addon);
-
-	const baseIsArray = Array.isArray(base);
-	const addonIsArray = Array.isArray(addon);
-
-	if(!baseIsArray && !addonIsArray) {
-		deepMergeObjectWithResult(addon, base, base);
-	} else if(baseIsArray && addonIsArray) {
-		for(const item of addon) {
-			(base).push(item);
-		}
-	} else {
-		throw new Error('cannot merge object with array!');
-	}
-
-	return base;
+	return deepMergeObjectCore(base, addon, true);
 }
 
 function assertSameType(base: unknown, addon: unknown): void {
@@ -129,6 +124,11 @@ type Defined<T> = Exclude<T, undefined>;
 type DefinedRecord<T> = {
 	[K in keyof T as T[K] extends undefined ? never : K]: Defined<T[K]>;
 };
+
+/** The array, `undefined` for an empty one, to leave it out of a {@link compactRecord}. */
+export function nonEmpty<A extends readonly unknown[]>(array: A | undefined): A | undefined {
+	return array === undefined || array.length === 0 ? undefined : array;
+}
 
 export function compactRecord<T extends Record<string, unknown>>(record: T): DefinedRecord<T>;
 export function compactRecord(record: undefined): undefined;
@@ -156,13 +156,9 @@ type Primitive =
 	| null
 	| undefined
 	| Date
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-	| Function;
+	| ((...args: never[]) => unknown);
 
-/**
- * What sits at the given path of `T`, the counterpart of {@link AutocompletablePaths}.
- * `never` whenever the path names nothing.
- */
+/** What sits at the given path of `T`, the counterpart of {@link AutocompletablePaths}. `never` whenever the path names nothing. */
 export type ValueAtPath<T, Path extends string> =
 	Path extends `${infer Key}.${infer Rest}`
 		? Key extends keyof T ? ValueAtPath<NonNullable<T[Key]>, Rest> : never
@@ -190,9 +186,7 @@ export type AutocompletablePaths<T, Depth extends number = 6> =
 					: `${K}.${AutocompletablePaths<NonNullable<T[K]>, OneLess[Depth]> & string}`)
 			}[keyof T & string];
 
-/**
- * This is a version of a deep clone that preserves unclonable values (like functions, symbols, ...) by keeping the same reference to them.
- */
+/** This is a version of a deep clone that preserves unclonable values (like functions, symbols, ...) by keeping the same reference to them. */
 export function deepClonePreserveUnclonable<T>(obj: T): T {
 	if(typeof obj !== 'object' || obj === null) {
 		return obj;
@@ -215,10 +209,10 @@ export function deepClonePreserveUnclonable<T>(obj: T): T {
 
 /**
  * Compares the two passed objects deeply using the loose comparison system designed for the {@link FlowrFilter.MatchesEnrichment}. For this system in use, see {@link FlowrFilter.MatchesEnrichment} in use.
- * @param obj - The real object which we want to test against.
- * @param expected - The object to test the real value {@link obj} against, which should be an object in the shape of {@link obj} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the value at each {@link RegExp}, string or primitive location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given expected value, or only some.
+ * @param obj        - The real object which we want to test against.
+ * @param expected   - The object to test the real value {@link obj} against, which should be an object in the shape of {@link obj} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the value at each {@link RegExp}, string or primitive location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given expected value, or only some.
  * @param arrayMatch - For array entries, the expected value in {@link test} is compared against each array entry in the real value. This property determines whether every element in the array has to match, or only some. If unset, this defaults to `some`.
- * @param logger - The logger to use for trace debugging.
+ * @param logger     - The logger to use for trace debugging.
  */
 export function looselyCompareObjects(obj: Record<string, unknown>, expected: Record<string, unknown>, arrayMatch?: 'some' | 'every', logger?: Logger<ILogObj>): boolean {
 	expensiveTrace(logger, () => `Comparing ${JSON.stringify(obj)} against ${JSON.stringify(expected)}`);
@@ -302,10 +296,15 @@ export function getOnPath(obj: unknown, path: string): unknown {
 /**
  * Writes `value` at the given dot-separated `path` of `obj`, creating the intermediate steps that do not exist yet.
  * An intermediate is created as an array if the segment indexing it is a number, and as an object otherwise.
+ * A path naming the prototype (`__proto__`, `constructor`, `prototype`) is refused.
  * @see {@link getOnPath} for the counterpart that reads such a path
  */
 export function setOnPath(obj: object, path: string, value: unknown): void {
 	const segments = pathSegments(path);
+	/* a segment naming the prototype would write into every object */
+	if(segments.some(s => s === '__proto__' || s === 'constructor' || s === 'prototype')) {
+		throw new Error(`the path '${path}' names the prototype of an object`);
+	}
 	let at = obj as Record<string | number, unknown>;
 	for(let i = 0; i < segments.length - 1; i++) {
 		const segment = segments[i];
@@ -327,4 +326,60 @@ export function setOnPath(obj: object, path: string, value: unknown): void {
  */
 export function enumMembers<T extends object>(enumObject: T): [name: string, value: T[keyof T]][] {
 	return Object.entries(enumObject).filter(([name]) => Number.isNaN(Number(name))) as [string, T[keyof T]][];
+}
+
+/**
+ * Deep clones `obj` and keeps the shape of what it reaches: an object reached twice is cloned once, cycles are kept,
+ * and class instances (including those of `Map`, `Set`, and `Array` subclasses) keep their prototype.
+ * Functions, and every object `keep` says so of, are shared by reference instead of cloned.
+ */
+export function deepCloneSharing<T>(obj: T, keep: (o: object) => boolean): T {
+	const seen = new Map<object, unknown>();
+	function clone(value: unknown): unknown {
+		if(typeof value !== 'object' || value === null) {
+			return value;
+		}
+		const known = seen.get(value);
+		if(known !== undefined) {
+			return known;
+		}
+		if(keep(value) || value instanceof RegExp) {
+			return value;
+		}
+		const proto = Object.getPrototypeOf(value) as object | null;
+		const ctor = (proto?.constructor ?? Object) as new () => object;
+		let result: object;
+		if(value instanceof Map) {
+			const map = Reflect.construct<[], Map<unknown, unknown>>(Map, [], ctor);
+			seen.set(value, map);
+			for(const [k, v] of value) {
+				map.set(clone(k), clone(v));
+			}
+			result = map;
+		} else if(value instanceof Set) {
+			const set = Reflect.construct<[], Set<unknown>>(Set, [], ctor);
+			seen.set(value, set);
+			for(const v of value) {
+				set.add(clone(v));
+			}
+			result = set;
+		} else if(Array.isArray(value)) {
+			const arr = Reflect.construct<[], unknown[]>(Array, [], ctor);
+			seen.set(value, arr);
+			for(const v of value) {
+				arr.push(clone(v));
+			}
+			return arr;
+		} else if(value instanceof Date) {
+			return new Date(value.getTime());
+		} else {
+			result = Object.create(proto) as object;
+			seen.set(value, result);
+		}
+		for(const key of Reflect.ownKeys(value)) {
+			(result as Record<PropertyKey, unknown>)[key] = clone((value as Record<PropertyKey, unknown>)[key]);
+		}
+		return result;
+	}
+	return clone(obj) as T;
 }

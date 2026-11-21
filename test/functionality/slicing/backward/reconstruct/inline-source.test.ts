@@ -1,34 +1,27 @@
 import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
+import { staticSliceOf, analyze } from '../../../_helper/analyzer';
 import { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
-import { createSlicePipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
-import { deterministicCountingIdGenerator } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type {
+	ParentInformation
+} from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
 import { reconstructToCode } from '../../../../../src/reconstruct/reconstruct';
-import { SourceInlineMap } from '../../../../../src/reconstruct/inline/source-inline-map';
+import { buildSourceInlineMap } from '../../../../../src/reconstruct/inline/source-inline-map';
 import type { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
-import type { ParentInformation } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
-import { executeStaticSliceQuery } from '../../../../../src/queries/catalog/static-slice-query/static-slice-query-executor';
+import { executeStaticSliceQuery } from '../../../../../src/queries/catalog/static-slice-query/static-slice-query-format';
 import { SliceDirection } from '../../../../../src/util/slice-direction';
 import { RFunctionCall } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /** force-select every named `source()` call so the inlining recursion is exercised regardless of what the slice pulls in */
 function selectSourceCalls(node: RNode<ParentInformation>): boolean {
-	return RFunctionCall.isNamed(node) && node.functionName.lexeme === 'source';
+	return RFunctionCall.isNamed(node, 'source');
 }
 
 async function run(input: string, files: FlowrInlineTextFile[], criteria: SlicingCriteria) {
-	const parser = new TreeSitterExecutor();
-	const context = contextFromInput(input);
-	context.addFiles(files);
-	const res = await createSlicePipeline(parser, {
-		getId:     deterministicCountingIdGenerator(0),
-		context,
-		criterion: criteria
-	}).allRemainingSteps();
-	const map = SourceInlineMap.build(res.normalize, res.dataflow.graph);
+	const res = await staticSliceOf(new TreeSitterExecutor(), input, criteria, { files });
+	const map = buildSourceInlineMap(res.normalize, res.dataflow.graph);
 	const inlined = reconstructToCode(res.normalize, {
 		nodes:         res.slice.result,
 		inlineSources: true,
@@ -39,18 +32,7 @@ async function run(input: string, files: FlowrInlineTextFile[], criteria: Slicin
 
 /** run the full slice pipeline with the `inlineSources` input, exercising the reconstruct step's own inlining */
 async function runViaPipeline(input: string, files: FlowrInlineTextFile[], criteria: SlicingCriteria, direction?: SliceDirection) {
-	const parser = new TreeSitterExecutor();
-	const context = contextFromInput(input);
-	context.addFiles(files);
-	const res = await createSlicePipeline(parser, {
-		getId:         deterministicCountingIdGenerator(0),
-		context,
-		criterion:     criteria,
-		direction,
-		inlineSources: true,
-		autoSelectIf:  selectSourceCalls
-	}).allRemainingSteps();
-	return res.reconstruct;
+	return (await staticSliceOf(new TreeSitterExecutor(), input, criteria, { files, direction, inlineSources: true, autoSelectIf: selectSourceCalls })).reconstruct;
 }
 
 describe('inline source()', { concurrent: false }, () => {
@@ -59,8 +41,8 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 	afterAll(() => { /* nothing to clean up */ });
 
-	test('SourceInlineMap.build links the source() call to the sourced file', async() => {
-		const { res, map } = await run('source("a")\ncat(N)', [ new FlowrInlineTextFile('a', 'N <- 9') ], ['2@N']);
+	test('buildSourceInlineMap links the source() call to the sourced file', async() => {
+		const { res, map } = await run('source("a")\ncat(N)', [new FlowrInlineTextFile('a', 'N <- 9')], ['2@N']);
 		expect(res.normalize.ast.files.length).toBe(2);
 		expect(map.size).toBe(1);
 		// the single mapping must point at file index 1 (the sourced file)
@@ -71,7 +53,7 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 
 	test('single inline splices the sourced definition and drops the source() call', async() => {
-		const { inlined } = await run('source("a")\ncat(N)', [ new FlowrInlineTextFile('a', 'N <- 9') ], ['2@N']);
+		const { inlined } = await run('source("a")\ncat(N)', [new FlowrInlineTextFile('a', 'N <- 9')], ['2@N']);
 		const code = inlined.code as string;
 		expect(code).toContain('N <- 9');
 		expect(code).not.toContain('source(');
@@ -151,7 +133,7 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 
 	test('respects the exact reconstruction for a plain single inline', async() => {
-		const { inlined } = await run('source("a")\ncat(N)', [ new FlowrInlineTextFile('a', 'N <- 9') ], ['2@N']);
+		const { inlined } = await run('source("a")\ncat(N)', [new FlowrInlineTextFile('a', 'N <- 9')], ['2@N']);
 		assert.strictEqual(inlined.code, 'N <- 9\nN');
 	});
 
@@ -166,7 +148,7 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 
 	test('the reconstruct pipeline step inlines sources when the inlineSources input is set (backward)', async() => {
-		const reconstruct = await runViaPipeline('source("a")\ncat(N)', [ new FlowrInlineTextFile('a', 'N <- 9') ], ['2@N']);
+		const reconstruct = await runViaPipeline('source("a")\ncat(N)', [new FlowrInlineTextFile('a', 'N <- 9')], ['2@N']);
 		const code = reconstruct.code as string;
 		expect(code).toContain('N <- 9');
 		expect(code).not.toContain('source(');
@@ -185,17 +167,49 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 
 	test('the static-slice query surfaces inlineSources through its public flag', async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
-		analyzer.addRequest('source("a")\ncat(N)');
+		const analyzer = await analyze(new TreeSitterExecutor(), 'source("a")\ncat(N)');
 		analyzer.addFile(new FlowrInlineTextFile('a', 'N <- 9'));
 		const out = await executeStaticSliceQuery({ analyzer }, [
 			{ type: 'static-slice', criteria: ['2@N'], inlineSources: true }
 		]);
 		const [entry] = Object.values(out.results);
-		assert.ok(entry && 'reconstruct' in entry, 'expected a reconstruction in the query result');
+		assert.ok(entry?.reconstruct !== undefined, 'expected a reconstruction in the query result');
 		const code = entry.reconstruct.code as string;
 		expect(code).toContain('N <- 9');
 		expect(code).not.toContain('source(');
+		expect(entry.reconstruct.inlineWarnings).toEqual([]);
+	});
+	test('the program starts in the file no other one sources, even when a sourced one is loaded first', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
+		analyzer.addFile(new FlowrInlineTextFile('helpers.R', 'twice <- function(x) x * 2'), new FlowrInlineTextFile('main.R', 'source("helpers.R")\nprint(twice(2))'));
+		analyzer.addRequest({ request: 'file', content: 'helpers.R' }, { request: 'file', content: 'main.R' });
+		const out = await executeStaticSliceQuery({ analyzer }, [
+			{ type: 'static-slice', criteria: ['2@print(^main.R$)'], inlineSources: true }
+		]);
+		const [entry] = Object.values(out.results);
+		assert.ok(entry?.reconstruct !== undefined, 'expected a reconstruction in the query result');
+		expect(entry.reconstruct.code).toBe('twice <- function(x) x * 2\nprint(twice(2))');
+	});
+	test('banners mark where a spliced file begins and ends', async() => {
+		const analyzer = await analyze(new TreeSitterExecutor(), 'source("a")\ncat(N)');
+		analyzer.addFile(new FlowrInlineTextFile('a', 'N <- 9'));
+		const out = await executeStaticSliceQuery({ analyzer }, [
+			{ type: 'static-slice', criteria: ['2@N'], inlineSources: 'banner' }
+		]);
+		const [entry] = Object.values(out.results);
+		assert.ok(entry?.reconstruct !== undefined, 'expected a reconstruction in the query result');
+		expect(entry.reconstruct.code).toBe('# ---- a ----\nN <- 9\n# ---- end of a ----\nN');
+	});
+	test('a sourced file the project also analyzes on its own is still inlined', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
+		analyzer.addFile(new FlowrInlineTextFile('main.R', 'source("helpers.R")\nprint(twice(2))'), new FlowrInlineTextFile('helpers.R', 'twice <- function(x) x * 2'));
+		analyzer.addRequest({ request: 'file', content: 'main.R' }, { request: 'file', content: 'helpers.R' });
+		const out = await executeStaticSliceQuery({ analyzer }, [
+			{ type: 'static-slice', criteria: ['2@print(^main.R$)'], inlineSources: true }
+		]);
+		const [entry] = Object.values(out.results);
+		assert.ok(entry?.reconstruct !== undefined, 'expected a reconstruction in the query result');
+		expect(entry.reconstruct.code).toBe('twice <- function(x) x * 2\nprint(twice(2))');
 		expect(entry.reconstruct.inlineWarnings).toEqual([]);
 	});
 });

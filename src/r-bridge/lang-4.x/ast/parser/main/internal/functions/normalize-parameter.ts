@@ -8,20 +8,20 @@ import type { RNode } from '../../../../model/model';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
+import { Identifier } from '../../../../../../../dataflow/environments/identifier';
 
 /**
  * Either parses `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]` as a parameter of a function definition in R.
  * Probably directly called by the function definition parser as otherwise, we do not expect to find parameters.
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param objs - Either `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
- * @returns The parsed parameter or `undefined` if the given object is not a parameter.
+ * @returns    The parsed parameter or `undefined` if the given object is not a parameter.
  */
 export function tryNormalizeParameter(data: NormalizerData, objs: readonly NamedJsonEntry[]): RParameter | undefined {
 	if(objs.length !== 1 && objs.length !== 3) {
 		parseLog.warn(`Either [SYMBOL_FORMALS] or [SYMBOL_FORMALS, EQ_FORMALS, expr], but got: ${JSON.stringify(objs)}`);
 		return undefined;
 	}
-
 
 	const symbol = objs[0];
 	if(symbol.name !== RawRType.SymbolFormals) {
@@ -41,21 +41,15 @@ export function tryNormalizeParameter(data: NormalizerData, objs: readonly Named
 		special: content === '...',
 		lexeme:  content,
 		name:    {
-			type:   RType.Symbol,
-			location, content,
-			lexeme: content,
-			info:   {
-				fullRange:  location,
-				adToks:     [],
-				fullLexeme: content
-			}
+			type:    RType.Symbol,
+			location,
+			/* a parameter written as `` `x` `` binds `x`, the name a read in the body uses */
+			content: Identifier.getName(Identifier.make(content)),
+			lexeme:  content,
+			info:    { fullRange: location, adToks: [], fullLexeme: content }
 		},
 		defaultValue: delim ? undefined : defaultValue,
-		info:         {
-			fullRange:  location,
-			fullLexeme: content,
-			adToks:     delim ? [defaultValue] : []
-		}
+		info:         { fullRange: location, fullLexeme: content, adToks: delim ? [defaultValue] : [] }
 	};
 }
 

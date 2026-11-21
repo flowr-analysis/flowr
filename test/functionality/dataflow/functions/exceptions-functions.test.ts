@@ -3,13 +3,13 @@ import { withTreeSitter } from '../../_helper/shell';
 import {
 	SlicingCriterion,
 } from '../../../../src/slicing/criterion/parse';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { ExceptionPoint } from '../../../../src/dataflow/fn/exceptions-of-function';
-import { calculateExceptionsOfFunction } from '../../../../src/dataflow/fn/exceptions-of-function';
 import type { ControlDependency } from '../../../../src/dataflow/info';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { CallGraph } from '../../../../src/dataflow/graph/call-graph';
+import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
+import { analyze } from '../../_helper/analyzer';
+
 
 describe('get-exceptions-of-function', withTreeSitter(ts => {
 	function testExceptions(
@@ -18,8 +18,7 @@ describe('get-exceptions-of-function', withTreeSitter(ts => {
 		want: Record<SlicingCriterion, (SlicingCriterion | { id: SlicingCriterion, cds: ControlDependency[] | undefined })[]>
 	) {
 		test.each(Object.entries(want))(`${label} ($0=>$1)`, async(c, exp) => {
-			const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
-			analyzer.addRequest(requestFromInput(code));
+			const analyzer = await analyze(ts, code);
 			const idMap = (await analyzer.normalize()).idMap;
 			const id = SlicingCriterion.parse(c as SlicingCriterion, idMap);
 			const expIds: ExceptionPoint[] = exp.map(e => {
@@ -33,7 +32,7 @@ describe('get-exceptions-of-function', withTreeSitter(ts => {
 			// move up the error message :sparkles:
 			assert.isDefined(id, `could not resolve criterion ${c}`);
 			try {
-				const e = calculateExceptionsOfFunction(id, await analyzer.callGraph());
+				const e = FunctionSemantics.exceptions(id, await analyzer.callGraph());
 				assert.deepStrictEqual(e[id], expIds);
 			} catch(e) {
 				console.error(`Error while testing criterion ${c} in code:\n${code}`);
@@ -77,11 +76,10 @@ j <- function() { tryCatch({ g() }, finally={stop("also direct")}) }
 	});
 
 	test('every definition the walk passes counts what it calls', async() => {
-		const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
-		analyzer.addRequest(requestFromInput('h <- function() stop("boom")\ng <- function() h()\nf <- function() g()'));
+		const analyzer = await analyze(ts, 'h <- function() stop("boom")\ng <- function() h()\nf <- function() g()');
 		const idMap = (await analyzer.normalize()).idMap;
 		const at = (c: SlicingCriterion) => SlicingCriterion.parse(c, idMap);
-		const found = calculateExceptionsOfFunction(at('3@function'), await analyzer.callGraph());
+		const found = FunctionSemantics.exceptions(at('3@function'), await analyzer.callGraph());
 		const raised = [{ id: at('1@stop'), cds: undefined }];
 		/* asking about `f` also answers for the `g` between it and the `stop`, which is what makes the
 		   answer fit to hand back as `knownThrower` */
@@ -91,19 +89,17 @@ j <- function() { tryCatch({ g() }, finally={stop("also direct")}) }
 	});
 
 	test('a point reached along two paths is one point', async() => {
-		const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
-		analyzer.addRequest(requestFromInput('h <- function() stop("boom")\nf <- function() { h(); h() }'));
+		const analyzer = await analyze(ts, 'h <- function() stop("boom")\nf <- function() { h(); h() }');
 		const idMap = (await analyzer.normalize()).idMap;
-		const found = calculateExceptionsOfFunction(SlicingCriterion.parse('2@function', idMap), await analyzer.callGraph());
+		const found = FunctionSemantics.exceptions(SlicingCriterion.parse('2@function', idMap), await analyzer.callGraph());
 		assert.deepStrictEqual(found[SlicingCriterion.parse('2@function', idMap)], [{ id: SlicingCriterion.parse('1@stop', idMap), cds: undefined }]);
 	});
 
 	test('functions calling each other settle on what they raise', async() => {
-		const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
-		analyzer.addRequest(requestFromInput('a <- function() { b(); stop("x") }\nb <- function() a()'));
+		const analyzer = await analyze(ts, 'a <- function() { b(); stop("x") }\nb <- function() a()');
 		const idMap = (await analyzer.normalize()).idMap;
 		const raised = [{ id: SlicingCriterion.parse('1@stop', idMap), cds: undefined }];
-		const found = calculateExceptionsOfFunction(SlicingCriterion.parse('1@function', idMap), await analyzer.callGraph());
+		const found = FunctionSemantics.exceptions(SlicingCriterion.parse('1@function', idMap), await analyzer.callGraph());
 		assert.deepStrictEqual(found[SlicingCriterion.parse('1@function', idMap)], raised, 'a');
 		assert.deepStrictEqual(found[SlicingCriterion.parse('2@function', idMap)], raised, 'b');
 	});

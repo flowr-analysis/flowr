@@ -1,11 +1,11 @@
 import type { SummarizedSlicerStats } from '../data';
 import fs from 'fs';
-import { processNextSummary, summarizeAllSummarizedStats } from '../second-phase/process';
+import { processNextSummary, restoreMeasurementMaps, summarizeAllSummarizedStats } from '../second-phase/process';
 import { summarizeSlicerStats } from './process';
 import { guard } from '../../../util/assert';
 import { escape } from '../../../util/text/ansi';
 import { jsonReplacer } from '../../../util/json';
-import type { AdditionalSlicerMeasurements, BenchmarkMemoryMeasurement, CommonSlicerMeasurements, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats';
+import type { PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import { stats2string } from '../../stats/print';
 
@@ -16,9 +16,7 @@ interface BenchmarkData {
 	stats:     SlicerStats
 }
 
-/**
- * Processes a single run measurement line from the benchmark output.
- */
+/** Processes a single run measurement line from the benchmark output. */
 export async function processRunMeasurement(line: Buffer, fileNum: number, lineNum: number, textOutputAppendPath: string, rawOutputPath: string) {
 	let got = JSON.parse(line.toString()) as BenchmarkData;
 	console.log(`[file ${fileNum}, line ${lineNum}] Summarize for ${got.filename}`);
@@ -27,24 +25,7 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 		...got,
 		stats: {
 			...got.stats,
-			memory: new Map(
-				(got.stats.memory as unknown as [CommonSlicerMeasurements, BenchmarkMemoryMeasurement][])
-					.map(([k, v]) => [k, v])
-			),
-			commonMeasurements: new Map(
-				(got.stats.commonMeasurements as unknown as [CommonSlicerMeasurements, string][])
-					.map(([k, v]) => {
-						guard(v.endsWith('n'), 'Expected a bigint');
-						return [k, BigInt(v.slice(0, -1))];
-					})
-			),
-			additionalMeasurements: new Map(
-				(got.stats.additionalMeasurements as unknown as [AdditionalSlicerMeasurements, string][] ?? [])
-					.map(([k, v]) => {
-						guard(v.endsWith('n'), 'Expected a bigint');
-						return [k, BigInt(v.slice(0, -1))];
-					})
-			),
+			...restoreMeasurementMaps(got.stats),
 			perSliceMeasurements: new Map(
 				(got.stats.perSliceMeasurements as unknown as [SlicingCriteria, PerSliceStats][])
 					.map(([k, v]) => mapPerSliceStats(k, v))
@@ -78,9 +59,7 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 	fs.appendFileSync(textOutputAppendPath, `${stats2string(summarized)}\n`);
 }
 
-/**
- * Processes multiple summarized run measurement files and appends an overall summary to the given path.
- */
+/** Processes multiple summarized run measurement files and appends an overall summary to the given path. */
 export function processSummarizedRunMeasurement(runNum: number, summarizedFiles: string[], appendPath: string) {
 	console.log(`Summarizing all file statistics for run ${runNum}`);
 

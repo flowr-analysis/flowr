@@ -7,14 +7,12 @@ import * as cp from 'child_process';
 import { log } from './log';
 import { guard } from './assert';
 import { jsonReplacer } from './json';
+import { SecureMode } from './secure-mode';
 
 export type Arguments = string[];
 type WorkingQueue = Arguments[];
 
-/**
- * This is not really generic but written especially for the benchmarking script.
- * It offers a work stealing thread pool executor.
- */
+/** This is not really generic but written especially for the benchmarking script. It offers a work stealing thread pool executor. */
 export class LimitedThreadPool {
 	private readonly workingQueue:  WorkingQueue;
 	private readonly limit:         number;
@@ -69,6 +67,7 @@ export class LimitedThreadPool {
 
 		console.log(`[${this.counter}/${this.limit}] Running next, currently running: ${this.currentlyRunning.size}, queue: ${this.workingQueue.length} [args: ${args.join(' ')}]`);
 
+		SecureMode.guard('starting a process', this.module);
 		const child = cp.fork(this.module, args);
 		child.on('exit', this.onChildExit(args));
 		let timeout: NodeJS.Timeout | undefined;
@@ -82,7 +81,6 @@ export class LimitedThreadPool {
 		// schedule re-schedule
 		await new Promise<void>(resolve => child.on('exit', resolve)).then(() => clearTimeout(timeout)).then(() => this.runNext());
 	}
-
 
 	private onChildExit(args: string[]) {
 		return (code: number, signal: unknown) => {

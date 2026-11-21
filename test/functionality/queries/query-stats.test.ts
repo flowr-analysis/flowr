@@ -1,9 +1,8 @@
 import { assert, describe, test } from 'vitest';
-import { asciiSummaryOfQueryResult } from '../../../src/queries/query-print';
+import { asciiSummaryOfQueryResult, type QueryResults } from '../../../src/queries/query';
 import { voidFormatter } from '../../../src/util/text/ansi';
 import { FlowrConfig } from '../../../src/config';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
-import type { QueryResults } from '../../../src/queries/query';
 
 const statLine = 'All queries together required';
 

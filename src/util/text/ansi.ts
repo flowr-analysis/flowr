@@ -1,3 +1,8 @@
+import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+
+/** What a formatter prints: text, or a semantic value (a name, a package, an id) whose meaning ends in the output. */
+export type Printable = string | BrandedIdentifier | BrandedNamespace | NodeId;
 
 // noinspection JSUnusedGlobalSymbols
 export const enum FontStyles {
@@ -39,7 +44,7 @@ export interface WeightFormatOptions {
 }
 
 export interface OutputFormatter {
-	format(input: string, options?: FormatOptions): string
+	format(input: Printable, options?: FormatOptions): string
 	getFormatString(options?: FormatOptions): string
 	reset(): string
 	/**
@@ -47,13 +52,11 @@ export interface OutputFormatter {
 	 * When a live hyperlink cannot be rendered, the raw `url` is shown so the target is not lost; pass
 	 * `force` to always emit just the short `text` label instead.
 	 */
-	hyperlink(text: string, url: string, force?: boolean): string
+	hyperlink(text: Printable, url: string, force?: boolean): string
 }
 
 export const voidFormatter: OutputFormatter = new class implements OutputFormatter {
-	public format(input: string): string {
-		return input;
-	}
+	public format = String;
 
 	public getFormatString(_options?: FormatOptions): string {
 		return '';
@@ -63,13 +66,13 @@ export const voidFormatter: OutputFormatter = new class implements OutputFormatt
 		return '';
 	}
 
-	public hyperlink(text: string, url: string, force = false): string {
-		return force ? text : url;
+	public hyperlink(text: Printable, url: string, force = false): string {
+		return force ? String(text) : url;
 	}
 }();
 
 export const markdownFormatter: OutputFormatter = new class implements OutputFormatter {
-	public format(input: string, options?: FormatOptions): string {
+	public format(input: Printable, options?: FormatOptions): string {
 		if(options && 'style' in options) {
 			if(options.style === FontStyles.Bold) {
 				input = `**${input}**`;
@@ -80,7 +83,7 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 			}
 		}
 
-		let source = input.replaceAll(/\\"/g, '\'').replaceAll(/\\/g, '\\\\').replaceAll(/\n/g, '\\\n');
+		let source = String(input).replaceAll(/\\"/g, '\'').replaceAll(/\\/g, '\\\\').replaceAll(/\n/g, '\\\n');
 		/* repeatedly replace all spaces but only at the beginning of a line */
 		let target = source;
 		do{
@@ -99,49 +102,40 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 		return '';
 	}
 
-	public hyperlink(text: string, url: string, _force = false): string {
+	public hyperlink(text: Printable, url: string, _force = false): string {
 		return `[${text}](${url})`;
 	}
 }();
 
-/**
- * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text with a bold font weight.
- */
-export function italic(s: string, f: OutputFormatter = formatter, options?: FormatOptions): string {
+/** This does not work if the {@link setFormatter|formatter} is void. Tries to format the text with a bold font weight. */
+export function italic(s: Printable, f: OutputFormatter = formatter, options?: FormatOptions): string {
 	return f.format(s, { style: FontStyles.Italic, ...options });
 }
 
-/**
- * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text with an italic font shape.
- */
-export function bold(s: string, f: OutputFormatter = formatter, options?: FormatOptions): string {
+/** This does not work if the {@link setFormatter|formatter} is void. Tries to format the text with an italic font shape. */
+export function bold(s: Printable, f: OutputFormatter = formatter, options?: FormatOptions): string {
 	return f.format(s, { style: FontStyles.Bold, ...options });
 }
 
-/**
- * Color the text in the given foreground color.
- */
-export function color(s: string, c: Colors, f: OutputFormatter = formatter, opts?: { bright?: boolean, style?: FontStyles | readonly FontStyles[] }): string {
+/** Color the text in the given foreground color. */
+export function color(s: Printable, c: Colors, f: OutputFormatter = formatter, opts?: { bright?: boolean, style?: FontStyles | readonly FontStyles[] }): string {
 	return f.format(s, { color: c, effect: ColorEffect.Foreground, ...opts });
 }
 
 /** Faint/dim ("grayed out") text. */
-export function faint(s: string, f: OutputFormatter = formatter, options?: FormatOptions): string {
+export function faint(s: Printable, f: OutputFormatter = formatter, options?: FormatOptions): string {
 	return f.format(s, { style: FontStyles.Faint, ...options });
 }
 
-/**
- * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text as informational message.
- */
-export function ansiInfo(s: string, f: OutputFormatter = formatter): string {
+/** This does not work if the {@link setFormatter|formatter} is void. Tries to format the text as informational message. */
+export function ansiInfo(s: Printable, f: OutputFormatter = formatter): string {
 	return f.format(s, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 }
 
 export const escape = '\x1b[';
 
 /** every {@link escape} sequence, so a place that cannot colour (a browser, a log file) can drop them */
-// eslint-disable-next-line no-control-regex -- the escape character is what an escape sequence starts with
-const AnsiSequence = /\x1b\[[\d;]*m/g;
+const AnsiSequence = new RegExp(`${String.fromCharCode(27)}\\[[\\d;]*m`, 'g');
 
 /** The text without any colouring, for wherever an escape sequence would only show up as `[0m`. */
 export function stripAnsi(text: string): string {
@@ -173,14 +167,14 @@ export const ansiFormatter = {
 		return `${escape}0${colorSuffix}`;
 	},
 
-	hyperlink(text: string, url: string, force = false): string {
+	hyperlink(text: Printable, url: string, force = false): string {
 		if(supportsHyperlinks()) {
 			return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
 		}
-		return force ? text : url;
+		return force ? String(text) : url;
 	},
 
-	format(input: string, options?: FormatOptions): string {
+	format(input: Printable, options?: FormatOptions): string {
 		return `${this.getFormatString(options)}${input}${this.reset()}`;
 	},
 
@@ -202,9 +196,7 @@ export const ansiFormatter = {
 
 export let formatter: OutputFormatter = ansiFormatter;
 
-/**
- * (Globally) sets the output formatter used by the utility functions in this module.
- */
+/** (Globally) sets the output formatter used by the utility functions in this module. */
 export function setFormatter(setFormatter: OutputFormatter): void {
 	formatter = setFormatter;
 }

@@ -21,17 +21,14 @@ import {
 } from './messages/message-repl';
 import { replProcessAnswer } from '../core';
 import { LogLevel } from '../../../util/log';
-import { cfg2quads } from '../../../control-flow/control-flow-graph';
+import { cfg2quads, type ControlFlowInformation } from '../../../control-flow/control-flow-graph';
 import { defaultQuadIdGenerator, type QuadSerializationConfiguration } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';
 import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
 import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
 import { ansiFormatter, voidFormatter } from '../../../util/text/ansi';
-import {
-	DEFAULT_SLICING_PIPELINE,
-	type TREE_SITTER_DATAFLOW_PIPELINE
-} from '../../../core/steps/pipeline/default-pipelines';
+import type { DEFAULT_SLICING_PIPELINE, TREE_SITTER_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput, PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import type { DeepPartial } from 'ts-essentials';
 import { DataflowGraph } from '../../../dataflow/graph/graph';
@@ -41,13 +38,11 @@ import type { RParseRequests } from '../../../r-bridge/retriever';
 import { type QueryRequestMessage, type QueryResponseMessage, requestQueryMessage } from './messages/message-query';
 import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import { compact } from './compact';
-import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
 import type { FlowrConfig } from '../../../config';
 import { FlowrAnalyzerBuilder } from '../../../project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
-import { PipelineStepStage } from '../../../core/steps/pipeline-step';
 import type { Tree } from 'web-tree-sitter';
 import { SliceDirection } from '../../../util/slice-direction';
 
@@ -122,12 +117,7 @@ export class FlowRServerConnection {
 			case 'request-query':
 				return this.handleQueryRequest(message as QueryRequestMessage);
 			default:
-				sendMessage<FlowrErrorMessage>(this.socket, {
-					id:     message.id,
-					type:   'error',
-					fatal:  true,
-					reason: `The message type ${JSON.stringify(message.type as string | undefined ?? 'undefined')} is not supported.`
-				});
+				this.sendError(message.id, `The message type ${JSON.stringify(message.type as string | undefined ?? 'undefined')} is not supported.`, true);
 				this.socket.end();
 				return Promise.resolve();
 		}
@@ -166,12 +156,7 @@ export class FlowRServerConnection {
 			await this.sendFileAnalysisResponse(analyzer, message);
 		} catch(e) {
 			this.logger.error(`[${this.name}] Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`);
-			sendMessage<FlowrErrorMessage>(this.socket, {
-				id:     message.id,
-				type:   'error',
-				fatal:  false,
-				reason: `Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`
-			});
+			this.sendError(message.id, `Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`);
 		}
 
 		// this is an interestingly named function that means "I am a callback that removes a file" - so this deletes the file
@@ -223,20 +208,14 @@ export class FlowRServerConnection {
 					results: compact(sanitizedResults)
 				});
 			} else {
-				sendMessage(this.socket, {
-					type:    'response-file-analysis',
-					format:  'json',
-					id:      message.id,
-					cfg,
-					results: sanitizedResults
-				});
+				sendMessage(this.socket, { type: 'response-file-analysis', format: 'json', id: message.id, cfg, results: sanitizedResults });
 			}
 		}
 	}
 
 	private async createAnalyzerForRequest(message: FileAnalysisRequestMessage, tempFile: string) {
 		let request: RParseRequests;
-		if(message.content !== undefined){
+		if(message.content !== undefined) {
 			// we store the code in a temporary file in case it's too big for the shell to handle
 			fs.writeFileSync(tempFile, message.content ?? '');
 			request = { request: 'file', content: tempFile };
@@ -258,26 +237,20 @@ export class FlowRServerConnection {
 
 		if(message.filetoken) {
 			this.logger.info(`Storing file token ${message.filetoken}`);
-			this.fileMap.set(message.filetoken, {
-				filename: message.filename,
-				analyzer: analyzer
-			});
+			this.fileMap.set(message.filetoken, { filename: message.filename, analyzer: analyzer });
 		}
 		return analyzer;
 	}
 
-	/**
-	 * Looks up the analysis stored for the given file token, answering with an error message if there is none.
-	 */
+	private sendError(id: string | undefined, reason: string, fatal = false): void {
+		sendMessage<FlowrErrorMessage>(this.socket, { id, type: 'error', fatal, reason });
+	}
+
+	/** Looks up the analysis stored for the given file token, answering with an error message if there is none. */
 	private getAnalyzedFile(request: { id?: string, filetoken: string }) {
 		const fileInformation = this.fileMap.get(request.filetoken);
 		if(!fileInformation) {
-			sendMessage<FlowrErrorMessage>(this.socket, {
-				id:     request.id,
-				type:   'error',
-				fatal:  false,
-				reason: `The file token ${request.filetoken} has never been analyzed.`
-			});
+			this.sendError(request.id, `The file token ${request.filetoken} has never been analyzed.`);
 		}
 		return fileInformation;
 	}
@@ -298,31 +271,18 @@ export class FlowRServerConnection {
 		}
 
 		try {
-			const result = await fileInformation.analyzer.query([{
+			const result = await fileInformation.analyzer.query({
 				type:            'static-slice',
 				criteria:        request.criterion,
 				noMagicComments: request.noMagicComments,
 				direction:       request.direction
-			}]);
-			sendMessage<SliceResponseMessage>(this.socket, {
-				type:    'response-slice',
-				id:      request.id,
-				results: Object.fromEntries(
-					Object.entries(result)
-						.filter(([k]) => DEFAULT_SLICING_PIPELINE.steps.get(k)?.executed === PipelineStepStage.OncePerRequest)
-				) as SliceResponseMessage['results']
 			});
+			sendMessage<SliceResponseMessage>(this.socket, { type: 'response-slice', id: request.id, results: result });
 		} catch(e) {
 			this.logger.error(`[${this.name}] Error while analyzing file for token ${request.filetoken}: ${String(e)}`);
-			sendMessage<FlowrErrorMessage>(this.socket, {
-				id:     request.id,
-				type:   'error',
-				fatal:  false,
-				reason: `Error while analyzing file for token ${request.filetoken}: ${String(e)}`
-			});
+			this.sendError(request.id, `Error while analyzing file for token ${request.filetoken}: ${String(e)}`);
 		}
 	}
-
 
 	private async handleRepl(base: ExecuteRequestMessage): Promise<void> {
 		const requestResult = validateMessage(base, requestExecuteReplExpressionMessage);
@@ -353,12 +313,10 @@ export class FlowRServerConnection {
 			stdout:    msg => out('stdout', msg),
 			stderr:    msg => out('stderr', msg)
 		}, request.expression,
-		this.allowRSessionAccess
+		this.allowRSessionAccess,
+		/* remote */ true
 		);
-		sendMessage<ExecuteEndMessage>(this.socket, {
-			type: 'end-repl-execution',
-			id:   request.id
-		});
+		sendMessage<ExecuteEndMessage>(this.socket, { type: 'end-repl-execution', id: request.id });
 	}
 
 	private async handleQueryRequest(base: QueryRequestMessage): Promise<void> {
@@ -379,35 +337,20 @@ export class FlowRServerConnection {
 
 		try {
 			const results = await fileInformation.analyzer.query(request.query);
-			sendMessage<QueryResponseMessage>(this.socket, {
-				type: 'response-query',
-				id:   request.id,
-				results
-			});
+			sendMessage<QueryResponseMessage>(this.socket, { type: 'response-query', id: request.id, results });
 		} catch(e) {
 			this.logger.error(`[${this.name}] Error while executing query: ${String(e)}`);
-			sendMessage<FlowrErrorMessage>(this.socket, {
-				id:     request.id,
-				type:   'error',
-				fatal:  false,
-				reason: `Error while executing query: ${String(e)}`
-			});
+			this.sendError(request.id, `Error while executing query: ${String(e)}`);
 		}
 	}
 }
 
-
-/**
- * Sanitizes analysis results by removing any potentially sensitive information like id maps.
- */
+/** Sanitizes analysis results by removing any potentially sensitive information like id maps. */
 export function sanitizeAnalysisResults(parse: ParseStepOutput<string | Tree>, normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>> {
 	return {
 		parse:     parse as ParseStepOutput<string> & PipelinePerStepMetaInformation,
-		normalize: {
-			...normalize,
-			idMap: undefined
-		},
-		dataflow: {
+		normalize: { ...normalize, idMap: undefined },
+		dataflow:  {
 			...dataflow,
 			// we want to keep the DataflowGraph type information, but not the idMap
 			graph: new DataflowGraph(undefined).mergeWith(dataflow?.graph)

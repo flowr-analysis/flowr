@@ -1,6 +1,5 @@
 import { assert, describe, test } from 'vitest';
-import type { ChildProcess } from 'child_process';
-import { exec } from 'child_process';
+import { type ChildProcess, exec } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -28,11 +27,11 @@ function captureStderr(child: ChildProcess, appendToBuffer: (s: string) => void)
 function flowrReplUntil(command: string, terminateOn: string, timeout = 90_000): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
 		let done = false;
-		const finish = (fn: () => void) => {
-			if(!done){
+		function finish(fn: () => void) {
+			if(!done) {
 				done = true; clearTimeout(timer); fn();
 			}
-		};
+		}
 		const timer = setTimeout(() => finish(() => {
 			child.kill('SIGKILL'); reject(new Error(`timed out waiting for '${terminateOn}':\n${buffer}`));
 		}), timeout);
@@ -69,11 +68,11 @@ function flowrReplWatchAndChange(command: string, filePath: string, contents: re
 	return new Promise<string>((resolve, reject) => {
 		let done = false;
 		let writer: ReturnType<typeof setInterval> | undefined;
-		const finish = (fn: () => void) => {
-			if(!done){
+		function finish(fn: () => void) {
+			if(!done) {
 				done = true; clearTimeout(timer); clearInterval(writer); fn();
 			}
-		};
+		}
 		const timer = setTimeout(() => finish(() => {
 			child.kill('SIGKILL'); reject(new Error(`watch test timed out:\n${buffer}`));
 		}), timeout);

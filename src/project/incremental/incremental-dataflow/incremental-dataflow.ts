@@ -1,6 +1,6 @@
 import type { NormalizedAst, ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
-import type { DataflowInformation } from '../../../dataflow/info';
+import type { DataflowCfgInformation, DataflowInformation } from '../../../dataflow/info';
 import type { DataflowProcessorInformation } from '../../../dataflow/processor';
 import type { ExpressionListCheckpoints, ExpressionListState } from '../../../dataflow/internal/process/functions/call/built-in/built-in-expression-list';
 import { standaloneSourceFile } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
@@ -85,6 +85,10 @@ interface FinalizedDataflow {
 	readonly addedFiles: readonly RProjectFile<ParentInformation>[];
 	readonly considered: readonly (readonly [path: string, content: string | undefined])[];
 	readonly config:     FlowrConfig | undefined;
+}
+
+function cfgOf(info: DataflowCfgInformation | undefined): DataflowCfgInformation | undefined {
+	return info === undefined ? undefined : { entryPoint: info.entryPoint, cfgEntry: info.cfgEntry, cfgExit: info.cfgExit, exitPoints: info.exitPoints, hooks: info.hooks };
 }
 
 function marksOf(environment: Environment): ProgramMarks {
@@ -238,7 +242,9 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 		if(fileIndex !== 0) {
 			return;
 		}
-		this.recorded.push(this.copy({ ...this.stateOf(data, list.environment.current, this.listNodes), list }, data));
+		/* resuming the list only needs where the statements before passed on the control flow, not all they computed */
+		const cfg = { ...list, processed: list.processed.map(cfgOf), defaultReturn: cfgOf(list.defaultReturn) };
+		this.recorded.push(this.copy({ ...this.stateOf(data, list.environment.current, this.listNodes), list: cfg }, data));
 	}
 
 	private stateOf(data: DataflowProcessorInformation<ParentInformation>, environment: Environment, before: ReadonlySet<NodeId>): AnalysisState {

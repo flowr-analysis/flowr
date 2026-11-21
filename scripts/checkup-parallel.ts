@@ -70,6 +70,87 @@ if(jobs.length === 0) {
 	process.exit(2);
 }
 
+function sleepSync(ms: number): void {
+	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function isAlive(pid: number): boolean {
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch(e) {
+		// EPERM: the process exists, it just belongs to someone else
+		return (e as NodeJS.ErrnoException).code === 'EPERM';
+	}
+}
+
+/*
+ * Two checkups at once leave each of them only a single worker per vitest job (and both crawl), so a checkup waits
+ * for the one already running, on this machine for any checkout. A lock whose owner is gone or which is older than
+ * StaleLockMs (the pid was reused) is taken over.
+ */
+const lockPath = path.join(os.tmpdir(), 'flowr-checkup.lock');
+const StaleLockMs = 3 * 60 * 60 * 1000;
+function acquireLock(): void {
+	let announced = false;
+	for(;;) {
+		try {
+			fs.writeFileSync(lockPath, JSON.stringify({ pid: process.pid, cwd: process.cwd(), since: Date.now() }), { flag: 'wx' });
+			return;
+		} catch(e) {
+			if((e as NodeJS.ErrnoException).code !== 'EEXIST') {
+				// no lock possible here, run unguarded
+				return;
+			}
+		}
+		let owner: { pid?: number, cwd?: string, since?: number } = {};
+		try {
+			owner = JSON.parse(fs.readFileSync(lockPath, 'utf8')) as typeof owner;
+		} catch{
+			// half written by its owner or just released, look again
+		}
+		if(typeof owner.pid === 'number' && (!isAlive(owner.pid) || Date.now() - (owner.since ?? 0) > StaleLockMs)) {
+			fs.rmSync(lockPath, { force: true });
+			continue;
+		}
+		if(!announced && owner.pid !== undefined) {
+			console.log(`another checkup (pid ${owner.pid}, ${owner.cwd ?? '?'}) is running, waiting for it to finish`);
+			announced = true;
+		}
+		sleepSync(2_000);
+	}
+}
+function releaseLock(): void {
+	try {
+		if((JSON.parse(fs.readFileSync(lockPath, 'utf8')) as { pid?: number }).pid === process.pid) {
+			fs.rmSync(lockPath, { force: true });
+		}
+	} catch{
+		// already gone
+	}
+}
+acquireLock();
+process.on('exit', releaseLock);
+for(const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
+	process.on(signal, () => process.exit(130));
+}
+
+/** the cores idle right now, sampled from the CPU times (the load average lags behind and is always 0 on windows) */
+function idleCoresNow(sampleMs = 1_000): number {
+	const idleOf = () => os.cpus().map(c => ({ idle: c.times.idle, total: c.times.user + c.times.nice + c.times.sys + c.times.irq + c.times.idle }));
+	const before = idleOf();
+	sleepSync(sampleMs);
+	const after = idleOf();
+	if(after.length === 0) {
+		// the platform does not report its cpus, only the memory bounds the workers then
+		return Number.POSITIVE_INFINITY;
+	}
+	return after.reduce((sum, a, i) => {
+		const total = a.total - (before[i]?.total ?? 0);
+		return sum + (total > 0 ? (a.idle - (before[i]?.idle ?? 0)) / total : 1);
+	}, 0);
+}
+
 /*
  * Split what the machine has to offer now across the concurrent vitest jobs via --maxWorkers so they do not
  * oversubscribe it: bounded by the idle cores and by the available memory, after keeping some of both for the other
@@ -83,8 +164,8 @@ const otherJobs = jobs.filter(j => !vitestIds.has(j.id)).length;
 const reservedCores = 2 + otherJobs;
 const reservedMemory = 4 * GiB + otherJobs * GiB;
 const cores = Math.max(1, os.availableParallelism?.() ?? os.cpus().length);
-/* what the machine has to offer now: the cores the current load leaves idle and the memory still available */
-const idleCores = cores - Math.ceil(os.loadavg()[0]);
+/* what the machine has to offer now: the cores idle right now and the memory still available */
+const idleCores = Math.min(cores, Math.floor(idleCoresNow()));
 const availableMemory = os.freemem();
 const vitestJobs = jobs.filter(j => vitestIds.has(j.id));
 const totalWeight = vitestJobs.reduce((sum, j) => sum + (j.weight ?? 1), 0);

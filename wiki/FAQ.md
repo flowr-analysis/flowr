@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-11-15, 17:22:57 UTC (v2.17.7, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-11-21, 18:07:21 UTC (v2.17.9, R v4.6.1), do not edit directly._
 
 Is your question not answered below? Please [ask it as an issue](https://github.com/flowr-analysis/flowr/issues/new?template=question.yaml) and we will answer it.
 Answers regularly end up on this page, so asking helps everyone who wonders the same thing later.
@@ -115,6 +115,13 @@ Both forms accept the usual vitest filters (e.g. `npm run test:verbose -- cli/se
 Tests are labeled based on the *flowR* capabilities that they test for.
 The list of supported capabilities can be found on the [capabilities page](https://flowr-analysis.github.io/flowr/wiki/capabilities/).
 For more extensive information on test labels, see the [test labels wiki section](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing#test-labels).
+
+</details>
+
+<details><summary>What to do if the <b>linter fails</b>?</summary>
+
+Read the description of the failing rule and fix what it points at, `npm run lint-local -- --fix` fixes the formatting.
+See the [linting wiki section](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing#oh-no-the-linter-fails) for the rule sets, and open an issue if you think the linter is wrong.
 
 </details>
 

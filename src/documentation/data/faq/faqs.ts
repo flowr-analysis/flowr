@@ -88,6 +88,10 @@ ${codeBlock('shell', 'FLOWR_VERBOSE=true npm run test')}
 Both forms accept the usual vitest filters (e.g. \`npm run test:verbose -- cli/server\`).
 `)
 
+		.addFaq('What to do if the *linter fails*?', `
+Read the description of the failing rule and fix what it points at, \`npm run lint-local -- --fix\` fixes the formatting.
+See the ${ctx.linkPage('wiki/Linting and Testing', 'linting wiki section', 'oh-no-the-linter-fails')} for the rule sets, and open an issue if you think the linter is wrong.
+`)
 		.addFaq('How to add a *linting rule*?', `
 To add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.
 `)

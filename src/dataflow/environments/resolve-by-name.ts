@@ -1,3 +1,4 @@
+import { namesWithPrefix } from './frame-memory';
 import { EnvType, type Environment, REnvironment, type REnvironmentInformation } from './environment';
 import { BoundedMap } from '../../util/collections/bounded-map';
 import { getOrSet } from '../../util/collections/defaultmap';
@@ -121,7 +122,7 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 			const prefix = name + (target === ReferenceType.S3MethodPrefix ? '.' : S7DispatchSeparator);
 			/* by the names first, as a package attached lazily binds a name only once asked for it */
 			const memory = current.memory;
-			definition = memory.keys().filter(defName => defName.startsWith(prefix)).flatMap(defName => memory.get(defName) ?? []).toArray();
+			definition = namesWithPrefix(memory, prefix).flatMap(defName => memory.get(defName) ?? []);
 		} else {
 			definition = current.lookup(name);
 			if(internal === false) {

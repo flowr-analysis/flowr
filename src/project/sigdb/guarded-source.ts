@@ -8,6 +8,18 @@ import { builtInGuards } from '../../dataflow/fn/guards/built-in-guards';
  * base package where the source itself records none, so a reader sees them the same way whichever source they come from.
  */
 export function withGuards(this: void, source: PackageSignatureSource): PackageSignatureSource {
+	let view = guarded.get(source);
+	if(view === undefined) {
+		view = guardedView(source);
+		guarded.set(source, view);
+	}
+	return view;
+}
+
+/** the view {@link withGuards} answers with per source, as it is asked for one with every lookup */
+const guarded = new WeakMap<PackageSignatureSource, PackageSignatureSource>();
+
+function guardedView(source: PackageSignatureSource): PackageSignatureSource {
 	function add(pkg: BrandedNamespace, fn: DecodedFunction | undefined): DecodedFunction | undefined {
 		const guards = fn === undefined || fn.guards !== undefined || !source.isBaseR(pkg) ? undefined : builtInGuards(fn.name, pkg);
 		return guards === undefined ? fn : { ...fn as DecodedFunction, guards };

@@ -100,8 +100,7 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
 	/* the attached packages below the code's own frames are a dozen layers deep and nothing writes them, so the walk through them is done once per name and target instead of once per resolution */
-	const flatten = ns === undefined && internal !== false && typeof id === 'string'
-		&& target !== ReferenceType.S3MethodPrefix && target !== ReferenceType.S7MethodPrefix;
+	const flatten = ns === undefined && internal !== false && typeof id === 'string';
 	let flattenAt: Environment | undefined;
 	do{
 		if(flatten && flattenAt === undefined && definitions === undefined && (current.t !== undefined || current.builtInEnv)) {

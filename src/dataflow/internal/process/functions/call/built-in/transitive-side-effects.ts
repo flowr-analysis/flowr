@@ -94,6 +94,8 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 	let forcing: ((holder: NodeId, inner: NodeId) => Ternary) | undefined;
 	let order: PromiseOrder | undefined;
 	let functions: ReadonlyMap<NodeId, AmbientAccess> | undefined;
+	/* a script calls the same few package functions over and over, and decoding a signature costs */
+	const signatureOf = Identifier.memoize(name => packageSignatureOf(name, ctx));
 	/* the global state a closure changes while it runs, which a promise it forces may see */
 	function changedBy(fns: readonly NodeId[]) {
 		functions ??= ambientAccessOfFunctions(graph);
@@ -102,7 +104,7 @@ export function linkPromisesToWritesOfCall(this: void, graph: DataflowGraph, ctx
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		/* a function of a package flowR has no body for forces its arguments as its signature states, see `keptPromisesOfPackageCall` */
 		const kept = Dataflow.targetsOf(graph, id, EdgeType.Calls).some(t => !NodeId.isBuiltIn(t) && DfgVertex.isFunctionDefinition(graph.getVertex(t)))
-			? undefined : keptPromisesOfPackageCall(graph, vertex, ctx);
+			? undefined : keptPromisesOfPackageCall(graph, vertex, signatureOf);
 		if(kept === false) {
 			continue;
 		}
@@ -529,22 +531,33 @@ class PromiseOrder {
 	}
 }
 
-/** For a call of a package function flowR has no body for (not one of R's own packages, whose functions the built-in configuration states): `false` if it is none, else the arguments whose promises may be forced after the call returned. */
-function keptPromisesOfPackageCall(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, ctx: FlowrAnalyzerContext): ReadonlySet<NodeId> | false {
-	/* the package alone rules out most calls, which spares decoding the signature and everything it calls */
-	const named = call.name === undefined ? undefined : packageOfFunction(call.name, ctx);
+/** What a function of a package states of its parameters, `false` if `name` is no function of a package flowR has no body for (not one of R's own packages, whose functions the built-in configuration states). */
+type PackageSignature = { readonly sig?: FnSig } | false;
+
+function packageSignatureOf(name: Identifier, ctx: FlowrAnalyzerContext): PackageSignature {
+	/* the package alone rules out most names, which spares decoding the signature and everything it calls */
+	const named = packageOfFunction(name, ctx);
 	if(named === undefined || isBaseRPackage(named)) {
 		return false;
 	}
-	const info = call.name === undefined ? undefined : fnSignature(call.name, ctx);
-	const pkg = info?.package ?? (call.name === undefined ? undefined : Identifier.getNamespace(call.name));
+	const info = fnSignature(name, ctx);
+	const pkg = info?.package ?? Identifier.getNamespace(name);
 	if(pkg === undefined || isBaseRPackage(pkg)) {
+		return false;
+	}
+	return { sig: info?.sig };
+}
+
+/** For a call of a package function flowR has no body for, see {@link PackageSignature}: `false` if it is none, else the arguments whose promises may be forced after the call returned. */
+function keptPromisesOfPackageCall(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, signatureOf: (name: Identifier) => PackageSignature): ReadonlySet<NodeId> | false {
+	const signature = call.name === undefined ? false : signatureOf(call.name);
+	if(signature === false) {
 		return false;
 	}
 	if(!handsBackCalledValue(graph, call.id)) {
 		return new Set();
 	}
-	const layout = info?.sig === undefined ? undefined : FnSig.layout(info.sig);
+	const layout = signature.sig === undefined ? undefined : FnSig.layout(signature.sig);
 	const args = call.args.filter(FunctionArgument.isNotEmpty);
 	const slots = layout === undefined ? undefined : FnSig.slots(layout, args.map(FunctionArgument.getName));
 	return new Set(args.filter((_, i) => {

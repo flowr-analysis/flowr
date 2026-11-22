@@ -22,7 +22,9 @@ import {
 	s4DispatchFormals, s4HierarchyOf, type S4Method, s4MethodsOf, selectS4Methods, signatureFor
 } from '../fn/dispatch';
 import { getAllLinkedFunctionDefinitions } from './linker';
-import type { REnvironmentInformation } from '../environments/environment';
+import type { Environment, REnvironmentInformation } from '../environments/environment';
+import { addS3GenericsOfMethod } from '../environments/group-generics';
+import { memoize } from '../../util/collections/defaultmap';
 import { type BrandedIdentifier, type IdentifierDefinition, type InGraphIdentifierDefinition, ReferenceType, type ClassName } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
 
@@ -314,6 +316,29 @@ export function internalGenericMethods(generics: readonly string[], environment:
 			return DfgVertex.isFunctionCall(registration) && registration.s4Method !== undefined;
 		}) ?? []
 	]).filter(d => !NodeId.isBuiltIn(d.nodeId));
+}
+
+/**
+ * {@link internalGenericMethods} per generic for the environments the calls of a program see. These differ in the few frames of the code but share
+ * the many attached packages below them, so what the packages bind for a generic is resolved once for all of them, and the frames are only walked
+ * where they bind the generic or a method of it.
+ */
+export function internalGenericMethodsPerEnvironment(graph: DataflowGraph): (environment: REnvironmentInformation) => (generic: string) => readonly IdentifierDefinition[] {
+	const inPackages = memoize((packages: Environment) => memoize((generic: string) => internalGenericMethods([generic], { current: packages, level: 0 }, graph)));
+	return memoize((environment: REnvironmentInformation) => {
+		const frames: Environment[] = [];
+		const withMethods = new Set<BrandedIdentifier>();
+		let packages = environment.current;
+		for(; packages.t === undefined && !packages.builtInEnv; packages = packages.parent) {
+			frames.push(packages);
+			for(const name of packages.memory.keys()) {
+				addS3GenericsOfMethod(name, withMethods);
+			}
+		}
+		const below = inPackages(packages);
+		const within = memoize((generic: string) => internalGenericMethods([generic], environment, graph));
+		return generic => withMethods.has(generic) || frames.some(f => f.memory.has(generic)) ? within(generic) : below(generic);
+	});
 }
 
 /** the edges by which a call reaches a definition registering a method, by name or as what a generic hands on */

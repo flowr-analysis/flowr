@@ -58,7 +58,13 @@ export enum PluginType {
 	 * plugin runs otherwise.
 	 * @see {@link FlowrAnalyzerIncrementalDataflowUpdateTypePlugin} - for the base class to implement such a plugin.
 	 */
-	IncrementalDataflowUpdateType = 'incremental-dataflow-update-type'
+	IncrementalDataflowUpdateType = 'incremental-dataflow-update-type',
+	/**
+	 * Plugins that plan how a dataflow analysis builds on the one before (reuse it, resume from checkpoints, or start over).
+	 * At most one may be registered; the plugin following the configuration runs otherwise.
+	 * @see {@link FlowrAnalyzerIncrementalDataflowHeuristicPlugin} - for the base class to implement such a plugin.
+	 */
+	IncrementalDataflowHeuristic = 'incremental-dataflow-heuristic'
 }
 
 /**

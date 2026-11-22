@@ -12,6 +12,7 @@ import { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { DFControlFlowEdge, DfEdge } from '../../../dataflow/graph/edge';
 import { deepCloneSharing } from '../../../util/objects';
 import { activeDataflowBudget } from '../../../gas';
+import type { IncrementalDataflowPlan } from '../../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-heuristic-plugin';
 import type { FlowrConfig } from '../../../config';
 import {
 	type AnalyzedFile,
@@ -170,17 +171,17 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 	private readonly previous:     DataflowSnapshot | undefined;
 	private stored:                DataflowSnapshot | undefined;
 
-	constructor(private readonly ast: NormalizedAst, private readonly ctx: FlowrAnalyzerContext, previous: DataflowSnapshot | undefined) {
+	constructor(private readonly ast: NormalizedAst, private readonly ctx: FlowrAnalyzerContext, previous: DataflowSnapshot | undefined, plan: IncrementalDataflowPlan) {
 		this.files = ast.ast.files.map(f => ({ filePath: f.filePath, root: f.root }));
 		this.initialNodes = new Set(ast.idMap.keys());
 		this.listNodes = this.initialNodes;
 		this.initialFiles = ast.ast.files.length;
 		this.initialRead = ctx.files.consideredFilesList().length;
 		this.config = ctx.config;
-		this.keep = ctx.config.incremental.dataflow.checkpoints;
-		this.resumes = ctx.config.incremental.dataflow.activated;
-		this.reuses = ctx.config.incremental.dataflow.reuse;
-		this.minimum = ctx.config.incremental.dataflow.minStatements;
+		this.keep = plan.checkpoints;
+		this.resumes = plan.checkpoints > 0;
+		this.reuses = plan.reuse;
+		this.minimum = plan.minStatements;
 		this.previous = previous;
 		this.update = previous === undefined ? undefined : ctx.inc.determineUpdateTypes(previous.files, ast, ctx);
 		if(previous !== undefined && this.update !== undefined) {
@@ -407,13 +408,14 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
  */
 export const IncrementalDataflow = {
 	name: 'IncrementalDataflow',
-	/** Whether the analysis of the given context is incremental, see {@link FlowrConfig.incremental.dataflow}. */
-	enabled(this: void, ctx: FlowrAnalyzerContext): boolean {
-		return ctx.config.incremental.dataflow.reuse || ctx.config.incremental.dataflow.activated;
-	},
-	/** Begins an incremental dataflow analysis of `ast`, before the analysis adds the files it sources; `undefined` if not {@link IncrementalDataflow.enabled|enabled}. */
+	/**
+	 * Begins an incremental dataflow analysis of `ast`, before the analysis adds the files it sources, as the {@link FlowrAnalyzerIncrementalDataflowHeuristicPlugin} plans it;
+	 * `undefined` if it plans neither to reuse nor to resume.
+	 */
 	begin(this: void, ast: NormalizedAst, ctx: FlowrAnalyzerContext): IncrementalDataflowSession | undefined {
-		return IncrementalDataflow.enabled(ctx) ? new IncrementalDataflowSession(ast, ctx, ctx.inc.takeDataflowSnapshot()) : undefined;
+		const plan = ctx.inc.planDataflow(ctx);
+		const previous = ctx.inc.takeDataflowSnapshot();
+		return plan.reuse || plan.checkpoints > 0 ? new IncrementalDataflowSession(ast, ctx, previous, plan) : undefined;
 	}
 } as const;
 

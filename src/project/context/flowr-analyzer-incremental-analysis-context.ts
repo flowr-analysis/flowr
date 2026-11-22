@@ -8,6 +8,7 @@ import fs from 'fs';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type AnalyzedFile, type IncrementalUpdateResult, FlowrAnalyzerIncrementalDataflowUpdateTypePlugin } from '../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
 import type { DataflowSnapshot } from '../incremental/incremental-dataflow/incremental-dataflow';
+import { type IncrementalDataflowPlan, FlowrAnalyzerIncrementalDataflowHeuristicPlugin } from '../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-heuristic-plugin';
 
 
 export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
@@ -43,10 +44,22 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	private readonly lastKnownMtime:      Map<FilePath, number> = new Map();
 	private lastAppliedIncrementalUpdate: IncrementalUpdateResult | undefined = undefined;
 	private readonly updateTypePlugin:    FlowrAnalyzerIncrementalDataflowUpdateTypePlugin;
+	private readonly heuristicPlugin:     FlowrAnalyzerIncrementalDataflowHeuristicPlugin;
+	/** how many dataflow analyses this context planned, see {@link planDataflow} */
+	private dataflowAnalyses = 0;
 
-	constructor(updateTypePlugins: readonly FlowrAnalyzerIncrementalDataflowUpdateTypePlugin[] = []) {
+	constructor(updateTypePlugins: readonly FlowrAnalyzerIncrementalDataflowUpdateTypePlugin[] = [], heuristicPlugins: readonly FlowrAnalyzerIncrementalDataflowHeuristicPlugin[] = []) {
 		guard(updateTypePlugins.length <= 1, () => `at most one incremental-dataflow-update-type plugin may be registered, got ${updateTypePlugins.length}`);
+		guard(heuristicPlugins.length <= 1, () => `at most one incremental-dataflow-heuristic plugin may be registered, got ${heuristicPlugins.length}`);
 		this.updateTypePlugin = updateTypePlugins[0] ?? FlowrAnalyzerIncrementalDataflowUpdateTypePlugin.defaultPlugin();
+		this.heuristicPlugin = heuristicPlugins[0] ?? FlowrAnalyzerIncrementalDataflowHeuristicPlugin.defaultPlugin();
+	}
+
+	/** Plans how the next dataflow analysis builds on the one before, using whichever {@link FlowrAnalyzerIncrementalDataflowHeuristicPlugin} is active. */
+	public planDataflow(ctx: FlowrAnalyzerContext): IncrementalDataflowPlan {
+		const plan = this.heuristicPlugin.processor(ctx, { analyses: this.dataflowAnalyses, lastUpdate: this.lastAppliedIncrementalUpdate });
+		this.dataflowAnalyses++;
+		return plan;
 	}
 
 	public reset(): void {

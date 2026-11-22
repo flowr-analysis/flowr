@@ -65,6 +65,7 @@ import { FlowrAnalyzerPackageVersionsLibraryPlugin } from './package-version-plu
 import { FlowrAnalyzerPackageVersionsOnDemandPlugin } from './package-version-plugins/flowr-analyzer-package-versions-on-demand-plugin';
 import { FlowrAnalyzerLoadingOrderIncludedFilesPlugin } from './loading-order-plugins/flowr-analyzer-loading-order-included-files-plugin';
 import { DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin } from './incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
+import { AdaptiveFlowrAnalyzerIncrementalDataflowHeuristicPlugin, ConfiguredFlowrAnalyzerIncrementalDataflowHeuristicPlugin } from './incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-heuristic-plugin';
 
 /** The built-in Flowr Analyzer plugins that are always available. */
 export const BuiltInPlugins = [
@@ -120,7 +121,9 @@ export const BuiltInPlugins = [
 	['project-discovery:ignore-files', FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin],
 	['project-discovery:default', FlowrAnalyzerDefaultProjectDiscoveryPlugin],
 	['project-discovery:full', FlowrAnalyzerFullProjectDiscoveryPlugin],
-	['incremental-dataflow-update-type:default', DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin]
+	['incremental-dataflow-update-type:default', DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin],
+	['incremental-dataflow-heuristic:configured', ConfiguredFlowrAnalyzerIncrementalDataflowHeuristicPlugin],
+	['incremental-dataflow-heuristic:adaptive', AdaptiveFlowrAnalyzerIncrementalDataflowHeuristicPlugin]
 ] as const satisfies [string, PluginProducer][];
 
 export type BuiltInFlowrPluginName = typeof BuiltInPlugins[number][0];

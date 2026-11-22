@@ -8,6 +8,7 @@ import { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-si
 import { fileProtocol } from '../../../../../src/r-bridge/retriever';
 import type { IncrementalUpdateResult, IncrementalUpdateType } from '../../../../../src/project/plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
 import { resolveOracle } from './incremental-oracles';
+import type { FlowrAnalyzerIncrementalDataflowHeuristicPlugin } from '../../../../../src/project/plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-heuristic-plugin';
 
 /** The files of one step of an {@link assertIncrementalSequence}, by file name, the first file is the one analyzed. */
 export type IncrementalFiles = Readonly<Record<string, string>>;
@@ -26,6 +27,8 @@ export type IncrementalMode = 'reuse' | 'resume' | 'both';
 export interface IncrementalSequenceOptions {
 	/** the incrementality under test, `both` by default */
 	readonly mode?:         IncrementalMode;
+	/** the heuristic planning the incremental analysis, the one following the configuration by default */
+	readonly heuristic?:    FlowrAnalyzerIncrementalDataflowHeuristicPlugin;
 	/** the oracles to compare with, see {@link resolveOracle}, `:dataflow` by default */
 	readonly oracles?:      readonly string[];
 	/** see {@link FlowrConfig.incremental.dataflow.checkpoints} */
@@ -40,7 +43,11 @@ export interface IncrementalSequenceOptions {
 }
 
 async function buildAnalyzer(dir: string, files: IncrementalFiles, incremental: boolean, options: IncrementalSequenceOptions): Promise<FlowrAnalyzer> {
-	const analyzer = await new FlowrAnalyzerBuilder()
+	const builder = new FlowrAnalyzerBuilder();
+	if(incremental && options.heuristic !== undefined) {
+		builder.registerPlugins(options.heuristic);
+	}
+	const analyzer = await builder
 		.setParser(new TreeSitterExecutor())
 		.amendConfig(c => {
 			const mode = options.mode ?? 'both';

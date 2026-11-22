@@ -328,13 +328,21 @@ export function enumMembers<T extends object>(enumObject: T): [name: string, val
 	return Object.entries(enumObject).filter(([name]) => Number.isNaN(Number(name))) as [string, T[keyof T]][];
 }
 
+/** How {@link deepCloneSharing} copies the properties of a class instance that are not cloned as they are. */
+export interface ClonedFields {
+	/** the properties left out of the clone */
+	readonly drop?:    ReadonlySet<PropertyKey>;
+	/** the properties copied by the given copier, which may hand values on to the clone */
+	readonly replace?: ReadonlyMap<PropertyKey, (value: unknown, clone: (v: unknown) => unknown) => unknown>;
+}
+
 /**
  * Deep clones `obj` and keeps the shape of what it reaches: an object reached twice is cloned once, cycles are kept,
  * and class instances (including those of `Map`, `Set`, and `Array` subclasses) keep their prototype.
  * Functions, and every object `keep` says so of, are shared by reference instead of cloned.
- * A property `drop` says so of is left out of the clone, and one `replace` hands a copier for is copied by that, which may hand values on to the clone.
+ * `fields` may state for a class instance which of its properties are left out or copied in a way of their own, see {@link ClonedFields}.
  */
-export function deepCloneSharing<T>(obj: T, keep: (o: object) => boolean, drop?: (owner: object, key: PropertyKey) => boolean, replace?: (owner: object, key: PropertyKey) => ((value: unknown, clone: (v: unknown) => unknown) => unknown) | undefined): T {
+export function deepCloneSharing<T>(obj: T, keep: (o: object) => boolean, fields?: (owner: object) => ClonedFields | undefined): T {
 	const seen = new Map<object, unknown>();
 	function clone(value: unknown): unknown {
 		if(typeof value !== 'object' || value === null) {
@@ -371,6 +379,14 @@ export function deepCloneSharing<T>(obj: T, keep: (o: object) => boolean, drop?:
 			}
 			return set;
 		}
+		if(proto === Object.prototype) {
+			const record: Record<string, unknown> = {};
+			seen.set(value, record);
+			for(const key in value) {
+				record[key] = clone((value as Record<string, unknown>)[key]);
+			}
+			return record;
+		}
 		const ctor = (proto?.constructor ?? Object) as new () => object;
 		let result: object;
 		if(value instanceof Map) {
@@ -397,14 +413,15 @@ export function deepCloneSharing<T>(obj: T, keep: (o: object) => boolean, drop?:
 		} else if(value instanceof Date) {
 			return new Date(value.getTime());
 		} else {
-			result = proto === Object.prototype ? {} : Object.create(proto) as object;
+			result = Object.create(proto) as object;
 			seen.set(value, result);
 		}
+		const special = fields?.(value);
 		for(const key of Reflect.ownKeys(value)) {
-			if(drop?.(value, key)) {
+			if(special?.drop?.has(key)) {
 				continue;
 			}
-			const copier = replace?.(value, key);
+			const copier = special?.replace?.get(key);
 			const field = (value as Record<PropertyKey, unknown>)[key];
 			(result as Record<PropertyKey, unknown>)[key] = copier === undefined ? clone(field) : copier(field, clone);
 		}

@@ -18,6 +18,7 @@ describe('incremental dataflow', () => {
 		assertIncrementalSequence('change a comment', singleFileSteps(`x <- 1 # a\n${base}`, { code: `x <- 1 # b\n${base}`, type: IncrementalUpdateType.Comment, applied: true }));
 		assertIncrementalSequence('add trailing blank lines', singleFileSteps(base, { code: `${base}\n\n\n`, type: IncrementalUpdateType.Nothing, applied: true }));
 		assertIncrementalSequence('move everything down', singleFileSteps(base, { code: `\n${base}`, type: IncrementalUpdateType.Location, applied: false }));
+		assertIncrementalSequence('move the last statement down', singleFileSteps(base, { code: 'x <- 1\ny <- 2\n\nprint(x + y)', type: IncrementalUpdateType.Location, applied: true }));
 		assertIncrementalSequence('move everything down and append', singleFileSteps(base, { code: `\n${base}\nz <- x`, type: IncrementalUpdateType.ChangedAtEnd, applied: false }));
 		assertIncrementalSequence('move the last statement down and append', singleFileSteps(base, { code: 'x <- 1\ny <- 2\n\nprint(x + y)\nz <- x', type: IncrementalUpdateType.ChangedAtEnd, applied: true }));
 		assertIncrementalSequence('append without checkpoints', singleFileSteps(base, { code: `${base}\nz <- x`, type: IncrementalUpdateType.AddedAtEnd, applied: false }), { checkpoints: 0 });

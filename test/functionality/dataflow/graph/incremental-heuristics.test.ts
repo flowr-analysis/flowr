@@ -32,8 +32,35 @@ describe('incremental dataflow heuristics', () => {
 			{ code: `${base}\nz <- x\nw <- z # c`, applied: true }
 		), { mode: 'reuse', heuristic: adaptive() });
 		assertIncrementalSequence('reuses from the first analysis on', singleFileSteps(base, { code: `${base} # c`, applied: true }), { mode: 'reuse', heuristic: adaptive() });
+		assertIncrementalSequence('resumes where the last change happened', singleFileSteps(`${base}\nz <- x`,
+			{ code: 'x <- 1\ny <- 3\nprint(x + y)\nz <- x', type: IncrementalUpdateType.ChangedAtEnd, applied: false },
+			{ code: 'x <- 1\ny <- 4\nprint(x + y)\nz <- x', type: IncrementalUpdateType.ChangedAtEnd, applied: true },
+			{ code: 'x <- 1\ny <- 4\nprint(x + y)\nz <- y', type: IncrementalUpdateType.ChangedAtEnd, applied: true },
+			{ code: 'x <- 1\ny <- 4\nprint(x + y)\nz <- y\nw <- z', type: IncrementalUpdateType.AddedAtEnd, applied: true },
+			{ code: 'x <- 1\ny <- 5\nprint(x + y)\nz <- y\nw <- z', type: IncrementalUpdateType.ChangedAtEnd, applied: false },
+			{ code: 'x <- 1\n\ny <- 5\nprint(x + y)\nz <- y\nw <- z', type: IncrementalUpdateType.Location, applied: true }
+		), { mode: 'reuse', heuristic: adaptive() });
+		assertIncrementalSequence('keeps no checkpoint for a change of the first statement', singleFileSteps(base,
+			{ code: 'x <- 2\ny <- 2\nprint(x + y)', applied: false },
+			{ code: 'x <- 3\ny <- 2\nprint(x + y)', applied: false },
+			{ code: 'x <- 3\ny <- 2\nprint(x + y)\nz <- x', type: IncrementalUpdateType.AddedAtEnd, applied: false },
+			{ code: 'x <- 3\ny <- 2\nprint(x + y)\nz <- y', applied: true }
+		), { mode: 'reuse', heuristic: adaptive() });
+		assertIncrementalSequence('resumes without reuse', singleFileSteps(base,
+			{ code: `${base}\nz <- x`, applied: false },
+			{ code: `${base}\nz <- x\nw <- z`, type: IncrementalUpdateType.AddedAtEnd, applied: true },
+			{ code: `${base}\nz <- x\nw <- z`, type: IncrementalUpdateType.Nothing, applied: true }
+		), { mode: 'resume', heuristic: adaptive() });
+		assertIncrementalSequence('continues after a file added at the end', [
+			{ files: { 'a.R': 'x <- 1', 'b.R': 'y <- x' } },
+			{ files: { 'a.R': 'x <- 1', 'b.R': 'y <- x', 'c.R': 'print(y)' }, type: IncrementalUpdateType.NewFileAtEnd, applied: false },
+			{ files: { 'a.R': 'x <- 1', 'b.R': 'y <- x', 'c.R': 'print(y)', 'd.R': 'z <- y' }, type: IncrementalUpdateType.NewFileAtEnd, applied: true },
+			{ files: { 'a.R': 'x <- 2', 'b.R': 'y <- x', 'c.R': 'print(y)', 'd.R': 'z <- y' }, applied: false },
+			{ files: { 'a.R': 'x <- 2', 'b.R': 'y <- x', 'c.R': 'print(y)', 'd.R': 'z <- y', 'e.R': 'z' }, type: IncrementalUpdateType.NewFileAtEnd, applied: false }
+		], { mode: 'reuse', heuristic: adaptive(), allRequested: true });
 		for(let seed = 0; seed < 10; seed++) {
 			assertIncrementalSequence(`seed ${seed}`, fuzzedSequence(`incremental-adaptive-${seed}`, 6, 14), { mode: 'reuse', heuristic: adaptive() });
+			assertIncrementalSequence(`seed ${seed} without reuse`, fuzzedSequence(`incremental-adaptive-resume-${seed}`, 6, 14), { mode: 'resume', heuristic: adaptive() });
 		}
 	});
 	describe('exchangeable', () => {

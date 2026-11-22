@@ -55,9 +55,9 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 		this.heuristicPlugin = heuristicPlugins[0] ?? FlowrAnalyzerIncrementalDataflowHeuristicPlugin.defaultPlugin();
 	}
 
-	/** Plans how the next dataflow analysis builds on the one before, using whichever {@link FlowrAnalyzerIncrementalDataflowHeuristicPlugin} is active. */
-	public planDataflow(ctx: FlowrAnalyzerContext): IncrementalDataflowPlan {
-		const plan = this.heuristicPlugin.processor(ctx, { analyses: this.dataflowAnalyses, lastUpdate: this.lastAppliedIncrementalUpdate });
+	/** Plans how the next dataflow analysis builds on the one before, which its files differ from by `update`, using whichever {@link FlowrAnalyzerIncrementalDataflowHeuristicPlugin} is active. */
+	public planDataflow(ctx: FlowrAnalyzerContext, update: IncrementalUpdateResult | undefined): IncrementalDataflowPlan {
+		const plan = this.heuristicPlugin.processor(ctx, { analyses: this.dataflowAnalyses, lastUpdate: this.lastAppliedIncrementalUpdate, update });
 		this.dataflowAnalyses++;
 		return plan;
 	}

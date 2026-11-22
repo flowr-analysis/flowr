@@ -21,7 +21,7 @@ export enum IncrementalUpdateType {
 	NewFileAtEnd     = 'NewFileAtEnd',
 	/** The last file analyzed before was removed. */
 	RemovedFileAtEnd = 'RemovedFileAtEnd',
-	/** Only the source locations changed, which nodes created during the analysis copy, so this is analyzed again. */
+	/** Only the source locations changed, which nodes created during the analysis copy, so this is analyzed again from the first statement that moved. */
 	Location         = 'Location',
 	/** Only comments changed, which the dataflow analysis does not read. */
 	Comment          = 'Comment',
@@ -37,14 +37,13 @@ export interface IncrementalUpdateResult {
 	readonly types:         readonly IncrementalUpdateType[];
 	/** The file the change happened in, if it is a single one. */
 	readonly filePath?:     FilePath;
-	/** For a change within a single file, how many of its top-level statements stayed the same. */
+	/** For a change within a single file, how many of its top-level statements stayed the same, locations included. */
 	readonly commonPrefix?: number;
 	/** Whether the incremental analysis reused anything for this change. */
 	readonly applied?:      boolean;
 }
 
 const UnchangedTypes: ReadonlySet<IncrementalUpdateType> = new Set([IncrementalUpdateType.Nothing, IncrementalUpdateType.Comment]);
-const AtEndTypes: ReadonlySet<IncrementalUpdateType> = new Set([IncrementalUpdateType.AddedAtEnd, IncrementalUpdateType.RemovedAtEnd, IncrementalUpdateType.ChangedAtEnd]);
 
 /** Helper functions to ask an {@link IncrementalUpdateResult} what kind of change it is. */
 export const IncrementalUpdate = {
@@ -52,10 +51,6 @@ export const IncrementalUpdate = {
 	/** Whether the files changed in nothing the dataflow analysis reads, i.e., at most in their comments. */
 	unchanged(this: void, update: IncrementalUpdateResult): boolean {
 		return update.types.every(t => UnchangedTypes.has(t));
-	},
-	/** Whether the single file changed only after its first {@link IncrementalUpdateResult#commonPrefix|commonPrefix} statements. */
-	changedAtEnd(this: void, update: IncrementalUpdateResult): boolean {
-		return update.types.length === 1 && AtEndTypes.has(update.types[0]);
 	},
 	/** Whether `type` is the only kind of change. */
 	is(this: void, update: IncrementalUpdateResult, type: IncrementalUpdateType): boolean {
@@ -124,7 +119,7 @@ export class DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin extends Flo
 			return { types: [IncrementalUpdateType.Full] };
 		}
 		if(moved) {
-			return { types: [IncrementalUpdateType.Location] };
+			return files.length === 1 ? { types: [IncrementalUpdateType.Location], filePath: files[0].filePath, commonPrefix: differences[0].prefix } : { types: [IncrementalUpdateType.Location] };
 		} else if(unchanged) {
 			return { types: [differences.some(d => d.comments) ? IncrementalUpdateType.Comment : IncrementalUpdateType.Nothing] };
 		}
@@ -160,8 +155,9 @@ function compareFiles(before: RExpressionList<ParentInformation>, after: RExpres
 		}
 	}
 	const complete = prefix === before.children.length && prefix === after.children.length;
+	/* the statements of the prefix are the same already, so only those after it may have moved */
 	const locations = !complete && before.children.length === after.children.length
-		&& before.children.every((c, i) => sameNode(c, after.children[i], key => LocationKeys.has(key) || CommentKeys.has(key)));
+		&& before.children.every((c, i) => i < prefix || sameNode(c, after.children[i], key => LocationKeys.has(key) || CommentKeys.has(key)));
 	return { prefix, locations, comments: complete && comments };
 }
 

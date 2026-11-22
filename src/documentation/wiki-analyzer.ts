@@ -510,8 +510,8 @@ A repeated dataflow analysis can build on the one before in two ways, the ${ctx.
 * ${ctx.linkConfig('incremental.dataflow.reuse')} (on by default) hands out the analysis before again if only comments changed, which costs next to nothing.
 * ${ctx.linkConfig('incremental.dataflow.activated')} resumes a single file after its last unchanged statement, from checkpoints the analysis before kept (see ${ctx.linkConfig('incremental.dataflow.checkpoints')}), each a copy of the graph.
 
-A ${ctx.link(FlowrAnalyzerIncrementalDataflowHeuristicPlugin)} plans each analysis, by default as the configuration states.
-Register \`incremental-dataflow-heuristic:adaptive\` (${ctx.link(AdaptiveFlowrAnalyzerIncrementalDataflowHeuristicPlugin)}) to keep a single checkpoint only once the files are analyzed again, where the last change happened, so a single analysis pays nothing and changing a statement in the middle of a file again resumes right before it, or a plugin of your own.
+A ${ctx.link(FlowrAnalyzerIncrementalDataflowHeuristicPlugin)} plans each analysis. By default, the ${ctx.link(AdaptiveFlowrAnalyzerIncrementalDataflowHeuristicPlugin)} keeps a single checkpoint, only once the files are analyzed again and where the last change happened, so a single analysis pays nothing and changing a statement in the middle of a file again resumes right before it.
+Register \`incremental-dataflow-heuristic:configured\` to keep the checkpoints exactly as configured, or a plugin of your own.
 ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getLastAppliedIncrementalUpdate', { codeFont: true, realNameWrapper: 'i' })} tells you what the last analysis reused.
 An editor tells the analyzer of an edit with ${ctx.linkM(FlowrAnalyzer, 'updateFile', { codeFont: true, realNameWrapper: 'i' })}, handing over the unsaved content of the file.
 The playground and the watch mode of the REPL (\`:query @dataflow watch://file.R\`) turn it on, as they analyze the same files again on every change.

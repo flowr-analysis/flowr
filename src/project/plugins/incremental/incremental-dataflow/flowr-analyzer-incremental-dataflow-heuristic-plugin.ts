@@ -27,13 +27,13 @@ export interface IncrementalDataflowHeuristicInformation {
 
 /**
  * Base class for plugins that plan how a dataflow analysis builds on the one before, see {@link IncrementalDataflowPlan}.
- * At most one may be registered, {@link ConfiguredFlowrAnalyzerIncrementalDataflowHeuristicPlugin} runs otherwise.
+ * At most one may be registered, {@link AdaptiveFlowrAnalyzerIncrementalDataflowHeuristicPlugin} runs otherwise.
  */
 export abstract class FlowrAnalyzerIncrementalDataflowHeuristicPlugin extends FlowrAnalyzerPlugin<IncrementalDataflowHeuristicInformation, IncrementalDataflowPlan> {
 	readonly type = PluginType.IncrementalDataflowHeuristic;
 
 	public static override defaultPlugin(): FlowrAnalyzerIncrementalDataflowHeuristicPlugin {
-		return new ConfiguredFlowrAnalyzerIncrementalDataflowHeuristicPlugin();
+		return new AdaptiveFlowrAnalyzerIncrementalDataflowHeuristicPlugin();
 	}
 }
 
@@ -50,7 +50,7 @@ export class ConfiguredFlowrAnalyzerIncrementalDataflowHeuristicPlugin extends F
 }
 
 /**
- * Resumes only once a context analyzes its files again, as an editor or a watch does, and where it pays:
+ * With `activated`, resumes only once a context analyzes its files again, as an editor or a watch does, and where it pays:
  * the first analysis keeps no checkpoint, so an analysis that stays the only one costs nothing.
  * Every later one keeps a single checkpoint, after the statements its change left as they were, as the next change likely happens where this one did.
  * So changing a statement again resumes right before it, however far from the end of the file it is, at the cost of one copy of the analysis up to there,
@@ -62,8 +62,8 @@ export class AdaptiveFlowrAnalyzerIncrementalDataflowHeuristicPlugin extends Flo
 	public readonly version = new SemVer('0.2.0');
 
 	protected process(ctx: FlowrAnalyzerContext, { analyses, update }: IncrementalDataflowHeuristicInformation): IncrementalDataflowPlan {
-		const { reuse, checkpoints, minStatements } = ctx.config.incremental.dataflow;
-		return { reuse, checkpoints: analyses > 0 && mayResumeAfter(update) ? Math.min(checkpoints, 1) : 0, after: update?.commonPrefix, minStatements };
+		const { reuse, activated, checkpoints, minStatements } = ctx.config.incremental.dataflow;
+		return { reuse, checkpoints: activated && analyses > 0 && mayResumeAfter(update) ? Math.min(checkpoints, 1) : 0, after: update?.commonPrefix, minStatements };
 	}
 }
 

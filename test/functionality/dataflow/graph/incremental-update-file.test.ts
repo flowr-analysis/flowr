@@ -7,12 +7,17 @@ import type { FlowrAnalyzer } from '../../../../src/project/flowr-analyzer';
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { fileProtocol } from '../../../../src/r-bridge/retriever';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
+import { ConfiguredFlowrAnalyzerIncrementalDataflowHeuristicPlugin } from '../../../../src/project/plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-heuristic-plugin';
 import { resolveOracle } from '../../util/incremental/dataflow-graph/incremental-oracles';
 
 const base = 'x <- 1\nf <- function(a) a + x\ny <- f(2)';
 
 async function analyzerOf(request: (a: FlowrAnalyzer) => void, incremental: boolean): Promise<FlowrAnalyzer> {
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).amendConfig(c => {
+	const builder = new FlowrAnalyzerBuilder();
+	if(incremental) {
+		builder.registerPlugins(new ConfiguredFlowrAnalyzerIncrementalDataflowHeuristicPlugin());
+	}
+	const analyzer = await builder.setParser(new TreeSitterExecutor()).amendConfig(c => {
 		c.incremental.dataflow.reuse = incremental;
 		c.incremental.dataflow.activated = incremental;
 	}).build();

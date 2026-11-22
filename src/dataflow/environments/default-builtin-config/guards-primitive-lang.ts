@@ -175,7 +175,7 @@ export const PrimitiveLanguageGuardFacts: Readonly<Record<BrandedIdentifier, Gua
 	'UseMethod':       { asks: { generic: OneString("'generic' argument must be a character string") } },
 	'standardGeneric': { asks: { f: [fails(is('is.character'), "argument to 'standardGeneric' must be a non-empty character string"), fails(length('>=', 1), "argument to 'standardGeneric' must be a non-empty character string")] } },
 	'forceAndCall':    { asks: { n: [], FUN: [fails(is('is.function'), 'attempt to apply non-function')] } },
-	'Exec':            { asks: { expr: [fails(is('is.call'), '"expr" must be a call expression', { since: '4.4.0' })] }, opensFrame: true },
+	'Exec':            { asks: { expr: [fails(is('is.call'), '"expr" must be a call expression', { since: '4.4.0' })] }, opensFrame: true, missingOk: ['envir'] },
 	'declare':         Returns(Null),
 	'if':              { asks: { cond: Condition } },
 	'while':           { asks: { cond: Condition } },

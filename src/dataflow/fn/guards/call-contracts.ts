@@ -311,10 +311,14 @@ function breaches(this: void, call: NodeId, contract: FunctionContract, scope: C
 	const given = MatchArgs.toSpec(vertex.args, Object.fromEntries(contract.formals.map(f => [f, f])));
 	const result: ContractBreach[] = MatchArgs.handsOnDots(vertex.args, graph) ? [] : contract.required.filter(f => f !== '...' && (given.get(f)?.length ?? 0) === 0).map(formal => ({ kind: 'missing', formal }));
 	const args = new Map<BrandedIdentifier, { readonly node: RNodeWithParent, literals?: readonly GuardTerm[] }>();
-	const binding = callBinding(vertex, contract.formals, graph, node => {
-		const placeholder: BrandedIdentifier = `#${String(node.info.id)}`;
-		args.set(placeholder, { node });
-		return GuardTerm.formal(placeholder);
+	const binding = callBinding(vertex, contract.formals, graph, {
+		value: node => {
+			const placeholder: BrandedIdentifier = `#${String(node.info.id)}`;
+			args.set(placeholder, { node });
+			return GuardTerm.formal(placeholder);
+		},
+		/* a name may be that of a formal the function around the call was not given */
+		missing: name => readsViaParameter(Dataflow.origin(graph, name.info.id) ?? [], graph) ? undefined : GuardTerm.False
 	});
 	const literalsAt = (placeholder: BrandedIdentifier) => {
 		const argument = args.get(placeholder);

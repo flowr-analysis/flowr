@@ -111,11 +111,16 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		'nrow':             { measures: 'nullable' },
 		'ncol':             { measures: 'nullable' },
 		'nchar':            { measures: 'elementwise' },
-		'match.arg':        { check: { types: Character | Null, choices: 'choices', choicesFromDefault: true, partial: true } },
+		'match.arg':        { check: { types: Character | Null, choices: 'choices', choicesFromDefault: true, partial: true }, missingOk: ['choices'] },
 		/* the `Math` group: each dispatches on a classed `x`, as `trunc` does for a `Date`, those without a complex version fail for one */
 		...Object.fromEntries(RGroupGenerics.Math.filter(name => name !== 'log' && !name.startsWith('cum')).map(name => [name, RealMathNames.has(name) ? RealMath : Math])),
 		/* a complex `base` makes it take a string or `NULL` for `x` */
 		'log':              { missingOk: ['base'] },
+		/* closures that ask `missing` of these themselves */
+		'getOption':        { missingOk: ['default'] },
+		'ls':               { missingOk: ['name'] },
+		'objects':          { missingOk: ['name'] },
+		'.libPaths':        { missingOk: ['new'] },
 		'round':            { ...Math, missingOk: ['digits'] },
 		'signif':           { ...Math, missingOk: ['digits'] },
 		'cumsum':           { asks: { x: Cumulated } },

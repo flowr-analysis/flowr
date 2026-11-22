@@ -321,8 +321,11 @@ export type GuardBinding = ReadonlyMap<BrandedIdentifier, GuardTerm>;
 /** What a name from outside of the callee is to its caller, given where it was bound. */
 export type GuardOuter = (origin: NodeId) => GuardTerm | undefined;
 
-/** The `term` of a callee as its caller sees it, `undefined` if it reads anything the caller cannot state. */
-function substitute(this: void, term: GuardTerm, binding: GuardBinding, outer?: GuardOuter): GuardTerm | undefined {
+/**
+ * The `term` of a callee as its caller sees it, `undefined` if it reads anything the caller cannot state.
+ * `absent` states what `missing` is of the formals where a call tells, without it a formal is missing with the formal it is bound to, as a dispatch hands it on.
+ */
+function substitute(this: void, term: GuardTerm, binding: GuardBinding, outer?: GuardOuter, absent?: GuardBinding): GuardTerm | undefined {
 	switch(term.kind) {
 		case 'formal':
 			return binding.get(term.name);
@@ -336,12 +339,15 @@ function substitute(this: void, term: GuardTerm, binding: GuardBinding, outer?: 
 		return undefined;
 	} else if(term.fn === 'missing' && term.known) {
 		const [{ value: formal }] = term.args;
+		if(absent !== undefined) {
+			return formal.kind === 'formal' ? absent.get(formal.name) : undefined;
+		}
 		const bound = formal.kind === 'formal' ? binding.get(formal.name) : undefined;
 		return bound === undefined ? True : bound.kind === 'formal' ? { ...term, args: [{ value: bound }] } : False;
 	}
 	const args: GuardArgument[] = [];
 	for(const arg of term.args) {
-		const value = substitute(arg.value, binding, outer);
+		const value = substitute(arg.value, binding, outer, absent);
 		if(value === undefined) {
 			return undefined;
 		}
@@ -533,12 +539,12 @@ function predicateDecided(this: void, term: GuardCall, facts: GuardFactsLookup):
 }
 
 /** {@link substitute} for a condition in negation normal form, where anything not statable can weaken into {@link True}, while the rest still holds. */
-function substituteCondition(this: void, term: GuardTerm, binding: GuardBinding, outer?: GuardOuter, facts?: GuardFactsLookup): GuardTerm {
+function substituteCondition(this: void, term: GuardTerm, binding: GuardBinding, outer?: GuardOuter, facts?: GuardFactsLookup, absent?: GuardBinding): GuardTerm {
 	if(isCall(term) && term.known && (term.fn === '&&' || term.fn === '||')) {
-		const operands = term.args.map(a => substituteCondition(a.value, binding, outer, facts));
+		const operands = term.args.map(a => substituteCondition(a.value, binding, outer, facts, absent));
 		return term.fn === '&&' ? all(...operands) : any(...operands);
 	}
-	const substituted = substitute(term, binding, outer) ?? True;
+	const substituted = substitute(term, binding, outer, absent) ?? True;
 	return facts === undefined ? substituted : decided(substituted, facts);
 }
 

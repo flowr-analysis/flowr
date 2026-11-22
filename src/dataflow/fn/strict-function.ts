@@ -347,8 +347,12 @@ function strictnessOfParameter(param: NodeId, definition: DataflowGraphVertexFun
 		/* a `NextMethod` hands the parameter on unforced, the methods it reaches decide below */
 		if(!DfgVertex.hasOrigin(state.graph.getVertex(read), BuiltInProcName.S3DispatchNext)) {
 			const { value, onlyUnder = [] } = forces(read, definition, state);
-			reads.push(value);
-			branches.push(...onlyUnder);
+			/* a read that may also be of a rebinding (`if(c) v <- h(v); v + 1`) forces the parameter only where it was not rebound */
+			const rebound = DfgVertex.isUse(state.graph.getVertex(read)) && Dataflow.bindingsReadBy(read, state.graph).some(b => b !== param);
+			reads.push(rebound ? weaken(value) : value);
+			if(!rebound) {
+				branches.push(...onlyUnder);
+			}
 		}
 	}
 	if(ControlDependency.happensInEveryBranch(branches)) {

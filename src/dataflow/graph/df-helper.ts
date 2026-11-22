@@ -152,6 +152,27 @@ export const Dataflow = {
 		const byAssignment = Dataflow.targetsOf(graph, def, EdgeType.DefinedBy).some(t => DfgVertex.hasOrigin(graph.getVertex(t), BuiltInProcName.Assignment));
 		return DfgVertex.isVariableDefinition(vertex) && byAssignment && vertex.source?.length === 1 ? vertex.source[0] : undefined;
 	},
+	/**
+	 * The bindings a read of a variable may take its value from, a replacement (`x[1] <- 2`) followed to the
+	 * bindings it changed a copy of. Other vertices a read links to (the calls a `return` or an `if` may tie it to) are none of them.
+	 */
+	bindingsReadBy(this: void, id: NodeId, graph: DataflowGraph): NodeId[] {
+		const found: NodeId[] = [];
+		const seen = new Set<NodeId>();
+		const todo = Dataflow.targetsOf(graph, id, EdgeType.Reads);
+		for(let at = todo.pop(); at !== undefined; at = todo.pop()) {
+			if(seen.has(at) || !DfgVertex.isVariableDefinition(graph.getVertex(at))) {
+				continue;
+			}
+			seen.add(at);
+			if(graph.idMap?.get(at)?.info.role === RoleInParent.Accessed) {
+				todo.push(...Dataflow.targetsOf(graph, at, EdgeType.Reads));
+			} else {
+				found.push(at);
+			}
+		}
+		return found;
+	},
 	/** The vertices the value at `id` originates from: an argument is followed to its value, a read to the definitions it reads, a definition to what it is defined by (other than the assignment making it) or, for a replacement (`e$f <- v`), to what the variable held before, and with `throughAccess` an access to what it accesses. */
 	valueSources(this: void, id: NodeId, graph: DataflowGraph, opts?: { readonly throughAccess?: boolean, readonly budget?: number }): NodeId[] | undefined {
 		const budget = opts?.budget ?? 256;

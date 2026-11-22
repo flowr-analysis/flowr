@@ -234,7 +234,7 @@ function statedRoles(definition: DataflowGraphVertexFunctionDefinition, state: R
 	function add(node: NodeId, props: ArgProps): void {
 		/* forcing `if(c) a else b` evaluates only one of `a` and `b`, so neither is forced for certain */
 		const always = (props & ArgProp.Forced) === 0 ? undefined : identityFrom(node, state, 0, new Set()).found;
-		const written = writtenFormal(node, byName, state);
+		const written = writtenFormal(node, byName, state, true);
 		for(const formal of aliasTargets(node, byName, state)) {
 			const own = always === undefined || always.has(formal) || formal === written ? props : props & ~ArgProp.Forced;
 			roles.set(formal, (roles.get(formal) ?? 0) | own);
@@ -298,10 +298,23 @@ function aliasTargets(node: NodeId, byName: ReadonlyMap<BrandedIdentifier, NodeI
 	return found;
 }
 
-/** The formal parameter a symbol argument names. */
-function writtenFormal(node: NodeId, byName: ReadonlyMap<BrandedIdentifier, NodeId>, state: RoleState): NodeId | undefined {
+/**
+ * The formal parameter a symbol argument names, as long as the name still holds it: a symbol nothing links
+ * (`missing(a)`) is taken by its name, one that reads bindings is the formal only if it may read the formal
+ * or, with `only`, if it reads nothing else. So in `v <- h(v); v + 1` the `v` of `v + 1` is not the formal.
+ */
+function writtenFormal(node: NodeId, byName: ReadonlyMap<BrandedIdentifier, NodeId>, state: RoleState, only = false): NodeId | undefined {
 	const name = RSymbol.is(state.graph.idMap?.get(node)) ? NodeId.recoverBareName(node, state.graph.idMap) : undefined;
-	return name === undefined ? undefined : byName.get(name);
+	const formal = name === undefined ? undefined : byName.get(name);
+	if(formal === undefined) {
+		return undefined;
+	}
+	if(!DfgVertex.isUse(state.graph.getVertex(node))) {
+		/* the target of a replacement (`x[1] <- 2`) is the formal it changes a copy of */
+		return formal;
+	}
+	const read = Dataflow.bindingsReadBy(node, state.graph);
+	return read.length === 0 || (only ? read.every(t => t === formal) : read.includes(formal)) ? formal : undefined;
 }
 
 /** The formals of `definition` by name, for {@link writtenFormal}. */

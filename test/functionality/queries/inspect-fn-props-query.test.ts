@@ -79,6 +79,11 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	/* counterexamples: what the walk has to get right beyond the straightforward cases */
 	testRoles('a formal overwritten before the end is not the result', 'f <- function(x) { x <- 1; x }', { x: ArgProp.Lazy });
 	testRoles('nor is one overwritten on the way', 'f <- function(x) { y <- x; y <- 2; y }', { x: ArgProp.Forced });
+	testRoles('a formal rebound to an unknown call is not what the new value is used as', 'f <- function(v) { v <- h(v); v + 1 }', {});
+	testRoles('one rebound to a builtin is forced by it, not by what the new value is used as', 'f <- function(v) { v <- list(v); v[[1]] }', { v: ArgProp.Forced | ArgProp.Value });
+	testRoles('a formal rebound to what forces it is forced by that', 'f <- function(v) { v <- as.character(v); nchar(v) }', { v: ArgProp.Forced | ArgProp.Value });
+	testRoles('a formal changed in place in a loop is still forced, by the change or by the read after', 'f <- function(r, l) { for(n in names(l)) r[n] <- l[n]; r }', { r: ArgProp.Forced, l: ArgProp.Forced | ArgProp.Value | ArgProp.Shape });
+	testRoles('a formal rebound on one branch only may still be used as itself', 'f <- function(v, c) { if(c) v <- h(v); v + 1 }', { v: ArgProp.Value | ArgProp.Atomic, c: ArgProp.Forced | ArgProp.Atomic });
 	testRoles('branches agreeing on the formal make it the result', 'f <- function(x, c) if(c) x else x', { x: ArgProp.Forced | ArgProp.Alias, c: ArgProp.Forced | ArgProp.Atomic });
 	testRoles('branches disagreeing do not', 'f <- function(x, y, c) if(c) x else y', { c: ArgProp.Forced | ArgProp.Atomic });
 	testRoles('a constant condition is no condition', 'f <- function(x) if(TRUE) x', { x: ArgProp.Forced | ArgProp.Alias });

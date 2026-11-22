@@ -272,7 +272,7 @@ function packageExporting(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerCon
 		return baseRExportOwner(name);
 	}
 	/* a `library()` the analysis meets adds a dependency, which may answer a name anew */
-	const dependencies = ctx.deps.getDependencies().length;
+	const dependencies = ctx.deps.dependenciesChanged;
 	let known = ExportingPerContext.get(ctx.deps);
 	if(known?.dependencies !== dependencies) {
 		known = { dependencies, owners: new BoundedMap(MaxOwnersPerContext) };
@@ -284,7 +284,7 @@ function packageExporting(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerCon
 	return known.owners.get(name);
 }
 
-/** what {@link packageExporting} answered per dependencies context, as long as it has the same number of dependencies */
+/** what {@link packageExporting} answered per dependencies context, as long as its dependencies did not change */
 let ExportingPerContext = new WeakMap<object, { readonly dependencies: number, readonly owners: Map<BrandedIdentifier, BrandedNamespace | undefined> }>();
 /** bounds the names {@link ExportingPerContext} keeps per context, as they are the names the analyzed code uses */
 const MaxOwnersPerContext = 65_536;

@@ -47,6 +47,8 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 
 	/** Get all dependencies known to this context. */
 	getDependencies(): readonly Readonly<Package>[];
+	/** Counts the changes of {@link getDependencies}, so that what was derived from them can tell whether it still holds. */
+	readonly dependenciesChanged: number;
 
 	/**
 	 * Every package name the project *declares* (`Depends`/`Imports`/`Suggests`/`LinkingTo`/`Enhances`), whether or
@@ -117,6 +119,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	public readonly functionsContext: FlowrAnalyzerFunctionsContext;
 
 	private dependencies:  Map<BrandedNamespace, Package> = new Map();
+	public dependenciesChanged = 0;
 	/** what {@link getDependency} resolved for a package the project does not depend on, so a lookup never makes it one */
 	private resolvedOnly:  Map<BrandedNamespace, Package> = new Map();
 	private staticsLoaded = false;
@@ -128,6 +131,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 
 	public reset(): void {
 		this.dependencies = new Map();
+		this.dependenciesChanged++;
 		this.resolvedOnly = new Map();
 		this.staticsLoaded = false;
 		this.lazyResolvers = [];
@@ -136,6 +140,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 
 	fork(source: FlowrAnalyzerDependenciesContext) {
 		this.dependencies = new Map(source.dependencies);
+		this.dependenciesChanged++;
 		this.resolvedOnly = new Map(source.resolvedOnly);
 		this.staticsLoaded = source.staticsLoaded;
 		this.lazyResolvers = source.lazyResolvers.slice();
@@ -280,8 +285,13 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	public addDependency(pkg: Package): this {
-		mergeIntoMap(this.dependencies, pkg);
+		this.mergeDependency(pkg);
 		return this;
+	}
+
+	private mergeDependency(pkg: Package): void {
+		mergeIntoMap(this.dependencies, pkg);
+		this.dependenciesChanged++;
 	}
 
 	public getDependency(name: BrandedNamespace, version?: string | Range): Package | undefined {
@@ -299,9 +309,12 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 				const resolved = resolve(name, existing);
 				if(resolved) {
 					// merges exports into any existing version info, of a dependency or of a mere lookup
-					const into = this.dependencies.has(name) ? this.dependencies : this.resolvedOnly;
-					mergeIntoMap(into, resolved);
-					return into.get(name);
+					if(this.dependencies.has(name)) {
+						this.mergeDependency(resolved);
+						return this.dependencies.get(name);
+					}
+					mergeIntoMap(this.resolvedOnly, resolved);
+					return this.resolvedOnly.get(name);
 				}
 			}
 			this.resolvedMisses.add(name);
@@ -315,7 +328,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		const cached = this.resolvedOnly.get(name);
 		if(cached !== undefined) {
 			this.resolvedOnly.delete(name);
-			mergeIntoMap(this.dependencies, cached);
+			this.mergeDependency(cached);
 		}
 		return this.dependencies.get(name) ?? found;
 	}

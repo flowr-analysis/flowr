@@ -13,6 +13,7 @@ const base = 'x <- 1\nf <- function(a) a + x\ny <- f(2)';
 
 async function analyzerOf(request: (a: FlowrAnalyzer) => void, incremental: boolean): Promise<FlowrAnalyzer> {
 	const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).amendConfig(c => {
+		c.incremental.dataflow.reuse = incremental;
 		c.incremental.dataflow.activated = incremental;
 	}).build();
 	request(analyzer);

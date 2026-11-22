@@ -20,7 +20,12 @@ export interface IncrementalStep {
 	readonly applied?: boolean;
 }
 
+/** Which incrementality the analyzer under test uses, see `incremental.dataflow.reuse` and `incremental.dataflow.activated`. */
+export type IncrementalMode = 'reuse' | 'resume' | 'both';
+
 export interface IncrementalSequenceOptions {
+	/** the incrementality under test, `both` by default */
+	readonly mode?:         IncrementalMode;
 	/** the oracles to compare with, see {@link resolveOracle}, `:dataflow` by default */
 	readonly oracles?:      readonly string[];
 	/** see {@link FlowrConfig.incremental.dataflow.checkpoints} */
@@ -38,7 +43,9 @@ async function buildAnalyzer(dir: string, files: IncrementalFiles, incremental: 
 	const analyzer = await new FlowrAnalyzerBuilder()
 		.setParser(new TreeSitterExecutor())
 		.amendConfig(c => {
-			c.incremental.dataflow.activated = incremental;
+			const mode = options.mode ?? 'both';
+			c.incremental.dataflow.reuse = incremental && mode !== 'resume';
+			c.incremental.dataflow.activated = incremental && mode !== 'reuse';
 			if(options.checkpoints !== undefined) {
 				c.incremental.dataflow.checkpoints = options.checkpoints;
 			}

@@ -43,6 +43,26 @@ export interface IncrementalUpdateResult {
 	readonly applied?:      boolean;
 }
 
+const UnchangedTypes: ReadonlySet<IncrementalUpdateType> = new Set([IncrementalUpdateType.Nothing, IncrementalUpdateType.Comment]);
+const AtEndTypes: ReadonlySet<IncrementalUpdateType> = new Set([IncrementalUpdateType.AddedAtEnd, IncrementalUpdateType.RemovedAtEnd, IncrementalUpdateType.ChangedAtEnd]);
+
+/** Helper functions to ask an {@link IncrementalUpdateResult} what kind of change it is. */
+export const IncrementalUpdate = {
+	name: 'IncrementalUpdate',
+	/** Whether the files changed in nothing the dataflow analysis reads, i.e., at most in their comments. */
+	unchanged(this: void, update: IncrementalUpdateResult): boolean {
+		return update.types.every(t => UnchangedTypes.has(t));
+	},
+	/** Whether the single file changed only after its first {@link IncrementalUpdateResult#commonPrefix|commonPrefix} statements. */
+	changedAtEnd(this: void, update: IncrementalUpdateResult): boolean {
+		return update.types.length === 1 && AtEndTypes.has(update.types[0]);
+	},
+	/** Whether `type` is the only kind of change. */
+	is(this: void, update: IncrementalUpdateResult, type: IncrementalUpdateType): boolean {
+		return update.types.length === 1 && update.types[0] === type;
+	}
+} as const;
+
 /** A file as an analysis saw it before the dataflow analysis added the files it sourced. */
 export interface AnalyzedFile {
 	readonly filePath: FilePath | undefined;

@@ -343,7 +343,9 @@ export interface FlowrConfig {
 			}
 		}
 		readonly dataflow: {
-			/** Reuse the last dataflow analysis where the files did not change. */
+			/** Hand out the last dataflow analysis again if the files did not change besides their comments, which costs next to nothing. */
+			readonly reuse:         boolean;
+			/** Resume the analysis of a file after its last unchanged top-level statement, from checkpoints the analysis before kept, see {@link checkpoints}. */
 			readonly activated:     boolean;
 			/** After how many of the last top-level statements to keep a checkpoint to resume from (each copies the graph). */
 			readonly checkpoints:   number;
@@ -711,7 +713,7 @@ export const FlowrConfig = {
 					activated:  false,
 					heuristics: { activated: true, mtime: true, linesFrom: 500, bytesFrom: 50_000, alwaysWithEdits: false, minFiles: 1 }
 				},
-				dataflow: { activated: false, checkpoints: 2, minStatements: 0 }
+				dataflow: { reuse: true, activated: false, checkpoints: 2, minStatements: 0 }
 			},
 			gas: {
 				thresholds: { memory: { problematic: 0.7,       critical: 0.9 }, timeMs: { problematic: 100_000,   critical: 120_000 } },
@@ -890,7 +892,8 @@ export const FlowrConfig = {
 				}),
 			}),
 			dataflow: Joi.object({
-				activated:     Joi.boolean().description('Reuse the last dataflow analysis where the files did not change.'),
+				reuse:         Joi.boolean().optional().description('Hand out the last dataflow analysis again if the files did not change besides their comments.'),
+				activated:     Joi.boolean().description('Resume the analysis of a file after its last unchanged top-level statement, from checkpoints the analysis before kept.'),
 				checkpoints:   Joi.number().integer().min(0).optional().description('After how many of the last top-level statements to keep a checkpoint to resume from (each copies the graph).'),
 				minStatements: Joi.number().integer().min(0).optional().description('Keep checkpoints only for files with at least this many top-level statements.'),
 			}),

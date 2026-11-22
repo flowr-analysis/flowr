@@ -91,6 +91,19 @@ describe('incremental dataflow', () => {
 		}
 	});
 
+	describe('each incrementality on its own', () => {
+		assertIncrementalSequence('reuse an unchanged analysis', singleFileSteps(base, { code: base, type: IncrementalUpdateType.Nothing, applied: true }, { code: `${base} # c`, applied: true }), { mode: 'reuse' });
+		assertIncrementalSequence('reuse does not resume', singleFileSteps(base, { code: `${base}\nz <- x`, type: IncrementalUpdateType.AddedAtEnd, applied: false }), { mode: 'reuse' });
+		assertIncrementalSequence('resume an unchanged analysis from its last checkpoint', singleFileSteps(base, { code: base, type: IncrementalUpdateType.Nothing, applied: true }), { mode: 'resume' });
+		assertIncrementalSequence('resume after an append', singleFileSteps(base, { code: `${base}\nz <- x`, applied: true }, { code: `${base}\nz <- x # c`, applied: true }), { mode: 'resume' });
+		const seeds = Number(process.env.FLOWR_INCREMENTAL_FUZZ_SEEDS ?? 40);
+		for(const mode of ['reuse', 'resume'] as const) {
+			for(let seed = 0; seed < Math.ceil(seeds / 4); seed++) {
+				assertIncrementalSequence(`${mode}: seed ${seed}`, fuzzedSequence(`incremental-${mode}-${seed}`, 6, 14), { mode, checkpoints: 1 + seed % 3 });
+			}
+		}
+	});
+
 	describe('fuzzed edits', () => {
 		const seeds = Number(process.env.FLOWR_INCREMENTAL_FUZZ_SEEDS ?? 40);
 		const length = Number(process.env.FLOWR_INCREMENTAL_FUZZ_LENGTH ?? 14);

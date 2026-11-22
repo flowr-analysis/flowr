@@ -504,9 +504,11 @@ For one file, the incremental state follows a fixed lifecycle:
 
 ${section('Incremental Dataflow', 4)}
 
-With ${ctx.linkConfig('incremental.dataflow.activated')}, the dataflow analysis continues the last one instead of starting over.
-The ${ctx.link(DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin)} classifies the change (${ctx.link('IncrementalUpdateType')}).
-Unchanged files are reused, and a single file resumes after its last unchanged statement if a checkpoint exists there (see ${ctx.linkConfig('incremental.dataflow.checkpoints')}).
+A repeated dataflow analysis can build on the one before in two ways, the ${ctx.link(DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin)} classifies the change (${ctx.link('IncrementalUpdateType')}):
+
+* ${ctx.linkConfig('incremental.dataflow.reuse')} (on by default) hands out the analysis before again if only comments changed, which costs next to nothing.
+* ${ctx.linkConfig('incremental.dataflow.activated')} resumes a single file after its last unchanged statement, from checkpoints the analysis before kept (see ${ctx.linkConfig('incremental.dataflow.checkpoints')}), each a copy of the graph.
+
 ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getLastAppliedIncrementalUpdate', { codeFont: true, realNameWrapper: 'i' })} tells you what the last analysis reused.
 An editor tells the analyzer of an edit with ${ctx.linkM(FlowrAnalyzer, 'updateFile', { codeFont: true, realNameWrapper: 'i' })}, handing over the unsaved content of the file.
 The playground and the watch mode of the REPL (\`:query @dataflow watch://file.R\`) turn it on, as they analyze the same files again on every change.

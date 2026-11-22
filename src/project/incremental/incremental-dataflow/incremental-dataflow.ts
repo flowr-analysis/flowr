@@ -1,4 +1,4 @@
-import type { NormalizedAst, ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, NormalizedAst, ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import type { DataflowCfgInformation, DataflowInformation } from '../../../dataflow/info';
 import type { DataflowProcessorInformation } from '../../../dataflow/processor';
@@ -16,6 +16,7 @@ import type { FlowrConfig } from '../../../config';
 import {
 	type AnalyzedFile,
 	type IncrementalUpdateResult,
+	IncrementalUpdate,
 	IncrementalUpdateType
 } from '../../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
 
@@ -35,26 +36,44 @@ interface ProgramMarks {
 	readonly unknownMethodsAt: NodeId[] | undefined;
 }
 
+/** What an analysis added to the AST and the context and read, which an analysis continuing it adds again, if it still holds. */
+interface AnalysisAdditions {
+	/** the nodes the analysis added to the id map, e.g., those of sourced files, not those later consumers added */
+	readonly addedNodes: readonly (readonly [NodeId, RNodeWithParent])[];
+	/** the files the analysis added to the AST, i.e., the sourced ones */
+	readonly addedFiles: readonly RProjectFile<ParentInformation>[];
+	/** the files the analysis read, with the content it read, as a change to one of them invalidates what it computed */
+	readonly considered: readonly (readonly [path: string, content: string | undefined])[];
+	/**
+	 * The configuration the analysis ran with, if it stayed the same, as what the analysis learns about the project
+	 * (e.g., the files a source call reads) may change the {@link ProjectKind} and with it the configuration.
+	 */
+	readonly config:     FlowrConfig | undefined;
+}
+
 /** What an analysis holds besides the dataflow information up to a checkpoint, and has to be restored to continue from it. */
-interface AnalysisState {
+interface AnalysisState extends AnalysisAdditions {
 	readonly statementOrder: Map<NodeId, [start: number, end: number]> | undefined;
 	readonly unreachable:    Set<NodeId> | undefined;
 	readonly marks:          ProgramMarks;
-	/** the nodes the analysis added to the id map, e.g., those of sourced files */
-	readonly addedNodes:     readonly (readonly [NodeId, RNodeWithParent])[];
-	/** the files the analysis added to the AST, i.e., the sourced ones */
-	readonly addedFiles:     readonly RProjectFile<ParentInformation>[];
-	/** the files the analysis read, with the content it read, as a change to one of them invalidates the checkpoint */
-	readonly considered:     readonly (readonly [path: string, content: string | undefined])[];
-	/**
-	 * The configuration the analysis ran with up to here, if it stayed the same, as what the analysis learns about the project
-	 * (e.g., the files a source call reads) may change the {@link ProjectKind} and with it the configuration.
-	 */
-	readonly config:         FlowrConfig | undefined;
 }
 
 /** what a graph derives from its vertices and edges on demand, so a copy rebuilds it when it needs it */
-const DroppedGraphCaches: ReadonlySet<string> = new Set(['incomingIndex', 'qualifiedNames', 'targetWalks', 'derived']);
+const DroppedGraphCaches: ReadonlySet<PropertyKey> = new Set(['incomingIndex', 'qualifiedNames', 'targetWalks', 'derived']);
+const DroppedEnvironmentCaches: ReadonlySet<PropertyKey> = new Set(['cache', 'tailCache']);
+const DroppedFrameCaches: ReadonlySet<PropertyKey> = new Set(['flat', 'flatKeys']);
+
+/** Whether `key` of `owner` is a cache a copy rebuilds on demand, so it is left out. */
+function isDroppedCache(owner: object, key: PropertyKey): boolean {
+	return (owner instanceof DataflowGraph && DroppedGraphCaches.has(key))
+		|| (owner instanceof Environment && DroppedEnvironmentCaches.has(key))
+		|| (owner instanceof Frame && DroppedFrameCaches.has(key));
+}
+
+/** Whether `o` is the node `idMap` holds for its id, which a copy shares as the AST does not change. */
+function isNodeOf(o: object, idMap: AstIdMap): boolean {
+	return 'info' in o && typeof o.info === 'object' && o.info !== null && 'id' in o.info && idMap.get(o.info.id as NodeId) === o;
+}
 
 /**
  * The edges are most of what a copy of a graph holds, and nearly all of them only carry their types, so these are copied as they are.
@@ -90,13 +109,8 @@ export interface DataflowSnapshot {
 }
 
 /** A finalized analysis, which an analysis of the same program hands out again as it is, just as a cache hit would. */
-interface FinalizedDataflow {
-	readonly df:         DataflowInformation;
-	/** the nodes the analysis added to the id map, not those later consumers added */
-	readonly addedNodes: readonly (readonly [NodeId, RNodeWithParent])[];
-	readonly addedFiles: readonly RProjectFile<ParentInformation>[];
-	readonly considered: readonly (readonly [path: string, content: string | undefined])[];
-	readonly config:     FlowrConfig | undefined;
+interface FinalizedDataflow extends AnalysisAdditions {
+	readonly df: DataflowInformation;
 }
 
 function cfgOf(info: DataflowCfgInformation | undefined): DataflowCfgInformation | undefined {
@@ -139,6 +153,10 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 	private readonly initialRead:  number;
 	private readonly config:       FlowrConfig;
 	private readonly keep:         number;
+	/** whether the analysis resumes from checkpoints, see `incremental.dataflow.activated` */
+	private readonly resumes:      boolean;
+	/** whether the analysis hands out the one before again for unchanged files, see `incremental.dataflow.reuse` */
+	private readonly reuses:       boolean;
 	private readonly minimum:      number;
 	private readonly recorded:     ListCheckpoint[] = [];
 	private readonly update:       IncrementalUpdateResult | undefined;
@@ -160,6 +178,8 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 		this.initialRead = ctx.files.consideredFilesList().length;
 		this.config = ctx.config;
 		this.keep = ctx.config.incremental.dataflow.checkpoints;
+		this.resumes = ctx.config.incremental.dataflow.activated;
+		this.reuses = ctx.config.incremental.dataflow.reuse;
 		this.minimum = ctx.config.incremental.dataflow.minStatements;
 		this.previous = previous;
 		this.update = previous === undefined ? undefined : ctx.inc.determineUpdateTypes(previous.files, ast, ctx);
@@ -168,26 +188,28 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 		}
 	}
 
+	/** The configuration of this analysis if it stayed the same so far, see {@link AnalysisAdditions#config}. */
+	private stableConfig(): FlowrConfig | undefined {
+		return this.ctx.config === this.config ? this.config : undefined;
+	}
+
 	/** Whether the analysis up to the given state would run the same now: with the same configuration, and reading the same files. */
-	private holds(state: AnalysisState): boolean {
+	private holds(state: AnalysisAdditions): boolean {
 		return state.config === this.config && this.unchangedReads(state.considered);
 	}
 
-	private unchangedReads(considered: AnalysisState['considered']): boolean {
+	private unchangedReads(considered: AnalysisAdditions['considered']): boolean {
 		return considered.every(([path, content]) => contentOf(this.ctx, path) === content);
 	}
 
 	private plan(previous: DataflowSnapshot, update: IncrementalUpdateResult): void {
-		const types = update.types;
-		const only = types.length === 1 ? types[0] : undefined;
-		const unchanged = types.every(t => t === IncrementalUpdateType.Nothing || t === IncrementalUpdateType.Comment) || only === IncrementalUpdateType.NewFileAtEnd;
+		const unchanged = IncrementalUpdate.unchanged(update) || IncrementalUpdate.is(update, IncrementalUpdateType.NewFileAtEnd);
 		if(unchanged && previous.final !== undefined && this.holds(previous.final)) {
 			this.reuseFinal = previous.final;
 			this.reuseFrom = previous.files.length;
 			return;
 		}
-		const changedAtEnd = only === IncrementalUpdateType.AddedAtEnd || only === IncrementalUpdateType.RemovedAtEnd || only === IncrementalUpdateType.ChangedAtEnd;
-		const prefix = unchanged ? previous.files[0]?.root.children.length : changedAtEnd ? update.commonPrefix : undefined;
+		const prefix = unchanged ? previous.files[0]?.root.children.length : IncrementalUpdate.changedAtEnd(update) ? update.commonPrefix : undefined;
 		if(prefix === undefined) {
 			return;
 		}
@@ -246,7 +268,7 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 	}
 
 	public wants(count: number, total: number): boolean {
-		return this.initialFiles === 1 && total >= this.minimum && count > total - this.keep;
+		return this.resumes && this.initialFiles === 1 && total >= this.minimum && count > total - this.keep;
 	}
 
 	public record<OtherInfo>(fileIndex: number, list: ExpressionListState, info: DataflowProcessorInformation<OtherInfo & ParentInformation>): void {
@@ -276,7 +298,7 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 			addedNodes,
 			addedFiles:     data.completeAst.ast.files.slice(this.initialFiles),
 			considered:     this.ctx.files.consideredFilesList().slice(this.initialRead).map(p => [p, contentOf(this.ctx, p)] as const),
-			config:         this.ctx.config === this.config ? this.config : undefined
+			config:         this.stableConfig()
 		};
 	}
 
@@ -290,8 +312,7 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 		return deepCloneSharing(state, o => {
 			/* most of what a copy meets are plain records (edges, vertices, references), so these are asked first */
 			if(Object.getPrototypeOf(o) === Object.prototype) {
-				return o === this.config || files.has(o)
-					|| ('info' in o && typeof o.info === 'object' && o.info !== null && 'id' in o.info && idMap.get(o.info.id as NodeId) === o);
+				return o === this.config || files.has(o) || isNodeOf(o, idMap);
 			} else if(o instanceof Environment) {
 				if(o.builtInEnv === true) {
 					return true;
@@ -300,11 +321,7 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 				return false;
 			}
 			return o === idMap || o instanceof LazyBindings || (o instanceof Frame && (o.isFrozen || shared.has(o)));
-		}, (owner, key) => typeof key === 'string' && (
-			(owner instanceof DataflowGraph && DroppedGraphCaches.has(key))
-			|| (owner instanceof Environment && (key === 'cache' || key === 'tailCache'))
-			|| (owner instanceof Frame && (key === 'flat' || key === 'flatKeys'))
-		), (owner, key) => owner instanceof DataflowGraph ? GraphCopiers.get(key) : undefined);
+		}, isDroppedCache, (owner, key) => owner instanceof DataflowGraph ? GraphCopiers.get(key) : undefined);
 	}
 
 	private restore(state: AnalysisState, data: DataflowProcessorInformation<ParentInformation>): void {
@@ -319,16 +336,21 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 			}
 		}
 		restoreMarks(data.environment.current, state.marks);
-		for(const [id, node] of state.addedNodes) {
-			data.completeAst.idMap.set(id, node);
+		this.addAgain(state, data.completeAst);
+	}
+
+	/** Adds what the analysis before added to the AST and the context again, which a continued analysis does not do itself. */
+	private addAgain(added: AnalysisAdditions, ast: NormalizedAst): void {
+		for(const [id, node] of added.addedNodes) {
+			ast.idMap.set(id, node);
 		}
-		const files = data.completeAst.ast.files;
-		for(const file of state.addedFiles) {
+		const files = ast.ast.files;
+		for(const file of added.addedFiles) {
 			if(!files.some(f => f.filePath === file.filePath)) {
 				files.push(file);
 			}
 		}
-		for(const [path] of state.considered) {
+		for(const [path] of added.considered) {
 			this.ctx.files.addConsideredFile(path);
 		}
 	}
@@ -336,22 +358,10 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 	/** Hands out the finalized analysis before again if the program did not change, which skips the analysis altogether. */
 	public reuseFinalized(): DataflowInformation | undefined {
 		const finalized = this.previous?.finalized;
-		const unchanged = this.update?.types.every(t => t === IncrementalUpdateType.Nothing || t === IncrementalUpdateType.Comment) === true;
-		if(!unchanged || finalized === undefined || finalized.config !== this.config || !this.unchangedReads(finalized.considered)) {
+		if(!this.reuses || this.update === undefined || !IncrementalUpdate.unchanged(this.update) || finalized === undefined || !this.holds(finalized)) {
 			return undefined;
 		}
-		for(const [id, node] of finalized.addedNodes) {
-			this.ast.idMap.set(id, node);
-		}
-		const files = this.ast.ast.files;
-		for(const file of finalized.addedFiles) {
-			if(!files.some(f => f.filePath === file.filePath)) {
-				files.push(file);
-			}
-		}
-		for(const [path] of finalized.considered) {
-			this.ctx.files.addConsideredFile(path);
-		}
+		this.addAgain(finalized, this.ast);
 		finalized.df.graph.setIdMap(this.ast.idMap);
 		this.ctx.inc.storeAppliedIncrementalUpdate({ ...this.update, applied: true });
 		this.ctx.inc.storeDataflowSnapshot({ ...this.previous as DataflowSnapshot, files: this.files, finalized });
@@ -360,14 +370,14 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 
 	/** Keeps the finalized `df` for {@link reuseFinalized}, and hands it back. */
 	public finalized(df: DataflowInformation): DataflowInformation {
-		if(this.stored !== undefined) {
+		if(this.reuses && this.stored !== undefined) {
 			const requested = new Set(this.files.map(f => f.filePath));
 			this.ctx.inc.storeDataflowSnapshot({ ...this.stored, finalized: {
 				df,
 				addedNodes: [...this.ast.idMap].filter(([id]) => !this.initialNodes.has(id)),
 				addedFiles: this.ast.ast.files.slice(this.initialFiles),
 				considered: this.ctx.files.consideredFilesList().slice(this.initialRead).filter(p => !requested.has(p)).map(p => [p, contentOf(this.ctx, p)] as const),
-				config:     this.ctx.config === this.config ? this.config : undefined
+				config:     this.stableConfig()
 			} });
 		}
 		return df;
@@ -382,7 +392,7 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 			return;
 		}
 		const checkpoints = [...this.carried, ...this.recorded].sort((a, b) => a.list.count - b.list.count);
-		const final = this.initialFiles > 1 ? this.copy({ ...this.stateOf(result.dfData, result.df.environment.current, this.initialNodes), df: result.df }, result.dfData) : undefined;
+		const final = this.resumes && this.initialFiles > 1 ? this.copy({ ...this.stateOf(result.dfData, result.df.environment.current, this.initialNodes), df: result.df }, result.dfData) : undefined;
 		this.stored = { files: this.files, checkpoints, final };
 		this.ctx.inc.storeDataflowSnapshot(this.stored);
 	}
@@ -399,7 +409,7 @@ export const IncrementalDataflow = {
 	name: 'IncrementalDataflow',
 	/** Whether the analysis of the given context is incremental, see {@link FlowrConfig.incremental.dataflow}. */
 	enabled(this: void, ctx: FlowrAnalyzerContext): boolean {
-		return ctx.config.incremental.dataflow.activated;
+		return ctx.config.incremental.dataflow.reuse || ctx.config.incremental.dataflow.activated;
 	},
 	/** Begins an incremental dataflow analysis of `ast`, before the analysis adds the files it sources; `undefined` if not {@link IncrementalDataflow.enabled|enabled}. */
 	begin(this: void, ast: NormalizedAst, ctx: FlowrAnalyzerContext): IncrementalDataflowSession | undefined {

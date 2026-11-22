@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-11-21, 14:03:04 UTC (v2.17.9, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-11-22, 13:52:23 UTC (v2.17.9, R v4.5.0), do not edit directly._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
 offering the following benefits:
@@ -158,10 +158,22 @@ class RFunctionDefinition~Info = NoInfo~{
 }
 click RFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L15" "#96;#96;#96;r function(#60;parameters#62;) #60;body#62; #96;#96;#96; or#58; #96;#96;#96;r #92;(#60;parameters#62;) #60;body#62; #96;#96;#96;"
 class Location{
-    <<interface>>
-    location#58; SourceRange
+    <<enum>>
 }
-click Location href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L92" "Indicates, that the respective; #60;code#62;RAstNodeBase#60;/code#62;; node has known source code location information."
+click Location href "https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin.ts#L25" "Only the source locations changed, which nodes created during the analysis copy, so this is analyzed again from the first statement that moved."
+class IncrementalUpdateType{
+    <<enum>>
+    Full#58; IncrementalUpdateType.Full
+    AddedAtEnd#58; IncrementalUpdateType.AddedAtEnd
+    RemovedAtEnd#58; IncrementalUpdateType.RemovedAtEnd
+    ChangedAtEnd#58; IncrementalUpdateType.ChangedAtEnd
+    NewFileAtEnd#58; IncrementalUpdateType.NewFileAtEnd
+    RemovedFileAtEnd#58; IncrementalUpdateType.RemovedFileAtEnd
+    Location#58; IncrementalUpdateType.Location
+    Comment#58; IncrementalUpdateType.Comment
+    Nothing#58; IncrementalUpdateType.Nothing
+}
+click IncrementalUpdateType href "https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin.ts#L11" "How the files of an analysis differ from those of the analysis before, see; #60;code#62;FlowrAnalyzerIncrementalDataflowUpdateTypePlugin#60;/code#62;; ."
 class RFunctionCall~Info = NoInfo~{
     <<type>>
 }
@@ -374,6 +386,7 @@ RFunctions .. RNode
 RFunctionDefinition .. RFunctions
 RAstNodeBase <|-- RFunctionDefinition
 Location <|-- RFunctionDefinition
+IncrementalUpdateType <|-- Location
 Info .. RFunctions
 RFunctionCall .. RFunctions
 RNamedFunctionCall .. RFunctionCall
@@ -1384,7 +1397,7 @@ The following segments intend to give you an overview of how to work with the no
 ## How to Get a Normalized AST
 
 As explained alongside the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface#creating-analyses-with-flowr) wiki page, you can use an instance of
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L231"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> to get the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L80"><code><span title="Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.">NormalizedAst</span></code></a>:
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L237"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> to get the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L80"><code><span title="Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.">NormalizedAst</span></code></a>:
 
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder().build();
@@ -1396,7 +1409,7 @@ From the REPL, you can use the <span title="Description (Repl Command): Get merm
 
 ### Multi-File Projects
 
-With the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L231"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can analyze multiple files at once:
+With the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L237"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can analyze multiple files at once:
 
 ```ts
 const analyzer = await new FlowrAnalyzerBuilder()
@@ -1503,7 +1516,7 @@ you to decide how you want to traverse multiple files with a <a href="https://gi
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L21"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a> node cannot appear nested within other nodes, so you can safely assume that any child of a node is not an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L21"><code><span title="Holds a collection of files (started with the expression list)">RProject</span></code></a>.
 
 > [!TIP]
-> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L31"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
+> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L32"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
 
 ### Visitors
 

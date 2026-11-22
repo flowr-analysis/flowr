@@ -114,6 +114,11 @@ interface FinalizedDataflow extends AnalysisAdditions {
 	readonly df: DataflowInformation;
 }
 
+/** The nodes `idMap` gained since it held `before` of them: it only grows during an analysis, and keeps the nodes in the order they were added. */
+function nodesAddedSince(idMap: AstIdMap, before: number): (readonly [NodeId, RNodeWithParent])[] {
+	return idMap.size > before ? [...idMap.entries().drop(before)] : [];
+}
+
 function cfgOf(info: DataflowCfgInformation | undefined): DataflowCfgInformation | undefined {
 	return info === undefined ? undefined : { entryPoint: info.entryPoint, cfgEntry: info.cfgEntry, cfgExit: info.cfgExit, exitPoints: info.exitPoints, hooks: info.hooks };
 }
@@ -146,10 +151,10 @@ function contentOf(ctx: FlowrAnalyzerContext, path: string): string | undefined 
  */
 class IncrementalDataflowSession implements ExpressionListCheckpoints {
 	private readonly files:        readonly AnalyzedFile[];
-	/** the nodes of the id map before the analysis */
-	private readonly initialNodes: ReadonlySet<NodeId>;
-	/** the nodes of the id map the analysis of the statements does not add itself, see {@link resume} */
-	private listNodes:             ReadonlySet<NodeId>;
+	/** how many nodes the id map held before the analysis */
+	private readonly initialNodes: number;
+	/** how many nodes of the id map the analysis of the statements does not add itself, see {@link resume} */
+	private listNodes:             number;
 	private readonly initialFiles: number;
 	private readonly initialRead:  number;
 	private readonly config:       FlowrConfig;
@@ -173,7 +178,7 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 
 	constructor(private readonly ast: NormalizedAst, private readonly ctx: FlowrAnalyzerContext, previous: DataflowSnapshot | undefined, plan: IncrementalDataflowPlan) {
 		this.files = ast.ast.files.map(f => ({ filePath: f.filePath, root: f.root }));
-		this.initialNodes = new Set(ast.idMap.keys());
+		this.initialNodes = ast.idMap.size;
 		this.listNodes = this.initialNodes;
 		this.initialFiles = ast.ast.files.length;
 		this.initialRead = ctx.files.consideredFilesList().length;
@@ -252,7 +257,7 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 			return undefined;
 		}
 		/* the list wraps its statements as arguments before it starts, which every analysis does anew, so these do not count as added by a statement */
-		this.listNodes = new Set(data.completeAst.idMap.keys());
+		this.listNodes = data.completeAst.idMap.size;
 		const from = this.resumeFrom;
 		if(from === undefined) {
 			return undefined;
@@ -282,21 +287,12 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 		this.recorded.push(this.copy({ ...this.stateOf(data, list.environment.current, this.listNodes), list: cfg }, data));
 	}
 
-	private stateOf(data: DataflowProcessorInformation<ParentInformation>, environment: Environment, before: ReadonlySet<NodeId>): AnalysisState {
-		const idMap = data.completeAst.idMap;
-		const addedNodes: (readonly [NodeId, RNodeWithParent])[] = [];
-		if(idMap.size > before.size) {
-			for(const [id, node] of idMap) {
-				if(!before.has(id)) {
-					addedNodes.push([id, node]);
-				}
-			}
-		}
+	private stateOf(data: DataflowProcessorInformation<ParentInformation>, environment: Environment, before: number): AnalysisState {
 		return {
 			statementOrder: data.statementOrder,
 			unreachable:    data.unreachable,
 			marks:          marksOf(environment),
-			addedNodes,
+			addedNodes:     nodesAddedSince(data.completeAst.idMap, before),
 			addedFiles:     data.completeAst.ast.files.slice(this.initialFiles),
 			considered:     this.ctx.files.consideredFilesList().slice(this.initialRead).map(p => [p, contentOf(this.ctx, p)] as const),
 			config:         this.stableConfig()
@@ -375,7 +371,7 @@ class IncrementalDataflowSession implements ExpressionListCheckpoints {
 			const requested = new Set(this.files.map(f => f.filePath));
 			this.ctx.inc.storeDataflowSnapshot({ ...this.stored, finalized: {
 				df,
-				addedNodes: [...this.ast.idMap].filter(([id]) => !this.initialNodes.has(id)),
+				addedNodes: nodesAddedSince(this.ast.idMap, this.initialNodes),
 				addedFiles: this.ast.ast.files.slice(this.initialFiles),
 				considered: this.ctx.files.consideredFilesList().slice(this.initialRead).filter(p => !requested.has(p)).map(p => [p, contentOf(this.ctx, p)] as const),
 				config:     this.stableConfig()

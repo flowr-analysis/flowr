@@ -698,6 +698,9 @@ const RunsPlainCode: ReadonlySet<BuiltInProcName | undefined> = new Set([BuiltIn
 /** The internal generics and the S3 groups, which R code may dispatch to on whatever it is handed, without naming them as a call the signature database records (`x[i]`). */
 const DispatchedInternally: readonly BrandedIdentifier[] = [...InternalGenerics, ...S3Groups];
 
+/** every generic {@link genericsRunWithin} may name for a built-in the configuration states nothing for */
+const RunWithinUnstated: ReadonlySet<BrandedIdentifier> = new Set([...RGenerics, ...S3Groups]);
+
 /** Whether the `call` may hand on an object a method may get: a constant (`structure(1, class = "a")`) has no class. */
 function handsObjects(call: DataflowGraphVertexFunctionCall, idMap: AstIdMap | undefined): boolean {
 	return call.args.some(a => a !== EmptyArgument && !RConstant.is(RArgument.valueOf(idMap?.get(a.nodeId))));
@@ -711,10 +714,14 @@ function handsObjects(call: DataflowGraphVertexFunctionCall, idMap: AstIdMap | u
 function genericsRunWithin(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): readonly string[] {
 	const builtIn = ctx.env.builtInFunctionOf(name);
 	const stated = builtIn?.config?.dispatches;
-	const called = calleesOf(name, ctx)?.filter(c => RGenerics.has(c));
-	/* what the configuration states it dispatches to is all, a processor of its own models what the call does (`setMethod`), a primitive runs no R code, and a name flowR knows nothing of is no built-in */
-	if(stated !== undefined || (builtIn !== undefined && !RunsPlainCode.has(builtIn.processorName)) || RPrimitives.has(String(Identifier.getName(name))) || (called === undefined && builtIn === undefined)) {
+	/* what the configuration states it dispatches to is all, a processor of its own models what the call does (`setMethod`), and a primitive runs no R code */
+	if(stated !== undefined || (builtIn !== undefined && !RunsPlainCode.has(builtIn.processorName)) || RPrimitives.has(String(Identifier.getName(name)))) {
 		return stated ?? [];
+	}
+	const called = calleesOf(name, ctx)?.filter(c => RGenerics.has(c));
+	/* a name flowR knows nothing of is no built-in */
+	if(called === undefined && builtIn === undefined) {
+		return [];
 	}
 	const generic = RGenerics.has(Identifier.getName(name)) ? [Identifier.getName(name)] : [];
 	const viaDefaults = [...generic, ...called ?? []].flatMap(g => calleesOf(Identifier.make(`${g}.default`), ctx)?.filter(c => RGenerics.has(c)) ?? []);
@@ -749,7 +756,10 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 	const databaseInfoOf = memoize((name: Identifier) => ctx.functionInfo(name));
 	/* the generics a built-in dispatches to on its own whose methods the code binds */
 	const runWithin = memoize((name: Identifier) => genericsRunWithin(name, ctx));
-	const internalOf = memoize((name: Identifier) => generics.size === 0 && shadowing.size === 0 ? [] : runWithin(name).filter(g => generics.has(g) || shadowing.has(g)));
+	const bound = (g: BrandedIdentifier) => generics.has(g) || shadowing.has(g);
+	/* unless the code binds one of the generics a built-in runs on its own, only what the configuration states is left to ask, which spares the signature database */
+	const bindsRunWithin = RunWithinUnstated.values().some(bound);
+	const internalOf = memoize((name: Identifier) => (bindsRunWithin ? runWithin(name) : ctx.env.builtInFunctionOf(name)?.config?.dispatches ?? []).filter(bound));
 	const environmentAt = memoize((id: NodeId) => {
 		const environment = (graph.getVertex(id) as DataflowGraphVertexFunctionCall).environment;
 		return environment ? REnvironment.overwrite(outEnvironment, environment) : outEnvironment;

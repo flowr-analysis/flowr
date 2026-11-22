@@ -1,3 +1,4 @@
+import { namesWithPrefix } from './frame-memory';
 import { EnvType, type Environment, REnvironment, type REnvironmentInformation } from './environment';
 import { BoundedMap } from '../../util/collections/bounded-map';
 import { getOrSet } from '../../util/collections/defaultmap';
@@ -99,8 +100,7 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
 	/* the attached packages below the code's own frames are a dozen layers deep and nothing writes them, so the walk through them is done once per name and target instead of once per resolution */
-	const flatten = ns === undefined && internal !== false && typeof id === 'string'
-		&& target !== ReferenceType.S3MethodPrefix && target !== ReferenceType.S7MethodPrefix;
+	const flatten = ns === undefined && internal !== false && typeof id === 'string';
 	let flattenAt: Environment | undefined;
 	do{
 		if(flatten && flattenAt === undefined && definitions === undefined && (current.t !== undefined || current.builtInEnv)) {
@@ -119,7 +119,9 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 		if(target === ReferenceType.S3MethodPrefix || target === ReferenceType.S7MethodPrefix) {
 			// S3 method prefixes only resolve to functions, S3s must not match the exported criteria!
 			const prefix = name + (target === ReferenceType.S3MethodPrefix ? '.' : S7DispatchSeparator);
-			definition = current.memory.entries().filter(([defName]) => defName.startsWith(prefix)).flatMap(([, defs]) => defs).toArray();
+			/* by the names first, as a package attached lazily binds a name only once asked for it */
+			const memory = current.memory;
+			definition = namesWithPrefix(memory, prefix).flatMap(defName => memory.get(defName) ?? []);
 		} else {
 			definition = current.lookup(name);
 			if(internal === false) {

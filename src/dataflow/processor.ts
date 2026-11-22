@@ -8,6 +8,7 @@ import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument'
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { ExpressionListCheckpoints } from './internal/process/functions/call/built-in/built-in-expression-list';
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	readonly parser:               Parser<KnownParserType>
@@ -53,6 +54,8 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	readonly statementOrder?:      Map<NodeId, [start: number, end: number]>
 	/** The statements left unanalyzed as they follow one that always exits, so walks over the AST can skip what never runs */
 	readonly unreachable?:         Set<NodeId>
+	/** Records and resumes the top-level statements of the files for an incremental analysis, see {@link ExpressionListCheckpoints} */
+	readonly checkpoints?:         ExpressionListCheckpoints
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation;

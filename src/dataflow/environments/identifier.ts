@@ -7,6 +7,7 @@ import { escapeRegex, splitRQuotes } from '../../util/text/strings';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 import type { REnvironmentInformation } from './environment';
 import type { Origin } from '../origin/dfg-get-origin';
+import { memoize } from '../../util/collections/defaultmap';
 /* type-only, as the value import would cycle back through the graph helpers */
 
 export { PkgName } from './pkg-name';
@@ -37,6 +38,21 @@ export const Identifier = {
 			name = split.content;
 		}
 		return namespace ? [name, namespace, internal] : name;
+	},
+	/** `fn`, answered once per identifier, see {@link memoize}: a qualified one is a tuple every call of it holds anew, so it is remembered by what it holds. */
+	memoize<V>(this: void, fn: (id: Identifier) => V): (id: Identifier) => V {
+		const plain = memoize(fn);
+		const qualified = new Map<string, V>();
+		return id => {
+			if(typeof id === 'string') {
+				return plain(id);
+			}
+			const key = JSON.stringify(id);
+			if(!qualified.has(key)) {
+				qualified.set(key, fn(id));
+			}
+			return qualified.get(key) as V;
+		};
 	},
 	/** Fast-path factory: returns the tuple as-is with no allocation or runtime checks. */
 	from(this: void, arr: [BrandedIdentifier, BrandedNamespace] | [BrandedIdentifier, BrandedNamespace, boolean]): Identifier {

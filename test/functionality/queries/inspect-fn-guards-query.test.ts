@@ -56,6 +56,13 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		});
 	}
 
+	/** Compares only which formals a call of `f` must supply, for programs checked against R by leaving out each formal. */
+	function requires(code: string, required: readonly string[]) {
+		test(label(`required formals of ${code}`, ['name-normal'], ['other']), async() => {
+			assert.deepStrictEqual((await guardsOfF(parser, code))?.required ?? [], required);
+		});
+	}
+
 	/** Compares what is claimed about the value `f` returns, and the formal it hands back unchanged. */
 	function returns(code: string, expected: FormalClaim | undefined, passes?: string) {
 		test(label(`returns of ${code}`, ['name-normal'], ['other']), async() => {
@@ -771,7 +778,7 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		x: { resolves: [{ expression: 'paste0("g", ".", class(x))', prefix: 'g.', suffix: '', candidates: ['foo', 'bar'] }] }
 	}, []);
 	claims('g <- function(y) { stopifnot(is.character(y)); y }; h <- function(z) g(z); f <- function(x) { h(x) }', { x: { types: ['character'] } }, ['x']);
-	claims('g <- function(a, b = c("u", "v")) { b <- match.arg(b); a }; f <- function(x, y) { g(y, x) }', { x: { types: ['NULL', 'character'], values: ['u', 'v'], partial: true } }, ['y']);
+	claims('g <- function(a, b = c("u", "v")) { b <- match.arg(b); a }; f <- function(x, y) { g(y, x) }', { x: { types: ['NULL', 'character'], values: ['u', 'v'], partial: true } }, ['x', 'y']);
 	claims('g <- function(y) y; f <- function(x) { g(x) }', {}, ['x']);
 	claims('g <- function(y) 1; f <- function(x) { g(x) }', {}, []);
 	claims('f <- function(x) { if(FALSE) x; 1 }', {}, []);
@@ -1000,6 +1007,46 @@ describe('Inspect Function Guards Query', withTreeSitter(parser => {
 		const { schema } = InspectFnGuardsQueryDefinition;
 		assert.isUndefined(schema.validate({ type: 'inspect-fn-guards', kind: 'explicit', onlyPure: true, formals: ['x'], filter: ['1@function'] }).error);
 		assert.isDefined(schema.validate({ type: 'inspect-fn-guards', kind: 'nope' }).error);
+		describe('required formals, checked against R', () => {
+			requires('k <- function(a, b) if(b) a else 0; f <- function(x, flag) { k(return(1), flag); x }', []);
+			requires('f <- function(x, flag) { while(flag) return(1); x }', ['flag']);
+			requires('f <- function(x, y) { for(i in y) return(1); x }', ['y']);
+			requires('f <- function(x, flag) { flag && return(1); x }', ['flag']);
+			requires('f <- function(x, flag) { y <- flag || return(1); x }', ['flag']);
+			requires('f <- function(x, flag) { if(flag) return(1); x }', ['flag']);
+			requires('f <- function(x) { do.call(return, list(1)); x }', []);
+			requires('f <- function(x) { do.call("<-", list(quote(x), 1)); x }', []);
+			requires('f <- function(x = c("a", "b"), y) match.arg(x, y)', []);
+			requires('f <- function(x, y = "a") match.arg(y, x)', []);
+			requires('f <- function(x) match.arg(x)', ['x']);
+			requires('f <- function(x = stop("x is needed")) x', ['x']);
+			requires('f <- function(x = stop("x is needed")) { x <- 2; x }', []);
+			requires('f <- function(x = stop("x is needed")) missing(x)', []);
+			requires('f <- function(x = stop("x is needed")) tryCatch(x, error = function(e) 1)', []);
+			requires('f <- function(x = stop("x is needed"), flag) { if(flag) x; 1 }', ['flag']);
+			requires('g <- function(a) a; f <- function(x = stop("x is needed")) g(x)', ['x']);
+			requires('g <- function(a = stop("a is needed")) a; f <- function(x) g(x)', ['x']);
+			requires('g <- function(a) { if(missing(a)) stop("a is needed"); 1 }; f <- function(x = stop("x is needed")) g(x)', []);
+			requires('g <- function(a) { if(missing(a)) stop("a is needed"); 1 }; f <- function(x) g(x)', ['x']);
+			requires('g <- function(a) { if(missing(a)) stop("a is needed"); 1 }; f <- function(x = 1) g(x)', []);
+			requires('g <- function(a) { if(missing(a)) stop("a is needed"); 1 }; f <- function(x) g((x))', []);
+			requires('g <- function(a) { if(missing(a)) stop("a is needed"); 1 }; f <- function(x) g(function() x)', []);
+			requires('g <- function(a) { if(missing(a)) stop("a is needed"); 1 }; f <- function(x) g(Sys.time())', []);
+			requires('g <- function(a) { if(missing(a)) stop("a is needed"); 1 }; f <- function(...) g(...)', []);
+			requires('g <- function(a) { if(missing(a)) stop("a is needed"); 1 }; f <- function(x) { if(missing(x)) x <- 1; g(x) }', []);
+			requires('g <- function(a) { if(missing(a)) stop("a is needed"); 1 }; f <- function(x = y, y) g(x)', []);
+			requires('g <- function(a, b) { if(missing(a) && missing(b)) stop("one is needed"); 1 }; f <- function(x, y = 2) g(x, y)', []);
+			requires('g <- function(a) { if(missing(a)) stop("a is needed"); 1 }; f <- function(x) g()', []);
+			requires('g <- function(a) { rlang::check_required(a); 1 }; f <- function(x = 1) g(x)', []);
+			requires('g <- function(a) { rlang::check_required(a); 1 }; f <- function(x) g(x)', ['x']);
+			requires('f <- function(x = 1) { rlang::check_required(x); 1 }', []);
+			requires('f <- function(x) { rlang::check_required((x)); 1 }', []);
+			requires('f <- function(x, y = return(1)) { y; x }', []);
+			requires('g <- function(a, b) { b; a }; f <- function(x) g(x, assign("x", 1))', []);
+			requires('f <- function(x, flag) { x <- 1; if(missing(x) || flag) stop("e"); 1 }', []);
+			requires('f <- function(x) { x <- force(x); if(missing(x)) stop("e"); 1 }', ['x']);
+		});
+
 	});
 }));
 

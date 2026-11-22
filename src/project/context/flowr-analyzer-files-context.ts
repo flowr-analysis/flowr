@@ -282,6 +282,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		this.projectKindCache = undefined;
 	}
 
+	/** Forget the files an earlier dataflow analysis considered, as the next one considers its own, see {@link consideredFilesList}. */
+	public forgetConsideredFiles(): void {
+		this.consideredFiles.length = 0;
+		this.projectKindCache = undefined;
+	}
+
 	/** Get all files that have been considered during dataflow analysis. */
 	public consideredFilesList(): readonly string[] {
 		return this.consideredFiles;

@@ -68,6 +68,9 @@ import { guardNesting } from '../util/assert';
 import type { CallContext } from './eval/resolve/alias-tracking';
 import { NodeValue } from './eval/resolve/node-value';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import type { RProjectFile } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { IncrementalDataflow, type DataflowProcessorInformationBase, type IncrementalDataflowResult } from '../project/incremental/incremental-dataflow/incremental-dataflow';
+import type { ExpressionListCheckpoints } from './internal/process/functions/call/built-in/built-in-expression-list';
 
 /** The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}. Maps every {@link RType} in the normalized AST to a processor. */
 export const processors: DataflowProcessors<ParentInformation> = {
@@ -857,8 +860,33 @@ function extractDataFlowGraph<OtherInfo>(
 ): DataflowInformation {
 	// we freeze the files here to avoid endless modifications during processing
 	const files = completeAst.ast.files.slice();
+	/* the project kind depends on the files considered, so a repeated analysis must not start from what the last one found */
+	ctx.files.forgetConsideredFiles();
 	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
+	const base: DataflowProcessorInformationBase<OtherInfo & ParentInformation> = {
+		parser,
+		completeAst,
+		processors: ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
+		ctx
+	};
+	const session = IncrementalDataflow.begin(completeAst, ctx);
+	const reused = session?.reuseFinalized();
+	if(reused !== undefined) {
+		return reused;
+	}
+	const result = session?.reuse(base) ?? runFullDataflow(files, base, session);
+	session?.end(result);
+	const df = finalizeDataflow(result.df, result.dfData, completeAst, ctx);
+	return session?.finalized(df) ?? df;
+}
+
+function runFullDataflow<OtherInfo>(
+	files:       readonly RProjectFile<OtherInfo & ParentInformation>[],
+	base:        DataflowProcessorInformationBase<OtherInfo & ParentInformation>,
+	checkpoints: ExpressionListCheckpoints | undefined
+): IncrementalDataflowResult {
+	const ctx = base.ctx;
 	const env = ctx.env.makeCleanEnv();
 	/* what an earlier program noted on the built-in environment all programs share does not hold for this one */
 	REnvironment.findBuiltIn(env.current).forgetProgramMarks();
@@ -866,15 +894,13 @@ function extractDataFlowGraph<OtherInfo>(
 	const environment = attachProject(env, ctx);
 
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
-		parser,
-		completeAst,
+		...base,
 		environment,
-		processors:     ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
 		cds:            undefined,
 		referenceChain: [files[0].filePath],
 		statementOrder: new Map(),
 		unreachable:    new Set(),
-		ctx
+		checkpoints
 	};
 	let df = guardNesting('Dataflow analysis', files[0].filePath, () => processDataflowFor<OtherInfo>(files[0].root, dfData));
 
@@ -883,6 +909,10 @@ function extractDataFlowGraph<OtherInfo>(
 		df = standaloneSourceFile(i, files[i], dfData, df);
 	}
 
+	return { df, dfData: dfData as unknown as DataflowProcessorInformation<ParentInformation> };
+}
+
+function finalizeDataflow<OtherInfo>(df: DataflowInformation, dfData: DataflowProcessorInformation<ParentInformation>, completeAst: NormalizedAst<OtherInfo & ParentInformation>, ctx: FlowrAnalyzerContext): DataflowInformation {
 	// resolve linkages and propagate transitive side effects across calls to a fixpoint
 	callActiveBindings(df.graph);
 	linkInstantiations(df.graph);

@@ -23,6 +23,8 @@ import { type ReadOnlyFlowrAnalyzerIncrementalAnalysisContext, FlowrAnalyzerIncr
 import { type InvalidationEvent, type InvalidationEventReceiver, InvalidationEventType } from '../cache/flowr-cache';
 import { FlowrAnalyzerGasContext, type ReadOnlyFlowrAnalyzerGasContext } from './flowr-analyzer-gas-context';
 import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
+import type { FlowrAnalyzerIncrementalDataflowUpdateTypePlugin } from '../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
+import type { FlowrAnalyzerIncrementalDataflowHeuristicPlugin } from '../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-heuristic-plugin';
 import { type FnInfo, type FnInfoOptions, fnInfo } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { CacheScope, GlobalCaches } from '../../util/global-caches';
@@ -219,7 +221,9 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (byType.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(byType.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.env = new FlowrAnalyzerEnvironmentContext(this);
-		this.inc = new FlowrAnalyzerIncrementalAnalysisContext();
+		this.inc = new FlowrAnalyzerIncrementalAnalysisContext(
+			(byType.get(PluginType.IncrementalDataflowUpdateType) ?? []) as FlowrAnalyzerIncrementalDataflowUpdateTypePlugin[],
+			(byType.get(PluginType.IncrementalDataflowHeuristic) ?? []) as FlowrAnalyzerIncrementalDataflowHeuristicPlugin[]);
 		const functions = new FlowrAnalyzerFunctionsContext(this);
 		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (byType.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		// the plugins contributing the metadata are the ones the dependency context runs on demand

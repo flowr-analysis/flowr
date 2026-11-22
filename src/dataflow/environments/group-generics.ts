@@ -74,6 +74,13 @@ export function s3MethodPrefixesOf(name: Identifier): readonly BrandedIdentifier
 	return group === undefined ? [plain] : [plain, group];
 }
 
+/** Adds the generics `method` may be a method of to `generics`: `as.character.zz` may be one of `as` or of `as.character`, so every part before a dot is a candidate. */
+export function addS3GenericsOfMethod(method: BrandedIdentifier, generics: Set<BrandedIdentifier>): void {
+	for(let dot = method.indexOf('.', 1); dot > 0; dot = method.indexOf('.', dot + 1)) {
+		generics.add(method.slice(0, dot));
+	}
+}
+
 /** Whether `name` is one of R's group generics (see {@link RGroupGenerics}). */
 export function isGroupGeneric(name: BrandedIdentifier): name is RGroupGeneric {
 	return Object.hasOwn(RGroupGenerics, name);

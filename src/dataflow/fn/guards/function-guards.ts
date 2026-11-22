@@ -47,8 +47,9 @@ import { s3GroupGenericOf } from '../../environments/group-generics';
 import { groupMethodConditions } from './group-method-guards';
 import { s4CandidatesFor, s4MethodsOf, type S4Method } from '../dispatch';
 import { linkedFunctionIds, MaxContextDepth } from '../../internal/dispatch-linking';
-import { baseRExportOwner, isBasePrimitive } from '../../../util/r-base-packages';
+import { baseRExportOwner } from '../../../util/r-base-packages';
 import { RBaseGuards } from '../../../data/r-base-guards.generated';
+import { RPrimitives } from '../../../data/r-primitives.generated';
 import { BranchPaths, type BranchStep } from '../../../abstract-interpretation/branch-paths';
 import { ControlFlowGraph, CfgVertex, type CfgBasicBlockVertex } from '../../../control-flow/control-flow-graph';
 import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
@@ -121,8 +122,10 @@ type Path = readonly PathStep[];
 /** What one definition is known to do, kept while one run is underway. */
 interface Contract {
 	readonly clauses:  readonly GuardClause[]
-	/** the formals read on every way through, which a call therefore has to supply */
+	/** the formals a call has to supply */
 	readonly required: readonly BrandedIdentifier[]
+	/** the formals evaluated on every way through, which fails for one a call left out unless its default gives a value */
+	readonly forced:   readonly BrandedIdentifier[]
 	/** whether anything else may have happened than computing a result */
 	readonly effects:  boolean
 	/** whether it may have written to the frame of its caller */
@@ -135,7 +138,7 @@ interface Contract {
 	readonly called:   boolean
 }
 
-const NoContract: Contract = { clauses: [], required: [], effects: true, opens: false, returned: [], reach: 0, called: false };
+const NoContract: Contract = { clauses: [], required: [], forced: [], effects: true, opens: false, returned: [], reach: 0, called: false };
 
 /** What to ask for beyond the definitions, see {@link guardsOfFunctions}. */
 export interface FunctionGuardsOptions {
@@ -206,8 +209,8 @@ interface Run {
 	readonly scope:    Scope
 	readonly state:    GuardState
 	readonly clauses:  Map<string, GuardClause>
-	/** the formals read without any condition */
-	readonly read:     Set<BrandedIdentifier>
+	/** the formals evaluated without any condition */
+	readonly forced:   Set<BrandedIdentifier>
 	/** the nodes writing to the frame behind the back of the dataflow, see {@link frameOpeners} */
 	readonly openers:  ReadonlySet<NodeId>
 	/** the nodes whose value the function returns, see {@link markTails} */
@@ -443,33 +446,47 @@ function namesFormal(this: void, argument: DataflowGraphVertexFunctionCall['args
 /** What the caller states the value of an argument as, `undefined` if it cannot. */
 export type ArgumentTerm = (value: RNodeWithParent) => GuardTerm | undefined;
 
-/** What the given arguments of the call bind the formals `names` of the callee to, seen from the caller, with whether that leaves no formal unbound. */
-function bindingOfArguments(this: void, vertex: DataflowGraphVertexFunctionCall, args: DataflowGraphVertexFunctionCall['args'], names: readonly BrandedIdentifier[], graph: DataflowGraph, termOfArgument: ArgumentTerm): { readonly binding: GuardBinding, readonly complete: boolean } {
+/** How the caller states the arguments of a call. */
+export interface ArgumentTerms {
+	readonly value:   ArgumentTerm
+	/** what `missing` is of a formal handed an argument that is but a name, the only kind R looks through to a formal of the caller */
+	readonly missing: ArgumentTerm
+}
+
+/** What the given arguments of the call bind the formals `names` of the callee to, seen from the caller, with what `missing` is of them where the call tells, and whether that leaves no formal unbound. */
+function bindingOfArguments(this: void, vertex: DataflowGraphVertexFunctionCall, args: DataflowGraphVertexFunctionCall['args'], names: readonly BrandedIdentifier[], graph: DataflowGraph, terms: ArgumentTerms): { readonly binding: GuardBinding, readonly absent: GuardBinding, readonly complete: boolean } {
 	const binding = new Map<BrandedIdentifier, GuardTerm>();
+	const absent = new Map<BrandedIdentifier, GuardTerm>();
 	const matched = MatchArgs.toSpec<BrandedIdentifier>(args, Object.fromEntries(names.map(n => [n, n])));
+	const given = (formal: BrandedIdentifier) => (matched.get(formal)?.length ?? 0) > 0;
+	const set = (to: Map<BrandedIdentifier, GuardTerm>, formal: BrandedIdentifier, term: GuardTerm | undefined) => term === undefined ? to : to.set(formal, term);
 	for(const [formal, ids] of matched) {
 		const value = formal === '...' || ids.length !== 1 ? undefined : valueOfArgument(ids[0], vertex, graph);
-		const term = value === undefined ? undefined : termOfArgument(value);
-		if(term !== undefined) {
-			binding.set(formal, term);
+		if(value !== undefined) {
+			set(binding, formal, terms.value(value));
+			set(absent, formal, RSymbol.is(value) ? terms.missing(value) : GuardTerm.False);
 		}
 	}
-	return { binding, complete: names.every(n => n !== '...' && (matched.get(n)?.length ?? 0) > 0) };
+	/* what the dots hand on may fill any formal the call leaves out */
+	if(!MatchArgs.handsOnDots(vertex.args, graph)) {
+		names.filter(n => n !== '...' && !given(n)).forEach(n => absent.set(n, GuardTerm.True));
+	}
+	return { binding, absent, complete: names.every(n => n !== '...' && given(n)) };
 }
 
 /** What the arguments of the call bind the formals of the callee to for sure: what the dots hand on may name any formal, which moves the arguments given by position, so only the ones given by their full name stay. */
-function bindingOf(this: void, vertex: DataflowGraphVertexFunctionCall, names: readonly BrandedIdentifier[], graph: DataflowGraph, termOfArgument: ArgumentTerm): GuardBinding {
+function bindingOf(this: void, vertex: DataflowGraphVertexFunctionCall, names: readonly BrandedIdentifier[], graph: DataflowGraph, terms: ArgumentTerms): ReturnType<typeof bindingOfArguments> {
 	const args = MatchArgs.handsOnDots(vertex.args, graph) ? vertex.args.filter(a => namesFormal(a, names)) : vertex.args;
-	return bindingOfArguments(vertex, args, names, graph, termOfArgument).binding;
+	return bindingOfArguments(vertex, args, names, graph, terms);
 }
 
 /** What the arguments of a call handing on dots bind if the dots name nothing, which only keeps the arguments in front of the dots in place. */
-function bindingBesidesDots(this: void, vertex: DataflowGraphVertexFunctionCall, names: readonly BrandedIdentifier[], graph: DataflowGraph, termOfArgument: ArgumentTerm): ReturnType<typeof bindingOfArguments> | undefined {
+function bindingBesidesDots(this: void, vertex: DataflowGraphVertexFunctionCall, names: readonly BrandedIdentifier[], graph: DataflowGraph, terms: ArgumentTerms): ReturnType<typeof bindingOfArguments> | undefined {
 	const dots = vertex.args.findIndex(a => MatchArgs.handsOnDots([a], graph));
 	if(dots < 0) {
 		return undefined;
 	}
-	return bindingOfArguments(vertex, vertex.args.filter((a, at) => at < dots || namesFormal(a, names)), names, graph, termOfArgument);
+	return bindingOfArguments(vertex, vertex.args.filter((a, at) => at < dots || namesFormal(a, names)), names, graph, terms);
 }
 
 /** Whether something the dots hand on bears a name, which only the function holding the dots can tell. */
@@ -485,6 +502,8 @@ function leavesDotsUnnamed(this: void, vertex: DataflowGraphVertexFunctionCall, 
 export interface CallBinding {
 	/** what the formals stand for for sure */
 	readonly binding:     GuardBinding
+	/** what `missing` is of each formal, where the call tells */
+	readonly absent?:     GuardBinding
 	/** if the call hands on dots, what they stand for if the dots name nothing */
 	readonly besides?:    ReturnType<typeof bindingOfArguments>
 	/** the call leaves the dots of the callee without a name */
@@ -493,13 +512,13 @@ export interface CallBinding {
 
 /**
  * What the call binds the formals `names` of its callee to, by R's argument matching, the way the contract of a callee is inherited:
- * `termOfArgument` states the value of an argument in the words of the caller.
+ * `terms` state the arguments in the words of the caller.
  */
-export function callBinding(this: void, vertex: DataflowGraphVertexFunctionCall, names: readonly BrandedIdentifier[], graph: DataflowGraph, termOfArgument: ArgumentTerm): CallBinding {
-	const besides = bindingBesidesDots(vertex, names, graph, termOfArgument);
+export function callBinding(this: void, vertex: DataflowGraphVertexFunctionCall, names: readonly BrandedIdentifier[], graph: DataflowGraph, terms: ArgumentTerms): CallBinding {
+	const besides = bindingBesidesDots(vertex, names, graph, terms);
 	/* with every formal bound and no dots to take more, anything further the dots hand on is an error, so nothing can move */
-	const binding = besides?.complete ? besides.binding : bindingOf(vertex, names, graph, termOfArgument);
-	return { binding, ...(besides === undefined ? {} : { besides }), dotsUnnamed: leavesDotsUnnamed(vertex, names, graph) };
+	const { binding, absent } = besides?.complete ? besides : bindingOf(vertex, names, graph, terms);
+	return { binding, absent, ...(besides === undefined ? {} : { besides }), dotsUnnamed: leavesDotsUnnamed(vertex, names, graph) };
 }
 
 /**
@@ -508,12 +527,39 @@ export function callBinding(this: void, vertex: DataflowGraphVertexFunctionCall,
  */
 export function atCall(this: void, condition: GuardTerm, call: CallBinding, outer: GuardOuter | undefined, facts: GuardFactsLookup): { readonly requires: GuardTerm, readonly unlessNamed?: GuardTerm } {
 	const asked = call.dotsUnnamed ? GuardTerm.any(...GuardTerm.disjuncts(condition).filter(d => GuardTerm.render(d) !== DotsBearNamesText)) : condition;
-	const requires = GuardTerm.substituteCondition(asked, call.binding, outer, facts);
+	const requires = GuardTerm.substituteCondition(asked, call.binding, outer, facts, call.absent);
 	if(call.besides === undefined || call.besides.complete) {
 		return { requires };
 	}
-	const unlessNamed = GuardTerm.substituteCondition(asked, call.besides.binding, outer, facts);
+	const unlessNamed = GuardTerm.substituteCondition(asked, call.besides.binding, outer, facts, call.besides.absent);
 	return GuardTerm.render(unlessNamed) === GuardTerm.render(requires) ? { requires } : { requires, unlessNamed: GuardTerm.any(DotsBearNames, unlessNamed) };
+}
+
+/**
+ * The arguments of a call as the function calling states them. A callee finds a formal missing that was handed the name of a formal the call
+ * of the caller left out, unless that has a default (R then only looks through a default that is a name again, which is not followed).
+ */
+function statedBy(this: void, scope: Scope, state: GuardState, depth = 0): ArgumentTerms {
+	const value = (node: RNodeWithParent) => termOf(node, scope, state, depth);
+	return {
+		value,
+		missing: name => {
+			const term = value(name);
+			if(term?.kind !== 'formal') {
+				return term === undefined ? undefined : GuardTerm.False;
+			}
+			const own = scope.definition.parameters.find(p => p.name.content === term.name);
+			return own === undefined || own.defaultValue !== undefined || name.lexeme !== term.name ? undefined : GuardTerm.known('missing', term);
+		}
+	};
+}
+
+/** Nothing of the arguments stated, as the callee decides which of them R evaluates first, so one binding a name changes what the others read. */
+const Unstated: ArgumentTerms = { value: () => undefined, missing: () => undefined };
+
+/** Whether the code binds a name itself, as `g(x, x <- 1)` does. */
+function bindsWithin(this: void, node: RNodeWithParent | undefined, state: GuardState): boolean {
+	return node !== undefined && RNode.collectAllIdsWithStop(node, n => RFunctionDefinition.is(n)).values().some(id => DfgVertex.isVariableDefinition(state.graph.getVertex(id)));
 }
 
 /** The node of the value of an argument, a named argument being bound by the node that names it. */
@@ -533,7 +579,11 @@ function inlined(this: void, id: NodeId, vertex: DataflowGraphVertexFunctionCall
 	/* a generic hands over to whichever method it dispatches to, what it says itself is no value of the call */
 	const body = single !== undefined && RFunctionCall.isNamed(single) && Identifier.getName(single.functionName.content) === 'UseMethod' ? undefined : single;
 	const term = callee === undefined || body === undefined ? undefined : termOf(body, callee, state, depth + 1);
-	return term === undefined || callee === undefined ? undefined : GuardTerm.substitute(term, bindingOf(vertex, formalNamesOf(callee), state.graph, v => termOf(v, scope, state, depth + 1)));
+	if(term === undefined || callee === undefined) {
+		return undefined;
+	}
+	const { binding, absent } = bindingOf(vertex, formalNamesOf(callee), state.graph, statedBy(scope, state, depth + 1));
+	return GuardTerm.substitute(term, binding, undefined, absent);
 }
 
 function callTerm(this: void, id: NodeId, fn: string, args: readonly GuardArgument[], state: GuardState): GuardCall | undefined {
@@ -627,7 +677,9 @@ function termOfUncached(this: void, node: RNodeWithParent, scope: Scope, state: 
 			if(args === undefined) {
 				return undefined;
 			}
-			return callTerm(node.info.id, Identifier.toString(node.functionName.content), args, state);
+			const call = callTerm(node.info.id, Identifier.toString(node.functionName.content), args, state);
+			/* a formal that got a value in the body is not missing anymore */
+			return GuardTerm.isCall(call, 'missing') && call.known && (args[0]?.value.kind === 'constant' || GuardTerm.isCall(args[0]?.value)) ? GuardTerm.False : call;
 		}
 		default:
 			return undefined;
@@ -661,6 +713,11 @@ function addClause(this: void, run: Run, path: Path, condition: GuardTerm, at: N
 	}
 }
 
+/** Whether the node of a call is but the name of the function, which an applier like `do.call` runs. */
+function isHandedOver(this: void, node: RNodeWithParent | undefined): boolean {
+	return RSymbol.is(node) || RString.is(node);
+}
+
 /**
  * What may write to the frame of the function without that showing up as a definition once it runs or is defined: `e <- environment()`, `rm(x)`, or a closure with `x <<- v`.
  * A `<<-` right in the frame writes to the frames around it instead.
@@ -679,6 +736,10 @@ function frameOpeners(this: void, definition: RFunctionDefinition<ParentInformat
 			if(state.facts(name)?.opensFrame || CallProps.hasAny(state.info(vertex.name), SemanticCallTag.Frames) || assignsComputedName(name, vertex, state)) {
 				openers.add(id);
 			}
+		}
+		/* what an applier runs binds without a definition the dataflow sees, as `do.call("<-", .)` does */
+		if(vertex !== undefined && isHandedOver(node) && CallProps.hasAny(state.info(vertex.name), CallProp.Scope)) {
+			openers.add(id);
 		}
 	});
 	return openers;
@@ -770,22 +831,24 @@ function boundArguments(this: void, vertex: DataflowGraphVertexFunctionCall, sig
 }
 
 /**
- * The formals of a function of base R written in R, not C, a missing formal of the caller may be handed to: R hands on a promise, and that only
- * fails once the function evaluates it, which its own contract says it does (`matpoints(x, y)` hands a missing `y` to `matplot`, which asks `missing(y)`).
- * Nothing for a function written in C, or one without a contract, which flowR's model describes as it is.
+ * The formals of a function written in R, not C, a missing formal of the caller may be handed to: R hands on a promise, and that only fails once
+ * the function evaluates it (`matpoints(x, y)` hands a missing `y` to `matplot`, which asks `missing(y)`). So all of them but the ones the function
+ * is known to evaluate: what `asks` something of its value whatever else was given, what the contract of a function of base R requires, or,
+ * without one, what it dispatches on as a generic.
  */
-function closureMissingOk(this: void, name: BrandedIdentifier, formals: readonly BrandedIdentifier[]): BrandedIdentifier[] {
+function closureMissingOk(this: void, name: BrandedIdentifier, formals: readonly BrandedIdentifier[], facts: GuardFacts | undefined): BrandedIdentifier[] {
+	if(RPrimitives.has(String(name))) {
+		return [];
+	}
 	const owner = baseRExportOwner(name);
-	if(owner === undefined || isBasePrimitive(name)) {
+	const stored = owner === undefined ? undefined : RBaseGuards()[String(owner)]?.[String(name)];
+	/* a function of base R without a contract of its own evaluates what flowR's model of it says */
+	if(owner !== undefined && stored === undefined) {
 		return [];
 	}
-	const stored = RBaseGuards()[String(owner)]?.[String(name)];
-	/* without a contract of its own, flowR's model of the function (a generic forcing what it dispatches on) is all there is */
-	if(stored === undefined) {
-		return [];
-	}
-	const required = [...stored.required ?? [], ...stored.dispatches === undefined ? [] : [stored.dispatches]];
-	return formals.filter(f => !required.includes(f));
+	const asked = Object.entries(facts?.asks ?? {}).filter(([, failures]) => failures.some(f => f.when === undefined)).map(([formal]) => formal);
+	const evaluated = new Set<string>([...asked, ...stored?.required ?? [], ...stored?.dispatches === undefined ? [] : [String(stored.dispatches)]]);
+	return formals.filter(f => !evaluated.has(String(f)));
 }
 
 /** The arguments handed over which R evaluates for sure, in the order they are written, and those it may not. */
@@ -798,7 +861,8 @@ function evaluatedAndNot(this: void, vertex: DataflowGraphVertexFunctionCall, st
 	const bound = boundArguments(vertex, sig, state);
 	/* a special primitive matching its arguments itself takes a missing formal handed to some of its own as not given */
 	const name = Identifier.getName(vertex.name);
-	const missingOk = [...state.facts(name)?.missingOk ?? [], ...closureMissingOk(name, sig.map(([formal]) => formal))];
+	const facts = state.facts(name);
+	const missingOk = [...facts?.missingOk ?? [], ...closureMissingOk(name, sig.map(([formal]) => formal), facts)];
 	const forcedIds = new Set(sig.filter(([, props]) => (props & ArgProp.Forced) !== 0).flatMap(([formal]) => (bound.get(formal) ?? []).filter(v => !missingOk.includes(formal) || !RSymbol.is(v))));
 	return { forced: values.filter(v => forcedIds.has(v)), lazy: values.filter(v => !forcedIds.has(v)) };
 }
@@ -986,10 +1050,24 @@ function getRequirement(this: void, node: RNodeWithParent, path: Path, run: Run)
 	}
 }
 
+/** A check that only fails for an argument that was not given asks `missing` of what it is handed, as any callee does, see {@link statedBy}. */
+function presenceRequirement(this: void, vertex: DataflowGraphVertexFunctionCall, path: Path, run: Run): void {
+	const { state, scope } = run;
+	const [given] = vertex.args.filter(FunctionArgument.isNotEmpty).map(a => valueOfArgument(a.nodeId, vertex, state.graph));
+	const gone = RSymbol.is(given) ? statedBy(scope, state).missing(given) : undefined;
+	if(gone !== undefined) {
+		addClause(run, path, GuardTerm.truth(gone, false, state.facts), vertex.id, { kind: 'explicit' });
+	}
+}
+
 /** A call flowR knows the failing of: `succeeds(check(x))`, with the choices `match.arg` takes from the default of the formal spelled out. */
 function checkRequirement(this: void, name: BrandedIdentifier, node: RNodeWithParent, vertex: DataflowGraphVertexFunctionCall, path: Path, run: Run): void {
 	const term = termOf(node, run.scope, run.state);
 	const check = run.state.facts(name)?.check;
+	if(check?.present) {
+		presenceRequirement(vertex, path, run);
+		return;
+	}
 	if(check === undefined || !GuardTerm.isCall(term) || check.defers?.some(d => term.args.some(a => a.name === d))) {
 		return;
 	}
@@ -1019,7 +1097,7 @@ function inherit(this: void, target: NodeId, vertex: DataflowGraphVertexFunction
 		run.effects = true;
 		return;
 	}
-	const call = callBinding(vertex, formalNamesOf(callee), state.graph, v => termOf(v, scope, state));
+	const call = callBinding(vertex, formalNamesOf(callee), state.graph, bindsWithin(nodeOf(vertex.id, state), state) ? Unstated : statedBy(scope, state));
 	/* a closure reads the formals of the function it is called from as well */
 	function outer(origin: NodeId) {
 		const name = scope.formals.get(origin);
@@ -1035,11 +1113,11 @@ function inherit(this: void, target: NodeId, vertex: DataflowGraphVertexFunction
 			addClause(run, path, unlessNamed, clause.at, inherited);
 		}
 	}
-	if(path.length === 0) {
-		for(const formal of contract.required) {
+	if(path.length === 0 && !scope.frameIsOpen) {
+		for(const formal of contract.forced) {
 			const bound = call.binding.get(formal);
 			if(bound?.kind === 'formal') {
-				run.read.add(bound.name);
+				run.forced.add(bound.name);
 			}
 		}
 	}
@@ -1221,7 +1299,7 @@ function operatorMethods(this: void, name: BrandedIdentifier, vertex: DataflowGr
 		return;
 	}
 	const terms = operands as GuardTerm[];
-	const bound = (callee: Scope) => bindingOf(vertex, formalNamesOf(callee), state.graph, v => termOf(v, scope, state));
+	const bound = (callee: Scope) => bindingOf(vertex, formalNamesOf(callee), state.graph, statedBy(scope, state)).binding;
 	const unclassed = (others: readonly GuardTerm[]) => others.filter(o => o.kind !== 'constant').map(o => GuardTerm.known('is.object', o));
 	const classes = new Set([...state.methodClasses(name), ...state.methodClasses(group)]);
 	if(s4.length === 0) {
@@ -1298,6 +1376,8 @@ interface RunOrder {
 	readonly effectfulDefaults: boolean
 	/** the ways out of the function the control flow does not tell, see {@link exitStep} */
 	readonly exits:             ReadonlySet<NodeId>
+	/** the ways out the branches on the way do not tell, see {@link inBranchesOnly}, or in code that may not run at all: nothing is known of what is reached after one */
+	readonly unsureExits:       Set<NodeId>
 	/** {@link exitStep} of an exit, worked out once */
 	readonly exitStep:          (exit: NodeId) => PathStep
 	/** those of the `candidates` that may run before `node`, see {@link happensBeforeEach} */
@@ -1322,6 +1402,22 @@ function inLoopOf(this: void, node: RNodeWithParent | undefined, { state, scope 
 		const parent = RNode.directParent(n, idMap);
 		return (RForLoop.is(parent) || RWhileLoop.is(parent) || RRepeatLoop.is(parent)) && parent.body === n && within(parent, scope.definition.body, state);
 	});
+}
+
+/**
+ * Whether only blocks and the branches of `if`s lie between the node and the body, which the paths to what comes after tell apart:
+ * a loop, an operand, or an argument around a `return` joins the way through it with the ways around.
+ */
+function inBranchesOnly(this: void, node: RNodeWithParent, { state, scope }: Run): boolean {
+	const idMap = state.graph.idMap as AstIdMap;
+	for(let at = node; at !== scope.definition.body;) {
+		const parent = RNode.directParent(at, idMap);
+		if(!RExpressionList.is(parent) && !(RIfThenElse.is(parent) && parent.condition !== at)) {
+			return false;
+		}
+		at = parent;
+	}
+	return true;
 }
 
 /** Whether the code ends in a `stop`, so it never completes. */
@@ -1430,9 +1526,15 @@ function pathsAt(this: void, node: RNodeWithParent, run: Run): { readonly path: 
 	const { scope } = run;
 	const order = run.order as RunOrder;
 	/* what holds of the formals is gone once the frame may have been written behind the back of the dataflow */
-	scope.frameIsOpen = order.openers.has(node.info.id) || order.before(order.openers, node.info.id).length > 0;
+	/* one within the node may run before the rest of it, as an argument R evaluates once the callee asks for it */
+	scope.frameIsOpen = order.openers.size > 0 && (RNode.collectAllIds(node).values().some(id => order.openers.has(id)) || order.before(order.openers, node.info.id).length > 0);
 	run.effects = order.effectfulDefaults || order.before(order.effects, node.info.id).length > 0;
 	const exits = order.before(order.exits, node.info.id).map(order.exitStep);
+	/* the control flow ends at a `return`, so what is written after one comes after it as well */
+	const at = positionOf(node.info.id, run.state);
+	if(order.unsureExits.size > 0 && (order.before(order.unsureExits, node.info.id).length > 0 || order.unsureExits.values().some(exit => positionOf(exit, run.state) < at))) {
+		exits.push(UnknownStep);
+	}
 	return stepsTo(node, run)?.map(({ path, skips }) => ({ path: [...path, ...exits], skips }));
 }
 
@@ -1475,12 +1577,20 @@ function orderOf(this: void, run: Run): RunOrder {
 	const effects = new Set<NodeId>();
 	const openers = new Set(run.openers);
 	const exits: NodeId[] = [];
+	const unsureExits = new Set<NodeId>();
 	const inUseMethod = new Set<NodeId>();
 	for(const id of RNode.collectAllIdsWithStop(scope.definition.body, n => RFunctionDefinition.is(n))) {
 		const vertex = callVertexOf(id, state);
 		const node = nodeOf(id, state);
-		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Return) && (!runsBuiltIn(vertex, BuiltInProcName.Return) || inLoopOf(node, run))) {
-			exits.push(id);
+		if(DfgVertex.hasOrigin(vertex, BuiltInProcName.Return) && node !== undefined && !RSymbol.is(node)) {
+			if(!runsBuiltIn(vertex, BuiltInProcName.Return)) {
+				exits.push(id);
+			} else if(!inBranchesOnly(node, run)) {
+				unsureExits.add(id);
+			}
+		} else if(vertex !== undefined && isHandedOver(node) && knownNameOf(id, vertex, state) === 'return') {
+			/* `do.call(return, .)` */
+			unsureExits.add(id);
 		}
 		/* what names the generic of a `UseMethod` is no call of its own, whatever the dataflow turns it into */
 		if(vertex !== undefined && knownNameOf(id, vertex, state) === 'UseMethod' && RFunctionCall.is(node)) {
@@ -1505,7 +1615,7 @@ function orderOf(this: void, run: Run): RunOrder {
 			return vertex !== undefined && !RSymbol.is(nodeOf(id, state)) && !onlyComputes(id, vertex, state);
 		}));
 	const cfg = branchPathsOf(state).controlFlow.graph;
-	return { effects, openers, effectfulDefaults, exits: new Set(exits), exitStep: memoize((exit: NodeId) => exitStep(exit, run)), before: (candidates, node) => [...happensBeforeEach(cfg, candidates, node).keys()].filter(c => c !== node) };
+	return { effects, openers, effectfulDefaults, exits: new Set(exits), unsureExits, exitStep: memoize((exit: NodeId) => exitStep(exit, run)), before: (candidates, node) => [...happensBeforeEach(cfg, candidates, node).keys()].filter(c => c !== node) };
 }
 
 /** Each path to the node, with what flowR cannot tell how the node is reached left without any. */
@@ -1626,6 +1736,7 @@ function guardVisitor(this: void): new (run: Run) => { walk(): void } {
 			const vertex = callVertexOf(id, this.run.state);
 			if(vertex !== undefined && !RSymbol.is(nodeOf(id, this.run.state)) && (DfgVertex.hasOrigin(vertex, BuiltInProcName.Return) || Identifier.getName(vertex.name) === 'return_from')) {
 				eachPath(nodeOf(id, this.run.state) as RNodeWithParent, this.run, path => returnsValue(undefined, path, this.run));
+				this.run.order?.unsureExits.add(id);
 			}
 		}
 
@@ -1643,7 +1754,7 @@ function guardVisitor(this: void): new (run: Run) => { walk(): void } {
 			if(node !== undefined && paths?.length === 1 && paths[0].path.length === 0) {
 				const read = termOf(node, this.run.scope, this.run.state);
 				if(read?.kind === 'formal') {
-					this.run.read.add(read.name);
+					this.run.forced.add(read.name);
 				}
 			}
 		}
@@ -1778,12 +1889,9 @@ function withoutImplied(this: void, clauses: readonly GuardClause[], scope: Scop
 }
 
 /** The formals the condition asks to be there, as `!missing(x)` does, whether or not they come with a default. */
-function demandsPresenceOf(this: void, condition: GuardTerm, facts: GuardFactsLookup): BrandedIdentifier[] {
-	if(!GuardTerm.isCall(condition) || !condition.known || (condition.fn !== '!' && condition.fn !== 'succeeds')) {
-		return [];
-	}
-	const [{ value: inner }] = condition.args;
-	const asked = GuardTerm.isCall(inner) && (condition.fn === '!' ? inner.fn === 'missing' : facts(GuardTerm.bareName(inner.fn))?.check?.present) ? inner.args[0]?.value : undefined;
+function demandsPresenceOf(this: void, condition: GuardTerm): BrandedIdentifier[] {
+	const inner = GuardTerm.isCall(condition, '!') && condition.known ? condition.args[0].value : undefined;
+	const asked = GuardTerm.isCall(inner, 'missing') ? inner.args[0]?.value : undefined;
 	return asked?.kind === 'formal' ? [asked.name] : [];
 }
 
@@ -1801,7 +1909,8 @@ function contractOf(this: void, id: NodeId, state: GuardState, via: readonly Nod
 		return known;
 	}
 	const scope = state.depth > MaxCalleeDepth ? undefined : scopeOf(id, state);
-	if(scope === undefined || mayReturnOnExit(scope.definition)) {
+	/* a default returning from the function, as `y = return(1)`, does so wherever the formal is first read */
+	if(scope === undefined || mayReturnOnExit(scope.definition) || scope.definition.parameters.some(p => p.defaultValue !== undefined && hasSymbol(p.defaultValue, 'return'))) {
 		return NoContract;
 	}
 	/* a recursive call counts for nothing, which only ever leaves out what the recursion could have added */
@@ -1809,15 +1918,18 @@ function contractOf(this: void, id: NodeId, state: GuardState, via: readonly Nod
 	state.depth++;
 	const tails = new Map<NodeId, Tail>();
 	markTails(scope.definition.body, state, tails);
-	const run: Run = { scope, state, clauses: new Map(), read: new Set(), openers: frameOpeners(scope.definition, state), tails, returned: [], via: via.slice(0, reach), reach: 0, called: false, effects: false };
+	const run: Run = { scope, state, clauses: new Map(), forced: new Set(), openers: frameOpeners(scope.definition, state), tails, returned: [], via: via.slice(0, reach), reach: 0, called: false, effects: false };
 	const order = run.order = orderOf(run);
 	new (guardVisitor())(run).walk();
 	tailReturns(run);
 	state.depth--;
-	const demanded = new Set([...run.clauses.values()].flatMap(c => demandsPresenceOf(c.requires, state.facts)));
+	const demanded = new Set([...run.clauses.values()].flatMap(c => demandsPresenceOf(c.requires)));
+	/* a default that only fails, as `x = stop("x is needed")`, is as good as none */
+	const failsForced = ({ defaultValue }: RParameter<ParentInformation>) => defaultValue === undefined || alwaysFails(defaultValue, state);
 	const contract: Contract = {
 		clauses:  withoutImplied(GuardTerm.resolved(withUnitsApplied([...run.clauses.values()], state.facts), c => c.requires, mergeClauses), scope, state.facts),
-		required: scope.definition.parameters.filter(p => demanded.has(p.name.content) || (p.defaultValue === undefined && run.read.has(p.name.content))).map(p => p.name.content),
+		required: scope.definition.parameters.filter(p => demanded.has(p.name.content) || (run.forced.has(p.name.content) && failsForced(p))).map(p => p.name.content),
+		forced:   [...run.forced],
 		effects:  order.effects.size > 0 || order.effectfulDefaults,
 		opens:    order.openers.size > 0,
 		returned: run.returned,

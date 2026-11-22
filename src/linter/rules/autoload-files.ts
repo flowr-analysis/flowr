@@ -1,5 +1,5 @@
 import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty  } from '../linter-format';
-import { FileRole } from '../../project/context/flowr-file';
+import { FileRole, FlowrInlineTextFile, FlowrTextFile } from '../../project/context/flowr-file';
 import { LintingRuleTag } from '../linter-tags';
 import type { MergeableRecord } from '../../util/objects';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
@@ -48,9 +48,9 @@ export const AUTOLOAD_FILES = {
 		// use dependency query to find files that are sourced by our top-level startup files (and recursively)
 		const analyzer = await new FlowrAnalyzerBuilder().setConfig(ctx.config).build();
 		try {
-			// add "original" files from the previous/main analyzer
+			/* the files of the main analyzer, as copies where possible, since a file shared with this short-lived analyzer would notify it of every later change */
 			for(const file of ctx.files.getAllFiles()) {
-				analyzer.addFile(file);
+				analyzer.addFile(file instanceof FlowrInlineTextFile ? file.copy() : file instanceof FlowrTextFile ? file.path() : file);
 			}
 			for(const file of startupFiles) {
 				analyzer.addRequest({ request: 'file', content: file.path() });

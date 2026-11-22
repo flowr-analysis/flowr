@@ -1,4 +1,3 @@
-import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 /**
  * A bundle's string dictionary, held as the bytes of its names rather than as an array of strings.
  * Split apart, a dictionary of 1.4 million names cost a slice object per name and kept the text alive
@@ -9,6 +8,8 @@ import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 
 /** A dictionary's names by id. Ids are positions, so {@link SigDict.at} is what `strings[id]` used to be. */
 export class SigDict implements Iterable<string> {
+	/** how many groups {@link SigDict.groupOf} tells apart */
+	public static readonly Groups = 1 << 16;
 	/** every name in utf8, separated by newlines, so a name never carries one */
 	private readonly bytes: Buffer;
 	/** where each name ends in {@link bytes}; the next one starts one past that */
@@ -69,16 +70,29 @@ export class SigDict implements Iterable<string> {
 		return id < 0 || id >= this.ends.length ? '' : this.bytes.toString('utf8', this.startOf(id), this.ends[id]);
 	}
 
-	/** The group the name with the given id belongs to, as {@link SigDict.keyOf} groups one in hand. */
+	/** The group the name with the given id belongs to, as {@link SigDict.groupOfBytes} groups one in hand. */
 	public groupOf(id: number): number {
 		const start = this.startOf(id);
 		return group(this.ends[id] - start, this.bytes[start]);
 	}
 
-	/** The group `name` would be in, so a lookup only compares the names that could match it. */
-	public static keyOf(name: BrandedIdentifier): number {
-		const bytes = Buffer.from(name, 'utf8');
+	/** The group a name spelled `bytes` in utf8 would be in, so a lookup only compares the names that could match it. */
+	public static groupOfBytes(bytes: Uint8Array): number {
 		return group(bytes.length, bytes[0]);
+	}
+
+	/** Whether the name with the given id is spelled `bytes` in utf8, without building the name to compare it. */
+	public spells(id: number, bytes: Uint8Array): boolean {
+		const start = this.startOf(id);
+		if(this.ends[id] - start !== bytes.length) {
+			return false;
+		}
+		for(let i = 0; i < bytes.length; i++) {
+			if(this.bytes[start + i] !== bytes[i]) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private startOf(id: number): number {

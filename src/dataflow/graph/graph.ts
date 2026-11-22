@@ -323,13 +323,17 @@ export class DataflowGraph<
 
 	/** Whether `id` is quoted, i.e. affected by a {@link EdgeType.NonStandardEvaluation} edge that keeps it from being evaluated (a loop's own NSE-marked body still is evaluated, so that does not count). */
 	public isQuoted(id: NodeId, withOutgoing = false): boolean {
-		/* an nse edge quotes iff it does not originate from a loop marking its body */
-		const quotes = (source: NodeId, e: DfEdge): boolean =>
-			DfEdge.includesType(e, EdgeType.NonStandardEvaluation) && !RLoopConstructs.is(this.idMap?.get(source));
-		if(this.edgesTo(id).entries().some(([source, e]) => quotes(source, e))) {
-			return true;
+		for(const [source, e] of this.edgesTo(id)) {
+			if(this.quotes(source, e)) {
+				return true;
+			}
 		}
-		return withOutgoing && this.edgesFrom(id).values().some(e => quotes(id, e));
+		return withOutgoing && this.edgesFrom(id).values().some(e => this.quotes(id, e));
+	}
+
+	/** an nse edge quotes iff it does not originate from a loop marking its body */
+	private quotes(source: NodeId, e: DfEdge): boolean {
+		return DfEdge.includesType(e, EdgeType.NonStandardEvaluation) && !RLoopConstructs.is(this._idMap?.get(source));
 	}
 
 	/**

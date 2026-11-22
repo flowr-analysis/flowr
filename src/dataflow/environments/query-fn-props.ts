@@ -232,12 +232,23 @@ export function fnInfo(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext, { ve
 	return omit.length === 0 ? info : Object.fromEntries(Object.entries(info).filter(([field]) => !omit.includes(field as keyof FnInfo))) as unknown as FnInfo;
 }
 
+/** The package and signature {@link fnInfo} answers for `name`, without the props of everything its entry calls, which are costly to collect. */
+export function fnSignature(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): Pick<FnInfo, 'package' | 'sig'> | undefined {
+	const { pkg, entry } = fnEntry(name, ctx);
+	const stated = queryFnProps(name, { environment: ctx.env.makeCleanEnv() });
+	const known = entry === undefined || pkg === undefined ? undefined : fnInfoFromSignature(entry);
+	if(stated === undefined && known === undefined) {
+		return undefined;
+	}
+	return { package: pkg, sig: nonEmpty(stated?.sig) ?? nonEmpty(known?.sig) };
+}
+
 /** The package {@link fnInfo} answers `name` for and the signature database entry it finds there, without the props of everything the entry calls, for a caller after the formals or the entry alone. */
 export function fnEntry(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext, version?: string): { readonly pkg?: BrandedNamespace, readonly qualified: Identifier, readonly entry?: DecodedFunction } {
 	const db = signatureDbOf(ctx.deps);
 	const available = db.available();
-	const [bare, namespace, internal] = Identifier.toArray(name);
-	const pkg = namespace ?? packageExporting(bare, ctx);
+	const [bare, , internal] = Identifier.toArray(name);
+	const pkg = packageOfFunction(name, ctx);
 	const qualified = pkg === undefined ? name : Identifier.make(bare, pkg, internal === true);
 	/* the identifier says how far to reach, `::` to the exports and `:::` past them */
 	const entry = pkg === undefined || !available ? undefined : db.functionOf(qualified, version);
@@ -249,13 +260,19 @@ function nonEmpty<T extends { readonly length: number }>(of: T | undefined): T |
 	return of !== undefined && of.length > 0 ? of : undefined;
 }
 
+/** The package {@link fnEntry} looks `name` up in: the one it names, else the one exporting it, without decoding its entry. */
+export function packageOfFunction(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): BrandedNamespace | undefined {
+	const [bare, namespace] = Identifier.toArray(name);
+	return namespace ?? packageExporting(bare, ctx);
+}
+
 /** The package an unqualified `name` is answered for: a dependency exporting it, else an attached base package, asking only those rather than every package of the database. */
 function packageExporting(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerContext): BrandedNamespace | undefined {
 	if(!ctx.deps.hasSignatureDatabase()) {
 		return baseRExportOwner(name);
 	}
 	/* a `library()` the analysis meets adds a dependency, which may answer a name anew */
-	const dependencies = ctx.deps.getDependencies().length;
+	const dependencies = ctx.deps.dependenciesChanged;
 	let known = ExportingPerContext.get(ctx.deps);
 	if(known?.dependencies !== dependencies) {
 		known = { dependencies, owners: new BoundedMap(MaxOwnersPerContext) };
@@ -267,7 +284,7 @@ function packageExporting(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerCon
 	return known.owners.get(name);
 }
 
-/** what {@link packageExporting} answered per dependencies context, as long as it has the same number of dependencies */
+/** what {@link packageExporting} answered per dependencies context, as long as its dependencies did not change */
 let ExportingPerContext = new WeakMap<object, { readonly dependencies: number, readonly owners: Map<BrandedIdentifier, BrandedNamespace | undefined> }>();
 /** bounds the names {@link ExportingPerContext} keeps per context, as they are the names the analyzed code uses */
 const MaxOwnersPerContext = 65_536;

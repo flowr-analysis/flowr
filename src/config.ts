@@ -342,6 +342,16 @@ export interface FlowrConfig {
 				readonly minFiles:        number
 			}
 		}
+		readonly dataflow: {
+			/** Hand out the last dataflow analysis again if the files did not change besides their comments, which costs next to nothing. */
+			readonly reuse:         boolean;
+			/** Resume the analysis of a file after its last unchanged top-level statement, from checkpoints the analysis before kept, see {@link checkpoints}. */
+			readonly activated:     boolean;
+			/** After how many of the last top-level statements to keep a checkpoint to resume from (each copies the graph). */
+			readonly checkpoints:   number;
+			/** Keep checkpoints only for files with at least this many top-level statements. */
+			readonly minStatements: number;
+		}
 	}
 
 	/**
@@ -702,7 +712,8 @@ export const FlowrConfig = {
 				parsing:           {
 					activated:  false,
 					heuristics: { activated: true, mtime: true, linesFrom: 500, bytesFrom: 50_000, alwaysWithEdits: false, minFiles: 1 }
-				}
+				},
+				dataflow: { reuse: true, activated: false, checkpoints: 2, minStatements: 0 }
 			},
 			gas: {
 				thresholds: { memory: { problematic: 0.7,       critical: 0.9 }, timeMs: { problematic: 100_000,   critical: 120_000 } },
@@ -879,6 +890,12 @@ export const FlowrConfig = {
 					alwaysWithEdits: Joi.boolean().optional().description('Always take the incremental path whenever there is a computed edit region, regardless of the other thresholds.'),
 					minFiles:        Joi.number().min(1).optional().description('Only apply these heuristics once the project has at least this many files loaded.'),
 				}),
+			}),
+			dataflow: Joi.object({
+				reuse:         Joi.boolean().optional().description('Hand out the last dataflow analysis again if the files did not change besides their comments.'),
+				activated:     Joi.boolean().description('Resume the analysis of a file after its last unchanged top-level statement, from checkpoints the analysis before kept.'),
+				checkpoints:   Joi.number().integer().min(0).optional().description('After how many of the last top-level statements to keep a checkpoint to resume from (each copies the graph).'),
+				minStatements: Joi.number().integer().min(0).optional().description('Keep checkpoints only for files with at least this many top-level statements.'),
 			}),
 		}),
 		gas: Joi.object({

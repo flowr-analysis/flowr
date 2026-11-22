@@ -1,5 +1,6 @@
 import {
 	type ControlDependency,
+	type DataflowCfgInformation,
 	type DataflowInformation,
 	type ExitPoint,
 	type KillReference,
@@ -610,6 +611,47 @@ function updateSideEffectsForCalledFunctions(calledEnvs: ReturnType<typeof linkF
 	return inputEnvironment;
 }
 
+/** The statements following one that always exits are never analyzed, walks over the AST skip them. */
+function markUnreachable<OtherInfo>(dead: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>): void {
+	for(const arg of dead) {
+		const id = RArgument.unnamedValueOf(arg)?.info.id;
+		if(id !== undefined) {
+			data.unreachable?.add(id);
+		}
+	}
+}
+
+/**
+ * Everything {@link processExpressionList} carries from one top-level statement of a file to the next,
+ * so that an incremental analysis can continue the list after the first {@link ExpressionListState#count|count} statements.
+ */
+export interface ExpressionListState {
+	readonly count:            number
+	readonly environment:      REnvironmentInformation
+	readonly listEnvironments: Set<NodeId>
+	readonly remainingRead:    DefaultMap<BrandedIdentifier | undefined, IdentifierReference[]>
+	readonly graph:            DataflowGraph
+	readonly out:              IdentifierReference[]
+	readonly killed:           KillReference[] | undefined
+	readonly exitPoints:       ExitPoint[]
+	readonly invertExitCds:    ControlDependency[]
+	readonly processed:        (DataflowCfgInformation | undefined)[]
+	readonly defaultReturn:    DataflowCfgInformation | undefined
+	readonly initialState:     Set<IdentifierReference> | undefined
+	readonly hooks:            DataflowInformation['hooks']
+	readonly exited:           boolean
+}
+
+/** Where {@link processExpressionList} records and resumes the {@link ExpressionListState} of a file's top-level statements. */
+export interface ExpressionListCheckpoints {
+	/** The state to continue the list of the file at `fileIndex` with, restoring what the state of `data` held at that point. */
+	resume<OtherInfo>(fileIndex: number, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): ExpressionListState | undefined
+	/** Whether to record the state after `count` of the `total` statements. */
+	wants(count: number, total: number): boolean
+	/** Records the state of the list of the file at `fileIndex`, which is updated in place afterward. */
+	record<OtherInfo>(fileIndex: number, state: ExpressionListState, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): void
+}
+
 /** Processes a list of expressions joining their dataflow graphs accordingly. */
 export function processExpressionList<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -617,29 +659,38 @@ export function processExpressionList<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	let { environment } = data;
+	const fileIndex = data.completeAst.ast.files.findIndex(f => f.root.info.id === rootId);
+	const fileRoot = fileIndex >= 0;
+	const checkpoints = fileRoot ? data.checkpoints : undefined;
+	/* an incremental analysis continues the list where an earlier one of the same statements left off */
+	const resumed = checkpoints?.resume(fileIndex, data);
+	let environment = resumed?.environment ?? data.environment;
 	const idMap = data.completeAst.idMap;
 	/* the writes of this list, to detect whether a read sees one of them */
-	const listEnvironments = new Set<NodeId>();
-	const remainingRead = new DefaultMap<BrandedIdentifier | undefined, IdentifierReference[]>(() => []);
-	const nextGraph = new DataflowGraph(idMap);
-	const out: IdentifierReference[] = [];
+	const listEnvironments = resumed?.listEnvironments ?? new Set<NodeId>();
+	const remainingRead = resumed?.remainingRead ?? new DefaultMap<BrandedIdentifier | undefined, IdentifierReference[]>(() => []);
+	const nextGraph = resumed?.graph ?? new DataflowGraph(idMap);
+	const out: IdentifierReference[] = resumed?.out ?? [];
 	/* lazily created - `rm` is rare, so rm-free lists never allocate this */
-	let killed: KillReference[] | undefined;
-	const exitPoints: ExitPoint[] = [];
+	let killed: KillReference[] | undefined = resumed?.killed;
+	const exitPoints: ExitPoint[] = resumed?.exitPoints ?? [];
 	/* what the list stands under as a whole, copied since the vertices share and extend that array */
 	const context = data.cds?.slice();
-	const invertExitCds: ControlDependency[] = [];
+	const invertExitCds: ControlDependency[] = resumed?.invertExitCds ?? [];
 
-	const processedExpressions: (DataflowInformation | undefined)[] = [];
-	let defaultReturnExpr: DataflowInformation | undefined;
-	const fileRoot = data.completeAst.ast.files.some(f => f.root.info.id === rootId);
+	const processedExpressions: (DataflowCfgInformation | undefined)[] = resumed?.processed ?? [];
+	let defaultReturnExpr: DataflowCfgInformation | undefined = resumed?.defaultReturn;
 	/* R prints what the top level of the analyzed script leaves visible, but not what a sourced file does */
 	const autoPrint = autoPrintsStatementsOf(rootId, data);
-	let initialState: Set<IdentifierReference> | undefined;
-	const hooks: DataflowInformation['hooks'] = [];
+	let initialState: Set<IdentifierReference> | undefined = resumed?.initialState;
+	const hooks: DataflowInformation['hooks'] = resumed?.hooks ?? [];
+	let exited = resumed?.exited ?? false;
+	if(exited) {
+		markUnreachable(args.slice(resumed?.count), data);
+	}
 
-	for(const [index, arg] of args.entries()) {
+	for(let index = resumed?.count ?? 0; !exited && index < args.length; index++) {
+		const arg = args[index];
 		const expression = RArgument.unnamedValueOf(arg);
 		if(expression === undefined) {
 			processedExpressions.push(undefined);
@@ -732,13 +783,26 @@ export function processExpressionList<OtherInfo>(
 		if(ControlFlow.alwaysExits(processed, context)) {
 			/* if there is an always-exit expression, there is no default return active anymore */
 			defaultReturnExpr = undefined;
-			for(const dead of args.slice(index + 1)) {
-				const id = RArgument.unnamedValueOf(dead)?.info.id;
-				if(id !== undefined) {
-					data.unreachable?.add(id);
-				}
-			}
-			break;
+			markUnreachable(args.slice(index + 1), data);
+			exited = true;
+		}
+		if(checkpoints?.wants(index + 1, args.length)) {
+			checkpoints.record(fileIndex, {
+				count:         index + 1,
+				environment,
+				listEnvironments,
+				remainingRead,
+				graph:         nextGraph,
+				out,
+				killed,
+				exitPoints,
+				invertExitCds,
+				processed:     processedExpressions,
+				defaultReturn: defaultReturnExpr,
+				initialState,
+				hooks,
+				exited
+			}, data);
 		}
 	}
 

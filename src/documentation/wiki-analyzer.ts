@@ -30,6 +30,8 @@ import { FlowrAnalyzerEnvironmentContext } from '../project/context/flowr-analyz
 import { FlowrAnalyzerFunctionsContext } from '../project/context/flowr-analyzer-functions-context';
 import { FlowrAnalyzerMetaContext } from '../project/context/flowr-analyzer-meta-context';
 import { FlowrAnalyzerIncrementalAnalysisContext } from '../project/context/flowr-analyzer-incremental-analysis-context';
+import { AdaptiveFlowrAnalyzerIncrementalDataflowHeuristicPlugin, FlowrAnalyzerIncrementalDataflowHeuristicPlugin } from '../project/plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-heuristic-plugin';
+import { DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin } from '../project/plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
 import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { FlowrConfig } from '../config';
@@ -468,7 +470,7 @@ ${ctx.hierarchy(FlowrAnalyzerIncrementalAnalysisContext, { showImplSnippet: fals
 
 This context is not an analysis-result cache by itself.
 Instead, it carries forward the minimal state needed by future incremental phases after an invalidation happened.
-At the moment, it is used for incremental parsing with Tree-sitter, but it is intended to become the shared context for additional incremental analysis stages as well.
+It is used for incremental parsing with Tree-sitter and for the incremental dataflow analysis, see below.
 
 If the analyzer or context is reset, the incremental information is discarded via
 ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'reset', { codeFont: true, realNameWrapper: 'i' })}.
@@ -503,7 +505,16 @@ For one file, the incremental state follows a fixed lifecycle:
 
 ${section('Incremental Dataflow', 4)}
 
-This context is planned to also support future incremental dataflow graph computation.
+A repeated dataflow analysis can build on the one before in two ways, the ${ctx.link(DefaultFlowrAnalyzerIncrementalDataflowUpdateTypePlugin)} classifies the change (${ctx.link('IncrementalUpdateType')}):
+
+* ${ctx.linkConfig('incremental.dataflow.reuse')} (on by default) hands out the analysis before again if only comments changed, which costs next to nothing.
+* ${ctx.linkConfig('incremental.dataflow.activated')} resumes a single file after its last unchanged statement, from checkpoints the analysis before kept (see ${ctx.linkConfig('incremental.dataflow.checkpoints')}), each a copy of the graph.
+
+A ${ctx.link(FlowrAnalyzerIncrementalDataflowHeuristicPlugin)} plans each analysis. By default, the ${ctx.link(AdaptiveFlowrAnalyzerIncrementalDataflowHeuristicPlugin)} keeps a single checkpoint, only once the files are analyzed again and where the last change happened, so a single analysis pays nothing and changing a statement in the middle of a file again resumes right before it.
+Register \`incremental-dataflow-heuristic:configured\` to keep the checkpoints exactly as configured, or a plugin of your own.
+${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getLastAppliedIncrementalUpdate', { codeFont: true, realNameWrapper: 'i' })} tells you what the last analysis reused.
+An editor tells the analyzer of an edit with ${ctx.linkM(FlowrAnalyzer, 'updateFile', { codeFont: true, realNameWrapper: 'i' })}, handing over the unsaved content of the file.
+The playground and the watch mode of the REPL (\`:query @dataflow watch://file.R\`) turn it on, as they analyze the same files again on every change.
 
 
 ${section('Caching', 2)}

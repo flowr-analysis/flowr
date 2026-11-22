@@ -250,6 +250,10 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		return this.loadSources().map(describeLoadedDatabase);
 	}
 
+	public override hasLoadedDatabase(): boolean {
+		return this.loadSources().length > 0;
+	}
+
 	/**
 	 * Packages in the loaded sources exporting `name`, self-package excluded, most downloaded first (so picking
 	 * the first is the package a script most likely means); backed by the per-source memo in {@link exportOwnersBySource}, filtered here rather than there so the memo stays analyzer-independent.

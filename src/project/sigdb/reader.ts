@@ -34,37 +34,47 @@ function applyDictLine(json: string, strings: string[]): void {
 
 /**
  * Dictionary ids grouped by first byte and byte length, kept per dictionary rather than per reader (the shards of one
- * database read the same one). One `Int32Array` per group, ascending, so a lookup answers what `indexOf` would while
- * comparing a few hundred names rather than the 1.4 million a scan of the whole dictionary walks.
+ * database read the same one). The ids of a group are ascending and next to each other, so a lookup answers what `indexOf`
+ * would while comparing a few hundred names rather than the 1.4 million a scan of the whole dictionary walks.
  */
-const dictionaryBuckets = new WeakMap<SigDict, Map<number, Int32Array>>();
+interface DictionaryBuckets {
+	readonly ids:    Int32Array;
+	/** where the ids of each group start in {@link ids}, the start of the next group being its end */
+	readonly starts: Int32Array;
+}
+const dictionaryBuckets = new WeakMap<SigDict, DictionaryBuckets>();
+
+/** Sorts the ids by their group, counting the groups first, so every id is written once to where it belongs. */
+function bucketsOf(strings: SigDict): DictionaryBuckets {
+	const starts = new Int32Array(SigDict.Groups + 1);
+	for(let i = 0; i < strings.length; i++) {
+		starts[strings.groupOf(i) + 1]++;
+	}
+	for(let group = 0; group < SigDict.Groups; group++) {
+		starts[group + 1] += starts[group];
+	}
+	const next = starts.slice();
+	const ids = new Int32Array(strings.length);
+	for(let i = 0; i < strings.length; i++) {
+		ids[next[strings.groupOf(i)]++] = i;
+	}
+	return { ids, starts };
+}
 
 /** the id `strings.indexOf(name)` would give, through {@link dictionaryBuckets}; `-1` when the dictionary lacks it */
 function dictionaryIdOf(strings: SigDict, name: BrandedIdentifier): number {
 	let buckets = dictionaryBuckets.get(strings);
 	if(buckets === undefined) {
-		/* one pass over the 1.4 million entries: sizing them first meant walking all of them twice and a map
-		   lookup per entry to know where in its group the next one goes */
-		const grouped = new Map<number, number[]>();
-		for(let i = 0; i < strings.length; i++) {
-			const key = strings.groupOf(i);
-			const group = grouped.get(key);
-			if(group === undefined) {
-				grouped.set(key, [i]);
-			} else {
-				group.push(i);
-			}
-		}
-		buckets = new Map();
-		for(const [key, group] of grouped) {
-			buckets.set(key, Int32Array.from(group));
-		}
+		buckets = bucketsOf(strings);
 		dictionaryBuckets.set(strings, buckets);
 	}
-	const bucket = buckets.get(SigDict.keyOf(name));
+	const bytes = Buffer.from(name, 'utf8');
+	const group = SigDict.groupOfBytes(bytes);
 	/* ascending, so the first match is the one a scan from the front would have found */
-	for(const id of bucket ?? []) {
-		if(strings.at(id) === name) {
+	for(let at = buckets.starts[group]; at < buckets.starts[group + 1]; at++) {
+		const id = buckets.ids[at];
+		/* the bytes rule out nearly every name of the group without building it */
+		if(strings.spells(id, bytes) && strings.at(id) === name) {
 			return id;
 		}
 	}
@@ -386,7 +396,8 @@ export interface SigDbOpenOptions {
 /** a caller-supplied index/dictionary for {@link SigDatabase.openSync} (both derived from the source otherwise) */
 export interface OpenSyncOptions {
 	index?:   SigDbIndex;
-	strings?: SigDict;
+	/** the dictionary, or how to load it once the first name is asked for */
+	strings?: SigDict | (() => SigDict);
 }
 /** {@link SigDatabase.openSyncFrom} options: cache settings plus an optional precomputed hash/index/dictionary */
 export interface OpenSyncFromOptions extends SigDbOpenOptions, OpenSyncOptions {
@@ -545,14 +556,15 @@ export class SigDatabase extends HistorySource implements PackageSignatureSource
 	 */
 	private readonly outlines = new Map<BrandedNamespace, { readonly latest: RVersion | undefined, readonly versions: ReadonlySet<string> }>();
 	private readonly fd:       number;
-	readonly strings:          SigDict;
+	/** the dictionary, or how to load it: a bundle asked only for the versions it holds never needs its names */
+	private dictionary:        SigDict | (() => SigDict);
 	readonly index:            SigDbIndex;
 	readonly content:          SigDbContent | undefined;
 	private readonly cranBase: string;
-	private constructor(fd: number, strings: SigDict, index: SigDbIndex, content: SigDbContent | undefined, cranBase: string) {
+	private constructor(fd: number, strings: SigDict | (() => SigDict), index: SigDbIndex, content: SigDbContent | undefined, cranBase: string) {
 		super();
 		this.fd = fd;
-		this.strings = strings;
+		this.dictionary = strings;
 		this.index = index;
 		this.content = content;
 		this.cranBase = cranBase;
@@ -612,6 +624,13 @@ export class SigDatabase extends HistorySource implements PackageSignatureSource
 			plain = ensurePlainSync(source, { cacheDir: opts.cacheDir, hash: opts.hash, index: opts.index, bytes: opts.index?.byteCount });
 		}
 		return SigDatabase.openSync(plain, { index: opts.index, strings: opts.strings });
+	}
+
+	public get strings(): SigDict {
+		if(typeof this.dictionary === 'function') {
+			this.dictionary = this.dictionary();
+		}
+		return this.dictionary;
 	}
 
 	public has(pkg: BrandedNamespace): boolean {
@@ -981,6 +1000,8 @@ export class SigDatabaseSet extends HistorySource implements PackageSignatureSou
 	/** package name to shard indices, ordered by preference (current before full) */
 	private readonly routes:    Map<BrandedNamespace, number[]>;
 	private readonly cacheDir?: string;
+	/** the latest version per package asked for, as every name resolved asks for it and parsing it costs more than the lookup; at most one per package of the set */
+	private readonly latest = new Map<BrandedNamespace, RVersion | undefined>();
 
 	private constructor(manifest: SigDbManifest, baseDir: string, indices: SigDbIndex[], routes: Map<BrandedNamespace, number[]>, cacheDir?: string) {
 		super();
@@ -1089,7 +1110,8 @@ export class SigDatabaseSet extends HistorySource implements PackageSignatureSou
 			return existing;
 		}
 		const ref = this.manifest.shards[i];
-		const strings = ref.dict ? this.dictionaryStrings(ref.dict) : undefined;
+		const dict = ref.dict;
+		const strings = dict ? () => this.dictionaryStrings(dict) : undefined;
 		return this.opened[i] = SigDatabase.openSyncFrom(resolveSource(this.baseDir, ref.path),
 			{ cacheDir: this.cacheDir, hash: ref.hash, index: this.indices[i], strings });
 	}
@@ -1121,9 +1143,9 @@ export class SigDatabaseSet extends HistorySource implements PackageSignatureSou
 			return ref ? ensurePlain(resolveSource(this.baseDir, ref.path), { cacheDir: this.cacheDir, hash: ref.hash, indexless: true, bytes: ref.byteCount }) : Promise.resolve('');
 		});
 		await Promise.all([...shardJobs, ...dictJobs]);
-		// open each shard now so later synchronous queries never block
+		// open each shard and its dictionary now so later synchronous queries never block
 		for(const i of need) {
-			this.shard(i);
+			void this.shard(i).strings;
 		}
 	}
 
@@ -1251,6 +1273,13 @@ export class SigDatabaseSet extends HistorySource implements PackageSignatureSou
 
 	protected recordedLatest(pkg: BrandedNamespace): string {
 		return this.manifest.meta?.[pkg]?.[0] ?? '';
+	}
+
+	public override latestVersion(pkg: BrandedNamespace): RVersion | undefined {
+		if(!this.latest.has(pkg)) {
+			this.latest.set(pkg, super.latestVersion(pkg));
+		}
+		return this.latest.get(pkg);
 	}
 
 	/**

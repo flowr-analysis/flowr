@@ -295,6 +295,7 @@ ${codeBlock('json', JSON.stringify(
 					activated:  false,
 					heuristics: { activated: true, mtime: true, linesFrom: 500, bytesFrom: 50_000, alwaysWithEdits: false, minFiles: 1 },
 				},
+				dataflow: FlowrConfig.default().incremental.dataflow,
 			},
 			gas: {
 				thresholds: { memory: { problematic: 0.7,     critical: 0.9 }, timeMs: { problematic: 100_000, critical: 120_000 } },

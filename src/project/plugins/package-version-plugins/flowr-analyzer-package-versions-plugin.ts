@@ -33,6 +33,11 @@ export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPl
 		return [];
 	}
 
+	/** Whether this plugin has a database loaded, without describing it as {@link loadedDatabases} does. */
+	public hasLoadedDatabase(): boolean {
+		return this.loadedDatabases().length > 0;
+	}
+
 	/** Packages known to this plugin that export `name` (empty for plugins without a database). */
 	public packagesExporting(_name: BrandedIdentifier): readonly BrandedNamespace[] {
 		return [];

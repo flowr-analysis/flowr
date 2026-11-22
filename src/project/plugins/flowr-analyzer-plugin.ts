@@ -51,7 +51,20 @@ export enum PluginType {
 	 * Multiple Gas plugins are combined by taking the maximum level returned.
 	 * @see {@link FlowrAnalyzerGasPlugin} - for the base class to implement such a plugin.
 	 */
-	Gas                      = 'gas'
+	Gas                      = 'gas',
+	/**
+	 * Plugins that classifies the {@link IncrementalUpdateType}, so the dataflow analysis can be
+	 * patched incrementally instead of fully recomputed. At most one may be registered; the default
+	 * plugin runs otherwise.
+	 * @see {@link FlowrAnalyzerIncrementalDataflowUpdateTypePlugin} - for the base class to implement such a plugin.
+	 */
+	IncrementalDataflowUpdateType = 'incremental-dataflow-update-type',
+	/**
+	 * Plugins that plan how a dataflow analysis builds on the one before (reuse it, resume from checkpoints, or start over).
+	 * At most one may be registered; the plugin following the configuration runs otherwise.
+	 * @see {@link FlowrAnalyzerIncrementalDataflowHeuristicPlugin} - for the base class to implement such a plugin.
+	 */
+	IncrementalDataflowHeuristic = 'incremental-dataflow-heuristic'
 }
 
 /**

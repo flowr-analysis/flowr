@@ -166,6 +166,12 @@ export class Environment implements IEnvironment {
 		return this.frame;
 	}
 
+	/** Marks {@link memory} as shared, so the next write to this forks it, and hands it out for a copy to hold on to. */
+	public shareMemory(): Frame {
+		this.sharedMemory = true;
+		return this.frame;
+	}
+
 	/** Whether `other` holds the very bindings this does. */
 	public sameMemoryAs(other: Environment): boolean {
 		return this === other || this.frame === other.frame;

@@ -14,6 +14,7 @@ import {
 import type { ArgProps } from '../../dataflow/environments/built-in-props';
 import { resolveVersion } from './sigdb-version';
 import { compactRecord } from '../../util/objects';
+import { DefaultMap } from '../../util/collections/defaultmap';
 import type { StatedGuards } from '../../dataflow/fn/guards/built-in-guards';
 import type { withGuards } from './guarded-source';
 import { RPrimitives } from '../../data/r-primitives.generated';
@@ -279,6 +280,8 @@ export function deriveLibraryExports(
 	const s4Classes: string[] = [];
 	const locations = new Map<string, SigDefinitionLocation>();
 	const reexports = new Map<string, string>();
+	/* the functions of a package share a few files, so each of their names is built once */
+	const files = new DefaultMap<number, string>(idx => strings.at(idx));
 	for(const i of idxs) {
 		const [nameIdx, , , bits, fileIdx, line, , reexportIdx] = blob.fns[i];
 		const name = strings.at(nameIdx);
@@ -293,7 +296,7 @@ export function deriveLibraryExports(
 			s4Classes.push(name);
 		}
 		if(fileIdx >= 0) {
-			locations.set(name, { file: strings.at(fileIdx), line });
+			locations.set(name, { file: files.get(fileIdx), line });
 		}
 		if(reexportIdx !== undefined) {
 			reexports.set(name, strings.at(reexportIdx));

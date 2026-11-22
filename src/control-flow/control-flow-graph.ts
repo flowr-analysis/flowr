@@ -882,7 +882,17 @@ function controlFlowEdges(edges: ReadonlyMap<NodeId, DfEdge> | undefined): Reado
 
 /** The ids among the given edges that the control flow actually connects. */
 function controlFlowNeighbors(edges: ReadonlyMap<NodeId, DfEdge> | undefined): readonly NodeId[] {
-	return edges === undefined ? NoNeighbors : [...edges.entries().filter(([, edge]) => DfEdge.includesType(edge, ControlFlowEdgeTypes)).map(([id]) => id)];
+	if(edges === undefined) {
+		return NoNeighbors;
+	}
+	/* a plain loop, as every step of a walk over the control flow comes through here */
+	const neighbors: NodeId[] = [];
+	for(const [id, edge] of edges) {
+		if(DfEdge.includesType(edge, ControlFlowEdgeTypes)) {
+			neighbors.push(id);
+		}
+	}
+	return neighbors;
 }
 
 /** Where a function body begins, which is the only way into that region. */

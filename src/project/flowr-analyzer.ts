@@ -14,7 +14,7 @@ import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './conte
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 import { type RParseRequest, type RParseRequestFromFile, isParseRequest, fileProtocol, requestFromInput } from '../r-bridge/retriever';
 import { isFilePath } from '../util/files';
-import type { FlowrFileProvider } from './context/flowr-file';
+import { type FlowrFileProvider, FlowrInlineTextFile } from './context/flowr-file';
 import type { Tree } from 'web-tree-sitter';
 import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -77,6 +77,12 @@ export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser>
 	 * @see {@link FlowrAnalysisProvider.addRequest|addRequest} - for adding analysis requests to the analyzer.
 	 */
 	addFile(...f: (string | FlowrFileProvider<string> | RParseRequestFromFile)[]): void
+	/**
+	 * Tell the analyzer that the file at `path` changed, e.g., as an editor edits it.
+	 * With `content`, the analyzer analyzes that content instead of what is on disk, without `content` it reads the file again.
+	 * Only what depends on the file is analyzed again, and with {@link FlowrConfig.incremental.dataflow} the dataflow analysis continues the one before.
+	 */
+	updateFile(path: string, content?: string): void
 	/** Reset the analyzer state, including the context and the cache. */
 	reset(): void;
 
@@ -344,6 +350,25 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public addFile(...f: (string | FlowrFileProvider | RParseRequestFromFile)[]): this {
 		this.ctx.addFiles(f);
+		return this;
+	}
+
+	public updateFile(path: string, content?: string): this {
+		const known = this.ctx.files.getFileByPath(path);
+		if(content === undefined) {
+			known?.invalidate();
+		} else if(known instanceof FlowrInlineTextFile) {
+			if(known.content() !== content) {
+				known.updateInlineContent(content);
+			}
+		} else {
+			/* the file stands in for the one known, starting out as what it held, so the change is one from that */
+			const before = known === undefined ? undefined : String(known.content());
+			const file = new FlowrInlineTextFile(known?.path() ?? path, before ?? content);
+			this.ctx.addFiles([file]);
+			file.content();
+			file.updateInlineContent(content);
+		}
 		return this;
 	}
 

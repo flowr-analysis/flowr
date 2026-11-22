@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-11-15, 17:22:57 UTC (v2.17.7, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's frequently asked questions">Generated</span> from '[wiki-faq.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-faq.ts "src/documentation/wiki-faq.ts")' on 2026-11-22, 08:46:23 UTC (v2.17.9, R v4.6.1), do not edit directly._
 
 Is your question not answered below? Please [ask it as an issue](https://github.com/flowr-analysis/flowr/issues/new?template=question.yaml) and we will answer it.
 Answers regularly end up on this page, so asking helps everyone who wonders the same thing later.
@@ -118,6 +118,13 @@ For more extensive information on test labels, see the [test labels wiki section
 
 </details>
 
+<details><summary>What to do if the <b>linter fails</b>?</summary>
+
+Read the description of the failing rule and fix what it points at, `npm run lint-local -- --fix` fixes the formatting.
+See the [linting wiki section](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing#oh-no-the-linter-fails) for the rule sets, and open an issue if you think the linter is wrong.
+
+</details>
+
 <details><summary>Why can't I pass <b>arguments</b> when running flowR <b>with npm</b>?</summary>
 
 With `npm` you have to pass arguments in a specific way. The `--` operator is used to separate the `npm` arguments from the script arguments. For example, if you want to run `flowR` with the `--help` argument, you can use the following command:
@@ -209,7 +216,7 @@ Anything you configure directly wins over the value the project kind defaults to
 flowR stores its data as plain values and puts the behavior beside it in a helper object named after the
 thing it is about (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L296"><code><span title="Utility functions for source locations . As every SourceRange is a location without a file, the readers of SourceRange apply to locations as well; the ones re-exported here save you the detour via SourceLocation.getRange .">SourceLocation</span></code></a>,
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/vertex.ts#L208"><code><span title="The one helper to ask a vertex what it is.">DfgVertex</span></code></a>,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L31"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a>, ...).
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L32"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a>, ...).
 The [Helper Objects](https://github.com/flowr-analysis/flowr/wiki/Helper-Objects) wiki page lists every one of them, grouped by what
 it is about, so you can find the one that answers your question without knowing where it lives.
 

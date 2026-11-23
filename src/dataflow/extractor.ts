@@ -71,6 +71,7 @@ import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RProjectFile } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { IncrementalDataflow, type DataflowProcessorInformationBase, type IncrementalDataflowResult } from '../project/incremental/incremental-dataflow/incremental-dataflow';
 import type { ExpressionListCheckpoints } from './internal/process/functions/call/built-in/built-in-expression-list';
+import { ProgramOrder } from './internal/program-order';
 
 /** The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}. Maps every {@link RType} in the normalized AST to a processor. */
 export const processors: DataflowProcessors<ParentInformation> = {
@@ -222,7 +223,7 @@ function environmentsAt(id: NodeId, graph: DataflowGraph, boundTo: (parameter: N
 
 /**
  * A function whose body flowR does not see may write into an environment it is handed, as environments are shared by reference.
- * So every variable holding that environment is defined by the call (and by the calls of the program's functions handing it on),
+ * So every read of a variable holding that environment that may run after the call reads it (and the calls of the program's functions handing it on),
  * while an environment of the search path or the call stack, whose names no variable holds, makes the call a side effect of its own.
  */
 function linkEnvironmentsHandedToUnseenBodies(graph: DataflowGraph, environment: REnvironmentInformation): void {
@@ -239,6 +240,8 @@ function linkEnvironmentsHandedToUnseenBodies(graph: DataflowGraph, environment:
 		}
 		return holders.get(producer);
 	}
+	/* a write into the environment changes what the variables holding it give to the code reading them afterwards */
+	const readersOf = memoize((holder: NodeId): readonly NodeId[] => Dataflow.sourcesOf(graph, holder, EdgeType.Reads));
 	/* both are asked of the same vertices over and over (every value an argument may hold), and the edges added below change neither */
 	const callsUnseen = memoize((id: NodeId) => callsUnseenBody(id, graph));
 	const produces = memoize((id: NodeId) => producesEnvironment(id, graph, callsUnseen));
@@ -273,9 +276,10 @@ function linkEnvironmentsHandedToUnseenBodies(graph: DataflowGraph, environment:
 					}
 					continue;
 				}
-				for(const holder of holdersOf(producer)) {
-					for(const writer of writers) {
-						reads.add(holder, writer, EdgeType.Reads);
+				/* the argument itself is read before the call writes */
+				for(const reader of holdersOf(producer).flatMap(readersOf).filter(r => r !== ref)) {
+					for(const writer of writers.filter(w => !ProgramOrder.runsBefore(reader, w, graph))) {
+						reads.add(reader, writer, EdgeType.Reads);
 					}
 				}
 			}

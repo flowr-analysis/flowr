@@ -49,6 +49,7 @@ import type { PosIntervalDomain } from '../abstract-interpretation/domains/posit
 import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-domain';
 import fs from 'fs';
 import { type FlowrAnalyzerContext, contextFromInput } from '../project/context/flowr-analyzer-context';
+import { makePlugin } from '../project/plugins/plugin-registry';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { CallGraph } from '../dataflow/graph/call-graph';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
@@ -149,7 +150,8 @@ export class BenchmarkSlicer {
 		);
 		this.config = config;
 		this.request = request;
-		this.context = contextFromInput({ ...request }, config);
+		/* with the plugins an analyzer gets by default, the signature database among them, to measure what users run */
+		this.context = contextFromInput({ ...request }, config, config.defaultPlugins.map(makePlugin));
 		this.executor = createSlicePipeline(this.parser, {
 			context:   this.context,
 			criterion: [],

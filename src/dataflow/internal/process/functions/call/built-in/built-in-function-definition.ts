@@ -17,6 +17,7 @@ import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '..
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RConstant, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { ProgramOrder } from '../../../../program-order';
+import { AmbientAccessKind } from '../../../../../graph/ambient-access';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { type CallRuledOut, type DataflowGraphVertexFunctionCall, DfgVertex, VertexType, FunctionDispatch } from '../../../../../graph/vertex';
@@ -773,6 +774,8 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 		const fn = enclosingOf(at);
 		return fn === undefined || graph.edgesTo(fn).values().some(e => DfEdge.includesType(e, EdgeType.Calls));
 	});
+	/* the calls that may run a method bound by a name we cannot tell */
+	const runsUnknownMethod = new Set<NodeId>();
 	/* per function, the `NextMethod` calls of its body */
 	const namedNextCalls = new Map<NodeId, NodeId[]>();
 	for(const [id, vertex] of calls) {
@@ -814,9 +817,9 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 			}
 			continue;
 		}
-		/* a method the code binds by a name we cannot tell may be one the call dispatches to */
-		if(unknownMethodsAt.some(at => !ProgramOrder.definedLater(at, runsOnceAt(id), graph)) && ((handsObjects(vertex, graph.idMap) && runWithin(name).length > 0) || dispatchesOnClass(name, environmentAt(id), databaseInfoOf))) {
-			graph.markIdForUnknownSideEffects(id);
+		/* a method the code binds by a name we cannot tell may be one the call dispatches to, a function nothing resolves is just one we cannot see */
+		if(unknownMethodsAt.some(at => !ProgramOrder.definedLater(at, ProgramOrder.runsWithin(id, graph), graph)) && ((handsObjects(vertex, graph.idMap) && runWithin(name).length > 0) || CallProps.hasAny(fnPropsOf(name, environmentAt(id), databaseInfoOf), CallProp.Generic))) {
+			runsUnknownMethod.add(id);
 		}
 		/* the code writes a `<name>.<class>`, so a built-in `name` that dispatches may reach it */
 		const mayDispatch = s3MethodPrefixesOf(name).some(p => generics.has(p));
@@ -1029,6 +1032,7 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 	}
 	FunctionSemantics.call.match.unforceUnreadDots(graph);
 	linkLiftedReads(graph, lifted, enclosingOf, environmentAt, runsOnceAt);
+	linkStateReadsToUnknownMethods(graph, runsUnknownMethod);
 	/* a method only a next-method call reaches is linked by no call that resolves what it reads */
 	const called = new Set(graph.verticesOfType(VertexType.FunctionCall).filter(([, v]) => !DfgVertex.hasOrigin(v, BuiltInProcName.S3DispatchNext)).flatMap(([id]) => Dataflow.targetsOf(graph, id, EdgeType.Calls)));
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
@@ -1043,6 +1047,41 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 			}
 			return true;
 		}, { fn: id, graph });
+	}
+}
+
+/**
+ * A method we cannot see may read and change the session state (`options(digits = 3)`), so a read of that state reads each call
+ * that may dispatch to such a method and may run before it. The calls stay out of the slices that read no state.
+ * To keep this linear, each call reads the one running before it, a call without a place in the program order (in a function)
+ * reads all of them and is read by all of them, and a read reads only the last call that may run before it.
+ */
+function linkStateReadsToUnknownMethods(graph: DataflowGraph, calls: ReadonlySet<NodeId>): void {
+	/* quoted code runs only where it is evaluated, which is a call of its own */
+	const runs = calls.values().filter(c => !graph.isQuoted(c)).toArray();
+	if(runs.length === 0) {
+		return;
+	}
+	const before = (a: NodeId, b: NodeId) => ProgramOrder.runsBefore(a, b, graph);
+	const placed = runs.filter(c => ProgramOrder.runsWithin(c, graph) !== undefined).sort((a, b) => before(a, b) ? -1 : before(b, a) ? 1 : 0);
+	const floating = runs.filter(c => !placed.includes(c));
+	const link = (from: NodeId, to: NodeId | undefined) => {
+		if(to !== undefined && from !== to) {
+			graph.addEdge(from, to, EdgeType.Reads);
+		}
+	};
+	placed.forEach((c, i) => link(c, i === 0 ? floating[0] : placed[i - 1]));
+	floating.forEach((c, i) => link(c, i + 1 < floating.length ? floating[i + 1] : placed.at(-1) ?? floating[0]));
+	for(const reader of graph.ambientAccessIds()) {
+		if(graph.isQuoted(reader) || (graph.ambientAccessOf(reader)?.[AmbientAccessKind.Read].size ?? 0) === 0) {
+			continue;
+		}
+		/* every later call runs only after the read */
+		let last = placed.length - 1;
+		while(last >= 0 && before(reader, placed[last])) {
+			last--;
+		}
+		link(reader, last >= 0 ? placed[last] : floating[0]);
 	}
 }
 

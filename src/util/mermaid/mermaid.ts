@@ -74,7 +74,7 @@ export const Mermaid = {
 	 * @param edit - if true, the url will point to the editor, otherwise it will point to the viewer
 	 */
 	codeToUrl(this: void, code: string, edit = false): string {
-		const obj = { code, mermaid: { autoSync: true } };
+		const obj = { code, mermaid: '{}', autoSync: true };
 		/* `btoa` rather than a `Buffer`, so the pages flowR ships can build this url as well */
 		return `https://mermaid.live/${edit ? 'edit' : 'view'}#base64:${toBase64(new TextEncoder().encode(JSON.stringify(obj)))}`;
 	}

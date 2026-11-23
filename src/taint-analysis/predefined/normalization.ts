@@ -39,10 +39,10 @@ const normalizationSources: TaintMapping<typeof normalizationDomain>[] = [
 			argDefinition: [{ pos: 0, name: 'x' }],
 			conditionFn:   ([center, scale], [taint], provenance) => {
 				if(center === true && scale === true) {
-					provenance.note('center = TRUE, scale = TRUE');
+					provenance.meta.note('center = TRUE, scale = TRUE');
 					return ZScore;
 				} else if(center === true) {
-					provenance.note('center = TRUE');
+					provenance.meta.note('center = TRUE');
 					return ZeroCentered;
 				} else if(center === false && scale === false) {
 					return taint.value ?? Top;

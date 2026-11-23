@@ -6,7 +6,6 @@ import { uniqueArray } from '../../util/collections/arrays';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { TaintOrigin } from '../provenance/taint-provenance-graph';
 
-
 /** Per-finding context handed to a {@link ReportTemplate}. */
 export interface FindingContext {
 	/** The name of the taint analysis */
@@ -81,14 +80,18 @@ export function defaultReportTemplate(s: string) {
 
 /** Default pattern for provenance reporting */
 export function withTaintOrigins(message: string, finding: FindingContext): string {
-	const reasons = finding.taintOrigins.map(origin => {
-		const inputs = (origin.inputs ?? []).flatMap(({ taint }) => {
+	const lines = [message];
+	for(const origin of finding.taintOrigins) {
+		const inputs: string[] = [];
+		for(const { taint } of origin.inputs ?? []) {
 			const text = taint?.toString();
-			return taint === undefined || taint.isTop() ? [] : [text];
-		});
+			if(text !== undefined && !taint?.isTop()) {
+				inputs.push(text);
+			}
+		}
 		const withInputs = inputs.length > 0 ? ` with input ${uniqueArray(inputs).join(', ')}` : '';
 		const suffix = origin.notes.length > 0 ? ` (${origin.notes.join(', ')})` : '';
-		return `${'  '.repeat(origin.depth)}╰ ${origin.value.toString()} because: call to ${origin.code}${withInputs}${suffix} in line ${origin.loc?.[0]}`;
-	});
-	return [message, ...reasons].join('\n');
+		lines.push(`${'  '.repeat(origin.depth)}╰ ${origin.value.toString()} because: call to ${origin.code}${withInputs}${suffix} in line ${origin.loc?.[0]}`);
+	}
+	return lines.join('\n');
 }

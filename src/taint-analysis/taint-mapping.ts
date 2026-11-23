@@ -145,16 +145,24 @@ export interface TaintRuleRecord {
 	readonly inputs:      readonly NodeId[]
 }
 
-/** Takes over what the provenance records about a call when {@link suppressDefault} is called */
+/** What a rule adds to the default provenance record of a call */
+export interface TaintRuleProvenanceMeta {
+	/** Adds a note to the record, e.g. the arguments that decided the taint */
+	note(info: string): void
+}
+
+/** Takes over what the provenance records about a call */
 export type TaintRuleRecorder = (record: TaintRuleRecord) => TaintRuleRecord | undefined;
 
+/** How a taint rule takes part in the provenance of the call it decides */
 export interface TaintRuleProvenance {
-	note(info: string): void
+	/** Additions to the default record */
+	readonly meta: TaintRuleProvenanceMeta
 	/**
-	 * Suppresses what the provenance records about the call by default, recording what the given recorder returns instead.
-	 * @param recorder - How the provenance should record instead
+	 * Replaces the default record of the call with what the given recorder returns.
+	 * @param recorder - Gets the default record, including the notes added via {@link TaintRuleProvenance.meta}
 	 */
-	suppressDefault(recorder: TaintRuleRecorder): void
+	record(recorder: TaintRuleRecorder): void
 }
 
 export interface TaintParameterLocation {

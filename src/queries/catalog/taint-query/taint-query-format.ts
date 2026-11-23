@@ -31,7 +31,12 @@ export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: r
 		.taint<AllPredefinedTaintAnalysisNames>()
 		.addPredefined(...flattened);
 
-	if(queries.some(q => q.recordProvenance)) {
+	const provenanceQueryCount = queries.filter(q => q.recordProvenance).length;
+
+	if(provenanceQueryCount > 0) {
+		if(provenanceQueryCount < queries.length) {
+			log.warn('Only some taint queries record provenance, but all of them run in one taint analysis, so all of them record it');
+		}
 		analysis.withProvenance();
 	}
 

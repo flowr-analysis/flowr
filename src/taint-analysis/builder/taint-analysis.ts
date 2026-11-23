@@ -181,7 +181,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> implements Runna
 			const endState = def.resultState(interpreter);
 			const report = def.msg;
 			const idMap = baseConfig.normalizedAst.idMap;
-			const provenanceGraph = provenanceTracker?.graph(id => endState.get(id), idMap);
+			const provenanceGraph = provenanceTracker?.graph(dfg, id => endState.get(id));
 			const findings: TaintFinding[] = report === undefined ? [] : endState.getBottomNodes().map(nodeId => {
 				const node = idMap.get(nodeId);
 				const loc = SourceLocation.fromNode(node);

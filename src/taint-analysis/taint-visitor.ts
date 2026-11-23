@@ -99,7 +99,7 @@ function taintSemantics<Domain extends AnyAbstractDomain>({ domain, mapper }: Ta
 		const resolved = resolveFnCallToTaint(call, mappings, domain, projectArg, ctx.dfg, ctx.context);
 		const { value, role, category } = resolved;
 		state.set(call.id, value);
-		provenance?.record(call, resolved, ctx);
+		provenance?.record(call, resolved);
 		fnCallHook?.({ node, value, wasMapped: mappings.length > 0, projectArg, call, role, category });
 	}
 	return {
@@ -107,7 +107,6 @@ function taintSemantics<Domain extends AnyAbstractDomain>({ domain, mapper }: Ta
 		/* accesses are only tracked with explicit mappings */
 		handleAccessCall:   (state, call, ctx) => handleCall(state, call, ctx, true),
 		handleAssignmentCall(state, _call, ctx, target, source) {
-			provenance?.recordAssignment(target, source, ctx);
 			const value = ctx.getAbstractValue(source);
 			if(value === undefined) {
 				state.remove(target);

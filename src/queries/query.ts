@@ -168,8 +168,8 @@ function runExecutor(data: BasicQueryData, type: SupportedQueryTypes, queries: r
 }
 
 /** Groups the queries by type in the order the types first occur, unfolding virtual queries into the queries they stand for. */
-function groupQueriesByType<Base extends SupportedQueryTypes, VirtualArguments extends VirtualCompoundConstraint<Base>>(queries: Queries<Base, VirtualArguments>): Map<SupportedQueryTypes, Query[]> {
-	return Map.groupBy((queries as Queries).flatMap((q): readonly Query[] => q.type === 'compound' ? SupportedVirtualQueries[q.type](q) : [q]), q => q.type);
+function groupQueriesByType(queries: Queries): Map<SupportedQueryTypes, Query[]> {
+	return Map.groupBy(queries.flatMap((q): readonly Query[] => q.type === 'compound' ? SupportedVirtualQueries[q.type](q) : [q]), q => q.type);
 }
 
 /* a record mapping the query type present to its respective result */

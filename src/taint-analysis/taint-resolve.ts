@@ -13,6 +13,7 @@ import { isUndefined } from '../util/assert';
 import { taintLogger } from './logger';
 import {
 	type TaintRuleProvenance,
+	type TaintRuleProvenanceMeta,
 	type TaintRuleRecord,
 	type TaintRuleRecorder,
 	type TaintCondition,
@@ -25,24 +26,23 @@ import {
 import type { ResolveInfo } from '../dataflow/eval/resolve/alias-tracking';
 
 export interface ResolvedTaint<Domain extends AnyAbstractDomain = AnyAbstractDomain> {
-	readonly value:            Domain
-	readonly role?:            TaintRole
-	readonly category?:        string
+	readonly value:     Domain
+	readonly role?:     TaintRole
+	readonly category?: string
 	/** What the rule that decided the taint states about the provenance of the call */
-	readonly record:           TaintRuleRecord
-	/** Replaces what the provenance records about the call by default, see {@link TaintRuleProvenance.suppressDefault} */
-	readonly suppressDefault?: TaintRuleRecorder
+	readonly record:    TaintRuleRecord
+	/** Replaces what the provenance records about the call by default, see {@link TaintRuleProvenance.record} */
+	readonly recorder?: TaintRuleRecorder
 }
 
 class RuleProvenance implements TaintRuleProvenance {
 	public readonly notes: string[] = [];
-	public recorder?:      TaintRuleRecorder;
-
-	public note(info: string): void {
+	public readonly meta: TaintRuleProvenanceMeta = { note: info => {
 		this.notes.push(info);
-	}
+	} };
+	public recorder?: TaintRuleRecorder;
 
-	public suppressDefault(recorder: TaintRuleRecorder): void {
+	public record(recorder: TaintRuleRecorder): void {
 		this.recorder = recorder;
 	}
 }
@@ -80,14 +80,14 @@ export function resolveFnCallToTaint<Domain extends AnyAbstractDomain>(
 		const provenance = new RuleProvenance();
 		const inputs: NodeId[] = [];
 		const taint = resolveMappingToTaint(mapping, { ...context, inputs }, provenance);
-		return taint === undefined ? [] : [{ role, category: mapping?.category, taint, record: { notes: provenance.notes, passthrough: mapping?.recordProvenance === false, inputs }, suppressDefault: provenance.recorder }];
+		return taint === undefined ? [] : [{ role, category: mapping?.category, taint, record: { notes: provenance.notes, passthrough: mapping?.recordProvenance === false, inputs }, recorder: provenance.recorder }];
 	});
 
 	const value = AbstractDomain.meetAll(roleTaints.map(entry => entry.taint), domain.top());
 
 	// for eval only: the mapping whose taint determined the resolved value, and whether it stems from a function category
 	const winner = roleTaints.find(entry => entry.taint.equals(value));
-	return { value, role: winner?.role, category: winner?.category, record: winner?.record ?? unmapped, suppressDefault: winner?.suppressDefault };
+	return { value, role: winner?.role, category: winner?.category, record: winner?.record ?? unmapped, recorder: winner?.recorder };
 }
 
 type ResolveContext<Domain extends AnyAbstractDomain> = {

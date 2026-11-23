@@ -13,13 +13,21 @@ export const ProgramOrder = {
 	name: 'ProgramOrder',
 	/** The top-level statement holding `id` if the program runs it once, in program order, `undefined` otherwise. */
 	runsOnceAt(this: void, id: NodeId, graph: DataflowGraph): RNode<ParentInformation> | undefined {
+		return graph.getVertex(id)?.cds?.some(cd => ControlDependency.isIterated(cd, graph.idMap)) ? undefined : ProgramOrder.runsWithin(id, graph);
+	},
+	/** The top-level statement holding `id` if it is top-level code outside quotes, also within a loop, whose every round ends before the next statement runs, `undefined` otherwise. */
+	runsWithin(this: void, id: NodeId, graph: DataflowGraph): RNode<ParentInformation> | undefined {
 		const idMap = graph.idMap;
 		const node = idMap?.get(id);
-		if(idMap === undefined || node === undefined || !graph.isRoot(id)
-			|| graph.getVertex(id)?.cds?.some(cd => ControlDependency.isIterated(cd, idMap)) || graph.isQuoted(id)) {
+		if(idMap === undefined || node === undefined || !graph.isRoot(id) || graph.isQuoted(id)) {
 			return undefined;
 		}
 		return RNode.topLevelStatement(node, idMap);
+	},
+	/** Whether all of `id` is done before `later` starts: both are top-level code (see {@link ProgramOrder.runsWithin}), `later` in a later statement. */
+	runsBefore(this: void, id: NodeId, later: NodeId, graph: DataflowGraph): boolean {
+		const at = ProgramOrder.runsWithin(id, graph);
+		return at !== undefined && ProgramOrder.runsWithin(later, graph) !== undefined && statementsAfter(later, at, graph) > 0;
 	},
 	/** How many top-level statements of the same file after `statement` the top-level definition at `definition` is made, `0` for any other. */
 	offset(this: void, definition: NodeId, statement: RNode<ParentInformation> | undefined, graph: DataflowGraph): number {

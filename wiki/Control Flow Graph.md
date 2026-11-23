@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-11-18, 18:09:44 UTC (v2.17.8, R v4.5.0), do not edit directly._
+_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-11-23, 15:23:58 UTC (v2.17.11, R v4.5.0), do not edit directly._
 
 _flowR_ produces three main perspectives of the program: 1)&nbsp;a [normalized version of the AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST), 
 2)&nbsp;a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph), and 3)&nbsp;a control flow graph&nbsp;(CFG).
@@ -302,7 +302,7 @@ f()
 
 <h2 id="cfg-structure">Structure of the Control Flow Graph</h2>
 
-You can produce your very own control flow graph with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L944"><code><span title="The control flow of a whole analysis: the graph of what may run after what, along with the exit points (returns, breaks and nextes) the traversal collected on the way.">extractCfg</span></code></a>.
+You can produce your very own control flow graph with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L954"><code><span title="The control flow of a whole analysis: the graph of what may run after what, along with the exit points (returns, breaks and nextes) the traversal collected on the way.">extractCfg</span></code></a>.
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L469"><code><span title="This class represents the control flow graph of an R program. The control flow may be hierarchical when confronted with function definitions (see CfgVertex and rootIds() ). Edges are in flow order: an edge from a to b means that b is evaluated after a. Reading them backwards (what leads into a vertex) goes through a reverse index built on the first such read. There are two very simple visitors to ...">ControlFlowGraph</span></code></a> class describes everything required to model the control flow graph, with its edge types described by
  <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L225"><code><span title="Helper object for CfgEdge - an edge in the ControlFlowGraph .">CfgEdge</span></code></a> and its vertices by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L84"><code><span title="Helper object for CfgVertex - a vertex in the ControlFlowGraph .">CfgVertex</span></code></a>.
 However, you should be aware of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L803"><code><span title="Summarizes the control information of a program">ControlFlowInformation</span></code></a> interface which adds some additional information the CFG
@@ -615,7 +615,7 @@ for(i in 1:10) b
 <h4 id="cfg-call-links">Extra: Call Links</h4>
 
 The control flow graph is a view on the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph): the dataflow analysis
-records the control flow while it walks the program, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L944"><code><span title="The control flow of a whole analysis: the graph of what may run after what, along with the exit points (returns, breaks and nextes) the traversal collected on the way.">extractCfg</span></code></a> projects it into the shape the control
+records the control flow while it walks the program, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L954"><code><span title="The control flow of a whole analysis: the graph of what may run after what, along with the exit points (returns, breaks and nextes) the traversal collected on the way.">extractCfg</span></code></a> projects it into the shape the control
 flow analyses expect. Because of that, the interprocedural knowledge the dataflow analysis gained is available without
 a second pass over the program.
 

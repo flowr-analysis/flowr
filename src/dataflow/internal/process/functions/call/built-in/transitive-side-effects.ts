@@ -554,7 +554,8 @@ function keptPromisesOfPackageCall(graph: DataflowGraph, call: DataflowGraphVert
 	if(signature === false) {
 		return false;
 	}
-	if(!handsBackCalledValue(graph, call.id)) {
+	/* a replacement (`x$f <- v`) gets the value already evaluated, whatever function it calls */
+	if(DfgVertex.hasOrigin(call, BuiltInProcName.Replacement) || !handsBackCalledValue(graph, call.id)) {
 		return new Set();
 	}
 	const layout = signature.sig === undefined ? undefined : FnSig.layout(signature.sig);

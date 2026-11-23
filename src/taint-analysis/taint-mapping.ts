@@ -2,6 +2,7 @@ import type { AbstractDomain, AbstractValue, AnyAbstractDomain } from '../abstra
 import type { FunctionParameterLocation } from '../abstract-interpretation/data-frame/arguments';
 import type { ArgProps, FnSig } from '../dataflow/environments/built-in-props';
 import { type BrandedIdentifier, Identifier } from '../dataflow/environments/identifier';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export class TaintMapper<Domain extends AnyAbstractDomain> {
 	public readonly mapper: TaintMappingInternal<Domain>[] = [];
@@ -70,7 +71,7 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 			return [rule as TaintMappingInternal<Domain>];
 		}
 		return rule.identifier.map(i => {
-			return { role: rule.role, category: rule.category, identifier: i,
+			return { role: rule.role, category: rule.category, recordProvenance: rule.recordProvenance, identifier: i,
 				...('taint' in rule ? { taint: rule.taint } : { condition: rule.condition }) };
 		});
 	}
@@ -83,9 +84,10 @@ export enum TaintRole {
 }
 
 type TaintMappingBase = {
-	readonly role?:      TaintRole;
-	readonly category?:  string;
-	readonly identifier: Identifier | Identifier[];
+	readonly role?:             TaintRole;
+	readonly category?:         string;
+	readonly recordProvenance?: boolean;
+	readonly identifier:        Identifier | Identifier[];
 };
 
 /** A mapping that assigns a fixed taint to a matched call. */
@@ -118,9 +120,10 @@ export type TaintMapping<Domain extends AnyAbstractDomain> =
 
 /** Internal representation of a taint rule. Each rule is mapped to a single identifier simplifying search and retrieval. */
 type TaintMappingInternal<Domain extends AnyAbstractDomain> = {
-	readonly role?:      TaintRole;
-	readonly category?:  string;
-	readonly identifier: Identifier;
+	readonly role?:             TaintRole;
+	readonly category?:         string;
+	readonly recordProvenance?: boolean;
+	readonly identifier:        Identifier;
 } & ({ taint: AbstractValue<Domain>; } | { condition: TaintCondition<Domain>; });
 
 export type TaintConditionDomain<Domain extends AnyAbstractDomain> =
@@ -128,7 +131,31 @@ export type TaintConditionDomain<Domain extends AnyAbstractDomain> =
 
 /** Function describing how the resulting taint is calculated from incoming arguments and taints */
 export type TaintConditionFunction<Domain extends AnyAbstractDomain> =
-	(args: unknown[], taints: TaintConditionDomain<Domain>[]) => AbstractValue<Domain> | undefined;
+	(args: unknown[], taints: TaintConditionDomain<Domain>[], provenance: TaintRuleProvenance) => AbstractValue<Domain> | undefined;
+
+/**
+ * What the taint rule that decided the taint of a call recorded
+ */
+export interface TaintRuleRecord {
+	/** The notes the mapping left while deciding the taint */
+	readonly notes:       readonly string[]
+	/** Whether the call only passes its input on */
+	readonly passthrough: boolean
+	/** The arguments whose taints or values the mapping read, all arguments for calls without mapping */
+	readonly inputs:      readonly NodeId[]
+}
+
+/** Takes over what the provenance records about a call when {@link suppressDefault} is called */
+export type TaintRuleRecorder = (record: TaintRuleRecord) => TaintRuleRecord | undefined;
+
+export interface TaintRuleProvenance {
+	note(info: string): void
+	/**
+	 * Suppresses what the provenance records about the call by default, recording what the given recorder returns instead.
+	 * @param recorder - How the provenance should record instead
+	 */
+	suppressDefault(recorder: TaintRuleRecorder): void
+}
 
 export interface TaintParameterLocation {
 	pos:   number,

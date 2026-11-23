@@ -35,6 +35,13 @@ alerting off (see `isInfoEntry` in `src/benchmark/summarizer/second-phase/graph.
 threshold hits stay with the measurements, because a release that fails to re-parse more slices *should*
 alert. `mergeInfoSuites` in `stats.js` folds the two back into one suite before anything is drawn.
 
+The action only alerts once a value doubles, and as every metric is uploaded as smaller is better, it reads a
+slice reduction that drops as an improvement. So before the upload, `scripts/benchmark-guard.ts`
+(`npm run benchmark:guard -- <summarized-graph.json> <suite>`) compares the run with the previous one: a
+reduction may drop by at most one percentage point, and the dataflow, slicing, dependencies query, linter, and
+per-file timings, each divided by the `Calibration` of its run, may grow by at most 30%. A pull request fails on a
+regression, a release only reports it.
+
 Not every counter comes out of the benchmark itself. What only the test suite knows, the labeled tests and
 what the metamorphic mutations of the counterexample suite cover, is written by that suite into `coverage/`
 and merged into the info suite afterwards by `scripts/test-label-counts.ts`. The summarizer lives in `src/`

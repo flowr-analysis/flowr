@@ -35,6 +35,7 @@ import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
+import { RAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { AstIdMap, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SourceRange } from '../../../util/range';
@@ -438,15 +439,15 @@ class InputClassifier {
 		});
 	}
 
+	/** the field `input$n` names, or the one `input[[n]]` reads by the value of `n` */
 	private accessedField(call: DataflowGraphVertexFunctionCall): BrandedIdentifier | undefined {
 		const ref = call.args[1] === undefined ? undefined : FunctionArgument.getReference(call.args[1]);
 		const node = ref === undefined ? undefined : this.dfg.idMap?.get(ref);
-		if(RString.is(node)) {
-			return node.content.str;
-		} else if(RSymbol.is(node)) {
+		if(RSymbol.is(node) && RAccess.isNamed(this.dfg.idMap?.get(call.id))) {
 			return Identifier.getName(node.content);
 		}
-		return undefined;
+		const value = RString.is(node) ? node.content.str : this.classifyAt(ref)?.value;
+		return typeof value === 'string' ? value : undefined;
 	}
 
 	/** the argument a built-in hands on: the value of a block or `get` (then `renamed`), the condition of a loop */

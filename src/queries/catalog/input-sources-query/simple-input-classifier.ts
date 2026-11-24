@@ -507,10 +507,10 @@ class InputClassifier {
 	}
 
 	/** the arguments of a sanitizer it takes as code rather than escaping, see {@link InputClassifierConfig.templates} */
-	private templateArguments(call: DataflowGraphVertexFunctionCall): (NodeId | undefined)[] {
+	private templateArguments(call: DataflowGraphVertexFunctionCall): NodeId[] {
 		return (this.config.templates ?? []).filter(t => this.matches(call, [t.call])).flatMap(t => t.argName === '...'
 			? call.args.filter(a => !FunctionArgument.isNamed(a)).map(FunctionArgument.getReference)
-			: [this.argumentReference(call, t.argIdx, t.argName)]);
+			: [this.argumentReference(call, t.argIdx, t.argName)]).filter(isNotUndefined);
 	}
 
 	/** the types and control dependencies of what `ref` yields, `unknown` when it cannot be classified */

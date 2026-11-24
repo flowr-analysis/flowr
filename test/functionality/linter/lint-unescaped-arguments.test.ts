@@ -206,6 +206,8 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLintedLines('a generic re-exported by a driver', parser, 'x <- readline()\nRSQLite::dbGetQuery(con, x)', 'unescaped-arguments', [2]);
 		assertLinter('interpolated statement', parser,
 			shinyServer('dbGetQuery(con, DBI::sqlInterpolate(con, "SELECT * FROM t WHERE x = ?x", x = input$x))'), 'unescaped-arguments', []);
+		assertLinter('a glue_sql template leaving out its optional arguments', parser,
+			shinyServer('dbGetQuery(con, glue::glue_sql("SELECT * FROM t WHERE x = {input$x}", .con = con))'), 'unescaped-arguments', []);
 		assertLinter('pasted user input', parser,
 			shinyServer('dbGetQuery(con, paste0("SELECT * FROM t WHERE x = \'", input$x, "\'"))'), 'unescaped-arguments', [{
 				certainty: LintingResultCertainty.Certain,

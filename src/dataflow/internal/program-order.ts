@@ -4,6 +4,10 @@ import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { ControlDependency } from '../info';
 import type { DataflowGraph } from '../graph/graph';
 import { DfEdge, EdgeType } from '../graph/edge';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { DfgVertex } from '../graph/vertex';
+import { BuiltInProcName } from '../environments/built-in-proc-name';
 
 /**
  * Program order of top-level code outside loops and quotes: it runs once, so its definitions are not there yet for the statements before.
@@ -36,6 +40,30 @@ export const ProgramOrder = {
 	/** Whether the definition at `definition` is made only after `statement` ran: it sits in a later top-level statement, which holds a nested one too, as the function it is nested in does not exist before. */
 	definedLater(this: void, definition: NodeId, statement: RNode<ParentInformation> | undefined, graph: DataflowGraph): boolean {
 		return statementsAfter(definition, statement, graph) > 0;
+	},
+	/**
+	 * Whether the definition at `definition` is made only after `id` ran as the body of a function runs: both are directly in that body, the definition in a later statement of it,
+	 * and each run of the function has a frame of its own. What a promise or an exit hook defers runs later.
+	 */
+	boundLaterInBody(this: void, definition: NodeId, id: NodeId, graph: DataflowGraph): boolean {
+		const idMap = graph.idMap;
+		const fn = idMap === undefined ? undefined : RNode.strictlyEnclosingFunction(id, idMap);
+		const body = fn === undefined ? undefined : idMap?.get(fn);
+		if(idMap === undefined || !RFunctionDefinition.is(body) || !RExpressionList.is(body.body) || RNode.strictlyEnclosingFunction(definition, idMap) !== fn
+			|| graph.isQuoted(id) || graph.getVertex(id)?.cds?.some(cd => cd.byPromise)) {
+			return false;
+		}
+		const statementOf = (node: RNode<ParentInformation> | undefined): RNode<ParentInformation> | undefined => {
+			for(; node !== undefined && node.info.parent !== body.body.info.id; node = node.info.parent === undefined ? undefined : idMap.get(node.info.parent)) {
+				if(DfgVertex.hasOrigin(graph.getVertex(node.info.id), BuiltInProcName.RegisterHook)) {
+					return undefined;
+				}
+			}
+			return node;
+		};
+		const at = statementOf(idMap.get(id));
+		const made = statementOf(idMap.get(definition));
+		return at !== undefined && made !== undefined && made.info.index > at.info.index;
 	},
 	/** For code the program runs once after `statement`, which surely makes the definition `write`: what that code reads no longer sees the definitions made before `statement`. */
 	replaceEarlier(this: void, write: NodeId, statement: RNode<ParentInformation>, graph: DataflowGraph, readsEarlier: boolean): void {

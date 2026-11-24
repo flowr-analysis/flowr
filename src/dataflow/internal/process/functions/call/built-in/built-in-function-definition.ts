@@ -832,7 +832,7 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 
 		const effectiveEnvironment = environmentAt(id);
 		/* a call the program runs once, at the top and outside any loop, cannot see what is defined after it */
-		const definedLater = (definition: NodeId) => ProgramOrder.definedLater(definition, runsOnceAt(id), graph);
+		const definedLater = (definition: NodeId) => ProgramOrder.definedLater(definition, runsOnceAt(id), graph) || ProgramOrder.boundLaterInBody(definition, id, graph);
 
 		/* the dispatch is decided anew, from every method the name may reach */
 		delete (vertex as Partial<Writable<typeof vertex>>).ruledOut;

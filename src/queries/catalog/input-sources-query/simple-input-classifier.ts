@@ -346,39 +346,25 @@ class InputClassifier {
 		const [depth, outer] = [this.open.size, this.lowestOpen];
 		this.open.set(vertex.id, depth);
 		this.lowestOpen = Infinity;
-		const result = this.classifyVertex(vertex);
+		/* inline, as long chains of definitions come close to the stack limit; a function definition is a constant, whatever it computes when called */
+		const result = DfgVertex.isFunctionCall(vertex) ? this.classifyFunctionCall(vertex)
+			: DfgVertex.isVariableDefinition(vertex) ? this.classifyVariableDefinition(vertex)
+				: DfgVertex.isUse(vertex) ? this.classifyVariable(vertex)
+					: this.classifyCdsAndReturn(vertex, compactRecord({ ...sourceOf(vertex.id, InputType.Constant), value: DfgVertex.isValue(vertex) ? this.extractConstantValue(vertex.id) : undefined }));
 		this.open.delete(vertex.id);
-		/* what was classified while this one was open lacks what it brings in */
-		this.provisional.forEach(([, low], id) => low >= depth && this.provisional.delete(id));
 		if(this.lowestOpen < depth) {
+			/* it lacks what the open vertex of its cycle brings in, which is all it lacks until that one is done */
 			this.provisional.set(vertex.id, [result, this.lowestOpen]);
 		} else {
 			if(result.types.length === 0) {
 				result.types.push(InputType.Unknown);
 			}
 			this.cache.set(vertex.id, result);
+			this.provisional.forEach(([, low], id) => low >= depth && this.provisional.delete(id));
 			this.lowestOpen = Infinity;
 		}
 		this.lowestOpen = Math.min(outer, this.lowestOpen);
 		return result;
-	}
-
-	private classifyVertex(vertex: DataflowGraphVertexInfo): InputSource {
-		switch(vertex.tag) {
-			case VertexType.Value: {
-				const value = this.extractConstantValue(vertex.id);
-				return this.classifyCdsAndReturn(vertex, compactRecord({ ...sourceOf(vertex.id, InputType.Constant), value }));
-			}
-			case VertexType.FunctionCall:
-				return this.classifyFunctionCall(vertex);
-			case VertexType.VariableDefinition:
-				return this.classifyVariableDefinition(vertex);
-			case VertexType.Use:
-				return this.classifyVariable(vertex);
-			/* a function definition is a constant: its code is fixed, whatever it computes when called */
-			case VertexType.FunctionDefinition:
-				return this.classifyCdsAndReturn(vertex, sourceOf(vertex.id, InputType.Constant));
-		}
 	}
 
 	/**

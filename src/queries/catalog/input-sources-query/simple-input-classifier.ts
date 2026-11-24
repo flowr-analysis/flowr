@@ -560,6 +560,9 @@ class InputClassifier {
 			if(readsFile && call.args.some(arg => this.classifyAt(FunctionArgument.getReference(arg))?.types.includes(InputType.TempFile))) {
 				types.splice(types.indexOf(InputType.File), 1);
 				types.push(InputType.TempFile);
+			} else if(readsFile && call.args.some(arg => this.isStdin(FunctionArgument.getReference(arg)))) {
+				/* what is read from the standard input is what the user types */
+				types.splice(types.indexOf(InputType.File), 1, ...types.includes(InputType.User) ? [] : [InputType.User]);
 			}
 			/* `quote` yields written code, only capturing (`substitute(x)`) or splicing (`bquote(.(y))`) brings in other code */
 			if(types.includes(InputType.Lang) && this.quotesOnlyWrittenCode(call)) {
@@ -613,6 +616,20 @@ class InputClassifier {
 			trace: constLike ? InputTraceType.Pure : evaluates || edits || interpolated.length > 0 ? InputTraceType.Unknown : InputTraceType.Known,
 			cds:   cdTypes.length > 0 ? uniqueArray(cdTypes) : undefined
 		}));
+	}
+
+	/** Whether the value at `ref` is the standard input: `stdin()`, or `file("stdin")` and the path `"stdin"`, which R opens as it. */
+	private isStdin(ref: NodeId | undefined): boolean {
+		const sources = ref === undefined ? undefined : Dataflow.valueSources(ref, this.whole);
+		return sources !== undefined && sources.length > 0 && sources.every(at => {
+			const node = this.whole.idMap?.get(at);
+			const vertex = this.whole.getVertex(at);
+			if(RString.is(node)) {
+				return node.content.str === 'stdin';
+			}
+			return DfgVertex.isFunctionCall(vertex) && (this.matches(vertex, StdinConnection)
+				|| (this.matches(vertex, FileConnection) && this.isStdin(this.argumentReference(vertex, 0, 'description'))));
+		});
 	}
 
 	/**
@@ -1133,6 +1150,9 @@ export type InputSources = InputSource[];
  * This is either an {@link NodeId|id} of a known functions all of that category (e.g., you can issue a dependencies query before and then pass all
  * identified ids to this query here).
  */
+const StdinConnection: InputClassifierFunctionIdentifiers = [Identifier.make('stdin')];
+const FileConnection: InputClassifierFunctionIdentifiers = [Identifier.make('file')];
+
 export type InputClassifierFunctionIdentifiers = readonly (Identifier | NodeId)[];
 
 /**

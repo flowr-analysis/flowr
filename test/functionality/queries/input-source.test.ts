@@ -158,6 +158,11 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 		});
 	});
 
+	describe('Databases', () => {
+		testQuery('a database driver is no input of its own', 'drv <- RSQLite::SQLite()\nfoo(drv)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@drv', types: [InputType.DerivedConstant], trace: InputTraceType.Alias }]
+		});
+	});
 	describe('Randomness', () => {
 		testQuery('Randomness source', 'x <- runif(1)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@x', types: [InputType.Random], trace: InputTraceType.Alias }]
@@ -280,6 +285,15 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 
 		testQuery('scan with no file arg classified as File and User only', 'x <- scan()\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.User], trace: InputTraceType.Alias }]
+		});
+		/* R opens `file("stdin")` and the path "stdin" as the standard input, as it does `stdin()` */
+		for(const [name, code] of [['stdin()', 'x <- readLines(stdin())'], ['file("stdin")', 'x <- readLines(file("stdin"))'], ['the path "stdin"', 'x <- readLines("stdin")'], ['a connection held in a variable', 'con <- file("stdin"); x <- readLines(con)']]) {
+			testQuery(`reading from the standard input as ${name} is user input`, `${code}\nfoo(x)`, [{ type: 'input-sources', criterion: '2@foo' }], {
+				'2@foo': [{ id: '2@x', types: [InputType.User], trace: InputTraceType.Alias }]
+			});
+		}
+		testQuery('reading a file named otherwise is no user input', 'x <- readLines("stdin.txt")\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File], trace: InputTraceType.Alias }]
 		});
 	});
 

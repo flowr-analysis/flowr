@@ -36,12 +36,13 @@ describe('flowR linter', withTreeSitter(parser => {
 			loc:       SourceRange.from(1, 1, 1, 19),
 			sources:   [{ id: 5, trace: InputTraceType.Known, types: [InputType.Unknown, InputType.DerivedConstant] }]
 		}]);
-		assertLinter('const system', parser, 'system("rm -rf /")', 'problematic-inputs', [{
+		assertLinter('const system', parser, 'system("ls")', 'problematic-inputs', []);
+		assertLinter('const system when constants are reported', parser, 'system("rm -rf /")', 'problematic-inputs', [{
 			certainty: LintingResultCertainty.Certain,
 			name:      'system',
 			loc:       SourceRange.from(1, 1, 1, 18),
 			sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: 'rm -rf /' }]
-		}]);
+		}], undefined, { reportConstantCommands: true });
 		assertLinter(label('unknown system', ['system-calls'], ['linter']), parser, 'system(x)', 'problematic-inputs', [{
 			certainty: LintingResultCertainty.Uncertain,
 			name:      'system',

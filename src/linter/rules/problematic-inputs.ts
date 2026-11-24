@@ -143,9 +143,11 @@ export interface ProblematicInputsResult extends LintingResult {
 }
 
 export interface ProblematicInputsConfig extends MergeableRecord {
-	consider?:             string | string[] | ConsiderSpec | ConsiderSpec[]
-	inputFns?:             InputClassifierConfig
-	pipeCommandFunctions?: PipeCommandFunctionSpec | PipeCommandFunctionSpec[]
+	consider?:               string | string[] | ConsiderSpec | ConsiderSpec[]
+	/** report a considered call without {@link ConsiderSpec.allowedInputTypes} even if it only receives constants (`system("ls")`), off by default */
+	reportConstantCommands?: boolean
+	inputFns?:               InputClassifierConfig
+	pipeCommandFunctions?:   PipeCommandFunctionSpec | PipeCommandFunctionSpec[]
 }
 
 export const PROBLEMATIC_INPUTS = {
@@ -195,7 +197,7 @@ export const PROBLEMATIC_INPUTS = {
 					}
 				}
 			}
-			if(pipeCommand !== undefined || isProblematicForAllowed(sources, evalValues, consider?.allowedInputTypes ?? (pipeSpec !== undefined || sources.some(s => s.types.includes(InputType.TempFile)) ? tempFileAccept : []), consider?.allowedValues, consider?.disallowedValues)) {
+			if(pipeCommand !== undefined || isProblematicForAllowed(sources, evalValues, consider?.allowedInputTypes ?? (!config.reportConstantCommands || pipeSpec !== undefined || sources.some(s => s.types.includes(InputType.TempFile)) ? tempFileAccept : []), consider?.allowedValues, consider?.disallowedValues)) {
 				seen.add(nid);
 				const uncertain = pipeCommand === undefined && hasUnknownSource(sources);
 				results.push({
@@ -231,6 +233,6 @@ export const PROBLEMATIC_INPUTS = {
 		description:   'Finds dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with \'|\' indicating a pipe command injection.',
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.Performance],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: ctx => ({ consider: ctx.env.deriveFromIndex(defaultConsider), pipeCommandFunctions: defaultPipeCommandFunctions })
+		defaultConfig: ctx => ({ consider: ctx.env.deriveFromIndex(defaultConsider), reportConstantCommands: false, pipeCommandFunctions: defaultPipeCommandFunctions })
 	}
 } as const satisfies LintingRule<ProblematicInputsResult, never, ProblematicInputsConfig>;

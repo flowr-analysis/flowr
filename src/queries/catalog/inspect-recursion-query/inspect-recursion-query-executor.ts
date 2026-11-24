@@ -12,33 +12,7 @@ export async function executeRecursionQuery({ analyzer }: BasicQueryData, querie
 
 	const result: Record<NodeId, boolean> = {};
 	for(const [id] of fns) {
-		const recursive = CallGraph.isRecursive(id, cg);
-		/*if(!recursive) {
-			const result = (await analyzer.query([{ type: 'aliases', id: [id] }])).aliases.result.flatMap(t => {
-				if(t[0] === id) {
-					return t[1] as NodeId[];
-				}
-			}).filter(element => isNotUndefined(element));
-			const aliases: Set<NodeId> = new Set(result);
-			if(aliases.size === 0) {
-				break;
-			}
-			const dfg = (await analyzer.dataflow()).graph;
-			const [functionDefinitions, _] = getAllLinkedFunctionDefinitions(new Set([id]), dfg);
-			for(const def of functionDefinitions) {
-				//aliases found in the function body?
-				const h = new Set(def.subflow.graph);
-				for(const i of def.subflow.graph) {
-					for(const [neighbor, edge] of dfg.edgesFrom(i)) {
-						if(DfEdge.isOnlyType({ types: EdgeType.Reads }, edge.types) || DfEdge.isOnlyType({ types: EdgeType.DefinedBy }, edge.types) || DfEdge.isOnlyType({ types: EdgeType.DefinedByOnCall }, edge.types)) {
-							h.add(neighbor);
-						}
-					}
-				}
-				recursive = recursive || h.intersection(aliases).size !== 0;
-			}
-		}*/
-		result[id] = recursive;
+		result[id] = CallGraph.isRecursive(id, cg);
 	}
 
 	return result;

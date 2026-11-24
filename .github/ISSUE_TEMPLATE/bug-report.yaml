@@ -31,7 +31,6 @@ body:
       options:
 # START::Versions
         - <Older> (please consider updating)
-        - v2.17.4 (Nov 7, 2026)
         - v2.17.5 (Nov 8, 2026)
         - v2.17.6 (Nov 13, 2026)
         - v2.17.7 (Nov 15, 2026)
@@ -39,6 +38,7 @@ body:
         - v2.17.9 (Nov 21, 2026)
         - v2.17.10 (Nov 22, 2026)
         - v2.17.11 (Nov 22, 2026)
+        - v2.17.12 (Nov 24, 2026)
         - Unknown
         - Unreleased/Dev 
 # END::Versions

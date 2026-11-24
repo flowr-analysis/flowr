@@ -209,6 +209,9 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 	});
 
 	describe('Narrowing functions', () => {
+		testQuery('match.arg without choices narrows to the default of its parameter', 'function(fmt = c("a", "b")) eval(parse(text = match.arg(fmt)))', [{ type: 'input-sources', criterion: '1@eval' }], {
+			'1@eval': [{ id: '1@parse', types: [InputType.DerivedConstant], trace: InputTraceType.Pure, cds: [InputType.Parameter, InputType.DerivedConstant] }]
+		});
 		testQuery('match.arg narrows to constant choices', 'function(fmt) eval(parse(text=match.arg(fmt, c("a","b","c"))))', [{ type: 'input-sources', criterion: '1@eval' }], {
 			'1@eval': [{
 				id:    '1@parse',

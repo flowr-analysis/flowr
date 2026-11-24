@@ -555,7 +555,7 @@ class InputClassifier {
 			if(!this.matches(call, [narrow.call])) {
 				continue;
 			}
-			const bound = this.argumentReference(call, narrow.argIdx, narrow.argName);
+			const bound = this.argumentReference(call, narrow.argIdx, narrow.argName) ?? this.formalDefault(call);
 			const narrowed = this.classifyAt(bound);
 			if(narrowed) {
 				/* which of the values it is depends on the other arguments */
@@ -722,6 +722,14 @@ class InputClassifier {
 			}
 		}
 		return undefined;
+	}
+
+	/** without its choices, `match.arg(type)` takes the default of the parameter `type` of the function calling it */
+	private formalDefault(call: DataflowGraphVertexFunctionCall): NodeId | undefined {
+		const idMap = this.whole.idMap as AstIdMap;
+		const arg = idMap.get(this.argumentReference(call, 0, 'arg') as NodeId);
+		const fn = RSymbol.is(arg) ? RNode.iterateParents(arg, idMap).find(RFunctionDefinition.is) : undefined;
+		return fn?.parameters.find(p => p.name.content === arg?.content)?.defaultValue?.info.id;
 	}
 
 	/** the one built-in the call runs, if it is called by another name */

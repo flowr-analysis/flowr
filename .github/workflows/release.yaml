@@ -359,6 +359,8 @@ jobs:
         with:
           token:  ${{ secrets.RELEASE_TOKEN }}
           mutation-results: false
+          # the pull requests fail on a regression already, a release only reports it
+          guard: warn
 
       - name: "⬆️ Pull latest to avoid conflicts"
         run: git pull origin main --no-edit

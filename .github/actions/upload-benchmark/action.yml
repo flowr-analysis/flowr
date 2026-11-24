@@ -19,6 +19,10 @@ inputs:
     description: "Whether the counters include the mutation test results"
     required: false
     default: "true"
+  guard:
+    description: "`fail` to fail when the run regressed against the previous one (see `scripts/benchmark-guard.ts`), `warn` to only report it"
+    required: false
+    default: "fail"
 
 runs:
   using: composite
@@ -35,6 +39,12 @@ runs:
         mutation=""
         if [ "${{ inputs.mutation-results }}" = "true" ]; then mutation="--mutation-results test-labels/flowr-mutation-test-results.json"; fi
         bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json --mutations test-labels/flowr-mutation-details.json $mutation test-labels/flowr-test-details.json benchmark-${{ inputs.suite }}-${{ inputs.parser }}/${{ inputs.suite }}/${{ inputs.suite }}-summarized-graph-info.json"
+
+    # the action below alerts only once a value doubles and reads a smaller slice reduction as an improvement
+    - name: "🛡️ Guard against Regressions (${{ inputs.suite }}, ${{ inputs.parser }})"
+      shell: bash
+      run: |
+        npx ts-node --transpile-only scripts/benchmark-guard.ts "benchmark-${{ inputs.suite }}-${{ inputs.parser }}/${{ inputs.suite }}/${{ inputs.suite }}-summarized-graph.json" '"${{ inputs.suite }}" Benchmark Suite${{ inputs.parser == 'tree-sitter' && ' (tree-sitter)' || '' }}' || [ "${{ inputs.guard }}" != "fail" ]
 
     - name: "🥄 Merge and Produce Performance Results (${{ inputs.suite }}, ${{ inputs.parser }})"
       uses: benchmark-action/github-action-benchmark@v1

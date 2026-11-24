@@ -205,7 +205,7 @@ export const UNDEFINED_SYMBOL = {
 
 		// hint an unloaded package that exports `name` (e.g. `ggplot` -> `ggplot2`), from the package database
 		const attached = new Set(AttachedBasePackages);
-		const hintPackagesFor = (name: BrandedIdentifier): BrandedNamespace[] => deps.packagesExporting(name).filter(p => !attached.has(p)).slice(0, MaxHintPackages);
+		const hintPackagesFor = memoize((name: BrandedIdentifier): BrandedNamespace[] => deps.packagesExporting(name).filter(p => !attached.has(p)).slice(0, MaxHintPackages));
 
 		/** shared resolution logic for a name used either as a function call or a variable */
 		function check(node: RNodeWithParent, name: BrandedIdentifier, namespace: BrandedNamespace | undefined, kind: UndefinedSymbolKind): UndefinedSymbolResult | undefined {
@@ -249,7 +249,8 @@ export const UNDEFINED_SYMBOL = {
 			if(loc === undefined) {
 				return undefined;
 			}
-			const availableInPackages = namespace === undefined ? hintPackagesFor(name) : [];
+			/* the database records no data sets, so only a called name has packages worth hinting at */
+			const availableInPackages = namespace === undefined && kind === 'function' ? hintPackagesFor(name) : [];
 			return { certainty: LintingResultCertainty.Uncertain, name, kind, involvedId: id, loc, ...(availableInPackages.length > 0 ? { availableInPackages } : {}) } satisfies UndefinedSymbolResult;
 		}
 

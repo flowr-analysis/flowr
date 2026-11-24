@@ -158,6 +158,11 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 		});
 	});
 
+	describe('Databases', () => {
+		testQuery('a database driver is no input of its own', 'drv <- RSQLite::SQLite()\nfoo(drv)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@drv', types: [InputType.DerivedConstant], trace: InputTraceType.Alias }]
+		});
+	});
 	describe('Randomness', () => {
 		testQuery('Randomness source', 'x <- runif(1)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@x', types: [InputType.Random], trace: InputTraceType.Alias }]
@@ -186,7 +191,22 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 		});
 
 		testQuery('Recursive function that may read file', 'f <- function(n) { if(n==0) read.csv("a") else f(n-1) }\ny <- f(1)\nfoo(y)', [{ type: 'input-sources', criterion: '3@foo' }], {
-			'3@foo': [{ id: '3@y', types: [InputType.Unknown], trace: InputTraceType.Alias }]
+			'3@foo': [{ id: '3@y', types: [InputType.File], trace: InputTraceType.Alias, cds: [InputType.DerivedConstant] }]
+		});
+		testQuery('an unknown effect after the use cannot rebind the variable of a for loop', 'vs <- c("a", "b")\nfor(v in vs) { foo(v); eval(parse(text = x)) }', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2:20', types: [InputType.DerivedConstant], trace: InputTraceType.Pure, cds: [InputType.DerivedConstant] }]
+		});
+		testQuery('an unknown effect before the use may rebind the variable of a for loop', 'for(v in c("a", "b")) { eval(parse(text = x)); foo(v) }', [{ type: 'input-sources', criterion: '1@foo' }], {
+			'1@foo': [{ id: '1:52', types: [InputType.DerivedConstant, InputType.Unknown], trace: InputTraceType.Pure, cds: [InputType.DerivedConstant] }]
+		});
+		testQuery('a counter a loop increments stays constant', 't <- 2\nfor(v in 1:3) {\n  foo(t)\n  t = t + 1\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@t', types: [InputType.Constant, InputType.DerivedConstant], trace: InputTraceType.Alias, cds: [InputType.DerivedConstant] }]
+		});
+		testQuery('a value a loop updates keeps its source', 's <- read.csv("a")\nwhile(u) {\n  foo(s)\n  s <- s + 1\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@s', types: [InputType.File, InputType.Constant, InputType.DerivedConstant], trace: InputTraceType.Alias, cds: [InputType.Unknown] }]
+		});
+		testQuery('a definition before a loop binds anew after an unknown effect', 'assign(paste0("t_", n), 5)\nt <- 2\nfor(v in 1:3) {\n  foo(t)\n  t = t + 1\n}', [{ type: 'input-sources', criterion: '4@foo' }], {
+			'4@foo': [{ id: '4@t', types: [InputType.Constant, InputType.DerivedConstant], trace: InputTraceType.Alias, cds: [InputType.DerivedConstant] }]
 		});
 	});
 
@@ -200,6 +220,9 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 	});
 
 	describe('Narrowing functions', () => {
+		testQuery('match.arg without choices narrows to the default of its parameter', 'function(fmt = c("a", "b")) eval(parse(text = match.arg(fmt)))', [{ type: 'input-sources', criterion: '1@eval' }], {
+			'1@eval': [{ id: '1@parse', types: [InputType.DerivedConstant], trace: InputTraceType.Pure, cds: [InputType.Parameter, InputType.DerivedConstant] }]
+		});
 		testQuery('match.arg narrows to constant choices', 'function(fmt) eval(parse(text=match.arg(fmt, c("a","b","c"))))', [{ type: 'input-sources', criterion: '1@eval' }], {
 			'1@eval': [{
 				id:    '1@parse',
@@ -262,6 +285,15 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 
 		testQuery('scan with no file arg classified as File and User only', 'x <- scan()\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.User], trace: InputTraceType.Alias }]
+		});
+		/* R opens `file("stdin")` and the path "stdin" as the standard input, as it does `stdin()` */
+		for(const [name, code] of [['stdin()', 'x <- readLines(stdin())'], ['file("stdin")', 'x <- readLines(file("stdin"))'], ['the path "stdin"', 'x <- readLines("stdin")'], ['a connection held in a variable', 'con <- file("stdin"); x <- readLines(con)']]) {
+			testQuery(`reading from the standard input as ${name} is user input`, `${code}\nfoo(x)`, [{ type: 'input-sources', criterion: '2@foo' }], {
+				'2@foo': [{ id: '2@x', types: [InputType.User], trace: InputTraceType.Alias }]
+			});
+		}
+		testQuery('reading a file named otherwise is no user input', 'x <- readLines("stdin.txt")\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File], trace: InputTraceType.Alias }]
 		});
 	});
 
@@ -443,7 +475,14 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 			'2@foo': [{ id: '2@x', types: [InputType.Unknown, InputType.DerivedConstant], trace: InputTraceType.Alias }]
 		});
 		testQuery('tryCatch may yield its block', "x <- tryCatch(readLines('f'), error = function(e) 'a')\nfoo(x)", q('2@foo'), {
-			'2@foo': [{ id: '2@x', types: [InputType.Constant, InputType.File], trace: InputTraceType.Alias, cds: [InputType.Unknown] }]
+			'2@foo': [{ id: '2@x', types: [InputType.Constant, InputType.File], trace: InputTraceType.Alias, cds: [InputType.File] }]
+		});
+		testQuery('a function handed to an apply gets what the apply binds', 'lapply(c("a", "b"), function(i) foo(i))\nf <- function(j) foo(j)\nsapply(c("a"), f)', [{ type: 'input-sources', criterion: ['1@foo', '2@foo'] }], {
+			'1@foo': [{ id: '1:37', types: [InputType.DerivedConstant], trace: InputTraceType.Pure }],
+			'2@foo': [{ id: '2:22', types: [InputType.DerivedConstant], trace: InputTraceType.Pure }]
+		});
+		testQuery('a function handed to an apply also gets its other callers', 'h <- function(a) foo(a)\nh("c")\nlapply(readline(), h)', q('1@foo'), {
+			'1@foo': [{ id: '1:22', types: [InputType.Constant, InputType.User], trace: InputTraceType.Alias }]
 		});
 		testQuery('a parameter of a function handed on as a value is not bound by its direct callers', "h <- function(a) { x <- a; foo(x) }\nh('c')\ntryCatch(stop(readline()), error = h)", q('1@foo'), {
 			'1@foo': [{ id: '$9', types: [InputType.Constant, InputType.Scope, InputType.Parameter], trace: InputTraceType.Alias }]
@@ -501,11 +540,14 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 		testQuery('a built-in handed to purrr by name yields what it returns', 'x <- purrr::map(1:3, runif)\nfoo(x)', q('2@foo'), {
 			'2@foo': [{ id: '2@x', types: [InputType.DerivedConstant, InputType.Random], trace: InputTraceType.Alias }]
 		});
-		testQuery('a function held as a looked up value says nothing about its result', 'f <- get("readLines")\nfoo(f("a"))', q('2@foo'), {
-			'2@foo': [{ id: '2@f', types: [InputType.Unknown], trace: InputTraceType.Unknown }]
+		testQuery('a built-in held as a looked up value is that built-in', 'f <- get("readLines")\nfoo(f("a"))', q('2@foo'), {
+			'2@foo': [{ id: '2@f', types: [InputType.File], trace: InputTraceType.Unknown }]
+		});
+		testQuery('a built-in held by another name is that built-in', 'rl <- readline\na <- rl()\nfoo(a)', q('3@foo'), {
+			'3@foo': [{ id: '3@a', types: [InputType.User], trace: InputTraceType.Alias }]
 		});
 		testQuery('whether a handler answers depends on the whole block', 'x <- tryCatch({ readLines("a"); 1 }, error = function(e) 2)\nfoo(x)', q('2@foo'), {
-			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.File, InputType.Unknown, InputType.Constant] }]
+			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.File, InputType.Constant] }]
 		});
 		testQuery('a namespaced call of a package outside base R is no base function', "x <- mypkg::fetch_value('n')\nfoo(x)", q('2@foo'), {
 			'2@foo': [{ id: '2@x', types: [InputType.Unknown], trace: InputTraceType.Alias }]
@@ -530,6 +572,9 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 	describe('Shiny (issue #2625)', () => {
 		testQuery('a read of input$n links to the widget declaring it', 'library(shiny)\nui <- fluidPage(textInput("n", "Name"))\nserver <- function(input, output, session) {\n  foo(input$n)\n}', [{ type: 'input-sources', criterion: '4@foo' }], {
 			'4@foo': [{ id: '4@$', types: [InputType.User], trace: InputTraceType.Unknown, name: 'n', declaredAt: ['2@textInput'] }]
+		});
+		testQuery('a read of input[[nm]] links to the widget its value names', 'library(shiny)\nui <- fluidPage(textInput("n", "Name"))\nserver <- function(input, output, session) {\n  nm <- "n"\n  foo(input[[nm]])\n}', [{ type: 'input-sources', criterion: '5@foo' }], {
+			'5@foo': [{ id: '5@[[', types: [InputType.User], trace: InputTraceType.Unknown, name: 'n', declaredAt: ['2@textInput'] }]
 		});
 		testQuery('input$n is user input', 'library(shiny)\nserver <- function(input, output, session) {\n  foo(input$n)\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
 			'3@foo': [{ id: '3@$', types: [InputType.User], trace: InputTraceType.Unknown, name: 'n' }]

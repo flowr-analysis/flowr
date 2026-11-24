@@ -17,6 +17,7 @@ import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '..
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RConstant, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { ProgramOrder } from '../../../../program-order';
+import { AmbientAccessKind } from '../../../../../graph/ambient-access';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import { type BrandedIdentifier, hasEnvState, Identifier, type IdentifierDefinition, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { type CallRuledOut, type DataflowGraphVertexFunctionCall, DfgVertex, VertexType, FunctionDispatch } from '../../../../../graph/vertex';
@@ -39,6 +40,7 @@ import { AmbientStateName } from '../../../../../environments/ambient-state-name
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { fnEntry, queryFnProps } from '../../../../../environments/query-fn-props';
@@ -365,7 +367,13 @@ export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironmen
 	}
 	// track *all* function definitions, including those nested within, resolving their 'in' via the lowest scope (popped after this definition)
 	for(const [fn, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
-		subflow.in = resolveIngoingRefs(subflow.in, outEnvironment, (ingoing, resolved) => {
+		const calls = callsWithinBody(fn, graph);
+		subflow.in = resolveIngoingRefs(subflow.in, outEnvironment, (ingoing, found) => {
+			/* a binding the body makes only after every call of the closure is not one any call sees */
+			const resolved = calls === undefined ? found : found.filter(ref => !calls.every(call => ProgramOrder.boundLaterInBody(ref.nodeId, call, graph)));
+			if(resolved.length === 0) {
+				return true;
+			}
 			const writes = superWrites.get(ingoing.name as Identifier);
 			for(const ref of resolved) {
 				graph.addEdge(ingoing.nodeId, ref.nodeId, EdgeType.Reads);
@@ -404,6 +412,22 @@ export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironmen
 		openReads.length = 0;
 		openReads.push(...kept);
 	}
+}
+
+/**
+ * The calls of the closure defined at `fn` if the body around it can call it nowhere else: it is bound by a statement of the body (that is not the
+ * value the body returns) and every read of that binding calls it, `undefined` if the closure may escape or the body may reach it in ways flowR does not see.
+ */
+function callsWithinBody(fn: NodeId, graph: DataflowGraph): NodeId[] | undefined {
+	const idMap = graph.idMap;
+	const assignment = idMap?.get(idMap.get(fn)?.info.parent ?? '');
+	const block = assignment?.info.parent === undefined ? undefined : idMap?.get(assignment.info.parent);
+	if(idMap === undefined || graph.unknownSideEffects.size > 0 || !RBinaryOp.is(assignment) || assignment.rhs.info.id !== fn || !RExpressionList.is(block)
+		|| block.children.at(-1) === assignment || !DfgVertex.hasOrigin(graph.getVertex(assignment.info.id), BuiltInProcName.Assignment)) {
+		return undefined;
+	}
+	const readers = Dataflow.sourcesOf(graph, assignment.lhs.info.id, EdgeType.Reads);
+	return readers.length > 0 && readers.every(r => DfgVertex.isFunctionCall(graph.getVertex(r)) && Dataflow.hasEdge(graph, r, fn, EdgeType.Calls)) ? readers : undefined;
 }
 
 /** Whether an enclosing scope binds the name of a call within a closure before the closure exists, see {@link boundBeforeClosure}: then the call reaches only what its reads do, and never looks further out, whatever the end of the script binds there. */
@@ -773,6 +797,8 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 		const fn = enclosingOf(at);
 		return fn === undefined || graph.edgesTo(fn).values().some(e => DfEdge.includesType(e, EdgeType.Calls));
 	});
+	/* the calls that may run a method bound by a name we cannot tell */
+	const runsUnknownMethod = new Set<NodeId>();
 	/* per function, the `NextMethod` calls of its body */
 	const namedNextCalls = new Map<NodeId, NodeId[]>();
 	for(const [id, vertex] of calls) {
@@ -814,9 +840,9 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 			}
 			continue;
 		}
-		/* a method the code binds by a name we cannot tell may be one the call dispatches to */
-		if(unknownMethodsAt.some(at => !ProgramOrder.definedLater(at, runsOnceAt(id), graph)) && ((handsObjects(vertex, graph.idMap) && runWithin(name).length > 0) || dispatchesOnClass(name, environmentAt(id), databaseInfoOf))) {
-			graph.markIdForUnknownSideEffects(id);
+		/* a method the code binds by a name we cannot tell may be one the call dispatches to, a function nothing resolves is just one we cannot see */
+		if(unknownMethodsAt.some(at => !ProgramOrder.definedLater(at, ProgramOrder.runsWithin(id, graph), graph)) && ((handsObjects(vertex, graph.idMap) && runWithin(name).length > 0) || CallProps.hasAny(fnPropsOf(name, environmentAt(id), databaseInfoOf), CallProp.Generic))) {
+			runsUnknownMethod.add(id);
 		}
 		/* the code writes a `<name>.<class>`, so a built-in `name` that dispatches may reach it */
 		const mayDispatch = s3MethodPrefixesOf(name).some(p => generics.has(p));
@@ -829,7 +855,7 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 
 		const effectiveEnvironment = environmentAt(id);
 		/* a call the program runs once, at the top and outside any loop, cannot see what is defined after it */
-		const definedLater = (definition: NodeId) => ProgramOrder.definedLater(definition, runsOnceAt(id), graph);
+		const definedLater = (definition: NodeId) => ProgramOrder.definedLater(definition, runsOnceAt(id), graph) || ProgramOrder.boundLaterInBody(definition, id, graph);
 
 		/* the dispatch is decided anew, from every method the name may reach */
 		delete (vertex as Partial<Writable<typeof vertex>>).ruledOut;
@@ -1028,7 +1054,9 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 		FunctionSemantics.call.match.onCallAndLink(args, parameters, graph);
 	}
 	FunctionSemantics.call.match.unforceUnreadDots(graph);
-	linkLiftedReads(graph, lifted, enclosingOf, environmentAt, runsOnceAt);
+	const topLevelCallsOf = topLevelCallsRunning(graph, enclosingOf);
+	linkLiftedReads(graph, lifted, topLevelCallsOf, environmentAt, runsOnceAt);
+	linkStateReadsToUnknownMethods(graph, runsUnknownMethod, unknownMethodsAt, enclosingOf, topLevelCallsOf);
 	/* a method only a next-method call reaches is linked by no call that resolves what it reads */
 	const called = new Set(graph.verticesOfType(VertexType.FunctionCall).filter(([, v]) => !DfgVertex.hasOrigin(v, BuiltInProcName.S3DispatchNext)).flatMap(([id]) => Dataflow.targetsOf(graph, id, EdgeType.Calls)));
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
@@ -1046,10 +1074,103 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 	}
 }
 
-/** Resolves each global read of a nested call where the enclosing function is called. */
-function linkLiftedReads(graph: DataflowGraph, lifted: [NodeId, IdentifierReference, NodeId][], enclosingOf: (id: NodeId) => NodeId | undefined, environmentAt: (call: NodeId) => REnvironmentInformation, runsOnceAt: (call: NodeId) => RNode<ParentInformation> | undefined): void {
-	/* the top-level calls that run a definition, through the calls of the functions that enclose its calls */
-	const topLevelCallsOf = memoize((start: NodeId) => {
+/**
+ * A method we cannot see may read and change the session state (`options(digits = 3)`), so a read of that state reads each call
+ * that may dispatch to such a method and may run before it. The calls stay out of the slices that read no state.
+ * To keep this linear, each call reads the one running before it and a read reads only the last call that may run before it.
+ * A call in a function runs where the top-level calls running the function do, so these take its place in the order and it reads
+ * what runs up to the last of them. A call in a function nothing calls runs, if at all, once the code is done (as does the `<<-` of
+ * such a function), and a call we cannot place reads all of them and is read by all of them.
+ * A read that runs before every binding we cannot tell sees no such method at all.
+ */
+function linkStateReadsToUnknownMethods(graph: DataflowGraph, calls: ReadonlySet<NodeId>, unknownMethodsAt: readonly NodeId[], enclosingOf: (id: NodeId) => NodeId | undefined, topLevelCallsOf: (definition: NodeId) => ReadonlySet<NodeId>): void {
+	/* quoted code runs only where it is evaluated, which is a call of its own */
+	const runs = calls.values().filter(c => !graph.isQuoted(c)).toArray();
+	if(runs.length === 0) {
+		return;
+	}
+	const before = (a: NodeId, b: NodeId) => ProgramOrder.runsBefore(a, b, graph);
+	const inOrder = (a: NodeId, b: NodeId) => before(a, b) ? -1 : before(b, a) ? 1 : 0;
+	const placed = (c: NodeId) => ProgramOrder.runsWithin(c, graph) !== undefined;
+	/* the top-level calls `id` runs at in program order, `undefined` if we cannot place one of them */
+	const sitesOf = (id: NodeId): NodeId[] | undefined => {
+		if(placed(id)) {
+			return [id];
+		}
+		const fn = enclosingOf(id);
+		/* a call the dataflow adds for a function handed to another (`sapply(l, function(x) f(x))`) runs where that one runs */
+		const sites = fn === undefined ? [] : [...topLevelCallsOf(fn)].flatMap(s => graph.idMap?.has(s) === false ? Dataflow.sourcesOf(graph, s, EdgeType.Calls).flatMap(handing => {
+			const outer = graph.isRoot(handing) ? undefined : enclosingOf(handing);
+			return outer === undefined ? [handing] : [...topLevelCallsOf(outer)];
+		}) : [s]);
+		return fn !== undefined && sites.every(placed) ? sites.sort(inOrder) : undefined;
+	};
+	/* before every binding we cannot tell, there is no method we cannot see */
+	const afterUnknown = (site: NodeId) => unknownMethodsAt.some(at => !before(site, at));
+	/* the top-level calls in program order, each running a call that may dispatch or a function holding one */
+	const chain = new Set<NodeId>();
+	const inFunctions: [NodeId, NodeId[]][] = [];
+	const atEnd: NodeId[] = [];
+	const floating: NodeId[] = [];
+	for(const id of runs) {
+		const sites = sitesOf(id);
+		if(sites === undefined) {
+			floating.push(id);
+		} else if(sites.length === 0) {
+			atEnd.push(id);
+		} else if(sites.some(afterUnknown)) {
+			const later = sites.filter(afterUnknown);
+			later.forEach(s => chain.add(s));
+			if(later[0] !== id) {
+				inFunctions.push([id, later]);
+			}
+		}
+	}
+	const ordered = [...chain].sort(inOrder);
+	/* the last call of the chain that does not run after `site` */
+	const upTo = (site: NodeId) => {
+		let last = ordered.length - 1;
+		while(last >= 0 && before(site, ordered[last])) {
+			last--;
+		}
+		return ordered[last];
+	};
+	const link = (from: NodeId, to: NodeId | undefined) => {
+		if(to !== undefined && from !== to) {
+			graph.addEdge(from, to, EdgeType.Reads);
+		}
+	};
+	ordered.forEach((c, i) => link(c, i === 0 ? floating[0] : ordered[i - 1]));
+	/* the call that runs the function runs what it runs, which sees what ran before the last of these calls */
+	for(const [id, sites] of inFunctions) {
+		sites.forEach(s => link(s, id));
+		link(id, upTo(sites[sites.length - 1]));
+	}
+	const end = ordered.at(-1) ?? floating[0];
+	floating.forEach((c, i) => link(c, i + 1 < floating.length ? floating[i + 1] : end));
+	atEnd.forEach((c, i) => link(c, i === 0 ? end : atEnd[i - 1]));
+	for(const reader of graph.ambientAccessIds()) {
+		if(graph.isQuoted(reader) || (graph.ambientAccessOf(reader)?.[AmbientAccessKind.Read].size ?? 0) === 0) {
+			continue;
+		}
+		const site = sitesOf(reader)?.at(-1);
+		if(site === undefined) {
+			link(reader, atEnd.at(-1) ?? end);
+			continue;
+		}
+		/* every later call runs only after the read */
+		const last = upTo(site);
+		if(last !== undefined) {
+			link(reader, last);
+		} else if(unknownMethodsAt.some(at => at !== site && !before(site, at))) {
+			link(reader, floating[0]);
+		}
+	}
+}
+
+/** The top-level calls that run a definition, through the calls of the functions that enclose its calls. */
+function topLevelCallsRunning(graph: DataflowGraph, enclosingOf: (id: NodeId) => NodeId | undefined): (definition: NodeId) => ReadonlySet<NodeId> {
+	return memoize((start: NodeId) => {
 		const calls = new Set<NodeId>();
 		const definitions = new Set<NodeId>([start]);
 		for(const definition of definitions) {
@@ -1067,6 +1188,10 @@ function linkLiftedReads(graph: DataflowGraph, lifted: [NodeId, IdentifierRefere
 		}
 		return calls;
 	});
+}
+
+/** Resolves each global read of a nested call where the enclosing function is called. */
+function linkLiftedReads(graph: DataflowGraph, lifted: [NodeId, IdentifierReference, NodeId][], topLevelCallsOf: (definition: NodeId) => ReadonlySet<NodeId>, environmentAt: (call: NodeId) => REnvironmentInformation, runsOnceAt: (call: NodeId) => RNode<ParentInformation> | undefined): void {
 	/* a call reads several states under its own id (`#wd`, `#file:f`), so a read is told apart by its name as well */
 	const seen = new DefaultMap<NodeId, DefaultMap<NodeId, Set<string>>>(() => new DefaultMap(() => new Set()));
 	for(let next = lifted.pop(); next !== undefined; next = lifted.pop()) {

@@ -9,6 +9,10 @@ import type { AnyBuiltInDefinition } from '../built-in-config';
 export const DatabaseDefinitions = [
 	fn(pkg(PkgName.Dbi, 'dbDisconnect'), BuiltInProcName.DefaultReadAllArgs,
 		{ libFn: true, props: CallProp.Invisible, tags: [SemanticCallTag.Closes, SemanticCallTag.Database], sig: sig({ conn: Forced.Handle, '...': Forced.Value }) }),
+	/* a driver object only names the kind of database; which one, and what it holds, the connection's arguments say */
+	...([[PkgName.Rsqlite, 'SQLite'], ['RPostgres', 'Postgres'], ['RPostgres', 'Redshift'], ['RPostgreSQL', 'PostgreSQL'], ['RMariaDB', 'MariaDB'],
+		['RMySQL', 'MySQL'], ['odbc', 'odbc'], ['duckdb', 'duckdb'], ['bigrquery', 'bigquery']] as const).map(([p, d]) =>
+		fn(pkg(p, d), BuiltInProcName.Default, { libFn: true, props: CallProp.Pure })),
 	fn(pkg(PkgName.Dbi, 'dbQuoteString', 'dbQuoteLiteral', 'dbQuoteIdentifier'), BuiltInProcName.Default,
 		{ libFn: true, props: CallProp.Pure, sig: sig({ conn: Forced.Handle, x: Forced.Value, '...': ArgProp.Value }) }),
 	/* these escape the values they interpolate, but not the template they are handed */

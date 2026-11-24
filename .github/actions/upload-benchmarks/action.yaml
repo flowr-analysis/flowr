@@ -13,6 +13,10 @@ inputs:
     description: "Whether the counters include the mutation test results"
     required: false
     default: "true"
+  guard:
+    description: "`fail` to fail when a run regressed against the previous one, `warn` to only report it"
+    required: false
+    default: "fail"
 
 runs:
   using: composite
@@ -26,6 +30,7 @@ runs:
         token:            ${{ inputs.token }}
         ref:              ${{ inputs.ref }}
         mutation-results: ${{ inputs.mutation-results }}
+        guard:            ${{ inputs.guard }}
 
     - name: "⬆️ Benchmark (artificial, tree-sitter)"
       uses: ./.github/actions/upload-benchmark
@@ -35,6 +40,7 @@ runs:
         token:            ${{ inputs.token }}
         ref:              ${{ inputs.ref }}
         mutation-results: ${{ inputs.mutation-results }}
+        guard:            ${{ inputs.guard }}
 
     - name: "⬆️ Benchmark (real-world, r-shell)"
       uses: ./.github/actions/upload-benchmark
@@ -44,6 +50,7 @@ runs:
         token:            ${{ inputs.token }}
         ref:              ${{ inputs.ref }}
         mutation-results: ${{ inputs.mutation-results }}
+        guard:            ${{ inputs.guard }}
 
     - name: "⬆️ Benchmark (real-world, tree-sitter)"
       uses: ./.github/actions/upload-benchmark
@@ -53,3 +60,4 @@ runs:
         token:            ${{ inputs.token }}
         ref:              ${{ inputs.ref }}
         mutation-results: ${{ inputs.mutation-results }}
+        guard:            ${{ inputs.guard }}

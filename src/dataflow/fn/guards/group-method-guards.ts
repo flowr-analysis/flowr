@@ -3,6 +3,7 @@ import type { GuardFactsLookup } from '../../environments/guard-facts';
 import { s3GroupGenericOf } from '../../environments/group-generics';
 import { RGroupMethodGuards } from '../../../data/r-group-method-guards.generated';
 import { GuardTerm } from './guard-term';
+import { getOrSet } from '../../../util/collections/defaultmap';
 
 /**
  * What a value of a class vector R makes, like `c("POSIXct", "POSIXt")`, runs for a member of a group generic, and what that asks:
@@ -24,11 +25,19 @@ const OfTheFrame: ReadonlySet<BrandedIdentifier> = new Set(['nargs', 'missing', 
 
 /** The condition with every part that reads the frame of the method weakened into `TRUE`, the condition being in negation normal form. */
 function withoutFrame(this: void, term: GuardTerm): GuardTerm {
-	if(GuardTerm.isCall(term) && term.known && (term.fn === '&&' || term.fn === '||')) {
+	if(!OfTheFrame.values().some(fn => GuardTerm.mentions(term, fn))) {
+		return term;
+	} else if(GuardTerm.isCall(term) && term.known && (term.fn === '&&' || term.fn === '||')) {
 		const operands = term.args.map(a => withoutFrame(a.value));
 		return term.fn === '&&' ? GuardTerm.all(...operands) : GuardTerm.any(...operands);
 	}
-	return [...OfTheFrame].some(fn => GuardTerm.mentions(term, fn)) ? GuardTerm.True : term;
+	return GuardTerm.True;
+}
+
+/** the methods of the member with their conditions {@link withoutFrame|without the frame}, worked out once, as they are R's own */
+const weakened = new Map<string, readonly GroupMethodGuard[]>();
+function methodsOf(this: void, name: BrandedIdentifier): readonly GroupMethodGuard[] {
+	return getOrSet(weakened, String(name), () => (RGroupMethodGuards()[String(name)] ?? []).map(e => ({ ...e, requires: withoutFrame(e.requires) })));
 }
 
 /** The operands a member of the group dispatches on: both of an operator, the first one else. */
@@ -45,12 +54,11 @@ export function dispatchedOperands(this: void, name: BrandedIdentifier): number 
  * @param excluded  - the classes with a method of the program, which may run instead
  */
 export function groupMethodConditions(this: void, name: BrandedIdentifier, operands: readonly (GuardTerm | undefined)[], excluded: ReadonlySet<string>, facts?: GuardFactsLookup): GuardTerm[] {
-	const entries = RGroupMethodGuards()[String(name)] ?? [];
 	const dispatched = operands.slice(0, dispatchedOperands(name));
 	/* the classes asking the same, so that each operand needs only one condition for them */
 	const byAsked = new Map<string, { readonly asked: GuardTerm, readonly classes: (readonly string[])[] }>();
-	for(const { classes, formals, requires } of entries.filter(e => !e.classes.some(c => excluded.has(c)))) {
-		const asked = GuardTerm.substituteCondition(withoutFrame(requires), new Map(formals.slice(0, dispatched.length).flatMap((f, at) => {
+	for(const { classes, formals, requires } of methodsOf(name).filter(e => !e.classes.some(c => excluded.has(c)))) {
+		const asked = GuardTerm.substituteCondition(requires, new Map(formals.slice(0, dispatched.length).flatMap((f, at) => {
 			const operand = dispatched[at];
 			return operand === undefined ? [] : [[f, operand] as const];
 		})), undefined, facts);

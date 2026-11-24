@@ -36,12 +36,13 @@ describe('flowR linter', withTreeSitter(parser => {
 			loc:       SourceRange.from(1, 1, 1, 19),
 			sources:   [{ id: 5, trace: InputTraceType.Known, types: [InputType.Unknown, InputType.DerivedConstant] }]
 		}]);
-		assertLinter('const system', parser, 'system("rm -rf /")', 'problematic-inputs', [{
+		assertLinter('const system', parser, 'system("ls")', 'problematic-inputs', []);
+		assertLinter('const system when constants are reported', parser, 'system("rm -rf /")', 'problematic-inputs', [{
 			certainty: LintingResultCertainty.Certain,
 			name:      'system',
 			loc:       SourceRange.from(1, 1, 1, 18),
 			sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: 'rm -rf /' }]
-		}]);
+		}], undefined, { reportConstantCommands: true });
 		assertLinter(label('unknown system', ['system-calls'], ['linter']), parser, 'system(x)', 'problematic-inputs', [{
 			certainty: LintingResultCertainty.Uncertain,
 			name:      'system',
@@ -126,6 +127,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			pipeCommand: '|lp',
 			sources:     [{ id: 4, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp' }]
 		}]);
+		assertLinterFields(parser, 'f <- if(u) "|lp" else "a.pdf"\npdf(f)', 'problematic-inputs', [{ name: 'pdf', pipeCommand: '|lp' }]);
 		assertLinter('pdf non-file arg pipe not flagged', parser, 'pdf(file = "out.pdf", title = "|untrusted")', 'problematic-inputs', []);
 		assertLinter('pdf unknown input', parser, 'pdf(x)', 'problematic-inputs', [{
 			certainty: LintingResultCertainty.Uncertain,

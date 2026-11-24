@@ -73,6 +73,18 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 		const redefinedCaps: FlowrCapabilityId[] = [...caps, 'resolve-arguments', 'formals-named', 'unnamed-arguments', 'call-anonymous', 'lambda-syntax'];
 		assertSliced(label('A call does not see the body of a later redefinition', redefinedCaps),
 			shell, redefined, ['5@print'], 'f <- function(g) g(1)\nk <- f(function(x) x)\nprint(k)', { expectedSliceOutput: '[1] 1' });
+		/* each run of a function has a frame of its own, so a call in its body cannot dispatch to a method the body binds only later */
+		assertSliced(label('A call in a body does not see a later binding of the body', caps),
+			shell, 'f <- function(v, h) {\n  s <- sort(v)\n  min.x <- v[1] / h\n  s\n}\nprint(f(c(3, 1), 2))', ['2@s'], 'f <- function(v, h) s <- sort(v)', { expectedOutput: '[1] 1 3' });
+		/* a closure called only before the body binds a name reads it from further out, as R looks it up when the call runs */
+		assertSliced(label('A closure called before a later binding of the body does not see it', caps),
+			shell, 'x <- 1\nf <- function() {\n  g <- function() x\n  y <- g()\n  x <- 2\n  y\n}\nprint(f())', ['8@print'], 'x <- 1\nf <- function() {\n        g <- function() x\n        y <- g()\n        y\n    }\nprint(f())', { expectedOutput: '[1] 1' });
+		assertSliced(label('A closure called after a binding of the body sees it', caps),
+			shell, 'x <- 1\nf <- function() {\n  g <- function() x\n  x <- 2\n  y <- g()\n  y\n}\nprint(f())', ['8@print'], 'f <- function() {\n        g <- function() x\n        x <- 2\n        y <- g()\n        y\n    }\nprint(f())', { expectedOutput: '[1] 2' });
+		assertSliced(label('A closure the body hands out sees every binding of the body', caps),
+			shell, 'f <- function() {\n  g <- function() x\n  x <- 2\n  g\n}\nprint(f()())', ['6@print'], 'f <- function() {\n        g <- function() x\n        x <- 2\n        g\n    }\nprint(f()())', { expectedOutput: '[1] 2' });
+		assertSliced(label('A closure called on exit sees the bindings after the hook', caps),
+			shell, 'x <- 1\nf <- function() {\n  g <- function() x\n  on.exit(print(g()))\n  x <- 2\n  3\n}\nf()', ['4@print'], 'f <- function() {\n        g <- function() x\n        on.exit(print(g()))\n        x <- 2\n    }\nf()');
 		const nested = 'f <- function(g, a, b) {\n  x <- g(a + b) + b\n  print(x)\n  return(x)\n}\nk <- f(\\(x) { return(x * 2) }, 3, 4)\nprint(-k)\n';
 		assertSliced(label('Repeated redefinition keeps each call to its own copy', redefinedCaps),
 			shell, nested + nested + nested, ['7@print'], 'f <- function(g, a, b) {\n        x <- g(a + b) + b\n        return(x)\n    }\nk <- f(\\(x) { return(x * 2) }, 3, 4)\nprint(-k)', { minRVersion: MIN_VERSION_LAMBDA });

@@ -65,6 +65,7 @@
     "test:docker": "node scripts/test-docker.js",
     "benchmark:test-counts": "ts-node --transpile-only scripts/test-label-counts.ts",
     "benchmark:compact": "ts-node --transpile-only scripts/compact-benchmark-data.ts",
+    "benchmark:guard": "ts-node --transpile-only scripts/benchmark-guard.ts",
     "stage-library": "ts-node --transpile-only scripts/stage-library.ts",
     "publish-library": "npm run stage-library && cd dist/src && npm publish --access public",
     "pack-library": "npm run stage-library && cd dist/src && npm pack --pack-destination ../..",

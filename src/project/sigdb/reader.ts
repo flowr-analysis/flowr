@@ -15,6 +15,7 @@ import { tupleToBlob, decodeFunction, decodeDependencies, decodeClasses, decodeN
 import { isCompressed, isUnpacked, parseHeader, sigDbStream, resolveSource, ensurePlain, ensurePlainSync } from './decompress';
 import { stripCompressedExt } from './codec';
 import { SigDict } from './dict';
+import { exportKeysFor, type ExportKeys } from './export-keys';
 import { contentHash, dictionaryHash, shardHash } from './hash';
 import { readManifestFile, SigDbManifestMagic, type SigDbManifest, type SigDbShardRef } from './manifest';
 import { uniqueArray } from '../../util/collections/arrays';
@@ -556,14 +557,19 @@ export class SigDatabase extends HistorySource implements PackageSignatureSource
 	 */
 	private readonly outlines = new Map<BrandedNamespace, { readonly latest: RVersion | undefined, readonly versions: ReadonlySet<string> }>();
 	private readonly fd:       number;
+	/** the plain bundle file, `undefined` for an in-memory one */
+	private readonly file:     string | undefined;
+	/** what {@link packagesExporting} reads, derived (or read from where an earlier process left it) on the first call */
+	private exportKeys:        ExportKeys | undefined;
 	/** the dictionary, or how to load it: a bundle asked only for the versions it holds never needs its names */
 	private dictionary:        SigDict | (() => SigDict);
 	readonly index:            SigDbIndex;
 	readonly content:          SigDbContent | undefined;
 	private readonly cranBase: string;
-	private constructor(fd: number, strings: SigDict | (() => SigDict), index: SigDbIndex, content: SigDbContent | undefined, cranBase: string) {
+	private constructor(fd: number, file: string | undefined, strings: SigDict | (() => SigDict), index: SigDbIndex, content: SigDbContent | undefined, cranBase: string) {
 		super();
 		this.fd = fd;
+		this.file = file;
 		this.dictionary = strings;
 		this.index = index;
 		this.content = content;
@@ -573,7 +579,7 @@ export class SigDatabase extends HistorySource implements PackageSignatureSource
 	/** Use an already-built {@link SigDb} directly, no file involved: its blobs start out in the cache, so a test needs only {@link SigDbBuilder} plus this. */
 	public static fromMemory(db: SigDb): SigDatabase {
 		const index: SigDbIndex = { byteCount: 0, dict: [0, 0], blobs: [], pkgs: db.pkgs, meta: db.meta };
-		const source = new SigDatabase(NoFile, SigDict.of(db.strings), index, db.content, db.cranBase ?? DefaultCranBase);
+		const source = new SigDatabase(NoFile, undefined, SigDict.of(db.strings), index, db.content, db.cranBase ?? DefaultCranBase);
 		db.blobs.forEach((blob, i) => source.blobCache.set(i, { blob }));
 		return source;
 	}
@@ -603,7 +609,7 @@ export class SigDatabase extends HistorySource implements PackageSignatureSource
 			}
 		}
 		const cranBase = (header?.cranBase as string | undefined) ?? DefaultCranBase;
-		return new SigDatabase(fd, strings, index, header?.content as SigDbContent | undefined, cranBase);
+		return new SigDatabase(fd, plainFile, strings, index, header?.content as SigDbContent | undefined, cranBase);
 	}
 
 	/** open a `.sigs.ndjson`, `.br` or `.gz`; compressed sources are decompressed into a hash-keyed cache once */
@@ -703,33 +709,6 @@ export class SigDatabase extends HistorySource implements PackageSignatureSource
 		return false;
 	}
 
-	/**
-	 * Whether `pkg` may offer the name with dictionary id `id`, deciding from the raw bytes of a blob not decoded yet: every `[id,` they hold may
-	 * start a function record, so their ids are a superset of the names the package has, kept for {@link mayOffer} as {@link nameIdsOfBlob}.
-	 */
-	private mayHoldNameId(pkg: BrandedNamespace, name: BrandedIdentifier): boolean {
-		const blobIdx = this.index.pkgs[pkg];
-		if(blobIdx === undefined || this.fd === NoFile || this.blobCache.has(blobIdx) || this.nameIdsOfBlob.has(blobIdx)) {
-			return true;
-		}
-		const [start, bytes] = this.index.blobs[blobIdx];
-		const buf = Buffer.allocUnsafe(bytes);
-		fs.readSync(this.fd, buf, 0, bytes, start);
-		const ids = new Set<number>();
-		for(let at = buf.indexOf(91); at >= 0; at = buf.indexOf(91, at + 1)) {
-			let num = 0;
-			let end = at + 1;
-			for(; end < bytes && buf[end] >= 48 && buf[end] <= 57; end++) {
-				num = num * 10 + buf[end] - 48;
-			}
-			if(end > at + 1 && buf[end] === 44) {
-				ids.add(num);
-			}
-		}
-		this.nameIdsOfBlob.set(blobIdx, Int32Array.from(ids).sort());
-		return this.mayOffer(pkg, name);
-	}
-
 	/** drop one decoded blob, for the shared budget to reclaim what it costs (see {@link keepBlob}) */
 	public dropBlob(blobIdx: number): void {
 		this.blobCache.delete(blobIdx);
@@ -822,24 +801,26 @@ export class SigDatabase extends HistorySource implements PackageSignatureSource
 		if(id < 0) {
 			return [];
 		}
-		const found: string[] = [];
-		for(const pkg in this.index.pkgs) {
-			if(this.mayHoldNameId(pkg, name) && this.mayOffer(pkg, name) && this.exportsNameId(pkg, id)) {
-				found.push(pkg);
-			}
-		}
-		return found.sort((a, b) => this.downloads(b) - this.downloads(a) || compareByCodeUnit(a, b));
+		const names = Object.keys(this.index.pkgs);
+		this.exportKeys ??= exportKeysFor(this.file, names.length, () => this.exportedPairs(names));
+		return this.exportKeys.ordinalsOf(id).map(ordinal => names[ordinal]).sort((a, b) => this.downloads(b) - this.downloads(a) || compareByCodeUnit(a, b));
 	}
 
 	/**
-	 * Whether the newest version of `pkg` exports the name with dictionary id `id`. The same answer
-	 * {@link lookup}'s `exported` gives, off the function records themselves: asking a package at a time is what
-	 * {@link packagesExporting} does, and deriving a whole export view per package to read one name out of it is not
+	 * Every `[name id, package ordinal]` the newest version of a package exports, the same answer {@link lookup}'s `exported` gives
+	 * off the function records themselves: deriving a whole export view per package to read the names out of it is not
 	 * worth the five arrays and the map it builds.
 	 */
-	private exportsNameId(pkg: BrandedNamespace, id: number): boolean {
-		const r = this.versionFns(pkg);
-		return r?.fns.idxs.some(i => r.blob.fns[i][0] === id && (r.blob.fns[i][3] & FnProp.Exported) !== 0) ?? false;
+	private *exportedPairs(names: readonly BrandedNamespace[]): Generator<readonly [number, number]> {
+		for(const [ordinal, pkg] of names.entries()) {
+			const r = this.versionFns(pkg);
+			for(const i of r?.fns.idxs ?? []) {
+				const fn = r?.blob.fns[i];
+				if(fn !== undefined && (fn[3] & FnProp.Exported) !== 0) {
+					yield [fn[0], ordinal];
+				}
+			}
+		}
 	}
 
 	/**

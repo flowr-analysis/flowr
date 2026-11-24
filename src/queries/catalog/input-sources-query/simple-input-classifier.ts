@@ -34,6 +34,8 @@ import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
+import { RAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { AstIdMap, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SourceRange } from '../../../util/range';
@@ -67,6 +69,8 @@ class ClassificationAccumulator {
 		if(c === undefined) {
 			this.push(InputType.Unknown);
 			return;
+		} else if(c.types.length === 0) {
+			return;
 		}
 		this.types.push(...c.types);
 		this.values.push(c.value);
@@ -96,6 +100,10 @@ class ClassificationAccumulator {
 
 class InputClassifier {
 	private readonly cache = new Map<NodeId, InputSource>();
+	/** the vertices being classified with their depth, the lowest depth a cycle returned to, and what was classified within an open cycle */
+	private readonly open = new Map<NodeId, number>();
+	private readonly provisional = new Map<NodeId, readonly [InputSource, number]>();
+	private lowestOpen = Infinity;
 	private fullClassifier:   InputClassifier | undefined;
 	private unsanitized:      InputClassifier | undefined;
 	private declarationIndex: Map<string, NodeId[]> | undefined;
@@ -328,23 +336,35 @@ class InputClassifier {
 		if(cached) {
 			return cached;
 		}
-		/* a temporary unknown breaks cycles */
-		this.cache.set(vertex.id, sourceOf(vertex.id, InputType.Unknown));
-		switch(vertex.tag) {
-			case VertexType.Value: {
-				const value = this.extractConstantValue(vertex.id);
-				return this.classifyCdsAndReturn(vertex, compactRecord({ ...sourceOf(vertex.id, InputType.Constant), value }));
-			}
-			case VertexType.FunctionCall:
-				return this.classifyFunctionCall(vertex);
-			case VertexType.VariableDefinition:
-				return this.classifyVariableDefinition(vertex);
-			case VertexType.Use:
-				return this.classifyVariable(vertex);
-			/* a function definition is a constant: its code is fixed, whatever it computes when called */
-			case VertexType.FunctionDefinition:
-				return this.classifyCdsAndReturn(vertex, sourceOf(vertex.id, InputType.Constant));
+		/* a cycle (`i <- i + 1` in a loop) brings in nothing the other definitions do not already */
+		const open = this.open.get(vertex.id);
+		const provisional = this.provisional.get(vertex.id);
+		if(open !== undefined || provisional !== undefined) {
+			this.lowestOpen = Math.min(this.lowestOpen, open ?? provisional?.[1] as number);
+			return provisional?.[0] ?? { id: vertex.id, types: [], trace: InputTraceType.Pure };
 		}
+		const [depth, outer] = [this.open.size, this.lowestOpen];
+		this.open.set(vertex.id, depth);
+		this.lowestOpen = Infinity;
+		/* inline, as long chains of definitions come close to the stack limit; a function definition is a constant, whatever it computes when called */
+		const result = DfgVertex.isFunctionCall(vertex) ? this.classifyFunctionCall(vertex)
+			: DfgVertex.isVariableDefinition(vertex) ? this.classifyVariableDefinition(vertex)
+				: DfgVertex.isUse(vertex) ? this.classifyVariable(vertex)
+					: this.classifyCdsAndReturn(vertex, compactRecord({ ...sourceOf(vertex.id, InputType.Constant), value: DfgVertex.isValue(vertex) ? this.extractConstantValue(vertex.id) : undefined }));
+		this.open.delete(vertex.id);
+		if(this.lowestOpen < depth) {
+			/* it lacks what the open vertex of its cycle brings in, which is all it lacks until that one is done */
+			this.provisional.set(vertex.id, [result, this.lowestOpen]);
+		} else {
+			if(result.types.length === 0) {
+				result.types.push(InputType.Unknown);
+			}
+			this.cache.set(vertex.id, result);
+			this.provisional.forEach(([, low], id) => low >= depth && this.provisional.delete(id));
+			this.lowestOpen = Infinity;
+		}
+		this.lowestOpen = Math.min(outer, this.lowestOpen);
+		return result;
 	}
 
 	/**
@@ -405,15 +425,15 @@ class InputClassifier {
 		});
 	}
 
+	/** the field `input$n` names, or the one `input[[n]]` reads by the value of `n` */
 	private accessedField(call: DataflowGraphVertexFunctionCall): BrandedIdentifier | undefined {
 		const ref = call.args[1] === undefined ? undefined : FunctionArgument.getReference(call.args[1]);
 		const node = ref === undefined ? undefined : this.dfg.idMap?.get(ref);
-		if(RString.is(node)) {
-			return node.content.str;
-		} else if(RSymbol.is(node)) {
+		if(RSymbol.is(node) && RAccess.isNamed(this.dfg.idMap?.get(call.id))) {
 			return Identifier.getName(node.content);
 		}
-		return undefined;
+		const value = RString.is(node) ? node.content.str : this.classifyAt(ref)?.value;
+		return typeof value === 'string' ? value : undefined;
 	}
 
 	/** the argument a built-in hands on: the value of a block or `get` (then `renamed`), the condition of a loop */
@@ -473,10 +493,10 @@ class InputClassifier {
 	}
 
 	/** the arguments of a sanitizer it takes as code rather than escaping, see {@link InputClassifierConfig.templates} */
-	private templateArguments(call: DataflowGraphVertexFunctionCall): (NodeId | undefined)[] {
+	private templateArguments(call: DataflowGraphVertexFunctionCall): NodeId[] {
 		return (this.config.templates ?? []).filter(t => this.matches(call, [t.call])).flatMap(t => t.argName === '...'
 			? call.args.filter(a => !FunctionArgument.isNamed(a)).map(FunctionArgument.getReference)
-			: [this.argumentReference(call, t.argIdx, t.argName)]);
+			: [this.argumentReference(call, t.argIdx, t.argName)]).filter(isNotUndefined);
 	}
 
 	/** the types and control dependencies of what `ref` yields, `unknown` when it cannot be classified */
@@ -523,7 +543,7 @@ class InputClassifier {
 			if(!this.matches(call, [narrow.call])) {
 				continue;
 			}
-			const bound = this.argumentReference(call, narrow.argIdx, narrow.argName);
+			const bound = this.argumentReference(call, narrow.argIdx, narrow.argName) ?? this.formalDefault(call);
 			const narrowed = this.classifyAt(bound);
 			if(narrowed) {
 				/* which of the values it is depends on the other arguments */
@@ -540,6 +560,9 @@ class InputClassifier {
 			if(readsFile && call.args.some(arg => this.classifyAt(FunctionArgument.getReference(arg))?.types.includes(InputType.TempFile))) {
 				types.splice(types.indexOf(InputType.File), 1);
 				types.push(InputType.TempFile);
+			} else if(readsFile && call.args.some(arg => this.isStdin(FunctionArgument.getReference(arg)))) {
+				/* what is read from the standard input is what the user types */
+				types.splice(types.indexOf(InputType.File), 1, ...types.includes(InputType.User) ? [] : [InputType.User]);
 			}
 			/* `quote` yields written code, only capturing (`substitute(x)`) or splicing (`bquote(.(y))`) brings in other code */
 			if(types.includes(InputType.Lang) && this.quotesOnlyWrittenCode(call)) {
@@ -556,8 +579,9 @@ class InputClassifier {
 					acc.merge(this.classifyAt(block));
 					/* and whether they answer depends on everything the block does */
 					const statements = block === undefined ? undefined : this.whole.getVertex(block);
-					for(const arg of DfgVertex.isFunctionCall(statements) && DfgVertex.hasOrigin(statements, BuiltInProcName.ExpressionList) ? statements.args : []) {
-						acc.cds.push(...this.dependencies(FunctionArgument.getReference(arg)));
+					const isBlock = DfgVertex.isFunctionCall(statements) && DfgVertex.hasOrigin(statements, BuiltInProcName.ExpressionList);
+					for(const ref of isBlock ? statements.args.map(FunctionArgument.getReference) : [block]) {
+						acc.cds.push(...this.dependencies(ref));
 					}
 					return this.classifyCdsAndReturn(call, acc.build(call.id));
 				} else if(produced !== undefined) {
@@ -592,6 +616,20 @@ class InputClassifier {
 			trace: constLike ? InputTraceType.Pure : evaluates || edits || interpolated.length > 0 ? InputTraceType.Unknown : InputTraceType.Known,
 			cds:   cdTypes.length > 0 ? uniqueArray(cdTypes) : undefined
 		}));
+	}
+
+	/** Whether the value at `ref` is the standard input: `stdin()`, or `file("stdin")` and the path `"stdin"`, which R opens as it. */
+	private isStdin(ref: NodeId | undefined): boolean {
+		const sources = ref === undefined ? undefined : Dataflow.valueSources(ref, this.whole);
+		return sources !== undefined && sources.length > 0 && sources.every(at => {
+			const node = this.whole.idMap?.get(at);
+			const vertex = this.whole.getVertex(at);
+			if(RString.is(node)) {
+				return node.content.str === 'stdin';
+			}
+			return DfgVertex.isFunctionCall(vertex) && (this.matches(vertex, StdinConnection)
+				|| (this.matches(vertex, FileConnection) && this.isStdin(this.argumentReference(vertex, 0, 'description'))));
+		});
 	}
 
 	/**
@@ -681,13 +719,33 @@ class InputClassifier {
 			}
 			const classified = this.classifyAt(o.id) ?? this.classifyInFullGraph(o.id);
 			if(classified?.types.every(isConstantLike)) {
-				/* a constant held as a function (`get("readLines")`, a body set to quoted code) says nothing about what calling it yields */
-				return sourceOf(call.id, InputType.Unknown);
+				/* a built-in held as a function (`rl <- readline; rl()`) is that built-in, other constants (a body set to quoted code) say nothing about what calling it yields */
+				const held = this.heldBuiltIn(call);
+				return held === undefined ? sourceOf(call.id, InputType.Unknown) : this.classifyFunctionCall({ ...call, name: held });
 			} else if(classified !== undefined && !classified.types.includes(InputType.Unknown)) {
 				return classified;
 			}
 		}
 		return undefined;
+	}
+
+	/** without its choices, `match.arg(type)` takes the default of the parameter `type` of the function calling it */
+	private formalDefault(call: DataflowGraphVertexFunctionCall): NodeId | undefined {
+		const idMap = this.whole.idMap as AstIdMap;
+		const arg = idMap.get(this.argumentReference(call, 0, 'arg') as NodeId);
+		const fn = RSymbol.is(arg) ? RNode.iterateParents(arg, idMap).find(RFunctionDefinition.is) : undefined;
+		return fn?.parameters.find(p => p.name.content === arg?.content)?.defaultValue?.info.id;
+	}
+
+	/** the one built-in the call runs, if it is called by another name */
+	private heldBuiltIn(call: DataflowGraphVertexFunctionCall): Identifier | undefined {
+		const callees = Dataflow.targetsOf(this.whole, call.id, EdgeType.Calls);
+		if(callees.length !== 1 || !NodeId.isBuiltIn(callees[0])) {
+			return undefined;
+		}
+		const [pkg, fn] = NodeId.toPkgFn(callees[0]) ?? [undefined, NodeId.fromBuiltIn(callees[0])];
+		const held = Identifier.make(fn, pkg);
+		return Identifier.getName(held) === Identifier.getName(call.name) ? undefined : held;
 	}
 
 	/**
@@ -842,13 +900,24 @@ class InputClassifier {
 		return RSymbol.is(node) && Identifier.isDotDotDotAccess(node.content) && node.content !== Identifier.dotdotdot();
 	}
 
-	/** whether the function binding the parameter is used as a value, so it may be called with anything the visible callers do not pass */
+	/**
+	 * whether the function binding the parameter is used as a value, so it may be called with anything the visible callers do not pass;
+	 * handed to an apply (`lapply(x, f)`), it is called there
+	 */
 	private escapes(parameter: NodeId): boolean {
 		const idMap = this.whole.idMap;
 		const fn = idMap === undefined ? undefined : RNode.iterateParents(idMap.get(parameter), idMap).find(RFunctionDefinition.is);
-		const holders = fn === undefined ? [] : Dataflow.sourcesOf(this.whole, fn.info.id, EdgeType.DefinedBy);
-		return holders.length === 0 || holders.some(h => Dataflow.sourcesOf(this.whole, h, EdgeType.Reads)
-			.some(r => !RFunctionCall.is(idMap?.get(r)) || !Dataflow.hasEdge(this.whole, r, fn?.info.id as NodeId, EdgeType.Calls)));
+		if(fn === undefined) {
+			return true;
+		}
+		const holders = Dataflow.sourcesOf(this.whole, fn.info.id, EdgeType.DefinedBy);
+		const uses = (holders.length === 0 ? [fn.info.id] : holders).flatMap(h => Dataflow.sourcesOf(this.whole, h, EdgeType.Reads));
+		return (holders.length === 0 && uses.length === 0) || uses.some(r => !Dataflow.hasEdge(this.whole, r, fn.info.id, EdgeType.Calls) || !(RFunctionCall.is(idMap?.get(r)) || this.calledByApply(r)));
+	}
+
+	/** whether an apply calls what `id` holds: `lapply` itself, or the call it makes of an argument it is handed */
+	private calledByApply(id: NodeId): boolean {
+		return [id, ...Dataflow.sourcesOf(this.whole, id, EdgeType.Argument)].some(c => DfgVertex.hasOrigin(this.whole.getVertex(c), BuiltInProcName.Apply));
 	}
 
 	/** whether code flowR cannot follow (`load`, `eval`, `e$x <-`) may rebind the variable before the use */
@@ -858,11 +927,19 @@ class InputClassifier {
 		const fn = RNode.iterateParents(node, idMap).find(RFunctionDefinition.is);
 		const within = (id: NodeId) => fn !== undefined && RNode.iterateParents(idMap.get(id), idMap).some(p => p === fn);
 		const local = definitions.length > 0 && definitions.every(within);
-		/* an unconditional definition after the effect binds anew */
-		const overwritten = (e: NodeId) => definitions.length > 0 && definitions.every(d => !this.whole.getVertex(d)?.cds?.length
-			&& runsAfter(idMap.get(idMap.get(d)?.info.parent as NodeId), idMap.get(e), idMap));
+		/* where a definition binds: once its value is computed, for the variable of a for loop before its body runs */
+		const binds = (d: NodeId) => {
+			const parent = idMap.get(idMap.get(d)?.info.parent as NodeId);
+			return RForLoop.is(parent) ? parent.variable : parent;
+		};
+		/* an unconditional definition after the effect binds anew, whatever a loop redefines later on */
+		const overwritten = (e: NodeId) => definitions.some(d => !this.whole.getVertex(d)?.cds?.length && runsAfter(binds(d), idMap.get(e), idMap));
+		/* a for loop binds its variable anew before each run of its body, so what the body does after the use cannot change it */
+		const loop = idMap.get(idMap.get(definitions[0])?.info.parent as NodeId);
+		const body = RForLoop.is(loop) && definitions.every(d => d === loop.variable.info.id) ? loop.body : undefined;
 		return this.rebinders().some(([e, fields]) => (fields === undefined || fields.some(f => f === undefined || f === RNode.lexeme(node)))
-			&& (!local || within(e)) && !overwritten(e) && !((fn === undefined || local) && runsAfter(idMap.get(e), node, idMap)));
+			&& (!local || within(e)) && !overwritten(e) && !((fn === undefined || local) && runsAfter(idMap.get(e), node, idMap))
+			&& !(body !== undefined && runsAfter(idMap.get(e), node, idMap, body)));
 	}
 
 	/** the unknown side effects, and the replacements `e$x <- v` with the names they may bind (`undefined` for any) */
@@ -903,7 +980,6 @@ class InputClassifier {
 		if(src.cds?.length === 0) {
 			delete src.cds;
 		}
-		this.cache.set(vtx.id, src);
 		return src;
 	}
 }
@@ -1003,14 +1079,31 @@ const FieldReplacements: ReadonlySet<BrandedIdentifier> = new Set(['$<-', '[[<-'
 
 const LoopTypes: ReadonlySet<RType> = new Set([RType.ForLoop, RType.WhileLoop, RType.RepeatLoop]);
 
-/** whether `later` surely runs after `node`: later in the same file, in no shared loop, not deferred into a function apart from it */
-function runsAfter(later: RNode<ParentInformation> | undefined, node: RNode<ParentInformation> | undefined, idMap: AstIdMap): boolean {
+/**
+ * whether `later` surely runs after `node`: later in the same file, in no shared loop, not deferred into a function apart from it;
+ * with a `scope`, both have to be within it and only one run of it counts (one run of a loop body)
+ */
+function runsAfter(later: RNode<ParentInformation> | undefined, node: RNode<ParentInformation> | undefined, idMap: AstIdMap, scope?: RNode<ParentInformation>): boolean {
 	const [first, second] = [RNode.span(node), RNode.span(later)];
 	if(first === undefined || second === undefined || node?.info.file !== later?.info.file || !(SourceRange.startsCompletelyBefore(first, second) || SourceRange.isSubsetOf(first, second))) {
 		return false;
 	}
 	const around = new Set(RNode.iterateParents(later, idMap));
-	return RNode.iterateParents(node, idMap).every(p => RFunctionDefinition.is(p) ? around.has(p) : !LoopTypes.has(p.type) || !around.has(p));
+	if(scope !== undefined && !around.has(scope)) {
+		return false;
+	}
+	let child = node;
+	for(const p of RNode.iterateParents(node, idMap)) {
+		/* the vector of a for loop is evaluated once, before its body runs */
+		const once = RForLoop.is(p) && child === p.vector;
+		if(p === scope) {
+			return true;
+		} else if(RFunctionDefinition.is(p) ? !around.has(p) : LoopTypes.has(p.type) && around.has(p) && !once) {
+			return false;
+		}
+		child = p;
+	}
+	return scope === undefined;
 }
 
 function declarationKey(object: BrandedIdentifier, field: BrandedIdentifier | string): string {
@@ -1057,6 +1150,9 @@ export type InputSources = InputSource[];
  * This is either an {@link NodeId|id} of a known functions all of that category (e.g., you can issue a dependencies query before and then pass all
  * identified ids to this query here).
  */
+const StdinConnection: InputClassifierFunctionIdentifiers = [Identifier.make('stdin')];
+const FileConnection: InputClassifierFunctionIdentifiers = [Identifier.make('file')];
+
 export type InputClassifierFunctionIdentifiers = readonly (Identifier | NodeId)[];
 
 /**

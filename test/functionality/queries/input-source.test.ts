@@ -517,8 +517,11 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 		testQuery('a built-in handed to purrr by name yields what it returns', 'x <- purrr::map(1:3, runif)\nfoo(x)', q('2@foo'), {
 			'2@foo': [{ id: '2@x', types: [InputType.DerivedConstant, InputType.Random], trace: InputTraceType.Alias }]
 		});
-		testQuery('a function held as a looked up value says nothing about its result', 'f <- get("readLines")\nfoo(f("a"))', q('2@foo'), {
-			'2@foo': [{ id: '2@f', types: [InputType.Unknown], trace: InputTraceType.Unknown }]
+		testQuery('a built-in held as a looked up value is that built-in', 'f <- get("readLines")\nfoo(f("a"))', q('2@foo'), {
+			'2@foo': [{ id: '2@f', types: [InputType.File], trace: InputTraceType.Unknown }]
+		});
+		testQuery('a built-in held by another name is that built-in', 'rl <- readline\na <- rl()\nfoo(a)', q('3@foo'), {
+			'3@foo': [{ id: '3@a', types: [InputType.User], trace: InputTraceType.Alias }]
 		});
 		testQuery('whether a handler answers depends on the whole block', 'x <- tryCatch({ readLines("a"); 1 }, error = function(e) 2)\nfoo(x)', q('2@foo'), {
 			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.File, InputType.Constant] }]

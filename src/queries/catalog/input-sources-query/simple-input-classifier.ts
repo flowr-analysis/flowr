@@ -714,13 +714,25 @@ class InputClassifier {
 			}
 			const classified = this.classifyAt(o.id) ?? this.classifyInFullGraph(o.id);
 			if(classified?.types.every(isConstantLike)) {
-				/* a constant held as a function (`get("readLines")`, a body set to quoted code) says nothing about what calling it yields */
-				return sourceOf(call.id, InputType.Unknown);
+				/* a built-in held as a function (`rl <- readline; rl()`) is that built-in, other constants (a body set to quoted code) say nothing about what calling it yields */
+				const held = this.heldBuiltIn(call);
+				return held === undefined ? sourceOf(call.id, InputType.Unknown) : this.classifyFunctionCall({ ...call, name: held });
 			} else if(classified !== undefined && !classified.types.includes(InputType.Unknown)) {
 				return classified;
 			}
 		}
 		return undefined;
+	}
+
+	/** the one built-in the call runs, if it is called by another name */
+	private heldBuiltIn(call: DataflowGraphVertexFunctionCall): Identifier | undefined {
+		const callees = Dataflow.targetsOf(this.whole, call.id, EdgeType.Calls);
+		if(callees.length !== 1 || !NodeId.isBuiltIn(callees[0])) {
+			return undefined;
+		}
+		const [pkg, fn] = NodeId.toPkgFn(callees[0]) ?? [undefined, NodeId.fromBuiltIn(callees[0])];
+		const held = Identifier.make(fn, pkg);
+		return Identifier.getName(held) === Identifier.getName(call.name) ? undefined : held;
 	}
 
 	/**

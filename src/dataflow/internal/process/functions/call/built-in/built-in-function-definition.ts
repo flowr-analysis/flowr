@@ -40,6 +40,7 @@ import { AmbientStateName } from '../../../../../environments/ambient-state-name
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { fnEntry, queryFnProps } from '../../../../../environments/query-fn-props';
@@ -366,7 +367,13 @@ export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironmen
 	}
 	// track *all* function definitions, including those nested within, resolving their 'in' via the lowest scope (popped after this definition)
 	for(const [fn, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
-		subflow.in = resolveIngoingRefs(subflow.in, outEnvironment, (ingoing, resolved) => {
+		const calls = callsWithinBody(fn, graph);
+		subflow.in = resolveIngoingRefs(subflow.in, outEnvironment, (ingoing, found) => {
+			/* a binding the body makes only after every call of the closure is not one any call sees */
+			const resolved = calls === undefined ? found : found.filter(ref => !calls.every(call => ProgramOrder.boundLaterInBody(ref.nodeId, call, graph)));
+			if(resolved.length === 0) {
+				return true;
+			}
 			const writes = superWrites.get(ingoing.name as Identifier);
 			for(const ref of resolved) {
 				graph.addEdge(ingoing.nodeId, ref.nodeId, EdgeType.Reads);
@@ -405,6 +412,22 @@ export function updateNestedFunctionClosures(graph: DataflowGraph, outEnvironmen
 		openReads.length = 0;
 		openReads.push(...kept);
 	}
+}
+
+/**
+ * The calls of the closure defined at `fn` if the body around it can call it nowhere else: it is bound by a statement of the body (that is not the
+ * value the body returns) and every read of that binding calls it, `undefined` if the closure may escape or the body may reach it in ways flowR does not see.
+ */
+function callsWithinBody(fn: NodeId, graph: DataflowGraph): NodeId[] | undefined {
+	const idMap = graph.idMap;
+	const assignment = idMap?.get(idMap.get(fn)?.info.parent ?? '');
+	const block = assignment?.info.parent === undefined ? undefined : idMap?.get(assignment.info.parent);
+	if(idMap === undefined || graph.unknownSideEffects.size > 0 || !RBinaryOp.is(assignment) || assignment.rhs.info.id !== fn || !RExpressionList.is(block)
+		|| block.children.at(-1) === assignment || !DfgVertex.hasOrigin(graph.getVertex(assignment.info.id), BuiltInProcName.Assignment)) {
+		return undefined;
+	}
+	const readers = Dataflow.sourcesOf(graph, assignment.lhs.info.id, EdgeType.Reads);
+	return readers.length > 0 && readers.every(r => DfgVertex.isFunctionCall(graph.getVertex(r)) && Dataflow.hasEdge(graph, r, fn, EdgeType.Calls)) ? readers : undefined;
 }
 
 /** Whether an enclosing scope binds the name of a call within a closure before the closure exists, see {@link boundBeforeClosure}: then the call reaches only what its reads do, and never looks further out, whatever the end of the script binds there. */

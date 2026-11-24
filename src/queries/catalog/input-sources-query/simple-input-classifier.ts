@@ -67,6 +67,8 @@ class ClassificationAccumulator {
 		if(c === undefined) {
 			this.push(InputType.Unknown);
 			return;
+		} else if(c.types.length === 0) {
+			return;
 		}
 		this.types.push(...c.types);
 		this.values.push(c.value);
@@ -96,6 +98,10 @@ class ClassificationAccumulator {
 
 class InputClassifier {
 	private readonly cache = new Map<NodeId, InputSource>();
+	/** the vertices being classified with their depth, the lowest depth a cycle returned to, and what was classified within an open cycle */
+	private readonly open = new Map<NodeId, number>();
+	private readonly provisional = new Map<NodeId, readonly [InputSource, number]>();
+	private lowestOpen = Infinity;
 	private fullClassifier:   InputClassifier | undefined;
 	private unsanitized:      InputClassifier | undefined;
 	private declarationIndex: Map<string, NodeId[]> | undefined;
@@ -328,8 +334,34 @@ class InputClassifier {
 		if(cached) {
 			return cached;
 		}
-		/* a temporary unknown breaks cycles */
-		this.cache.set(vertex.id, sourceOf(vertex.id, InputType.Unknown));
+		/* a cycle (`i <- i + 1` in a loop) brings in nothing the other definitions do not already */
+		const open = this.open.get(vertex.id);
+		const provisional = this.provisional.get(vertex.id);
+		if(open !== undefined || provisional !== undefined) {
+			this.lowestOpen = Math.min(this.lowestOpen, open ?? provisional?.[1] as number);
+			return provisional?.[0] ?? { id: vertex.id, types: [], trace: InputTraceType.Pure };
+		}
+		const [depth, outer] = [this.open.size, this.lowestOpen];
+		this.open.set(vertex.id, depth);
+		this.lowestOpen = Infinity;
+		const result = this.classifyVertex(vertex);
+		this.open.delete(vertex.id);
+		/* what was classified while this one was open lacks what it brings in */
+		this.provisional.forEach(([, low], id) => low >= depth && this.provisional.delete(id));
+		if(this.lowestOpen < depth) {
+			this.provisional.set(vertex.id, [result, this.lowestOpen]);
+		} else {
+			if(result.types.length === 0) {
+				result.types.push(InputType.Unknown);
+			}
+			this.cache.set(vertex.id, result);
+			this.lowestOpen = Infinity;
+		}
+		this.lowestOpen = Math.min(outer, this.lowestOpen);
+		return result;
+	}
+
+	private classifyVertex(vertex: DataflowGraphVertexInfo): InputSource {
 		switch(vertex.tag) {
 			case VertexType.Value: {
 				const value = this.extractConstantValue(vertex.id);
@@ -556,8 +588,9 @@ class InputClassifier {
 					acc.merge(this.classifyAt(block));
 					/* and whether they answer depends on everything the block does */
 					const statements = block === undefined ? undefined : this.whole.getVertex(block);
-					for(const arg of DfgVertex.isFunctionCall(statements) && DfgVertex.hasOrigin(statements, BuiltInProcName.ExpressionList) ? statements.args : []) {
-						acc.cds.push(...this.dependencies(FunctionArgument.getReference(arg)));
+					const isBlock = DfgVertex.isFunctionCall(statements) && DfgVertex.hasOrigin(statements, BuiltInProcName.ExpressionList);
+					for(const ref of isBlock ? statements.args.map(FunctionArgument.getReference) : [block]) {
+						acc.cds.push(...this.dependencies(ref));
 					}
 					return this.classifyCdsAndReturn(call, acc.build(call.id));
 				} else if(produced !== undefined) {
@@ -858,8 +891,8 @@ class InputClassifier {
 		const fn = RNode.iterateParents(node, idMap).find(RFunctionDefinition.is);
 		const within = (id: NodeId) => fn !== undefined && RNode.iterateParents(idMap.get(id), idMap).some(p => p === fn);
 		const local = definitions.length > 0 && definitions.every(within);
-		/* an unconditional definition after the effect binds anew */
-		const overwritten = (e: NodeId) => definitions.length > 0 && definitions.every(d => !this.whole.getVertex(d)?.cds?.length
+		/* an unconditional definition after the effect binds anew, whatever a loop redefines later on */
+		const overwritten = (e: NodeId) => definitions.some(d => !this.whole.getVertex(d)?.cds?.length
 			&& runsAfter(idMap.get(idMap.get(d)?.info.parent as NodeId), idMap.get(e), idMap));
 		return this.rebinders().some(([e, fields]) => (fields === undefined || fields.some(f => f === undefined || f === RNode.lexeme(node)))
 			&& (!local || within(e)) && !overwritten(e) && !((fn === undefined || local) && runsAfter(idMap.get(e), node, idMap)));
@@ -903,7 +936,6 @@ class InputClassifier {
 		if(src.cds?.length === 0) {
 			delete src.cds;
 		}
-		this.cache.set(vtx.id, src);
 		return src;
 	}
 }

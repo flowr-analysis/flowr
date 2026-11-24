@@ -20,6 +20,8 @@ import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/
 import { escapeRegex } from '../../util/text/strings';
 import { type BuiltInIndex, quotedForWorker } from '../../dataflow/environments/query-fn-props';
 import { boundArgumentIndex } from '../../dataflow/eval/resolve/resolve-argument';
+import { NodeValue } from '../../dataflow/eval/resolve/node-value';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
 
 /** what runs a command, and what evaluates code beyond looking up a name (`get`) or calling a function it is handed (`do.call`) */
 function defaultConsider(index: BuiltInIndex): readonly ConsiderSpec[] {
@@ -110,18 +112,18 @@ function isProblematicForAllowed(sources: InputSources, evalValues: string[], al
 }
 
 /** A path starting with `|` runs a command, so anything but a constant path, user input included, may start one. */
-function getPipeCommandValue(sources: InputSources, allowedValues?: RegExp, disallowedValues?: RegExp): string | undefined {
-	for(const s of sources) {
-		if(typeof s.value !== 'string' || !s.value.startsWith('|')) {
+function getPipeCommandValue(values: readonly unknown[], allowedValues?: RegExp, disallowedValues?: RegExp): string | undefined {
+	for(const value of values) {
+		if(typeof value !== 'string' || !value.startsWith('|')) {
 			continue;
 		}
-		if(allowedValues !== undefined && allowedValues.test(s.value)) {
+		if(allowedValues !== undefined && allowedValues.test(value)) {
 			continue;
 		}
-		if(disallowedValues !== undefined && !disallowedValues.test(s.value)) {
+		if(disallowedValues !== undefined && !disallowedValues.test(value)) {
 			continue;
 		}
-		return s.value;
+		return value;
 	}
 	return undefined;
 }
@@ -182,7 +184,8 @@ export const PROBLEMATIC_INPUTS = {
 			const own = res[criterion] ?? [];
 			/* a file argument that is an input itself (`pdf(readline())`) only shows as a source of the call */
 			const sources = target === nid || own.some(s => s.id === target) ? own : own.concat((res[call] ?? []).filter(s => s.id === target));
-			const pipeCommand = pipeSpec === undefined ? undefined : getPipeCommandValue(sources, pipeSpec.allowedValues, pipeSpec.disallowedValues);
+			/* a constant path is one of the values it may hold (`if(a) "|lpr" else "a.pdf"`), not only the one all of them agree on */
+			const pipeCommand = pipeSpec === undefined ? undefined : getPipeCommandValue([...sources.map(s => s.value), ...NodeValue.knownStringsOf(target, Resolve.info(df.graph, data.inspectContext()))], pipeSpec.allowedValues, pipeSpec.disallowedValues);
 			const evalValues: string[] = [];
 			if(consider?.resolveSourceArgs) {
 				for(const source of sources) {

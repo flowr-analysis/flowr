@@ -126,6 +126,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			pipeCommand: '|lp',
 			sources:     [{ id: 4, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp' }]
 		}]);
+		assertLinterFields(parser, 'f <- if(u) "|lp" else "a.pdf"\npdf(f)', 'problematic-inputs', [{ name: 'pdf', pipeCommand: '|lp' }]);
 		assertLinter('pdf non-file arg pipe not flagged', parser, 'pdf(file = "out.pdf", title = "|untrusted")', 'problematic-inputs', []);
 		assertLinter('pdf unknown input', parser, 'pdf(x)', 'problematic-inputs', [{
 			certainty: LintingResultCertainty.Uncertain,

@@ -1032,7 +1032,7 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
 	}
 	FunctionSemantics.call.match.unforceUnreadDots(graph);
 	linkLiftedReads(graph, lifted, enclosingOf, environmentAt, runsOnceAt);
-	linkStateReadsToUnknownMethods(graph, runsUnknownMethod);
+	linkStateReadsToUnknownMethods(graph, runsUnknownMethod, unknownMethodsAt, enclosingOf);
 	/* a method only a next-method call reaches is linked by no call that resolves what it reads */
 	const called = new Set(graph.verticesOfType(VertexType.FunctionCall).filter(([, v]) => !DfgVertex.hasOrigin(v, BuiltInProcName.S3DispatchNext)).flatMap(([id]) => Dataflow.targetsOf(graph, id, EdgeType.Calls)));
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
@@ -1055,8 +1055,10 @@ function linkNestedFunctionCalls(graph: DataflowGraph, outEnvironment: REnvironm
  * that may dispatch to such a method and may run before it. The calls stay out of the slices that read no state.
  * To keep this linear, each call reads the one running before it, a call without a place in the program order (in a function)
  * reads all of them and is read by all of them, and a read reads only the last call that may run before it.
+ * A call in a function nothing calls runs, if at all, once the code is done (as does the `<<-` of such a function), and a read
+ * that runs before every binding we cannot tell sees no such method at all.
  */
-function linkStateReadsToUnknownMethods(graph: DataflowGraph, calls: ReadonlySet<NodeId>): void {
+function linkStateReadsToUnknownMethods(graph: DataflowGraph, calls: ReadonlySet<NodeId>, unknownMethodsAt: readonly NodeId[], enclosingOf: (id: NodeId) => NodeId | undefined): void {
 	/* quoted code runs only where it is evaluated, which is a call of its own */
 	const runs = calls.values().filter(c => !graph.isQuoted(c)).toArray();
 	if(runs.length === 0) {
@@ -1064,7 +1066,13 @@ function linkStateReadsToUnknownMethods(graph: DataflowGraph, calls: ReadonlySet
 	}
 	const before = (a: NodeId, b: NodeId) => ProgramOrder.runsBefore(a, b, graph);
 	const placed = runs.filter(c => ProgramOrder.runsWithin(c, graph) !== undefined).sort((a, b) => before(a, b) ? -1 : before(b, a) ? 1 : 0);
-	const floating = runs.filter(c => !placed.includes(c));
+	const inOrder = new Set(placed);
+	const uncalled = (c: NodeId) => {
+		const fn = enclosingOf(c);
+		return fn !== undefined && !graph.edgesTo(fn).values().some(e => DfEdge.includesType(e, EdgeType.Calls));
+	};
+	const atEnd = runs.filter(c => !inOrder.has(c) && uncalled(c));
+	const floating = runs.filter(c => !inOrder.has(c) && !uncalled(c));
 	const link = (from: NodeId, to: NodeId | undefined) => {
 		if(to !== undefined && from !== to) {
 			graph.addEdge(from, to, EdgeType.Reads);
@@ -1072,8 +1080,13 @@ function linkStateReadsToUnknownMethods(graph: DataflowGraph, calls: ReadonlySet
 	};
 	placed.forEach((c, i) => link(c, i === 0 ? floating[0] : placed[i - 1]));
 	floating.forEach((c, i) => link(c, i + 1 < floating.length ? floating[i + 1] : placed.at(-1) ?? floating[0]));
+	atEnd.forEach((c, i) => link(c, i === 0 ? placed.at(-1) ?? floating[0] : atEnd[i - 1]));
 	for(const reader of graph.ambientAccessIds()) {
 		if(graph.isQuoted(reader) || (graph.ambientAccessOf(reader)?.[AmbientAccessKind.Read].size ?? 0) === 0) {
+			continue;
+		}
+		if(ProgramOrder.runsWithin(reader, graph) === undefined) {
+			link(reader, atEnd.at(-1) ?? placed.at(-1) ?? floating[0]);
 			continue;
 		}
 		/* every later call runs only after the read */
@@ -1081,7 +1094,11 @@ function linkStateReadsToUnknownMethods(graph: DataflowGraph, calls: ReadonlySet
 		while(last >= 0 && before(reader, placed[last])) {
 			last--;
 		}
-		link(reader, last >= 0 ? placed[last] : floating[0]);
+		if(last >= 0) {
+			link(reader, placed[last]);
+		} else if(unknownMethodsAt.some(at => at !== reader && !before(reader, at))) {
+			link(reader, floating[0]);
+		}
 	}
 }
 

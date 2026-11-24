@@ -454,6 +454,13 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 		testQuery('tryCatch may yield its block', "x <- tryCatch(readLines('f'), error = function(e) 'a')\nfoo(x)", q('2@foo'), {
 			'2@foo': [{ id: '2@x', types: [InputType.Constant, InputType.File], trace: InputTraceType.Alias, cds: [InputType.File] }]
 		});
+		testQuery('a function handed to an apply gets what the apply binds', 'lapply(c("a", "b"), function(i) foo(i))\nf <- function(j) foo(j)\nsapply(c("a"), f)', [{ type: 'input-sources', criterion: ['1@foo', '2@foo'] }], {
+			'1@foo': [{ id: '1:37', types: [InputType.DerivedConstant], trace: InputTraceType.Pure }],
+			'2@foo': [{ id: '2:22', types: [InputType.DerivedConstant], trace: InputTraceType.Pure }]
+		});
+		testQuery('a function handed to an apply also gets its other callers', 'h <- function(a) foo(a)\nh("c")\nlapply(readline(), h)', q('1@foo'), {
+			'1@foo': [{ id: '1:22', types: [InputType.Constant, InputType.User], trace: InputTraceType.Alias }]
+		});
 		testQuery('a parameter of a function handed on as a value is not bound by its direct callers', "h <- function(a) { x <- a; foo(x) }\nh('c')\ntryCatch(stop(readline()), error = h)", q('1@foo'), {
 			'1@foo': [{ id: '$9', types: [InputType.Constant, InputType.Scope, InputType.Parameter], trace: InputTraceType.Alias }]
 		});

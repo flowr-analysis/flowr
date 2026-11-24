@@ -875,13 +875,24 @@ class InputClassifier {
 		return RSymbol.is(node) && Identifier.isDotDotDotAccess(node.content) && node.content !== Identifier.dotdotdot();
 	}
 
-	/** whether the function binding the parameter is used as a value, so it may be called with anything the visible callers do not pass */
+	/**
+	 * whether the function binding the parameter is used as a value, so it may be called with anything the visible callers do not pass;
+	 * handed to an apply (`lapply(x, f)`), it is called there
+	 */
 	private escapes(parameter: NodeId): boolean {
 		const idMap = this.whole.idMap;
 		const fn = idMap === undefined ? undefined : RNode.iterateParents(idMap.get(parameter), idMap).find(RFunctionDefinition.is);
-		const holders = fn === undefined ? [] : Dataflow.sourcesOf(this.whole, fn.info.id, EdgeType.DefinedBy);
-		return holders.length === 0 || holders.some(h => Dataflow.sourcesOf(this.whole, h, EdgeType.Reads)
-			.some(r => !RFunctionCall.is(idMap?.get(r)) || !Dataflow.hasEdge(this.whole, r, fn?.info.id as NodeId, EdgeType.Calls)));
+		if(fn === undefined) {
+			return true;
+		}
+		const holders = Dataflow.sourcesOf(this.whole, fn.info.id, EdgeType.DefinedBy);
+		const uses = (holders.length === 0 ? [fn.info.id] : holders).flatMap(h => Dataflow.sourcesOf(this.whole, h, EdgeType.Reads));
+		return (holders.length === 0 && uses.length === 0) || uses.some(r => !Dataflow.hasEdge(this.whole, r, fn.info.id, EdgeType.Calls) || !(RFunctionCall.is(idMap?.get(r)) || this.calledByApply(r)));
+	}
+
+	/** whether an apply calls what `id` holds: `lapply` itself, or the call it makes of an argument it is handed */
+	private calledByApply(id: NodeId): boolean {
+		return [id, ...Dataflow.sourcesOf(this.whole, id, EdgeType.Argument)].some(c => DfgVertex.hasOrigin(this.whole.getVertex(c), BuiltInProcName.Apply));
 	}
 
 	/** whether code flowR cannot follow (`load`, `eval`, `e$x <-`) may rebind the variable before the use */

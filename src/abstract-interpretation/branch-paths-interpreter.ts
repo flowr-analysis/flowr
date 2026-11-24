@@ -6,13 +6,24 @@ import { RTrue, type RFalse } from '../r-bridge/lang-4.x/convert-values';
 import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, DfgVertex } from '../dataflow/graph/vertex';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /** The {@link BranchPaths} as an {@link AbstractInterpreter}. */
 class BranchPathsInterpreter extends AbstractInterpreter<Paths> implements BranchPaths {
 	constructor(config: AbsintVisitorConfiguration) {
 		super(config, {
 			domains:   { paths: BranchPathDomain.start() },
-			semantics: { paths: { handleFunctionDefinition: (state, vertex) => state.set(vertex.id, BranchPathDomain.start()) } }
+			semantics: { paths: { handleFunctionDefinition: (state, vertex) => {
+				/* paths are asked for within a body only, so only the definitions around this one need to be carried on */
+				const around = new Set(RNode.iterateParents(config.normalizedAst.idMap.get(vertex.id), config.normalizedAst.idMap).filter(RFunctionDefinition.is).map(d => d.info.id));
+				for(const [key] of state.entries()) {
+					if(!around.has(key)) {
+						state.remove(key);
+					}
+				}
+				state.set(vertex.id, BranchPathDomain.start());
+			} } }
 		});
 	}
 

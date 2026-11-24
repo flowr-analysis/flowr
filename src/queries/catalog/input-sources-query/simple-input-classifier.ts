@@ -34,6 +34,7 @@ import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { AstIdMap, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SourceRange } from '../../../util/range';
@@ -922,11 +923,19 @@ class InputClassifier {
 		const fn = RNode.iterateParents(node, idMap).find(RFunctionDefinition.is);
 		const within = (id: NodeId) => fn !== undefined && RNode.iterateParents(idMap.get(id), idMap).some(p => p === fn);
 		const local = definitions.length > 0 && definitions.every(within);
+		/* where a definition binds: once its value is computed, for the variable of a for loop before its body runs */
+		const binds = (d: NodeId) => {
+			const parent = idMap.get(idMap.get(d)?.info.parent as NodeId);
+			return RForLoop.is(parent) ? parent.variable : parent;
+		};
 		/* an unconditional definition after the effect binds anew, whatever a loop redefines later on */
-		const overwritten = (e: NodeId) => definitions.some(d => !this.whole.getVertex(d)?.cds?.length
-			&& runsAfter(idMap.get(idMap.get(d)?.info.parent as NodeId), idMap.get(e), idMap));
+		const overwritten = (e: NodeId) => definitions.some(d => !this.whole.getVertex(d)?.cds?.length && runsAfter(binds(d), idMap.get(e), idMap));
+		/* a for loop binds its variable anew before each run of its body, so what the body does after the use cannot change it */
+		const loop = idMap.get(idMap.get(definitions[0])?.info.parent as NodeId);
+		const body = RForLoop.is(loop) && definitions.every(d => d === loop.variable.info.id) ? loop.body : undefined;
 		return this.rebinders().some(([e, fields]) => (fields === undefined || fields.some(f => f === undefined || f === RNode.lexeme(node)))
-			&& (!local || within(e)) && !overwritten(e) && !((fn === undefined || local) && runsAfter(idMap.get(e), node, idMap)));
+			&& (!local || within(e)) && !overwritten(e) && !((fn === undefined || local) && runsAfter(idMap.get(e), node, idMap))
+			&& !(body !== undefined && runsAfter(idMap.get(e), node, idMap, body)));
 	}
 
 	/** the unknown side effects, and the replacements `e$x <- v` with the names they may bind (`undefined` for any) */
@@ -1066,14 +1075,31 @@ const FieldReplacements: ReadonlySet<BrandedIdentifier> = new Set(['$<-', '[[<-'
 
 const LoopTypes: ReadonlySet<RType> = new Set([RType.ForLoop, RType.WhileLoop, RType.RepeatLoop]);
 
-/** whether `later` surely runs after `node`: later in the same file, in no shared loop, not deferred into a function apart from it */
-function runsAfter(later: RNode<ParentInformation> | undefined, node: RNode<ParentInformation> | undefined, idMap: AstIdMap): boolean {
+/**
+ * whether `later` surely runs after `node`: later in the same file, in no shared loop, not deferred into a function apart from it;
+ * with a `scope`, both have to be within it and only one run of it counts (one run of a loop body)
+ */
+function runsAfter(later: RNode<ParentInformation> | undefined, node: RNode<ParentInformation> | undefined, idMap: AstIdMap, scope?: RNode<ParentInformation>): boolean {
 	const [first, second] = [RNode.span(node), RNode.span(later)];
 	if(first === undefined || second === undefined || node?.info.file !== later?.info.file || !(SourceRange.startsCompletelyBefore(first, second) || SourceRange.isSubsetOf(first, second))) {
 		return false;
 	}
 	const around = new Set(RNode.iterateParents(later, idMap));
-	return RNode.iterateParents(node, idMap).every(p => RFunctionDefinition.is(p) ? around.has(p) : !LoopTypes.has(p.type) || !around.has(p));
+	if(scope !== undefined && !around.has(scope)) {
+		return false;
+	}
+	let child = node;
+	for(const p of RNode.iterateParents(node, idMap)) {
+		/* the vector of a for loop is evaluated once, before its body runs */
+		const once = RForLoop.is(p) && child === p.vector;
+		if(p === scope) {
+			return true;
+		} else if(RFunctionDefinition.is(p) ? !around.has(p) : LoopTypes.has(p.type) && around.has(p) && !once) {
+			return false;
+		}
+		child = p;
+	}
+	return scope === undefined;
 }
 
 function declarationKey(object: BrandedIdentifier, field: BrandedIdentifier | string): string {

@@ -188,6 +188,12 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 		testQuery('Recursive function that may read file', 'f <- function(n) { if(n==0) read.csv("a") else f(n-1) }\ny <- f(1)\nfoo(y)', [{ type: 'input-sources', criterion: '3@foo' }], {
 			'3@foo': [{ id: '3@y', types: [InputType.File], trace: InputTraceType.Alias, cds: [InputType.DerivedConstant] }]
 		});
+		testQuery('an unknown effect after the use cannot rebind the variable of a for loop', 'vs <- c("a", "b")\nfor(v in vs) { foo(v); eval(parse(text = x)) }', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2:20', types: [InputType.DerivedConstant], trace: InputTraceType.Pure, cds: [InputType.DerivedConstant] }]
+		});
+		testQuery('an unknown effect before the use may rebind the variable of a for loop', 'for(v in c("a", "b")) { eval(parse(text = x)); foo(v) }', [{ type: 'input-sources', criterion: '1@foo' }], {
+			'1@foo': [{ id: '1:52', types: [InputType.DerivedConstant, InputType.Unknown], trace: InputTraceType.Pure, cds: [InputType.DerivedConstant] }]
+		});
 		testQuery('a counter a loop increments stays constant', 't <- 2\nfor(v in 1:3) {\n  foo(t)\n  t = t + 1\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
 			'3@foo': [{ id: '3@t', types: [InputType.Constant, InputType.DerivedConstant], trace: InputTraceType.Alias, cds: [InputType.DerivedConstant] }]
 		});

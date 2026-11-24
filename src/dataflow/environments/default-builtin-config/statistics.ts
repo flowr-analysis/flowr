@@ -18,6 +18,13 @@ export const StatsDefinitions = [
 		'waldtest'), ...pkg(PkgName.NorTest, 'ad.test', 'cvm.test', 'lillie.test', 'pearson.test', 'sf.test'), ...pkg(PkgName.Tseries, 'adf.test', 'jarque.bera.test', 'kpss.test',
 		'pp.test', 'runs.test', 'white.test'), ...pkg(PkgName.Rstatix, 'anova_test', 'chisq_test', 'cor_test', 'kruskal_test', 'shapiro_test', 't_test', 'wilcox_test'),
 	...pkg(PkgName.Multcomp, 'glht')], BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Statistics] }),
+	/*
+	 * accessors of fitted models and the family constructors: they read the model (or nothing) and compute a value, without them every `resid(model)` was an unknown function;
+	 * `summary`, `predict`, `confint`, `model.frame` and `model.matrix` stay unknown, as they read options like `digits`, `na.action` or `contrasts`
+	 */
+	fn(stats('resid', 'residuals', 'fitted', 'fitted.values', 'coef', 'coefficients', 'vcov', 'AIC', 'BIC', 'logLik', 'deviance', 'df.residual', 'nobs',
+		'relevel', 'binomial', 'poisson', 'gaussian', 'Gamma', 'inverse.gaussian', 'quasi', 'quasibinomial', 'quasipoisson'),
+	BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Statistics] }),
 	fn(pkg(PkgName.Lim, 'Read'), BuiltInProcName.DefaultReadAllArgs, readsFile('file')),
 	fn(pkg(PkgName.Expss, 'read_spss'), BuiltInProcName.DefaultReadAllArgs, readsFile('file')),
 	fn(pkg(PkgName.SimPhe, 'read.geno'), BuiltInProcName.DefaultReadAllArgs, readsFile('fname')),

@@ -152,7 +152,9 @@ const GuardFactsOfPackages: Readonly<Record<BrandedNamespace, Readonly<Record<Br
 		...each(Computes, 'stopifnot', 'xor', '|>', 'all.equal'),
 		'%in%':             { ...Computes, ...Returns(Logical, { notNA: true }) },
 		'identity':         { returns: 'argument' },
-		'data.frame':       { recycles: [DataFrameRows] },
+		/* neither dispatches, both build a fresh data frame (a list), never an environment */
+		'data.frame':       { recycles: [DataFrameRows], ...Returns(List) },
+		'expand.grid':      Returns(List),
 		...each(Returns(Character), 'paste', 'paste0', 'toupper', 'tolower'),
 		...each(OpensFrame, 'rm', 'remove', 'list2env', 'makeActiveBinding', 'eval', 'evalq', 'eval.parent', 'source', 'sys.source', 'attach', 'sys.frame', 'sys.frames')
 	},

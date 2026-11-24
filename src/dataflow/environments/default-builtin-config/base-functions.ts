@@ -73,6 +73,8 @@ export const BaseDefinitions = [
 	{ props: CallProp.Pure, tags: [SemanticCallTag.Narrows], sig: SigShape }, Primitive),
 	/* the names and the class are read off the argument, so whatever it carries can show up in the result */
 	fn(base('dimnames', 'names', 'rownames', 'colnames', 'class'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: SigShape }, Primitive),
+	/* the read forms of `levels<-` and friends: only `levels<-` was known, so `levels(x)` resolved to an unknown function, and inside `with(data, ...)` that made the call opaque */
+	fn(base('levels', 'droplevels'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: SigShape }),
 	fn(base('structure'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, sig: sig({ '.Data': Forced.Value, '...': Forced.Value }) }),
 	fn(base('nchar'), BuiltInProcName.DefaultReadAllArgs, { props: CallProp.Pure, tags: [SemanticCallTag.Narrows], sig: SigShape },
 		{ assumePrimitive: true, evalHandler: BuiltInEvalName.StringFn }),

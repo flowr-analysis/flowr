@@ -9,7 +9,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowGraph } from '../../graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
-import { GuardTerm, type GuardBinding, type GuardConstant } from './guard-term';
+import { GuardFn, GuardTerm, type GuardBinding, type GuardConstant } from './guard-term';
 import { parseGuardTerm } from './guard-term-syntax';
 import { builtInClauses, builtInGuards, type GuardOrigin, type StatedGuards } from './built-in-guards';
 import { atCall, callBinding, guardsOfFunctions, isParameter, readsViaParameter, type FunctionGuards } from './function-guards';
@@ -96,8 +96,8 @@ function of(this: void, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext,
 	let loads: boolean | undefined;
 	return {
 		graph, idMap, ctx, facts:           guardFactsOf(ctx),
-		mayAddMethods:   generic => [...bindings.keys()].some(name => name.startsWith(`${generic}.`)) || (loads ??= loadsPackages(graph, ctx)),
-		rewritesFormals: [...graph.verticesOfType(VertexType.FunctionCall)].some(([, v]) => FormalsRewriters.has(Identifier.getName(v.name))),
+		mayAddMethods:   generic => bindings.keys().some(name => name.startsWith(`${generic}.`)) || (loads ??= loadsPackages(graph, ctx)),
+		rewritesFormals: graph.verticesOfType(VertexType.FunctionCall).some(([, v]) => FormalsRewriters.has(Identifier.getName(v.name))),
 		definitions:     new Map(),
 		functions:       new Map()
 	};
@@ -117,7 +117,7 @@ function statedClauses(this: void, name: BrandedIdentifier, stated: StatedGuards
 	});
 	/* a value without a class attribute may still run a method another package registers for its implicit class */
 	const open = (stated.dispatches !== undefined || RS3Generics.genericFormals[String(name)] !== undefined) && scope.mayAddMethods(name);
-	return terms.filter(t => !open || !GuardTerm.mentions(t, 'is.object'));
+	return terms.filter(t => !open || !GuardTerm.mentions(t, GuardFn.IsObject));
 }
 
 /** What is stated of a function by name: what the signature database answers (given a context to ask it in), or else flowR's table of the base packages. */
@@ -267,7 +267,7 @@ function literalsOf(this: void, value: Value): GuardTerm[] | undefined {
 	}
 	/* the elements have one type: all integers or all doubles for numbers */
 	const variants = (elements as GuardConstant[][])[0].map((_, at) => (elements as GuardConstant[][]).map(e => e[at]));
-	return variants.map(v => GuardTerm.known('c', ...v));
+	return variants.map(v => GuardTerm.knownOf(GuardFn.Combine, v));
 }
 
 /** The literals the argument may hold, `undefined` if not all of them are known. */
@@ -287,7 +287,7 @@ function argumentLiterals(this: void, node: RNodeWithParent, vertex: DataflowGra
 function combinations(this: void, choices: ReadonlyMap<BrandedIdentifier, readonly GuardTerm[]>): GuardBinding[] | undefined {
 	let result = [new Map<BrandedIdentifier, GuardTerm>()];
 	for(const [name, literals] of choices) {
-		result = result.flatMap(binding => literals.map(l => new Map<BrandedIdentifier, GuardTerm>([...binding, [name, l]])));
+		result = result.flatMap(binding => literals.map(l => new Map(binding).set(name, l)));
 		if(result.length > MaxCombinations) {
 			return undefined;
 		}
@@ -330,14 +330,14 @@ function breaches(this: void, call: NodeId, contract: FunctionContract, scope: C
 	};
 	for(const clause of contract.clauses) {
 		const { requires } = atCall(clause, binding, undefined, facts);
-		const placeholders = [...GuardTerm.formalsOf(requires)];
-		const bindings = combinations(new Map(placeholders.map(p => [p, literalsAt(p)])));
+		const placeholders = GuardTerm.formalsOf(requires);
+		const bindings = combinations(new Map(placeholders.values().map(p => [p, literalsAt(p)])));
 		if(bindings === undefined || !bindings.every(b => GuardTerm.isFalse(GuardTerm.substituteCondition(requires, b, undefined, facts)))) {
 			continue;
 		}
 		const values = contract.formals.flatMap(formal => {
 			const bound = binding.binding.get(formal);
-			const literals = bound?.kind === 'formal' && placeholders.includes(bound.name) ? literalsAt(bound.name) : [];
+			const literals = bound?.kind === 'formal' && placeholders.has(bound.name) ? literalsAt(bound.name) : [];
 			const node = bound?.kind === 'formal' ? args.get(bound.name)?.node : undefined;
 			return literals.length === 0 ? [] : [[formal, RConstant.is(node) ? node.lexeme : shown(literals).join(' or ')] as const];
 		});

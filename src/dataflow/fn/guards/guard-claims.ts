@@ -1,11 +1,12 @@
 import type { BrandedIdentifier } from '../../environments/identifier';
 import { IntervalDomain } from '../../../abstract-interpretation/domains/interval-domain';
 import { BoundedSetDomain } from '../../../abstract-interpretation/domains/bounded-set-domain';
-import { GuardTerm, type GuardCall, type GuardConstant } from './guard-term';
+import { GuardFn, GuardTerm, type GuardCall, type GuardConstant } from './guard-term';
 import { AnyType, RValueType, type GuardFacts, type GuardFactsLookup, type ReturnedValue, type RValueTypes } from '../../environments/guard-facts';
 import { setEquals } from '../../../util/collections/set';
 import { appliesFormal, typeNames } from './guard-knowledge';
 import { allOf } from './condition-grouping';
+import { compactRecord, nonEmpty } from '../../../util/objects';
 
 /** The inclusive bounds of a number, the upper one `Infinity` if there is none; JSON turns that into `null`, so it is stated as such. */
 export type ClaimedRange = readonly [lower: number | null, upper: number | null];
@@ -106,22 +107,32 @@ function ofValues(this: void, values: ReadonlySet<string | number | boolean> | u
 
 const Unconstrained: Abstract = { types: typeSet(AnyType), plain: typeSet(AnyType), values: NoValues, partial: false, classes: undefined, bounds: new Map(), notNA: false, callable: false, whole: false, resolves: new Map() };
 
+/** {@link Unconstrained} but for what `part` claims. */
+function constrained(this: void, part: Partial<Abstract>): Abstract {
+	return { ...Unconstrained, ...part };
+}
+
 function ofTypes(this: void, types: RValueTypes, classed = false): Abstract {
-	return { ...Unconstrained, types: typeSet(types), plain: typeSet(classed ? 0 : types) };
+	return constrained({ types: typeSet(types), plain: typeSet(classed ? 0 : types) });
 }
 
 function ofBound(this: void, measure: BrandedIdentifier, lower: number, upper: number): Abstract {
-	return { ...Unconstrained, bounds: new Map([[measure, new IntervalDomain([lower, upper])]]) };
+	return constrained({ bounds: new Map([[measure, new IntervalDomain([lower, upper])]]) });
 }
 
 function combineMaps(this: void, a: Abstract['bounds'], b: Abstract['bounds'], meet: boolean): Abstract['bounds'] {
 	const result = new Map<BrandedIdentifier, IntervalDomain>();
-	for(const key of new Set([...a.keys(), ...b.keys()])) {
-		const [left, right] = [a.get(key), b.get(key)];
-		if(left !== undefined && right !== undefined) {
+	for(const [key, left] of a) {
+		const right = b.get(key);
+		if(right !== undefined) {
 			result.set(key, meet ? left.meet(right) : left.join(right));
 		} else if(meet) {
-			result.set(key, (left ?? right) as IntervalDomain);
+			result.set(key, left);
+		}
+	}
+	for(const [key, right] of meet ? b : []) {
+		if(!a.has(key)) {
+			result.set(key, right);
 		}
 	}
 	return result;
@@ -159,7 +170,7 @@ function either(this: void, a: Abstract, b: Abstract): Abstract {
 		notNA:    a.notNA && b.notNA,
 		callable: a.callable && b.callable,
 		whole:    a.whole && b.whole,
-		resolves: new Map([...a.resolves].filter(([expression]) => b.resolves.has(expression)))
+		resolves: new Map(a.resolves.entries().filter(([expression]) => b.resolves.has(expression)))
 	};
 }
 
@@ -176,50 +187,57 @@ function valuesOf(this: void, constants: readonly GuardConstant[]): Set<string |
 function ofPredicate(this: void, call: GuardCall, formal: BrandedIdentifier, holds: boolean, facts: GuardFactsLookup): Abstract {
 	const [first, second] = call.args.map(a => a.value);
 	const name = GuardTerm.bareName(call.fn);
-	if(call.fn === 'isTRUE' || call.fn === 'isFALSE') {
-		return holds && isFormal(first, formal) ? both(ofTypes(RValueType.Logical), ofBound('length', 1, 1)) : Unconstrained;
+	if(call.fn === GuardFn.IsTrue || call.fn === GuardFn.IsFalse) {
+		return holds && isFormal(first, formal) ? both(ofTypes(RValueType.Logical), ofBound(GuardFn.Length, 1, 1)) : Unconstrained;
 	}
 	const stated = facts(name);
 	const predicate = stated?.predicate;
 	if(predicate !== undefined && isFormal(first, formal)) {
 		if(holds) {
-			const types = { ...ofTypes(predicate.yes | (predicate.classedToo ?? 0), predicate.classed), ...(predicate.classed ? {} : { plain: typeSet(predicate.yes) }) };
-			const typed = predicate.callable ? { ...types, callable: true } : types;
-			return predicate.scalar ? both(typed, ofBound('length', 1, 1)) : typed;
+			const types = typeSet(predicate.yes | (predicate.classedToo ?? 0));
+			const typed = constrained({ types, plain: typeSet(predicate.classed ? 0 : predicate.yes), callable: predicate.callable === true });
+			return predicate.scalar ? both(typed, ofBound(GuardFn.Length, 1, 1)) : typed;
 		}
 		const others = typeSet(AnyType & ~predicate.yes);
-		const ruledOut = predicate.exact === 'unclassed' ? { ...Unconstrained, plain: others } : predicate.exact ? { ...Unconstrained, types: others, plain: others } : Unconstrained;
+		const ruledOut = predicate.exact === 'unclassed' ? constrained({ plain: others }) : predicate.exact ? constrained({ types: others, plain: others }) : Unconstrained;
 		/* whatever a string can be measured against, this is not one */
-		return call.fn === 'is.character' ? { ...ruledOut, values: NoValues.bottom() } : ruledOut;
-	} else if(isFormal(first, formal) && (holds ? name === 'is.finite' : name === 'is.na' || name === 'anyNA')) {
-		return { ...Unconstrained, notNA: true };
+		return call.fn === GuardFn.IsCharacter ? { ...ruledOut, values: NoValues.bottom() } : ruledOut;
+	} else if(isFormal(first, formal) && (holds ? name === 'is.finite' : name === GuardFn.IsNa || name === 'anyNA')) {
+		return constrained({ notNA: true });
 	} else if(stated?.measures !== undefined && isFormal(first, formal) && call.args.length === 1) {
-		return holds ? boundOf(name, '>=', 1) : boundOf(name, '==', 0);
-	} else if(holds && call.fn === 'inherits' && isFormal(first, formal) && call.args.length === 2) {
+		return holds ? boundOf(name, GuardFn.GreaterEqual, 1) : boundOf(name, GuardFn.Equal, 0);
+	} else if(holds && call.fn === GuardFn.Inherits && isFormal(first, formal) && call.args.length === 2) {
 		const classes = valuesOf(GuardTerm.constantsOf(second) ?? []);
-		return classes?.size ? { ...Unconstrained, classes: new Set([...classes].map(String)) } : Unconstrained;
+		return classes?.size ? constrained({ classes: new Set(classes.values().map(String)) }) : Unconstrained;
 	}
 	return Unconstrained;
 }
 
 /** The comparison operator read the other way around, `1 < x` being `x > 1`. */
-const Swapped: Readonly<Record<BrandedIdentifier, BrandedIdentifier>> = { '<': '>', '>': '<', '<=': '>=', '>=': '<=', '==': '==', '!=': '!=' };
+const Swapped: Readonly<Record<BrandedIdentifier, BrandedIdentifier>> = {
+	[GuardFn.Less]:         GuardFn.Greater,
+	[GuardFn.Greater]:      GuardFn.Less,
+	[GuardFn.LessEqual]:    GuardFn.GreaterEqual,
+	[GuardFn.GreaterEqual]: GuardFn.LessEqual,
+	[GuardFn.Equal]:        GuardFn.Equal,
+	[GuardFn.NotEqual]:     GuardFn.NotEqual
+};
 
 function boundOf(this: void, measure: BrandedIdentifier, op: BrandedIdentifier, value: number): Abstract {
 	/* what counts comes in whole numbers, so a bound between two of them, or a strict one, says more than it spells out */
 	const whole = measure !== 'value';
 	switch(op) {
-		case '==':
+		case GuardFn.Equal:
 			return ofBound(measure, value, value);
-		case '>':
+		case GuardFn.Greater:
 			return ofBound(measure, whole ? Math.floor(value) + 1 : value, Infinity);
-		case '>=':
+		case GuardFn.GreaterEqual:
 			return ofBound(measure, whole ? Math.ceil(value) : value, Infinity);
-		case '<':
+		case GuardFn.Less:
 			return ofBound(measure, -Infinity, whole ? Math.ceil(value) - 1 : value);
-		case '<=':
+		case GuardFn.LessEqual:
 			return ofBound(measure, -Infinity, whole ? Math.floor(value) : value);
-		case '!=':
+		case GuardFn.NotEqual:
 			return measure !== 'value' && value === 0 ? ofBound(measure, 1, Infinity) : Unconstrained;
 		default:
 			return Unconstrained;
@@ -231,12 +249,12 @@ function ofComparison(this: void, read: GuardTerm, op: BrandedIdentifier, right:
 	const constants = GuardTerm.constantsOf(right);
 	if(GuardTerm.isCall(read) && read.known && isFormal(read.args[0]?.value, formal) && read.args.length === 1) {
 		const reader = facts(read.fn)?.reads;
-		const values = (op === '==' || op === '%in%') && constants !== undefined ? valuesOf(constants) : undefined;
+		const values = (op === GuardFn.Equal || op === GuardFn.In) && constants !== undefined ? valuesOf(constants) : undefined;
 		if(reader !== undefined && values !== undefined) {
-			const types = [...values].map(v => reader[String(v)]);
+			const types = Array.from(values, v => reader[String(v)]);
 			return types.every(t => t !== undefined) ? ofTypes(types.reduce((acc, t) => acc | t, 0)) : Unconstrained;
-		} else if(read.fn === 'class' && values !== undefined) {
-			return { ...Unconstrained, classes: new Set([...values].map(String)) };
+		} else if(read.fn === GuardFn.Class && values !== undefined) {
+			return constrained({ classes: new Set(values.values().map(String)) });
 		}
 		const number = constants?.length === 1 ? constants[0].value : undefined;
 		return facts(read.fn)?.measures !== undefined && typeof number === 'number' ? boundOf(read.fn, op, number) : Unconstrained;
@@ -244,21 +262,21 @@ function ofComparison(this: void, read: GuardTerm, op: BrandedIdentifier, right:
 		return Unconstrained;
 	}
 	const number = constants.length === 1 ? constants[0].value : undefined;
-	if(op === '%in%' || (op === '==' && typeof number !== 'number')) {
+	if(op === GuardFn.In || (op === GuardFn.Equal && typeof number !== 'number')) {
 		const values = valuesOf(constants);
-		return values === undefined ? Unconstrained : { ...Unconstrained, values: ofValues(values) };
+		return values === undefined ? Unconstrained : constrained({ values: ofValues(values) });
 	}
 	return typeof number === 'number' ? boundOf('value', op, number) : Unconstrained;
 }
 
 function ofCheck(this: void, call: GuardCall, formal: BrandedIdentifier, facts: GuardFactsLookup): Abstract {
 	const name = GuardTerm.bareName(call.fn);
-	if(name === 'UseMethod') {
+	if(name === GuardFn.UseMethod) {
 		const [{ value: generic }, { value: object }] = call.args;
-		return isFormal(object, formal) && generic.kind === 'constant' ? { ...Unconstrained, resolves: new Map([[`${generic.lexeme}.class(${formal})`, { expression: `paste0(${generic.lexeme}, ".", class(${formal}))`, prefix: `${String(generic.value)}.`, suffix: '' }]]) } : Unconstrained;
+		return isFormal(object, formal) && generic.kind === 'constant' ? constrained({ resolves: new Map([[`${generic.lexeme}.class(${formal})`, { expression: `paste0(${generic.lexeme}, ".", class(${formal}))`, prefix: `${String(generic.value)}.`, suffix: '' }]]) }) : Unconstrained;
 	}
 	if(appliesFormal(facts(name)) && isFormal(call.args[0]?.value, formal)) {
-		return { ...Unconstrained, callable: true };
+		return constrained({ callable: true });
 	}
 	const check = facts(name)?.check;
 	if(check === undefined || !isFormal(call.args[0]?.value, formal)) {
@@ -277,7 +295,7 @@ function ofCheck(this: void, call: GuardCall, formal: BrandedIdentifier, facts: 
 	const choices = check.choices === undefined ? undefined : call.args.find((a, i) => a.name === check.choices || (a.name === undefined && i === 1))?.value;
 	const values = choices === undefined ? undefined : valuesOf(GuardTerm.constantsOf(choices) ?? []);
 	const claim = { ...ofTypes(types, check.classed), values: ofValues(values), partial: values !== undefined && check.partial === true };
-	return check.scalar && !loosened ? both(claim, ofBound('length', 1, 1)) : claim;
+	return check.scalar && !loosened ? both(claim, ofBound(GuardFn.Length, 1, 1)) : claim;
 }
 
 /** What surrounds the formal in the `paste0`, `paste`, or `sprintf` that spells out a name, if that is all there is to it. */
@@ -286,13 +304,13 @@ function surroundings(this: void, term: GuardTerm, formal: BrandedIdentifier): P
 		return {};
 	}
 	const texts = term.args.filter(a => a.name === undefined).map(a => a.value);
-	if(term.fn === 'sprintf') {
+	if(term.fn === GuardFn.Sprintf) {
 		const [format, ...rest] = texts;
 		const parts = format?.kind === 'constant' && typeof format.value === 'string' ? format.value.split('%s') : [];
 		return parts.length === 2 && rest.length === 1 && isFormal(rest[0], formal) ? { prefix: parts[0], suffix: parts[1] } : {};
 	}
 	const separator = term.args.find(a => a.name === 'sep')?.value;
-	const glue = term.fn === 'paste0' ? '' : separator === undefined ? ' ' : separator.kind === 'constant' && typeof separator.value === 'string' ? separator.value : undefined;
+	const glue = term.fn === GuardFn.Paste0 ? '' : separator === undefined ? ' ' : separator.kind === 'constant' && typeof separator.value === 'string' ? separator.value : undefined;
 	const at = texts.findIndex(t => isFormal(t, formal));
 	const strings = texts.map(t => t.kind === 'constant' && typeof t.value === 'string' ? t.value : undefined);
 	if(glue === undefined || at < 0 || strings.some((t, i) => i !== at && t === undefined) || term.args.some(a => a.name === 'collapse')) {
@@ -304,24 +322,24 @@ function surroundings(this: void, term: GuardTerm, formal: BrandedIdentifier): P
 
 function resolving(this: void, named: GuardTerm, formal: BrandedIdentifier): Abstract {
 	const expression = GuardTerm.render(named);
-	return { ...Unconstrained, resolves: new Map([[expression, { expression, ...surroundings(named, formal) }]]) };
+	return constrained({ resolves: new Map([[expression, { expression, ...surroundings(named, formal) }]]) });
 }
 
 function ofExists(this: void, call: GuardCall, formal: BrandedIdentifier): Abstract {
 	const [{ value: named }] = call.args;
 	const isFunctionMode = call.args.some(a => a.name === 'mode' && a.value.kind === 'constant' && a.value.value === 'function');
 	if(named.kind === 'constant' && named.value === formal) {
-		return { ...Unconstrained, callable: isFunctionMode };
+		return constrained({ callable: isFunctionMode });
 	}
 	if(!GuardTerm.formalsOf(named).has(formal)) {
 		return Unconstrained;
 	}
-	return isFormal(named, formal) ? { ...Unconstrained, callable: isFunctionMode } : resolving(named, formal);
+	return isFormal(named, formal) ? constrained({ callable: isFunctionMode }) : resolving(named, formal);
 }
 
 /** What `all` lets through unbounded: of no number at all, each one holds. */
 function withoutNullable(this: void, abstract: Abstract, facts: GuardFactsLookup): Abstract {
-	return { ...abstract, bounds: new Map([...abstract.bounds].filter(([measure]) => facts(measure)?.measures !== 'nullable')) };
+	return { ...abstract, bounds: new Map(abstract.bounds.entries().filter(([measure]) => facts(measure)?.measures !== 'nullable')) };
 }
 
 function abstractOf(this: void, term: GuardTerm, formal: BrandedIdentifier, facts: GuardFactsLookup): Abstract {
@@ -331,28 +349,28 @@ function abstractOf(this: void, term: GuardTerm, formal: BrandedIdentifier, fact
 	const operands = term.args.map(a => a.value);
 	const [first, second] = operands;
 	switch(term.fn) {
-		case '&&':
-		case '&':
+		case GuardFn.And:
+		case GuardFn.ElementAnd:
 			return both(abstractOf(first, formal, facts), abstractOf(second, formal, facts));
-		case '||':
-		case '|':
+		case GuardFn.Or:
+		case GuardFn.ElementOr:
 			return either(abstractOf(first, formal, facts), abstractOf(second, formal, facts));
-		case 'all':
+		case GuardFn.All:
 			return operands.length === 1 ? withoutNullable(abstractOf(first, formal, facts), facts) : Unconstrained;
-		case '!':
+		case GuardFn.Not:
 			return GuardTerm.isCall(first) && first.known ? ofPredicate(first, formal, false, facts) : Unconstrained;
-		case 'succeeds':
+		case GuardFn.Succeeds:
 			return GuardTerm.isCall(first) ? ofCheck(first, formal, facts) : Unconstrained;
-		case 'exists':
+		case GuardFn.Exists:
 			return ofExists(term, formal);
 		case 'is.element':
-		case 'identical':
-			return operands.length === 2 ? ofComparison(first, term.fn === 'identical' ? '==' : '%in%', second, formal, facts) : Unconstrained;
-		case '%in%':
-			return ofComparison(first, '%in%', second, formal, facts);
+		case GuardFn.Identical:
+			return operands.length === 2 ? ofComparison(first, term.fn === GuardFn.Identical ? GuardFn.Equal : GuardFn.In, second, formal, facts) : Unconstrained;
+		case GuardFn.In:
+			return ofComparison(first, GuardFn.In, second, formal, facts);
 		default:
-			if(term.fn === '==' && operands.length === 2 && isWholeTest(first, second, formal)) {
-				return { ...Unconstrained, whole: true };
+			if(term.fn === GuardFn.Equal && operands.length === 2 && isWholeTest(first, second, formal)) {
+				return constrained({ whole: true });
 			}
 			if(Swapped[term.fn] !== undefined && operands.length === 2) {
 				return first.kind === 'constant' ? ofComparison(second, Swapped[term.fn], first, formal, facts) : ofComparison(first, term.fn, second, formal, facts);
@@ -363,7 +381,7 @@ function abstractOf(this: void, term: GuardTerm, formal: BrandedIdentifier, fact
 
 /** A bound the way {@link FormalClaim.bounds} states it, without one that is not known. */
 function boundsOf(this: void, bounds: Abstract['bounds']): Record<string, ClaimedRange> | undefined {
-	const kept = [...bounds].filter(([, domain]) => domain.isValue() && (Number.isFinite(domain.lower) || Number.isFinite(domain.upper)));
+	const kept = bounds.entries().filter(([, domain]) => domain.isValue() && (Number.isFinite(domain.lower) || Number.isFinite(domain.upper))).toArray();
 	return kept.length === 0 ? undefined : Object.fromEntries(kept.map(([measure, { lower, upper }]) => {
 		const [low, high] = [lower as number, upper as number];
 		return [measure, [Number.isFinite(low) ? low : null, Number.isFinite(high) ? high : null]];
@@ -374,7 +392,7 @@ const Numbers = RValueType.Integer | RValueType.Double;
 
 /** Whether `==` tells the values apart for every value without a class, as R turns `TRUE == 1` and `"1" == 1` true, which only a string claim survives. */
 function comparesExactly(this: void, plain: TypeSet, values: BoundedSetDomain<string | number | boolean>): values is BoundedSetDomain<string | number | boolean> & { value: ReadonlySet<string | number | boolean> } {
-	const kinds = new Set(values.isValue() ? [...values.value].map(v => typeof v) : []);
+	const kinds = new Set(values.isValue() ? values.value.values().map(v => typeof v) : []);
 	return kinds.size === 1 && (kinds.has('string') || plain.leq(typeSet(kinds.has('number') ? Numbers : RValueType.Logical)));
 }
 
@@ -382,19 +400,20 @@ function toClaim(this: void, abstract: Abstract): FormalClaim {
 	const { types, plain, partial, classes, notNA, callable, resolves } = abstract;
 	const values = comparesExactly(plain, abstract.values) ? abstract.values.value : undefined;
 	/* `"a" > 5` holds in R, so a bound on the value says something only of a number */
-	const bounds = plain.leq(typeSet(Numbers | RValueType.Logical)) ? abstract.bounds : new Map([...abstract.bounds].filter(([measure]) => measure !== 'value'));
-	const stated = boundsOf(bounds);
-	return {
-		...(types.isTop() ? {} : { types: typeNames(typeBits(types)) }),
-		...(plain.equals(types) || plain.isTop() ? {} : { unclassedTypes: typeNames(typeBits(plain)) }),
-		...(values === undefined || values.size === 0 ? {} : { values: [...values], ...(partial ? { partial } : {}) }),
-		...(classes === undefined ? {} : { classes: [...classes] }),
-		...(stated === undefined ? {} : { bounds: stated }),
-		...(notNA ? { notNA } : {}),
-		...(callable ? { callable } : {}),
-		...(abstract.whole ? { whole: true } : {}),
-		...(resolves.size === 0 ? {} : { resolves: [...resolves.values()] })
-	};
+	const bounds = plain.leq(typeSet(Numbers | RValueType.Logical)) ? abstract.bounds : new Map(abstract.bounds.entries().filter(([measure]) => measure !== 'value'));
+	const listed = values === undefined || values.size === 0 ? undefined : values.values().toArray();
+	return compactRecord({
+		types:          types.isTop() ? undefined : typeNames(typeBits(types)),
+		unclassedTypes: plain.equals(types) || plain.isTop() ? undefined : typeNames(typeBits(plain)),
+		values:         listed,
+		partial:        listed !== undefined && partial ? partial : undefined,
+		classes:        classes?.values().toArray(),
+		bounds:         boundsOf(bounds),
+		notNA:          notNA || undefined,
+		callable:       callable || undefined,
+		whole:          abstract.whole || undefined,
+		resolves:       resolves.size === 0 ? undefined : resolves.values().toArray()
+	});
 }
 
 /** What `claim` says beyond `known`, each part `known` already makes sure of left out, so a case does not repeat its condition or what always holds. */
@@ -404,18 +423,20 @@ export function claimBeyond(this: void, claim: FormalClaim, known: FormalClaim):
 	const bounds = Object.entries(claim.bounds ?? {}).filter(([measure, range]) => known.bounds?.[measure] === undefined || !narrower(known.bounds[measure], range));
 	const resolves = (claim.resolves ?? []).filter(r => !known.resolves?.some(k => k.expression === r.expression));
 	const { types, unclassedTypes, values, partial, classes, notNA, callable, whole, cases } = claim;
-	return {
-		...types === undefined || within(known.types, types) ? {} : { types },
-		...unclassedTypes === undefined || within(known.unclassedTypes ?? known.types, unclassedTypes) ? {} : { unclassedTypes },
-		...values === undefined || (within(known.values, values) && (partial === true || known.partial !== true)) ? {} : { values, ...partial ? { partial } : {} },
-		...classes === undefined || within(known.classes, classes) ? {} : { classes },
-		...bounds.length === 0 ? {} : { bounds: Object.fromEntries(bounds) },
-		...notNA && !known.notNA ? { notNA } : {},
-		...callable && !known.callable ? { callable } : {},
-		...whole && !known.whole ? { whole } : {},
-		...resolves.length === 0 ? {} : { resolves },
-		...cases === undefined ? {} : { cases }
-	};
+	const newValues = values !== undefined && !(within(known.values, values) && (partial === true || known.partial !== true));
+	return compactRecord({
+		types:          types === undefined || within(known.types, types) ? undefined : types,
+		unclassedTypes: unclassedTypes === undefined || within(known.unclassedTypes ?? known.types, unclassedTypes) ? undefined : unclassedTypes,
+		values:         newValues ? values : undefined,
+		partial:        newValues && partial ? partial : undefined,
+		classes:        classes === undefined || within(known.classes, classes) ? undefined : classes,
+		bounds:         bounds.length === 0 ? undefined : Object.fromEntries(bounds),
+		notNA:          notNA && !known.notNA ? notNA : undefined,
+		callable:       callable && !known.callable ? callable : undefined,
+		whole:          whole && !known.whole ? whole : undefined,
+		resolves:       nonEmpty(resolves),
+		cases
+	});
 }
 
 /** The functions that drop the fraction of a number, so `trunc(x) == x` holds only for a whole `x`. */
@@ -424,7 +445,7 @@ const Rounding: ReadonlySet<BrandedIdentifier> = new Set(['trunc', 'round', 'flo
 /** Whether `a == b` asks the formal to be a whole number: `trunc(x) == x` either way around, or `x %% 1 == 0`. */
 function isWholeTest(this: void, a: GuardTerm, b: GuardTerm, formal: BrandedIdentifier): boolean {
 	const rounds = (r: GuardTerm, x: GuardTerm) => GuardTerm.isCall(r) && r.known === true && Rounding.has(r.fn) && r.args.length === 1 && isFormal(r.args[0].value, formal) && isFormal(x, formal);
-	const modulo = (m: GuardTerm, zero: GuardTerm) => GuardTerm.isCall(m, '%%') && m.known === true && isFormal(m.args[0]?.value, formal) && m.args[1]?.value.kind === 'constant' && m.args[1].value.value === 1 && zero.kind === 'constant' && zero.value === 0;
+	const modulo = (m: GuardTerm, zero: GuardTerm) => GuardTerm.isCall(m, GuardFn.Modulo) && m.known === true && isFormal(m.args[0]?.value, formal) && m.args[1]?.value.kind === 'constant' && m.args[1].value.value === 1 && zero.kind === 'constant' && zero.value === 0;
 	return rounds(a, b) || rounds(b, a) || modulo(a, b) || modulo(b, a);
 }
 
@@ -442,7 +463,7 @@ export interface ClaimedRelation {
 
 /** The comparison within `term`, also within the `all` that `stopifnot` spells a vector of them with, `undefined` if it is none. */
 function comparisonOf(this: void, term: GuardTerm): GuardCall | undefined {
-	const inner = GuardTerm.isCall(term, 'all') && term.known && term.args.length === 1 ? term.args[0].value : term;
+	const inner = GuardTerm.isCall(term, GuardFn.All) && term.known && term.args.length === 1 ? term.args[0].value : term;
 	return GuardTerm.isCall(inner) && inner.known && Swapped[inner.fn] !== undefined && inner.args.length === 2 ? inner : undefined;
 }
 
@@ -459,15 +480,16 @@ export function relationsOf(this: void, conditions: readonly GuardTerm[], facts:
 		}
 		const [relation] = relating;
 		const others = alternatives.filter(alternative => alternative !== relation);
-		const unless = GuardTerm.any(...others);
-		const [only, ...more] = GuardTerm.formalsOf(unless);
-		const unlessClaim = only === undefined || more.length > 0 ? undefined : toClaim(abstractOf(unless, only, facts));
-		return [{
-			holds:   GuardTerm.render(relation),
-			formals: [...GuardTerm.formalsOf(relation)],
-			...(others.length === 0 ? {} : { unless: GuardTerm.render(unless) }),
-			...(unlessClaim === undefined || Object.keys(unlessClaim).length === 0 ? {} : { unlessClaim: { formal: only, claim: unlessClaim } })
-		}];
+		const unless = GuardTerm.anyOf(others);
+		const mentioned = GuardTerm.formalsOf(unless);
+		const [only] = mentioned;
+		const unlessClaim = mentioned.size !== 1 ? undefined : toClaim(abstractOf(unless, only, facts));
+		return [compactRecord({
+			holds:       GuardTerm.render(relation),
+			formals:     GuardTerm.formalsOf(relation).values().toArray(),
+			unless:      others.length === 0 ? undefined : GuardTerm.render(unless),
+			unlessClaim: unlessClaim === undefined || Object.keys(unlessClaim).length === 0 ? undefined : { formal: only, claim: unlessClaim }
+		})];
 	});
 }
 
@@ -488,20 +510,20 @@ function splitAbout(this: void, condition: GuardTerm, formal: BrandedIdentifier)
 }
 
 /**
- * The conditions with what two of them say of a formal together: `a || p` and `a || q` where `p` and `q` cannot both fail say `a`
+ * What two of the conditions say of a formal together: `a || p` and `a || q` where `p` and `q` cannot both fail say `a`
  * outright (`p && !p` is never true), which neither says alone. The two stay, the claim they give together joins them.
  */
-function withResolvents(this: void, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[]): GuardTerm[] {
-	const out = [...conditions];
+function resolventsOf(this: void, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[]): GuardTerm[] {
+	const out: GuardTerm[] = [];
 	for(const formal of formals) {
 		const split = conditions.map(c => splitAbout(c, formal)).filter(s => s !== undefined && s.about.length > 0 && s.others.length > 0) as { about: GuardTerm[], others: GuardTerm[] }[];
 		for(let i = 0; i < split.length; i++) {
 			for(let j = i + 1; j < split.length; j++) {
 				const [a, b] = [split[i], split[j]];
-				const same = GuardTerm.render(GuardTerm.any(...a.about)) === GuardTerm.render(GuardTerm.any(...b.about));
+				const about = GuardTerm.anyOf(a.about);
 				/* neither way through can hold when the other one does not */
-				if(same && GuardTerm.isFalse(GuardTerm.any(GuardTerm.all(GuardTerm.any(...a.others), GuardTerm.any(...b.others))))) {
-					out.push(GuardTerm.any(...a.about));
+				if(GuardTerm.render(about) === GuardTerm.render(GuardTerm.anyOf(b.about)) && GuardTerm.isFalse(GuardTerm.any(GuardTerm.all(GuardTerm.anyOf(a.others), GuardTerm.anyOf(b.others))))) {
+					out.push(about);
 				}
 			}
 		}
@@ -512,19 +534,19 @@ function withResolvents(this: void, conditions: readonly GuardTerm[], formals: r
 /** The claims the given conditions make on a formal unless something not about that formal holds, see {@link ConditionalClaim}. */
 export function conditionalClaimsOf(this: void, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[], facts: GuardFactsLookup): ConditionalClaim[] {
 	/* what holds outright needs no way through */
-	const outright = new Set(withResolvents(conditions, formals).slice(conditions.length).map(t => GuardTerm.render(t)));
+	const outright = new Set(resolventsOf(conditions, formals).map(t => GuardTerm.render(t)));
 	return conditions.flatMap(condition => {
 		const alternatives = GuardTerm.disjuncts(condition);
 		return formals.flatMap(formal => {
 			const about = alternatives.filter(a => setEquals(GuardTerm.formalsOf(a), new Set([formal])));
 			const others = alternatives.filter(a => !GuardTerm.formalsOf(a).has(formal));
-			if(about.length === 0 || others.length === 0 || about.length + others.length !== alternatives.length || outright.has(GuardTerm.render(GuardTerm.any(...about)))) {
+			if(about.length === 0 || others.length === 0 || about.length + others.length !== alternatives.length || outright.has(GuardTerm.render(GuardTerm.anyOf(about)))) {
 				return [];
 			}
 			const claim = toClaim(about.map(a => abstractOf(a, formal, facts)).reduce(either));
 			/* that a formal has to have a class unless another one passes is all dispatching leaves, not a claim */
 			const onlyClassed = Object.keys(claim).length === 1 && claim.unclassedTypes?.length === 0;
-			return Object.keys(claim).length === 0 || onlyClassed ? [] : [{ formal, claim, unless: GuardTerm.render(GuardTerm.any(...others)) }];
+			return Object.keys(claim).length === 0 || onlyClassed ? [] : [{ formal, claim, unless: GuardTerm.render(GuardTerm.anyOf(others)) }];
 		});
 	});
 }
@@ -532,7 +554,7 @@ export function conditionalClaimsOf(this: void, conditions: readonly GuardTerm[]
 /** The conditions that hold in the case `when`: a clause offering what the case rules out loses that alternative, one offering the case itself asks nothing. */
 function inCase(this: void, clauses: readonly CaseClause[], when: GuardTerm, otherwise: GuardTerm): { readonly all: GuardTerm[], readonly own: GuardTerm[] } {
 	const [yes, no] = [GuardTerm.render(when), new Set(GuardTerm.disjuncts(otherwise).map(d => GuardTerm.render(d)))];
-	const all: GuardTerm[] = [...GuardTerm.conjuncts(when)];
+	const all = GuardTerm.conjuncts(when).slice();
 	const own: GuardTerm[] = [];
 	for(const { requires } of clauses) {
 		const alternatives = GuardTerm.disjuncts(requires);
@@ -540,10 +562,11 @@ function inCase(this: void, clauses: readonly CaseClause[], when: GuardTerm, oth
 			continue;
 		}
 		const kept = alternatives.filter(a => !no.has(GuardTerm.render(a)));
+		const remaining = GuardTerm.anyOf(kept);
 		if(kept.length + no.size === alternatives.length) {
-			own.push(GuardTerm.any(...kept));
+			own.push(remaining);
 		}
-		all.push(GuardTerm.any(...kept));
+		all.push(remaining);
 	}
 	return { all, own };
 }
@@ -554,7 +577,7 @@ function inCase(this: void, clauses: readonly CaseClause[], when: GuardTerm, oth
  */
 export function casesOf(this: void, clauses: readonly CaseClause[], formals: readonly BrandedIdentifier[], facts: GuardFactsLookup): Record<BrandedIdentifier, FormalCase[]> {
 	const cases: Record<BrandedIdentifier, FormalCase[]> = {};
-	const branches = [...new Map(clauses.flatMap(c => c.under ?? []).map(term => [GuardTerm.render(term), term])).values()];
+	const branches = new Map(clauses.flatMap(c => c.under ?? []).map(term => [GuardTerm.render(term), term])).values().toArray();
 	for(const formal of formals) {
 		for(const when of branches.filter(b => setEquals(GuardTerm.formalsOf(b), new Set([formal])))) {
 			const otherwise = GuardTerm.truth(when, false, facts);
@@ -565,7 +588,7 @@ export function casesOf(this: void, clauses: readonly CaseClause[], formals: rea
 			cases[formal] = split.map(([term, { all }]) => {
 				const relations = relationsOf(all, facts).filter(r => r.formals.includes(formal));
 				const claim = claimBeyond(toClaim(abstractOfAll(all, formal, facts)), toClaim(abstractOfAll(GuardTerm.conjuncts(term), formal, facts)));
-				return { when: GuardTerm.render(term), claim, ...(relations.length > 0 ? { relations } : {}) };
+				return compactRecord({ when: GuardTerm.render(term), claim, relations: nonEmpty(relations) });
 			});
 			break;
 		}
@@ -596,7 +619,7 @@ function abstractOfAll(this: void, conditions: readonly GuardTerm[], formal: Bra
 /** What the given conditions, all of which hold on a normal return, claim about each of the given formals; a formal without any claim is left out. */
 export function claimsOf(this: void, conditions: readonly GuardTerm[], formals: readonly BrandedIdentifier[], facts: GuardFactsLookup): Record<BrandedIdentifier, FormalClaim> {
 	const claims: Record<BrandedIdentifier, FormalClaim> = {};
-	const all = withResolvents(conditions, formals);
+	const all = conditions.concat(resolventsOf(conditions, formals));
 	for(const formal of formals) {
 		const claim = toClaim(abstractOfAll(all, formal, facts));
 		if(Object.keys(claim).length > 0) {
@@ -691,7 +714,7 @@ function ofConstants(this: void, constants: readonly GuardConstant[]): Abstract 
 /** What the value of the term is, `conditions` holding of the formals. */
 function ofValue(this: void, term: GuardTerm | undefined, conditions: readonly GuardTerm[], facts: GuardFactsLookup): Abstract {
 	if(term?.kind === 'formal') {
-		return conditions.reduce<Abstract>((acc, c) => both(acc, abstractOf(c, term.name, facts)), Unconstrained);
+		return abstractOfAll(conditions, term.name, facts);
 	}
 	const constants = GuardTerm.constantsOf(term);
 	if(constants !== undefined && (!GuardTerm.isCall(term) || term.args.every(a => a.name === undefined))) {
@@ -714,7 +737,7 @@ function ofValue(this: void, term: GuardTerm | undefined, conditions: readonly G
 
 /** What holds of the value of every normal return, given what holds of the formals on every one of them, `undefined` if that is nothing. */
 export function returnsOf(this: void, returned: readonly ReturnedTerm[], conditions: readonly GuardTerm[], facts: GuardFactsLookup): FormalClaim | undefined {
-	const claim = returned.length === 0 ? {} : toClaim(returned.map(r => ofValue(r.value, [...conditions, ...r.holds], facts)).reduce(either));
+	const claim = returned.length === 0 ? {} : toClaim(returned.map(r => ofValue(r.value, conditions.concat(r.holds), facts)).reduce(either));
 	return Object.keys(claim).length === 0 ? undefined : claim;
 }
 
@@ -728,8 +751,8 @@ function passedOn(this: void, term: GuardTerm | undefined, facts: GuardFactsLook
 
 /** The formal every normal return hands back unchanged, if there is one. */
 export function returnedFormalOf(this: void, returned: readonly ReturnedTerm[], facts: GuardFactsLookup): BrandedIdentifier | undefined {
-	const [first, ...rest] = returned.map(r => passedOn(r.value, facts));
-	return rest.every(f => f === first) ? first : undefined;
+	const passed = returned.map(r => passedOn(r.value, facts));
+	return passed.every(f => f === passed[0]) ? passed[0] : undefined;
 }
 
 /** `succeeds(f(x, ...))` in words: what the check `f` states of `x`, or that the call runs without an error. */
@@ -737,7 +760,7 @@ function succeedsInWords(this: void, call: GuardCall, facts: GuardFactsLookup): 
 	const checked = call.args[0]?.value;
 	const claim = checked?.kind === 'formal' && facts(GuardTerm.bareName(call.fn))?.check !== undefined ? toClaim(ofCheck(call, checked.name, facts)) : undefined;
 	/* the choices say what the type adds for anyone reading it */
-	const said = claim === undefined || checked?.kind !== 'formal' ? [] : claimConditions(String(checked.name), claim.values === undefined ? claim : { values: claim.values, ...(claim.partial ? { partial: true } : {}) });
+	const said = claim === undefined || checked?.kind !== 'formal' ? [] : claimConditions(String(checked.name), claim.values === undefined ? claim : compactRecord({ values: claim.values, partial: claim.partial || undefined }));
 	return said.length > 0 ? said.join(' && ') : `${GuardTerm.render(call)} runs without an error`;
 }
 
@@ -749,10 +772,10 @@ function succeedsInWords(this: void, call: GuardCall, facts: GuardFactsLookup): 
 export function readingOf(this: void, condition: GuardTerm, facts: GuardFactsLookup, group?: BrandedIdentifier): string | undefined {
 	const alternatives = GuardTerm.disjuncts(condition);
 	function read(term: GuardTerm) {
-		if(GuardTerm.isCall(term, 'succeeds') && term.known && GuardTerm.isCall(term.args[0]?.value)) {
+		if(GuardTerm.isCall(term, GuardFn.Succeeds) && term.known && GuardTerm.isCall(term.args[0]?.value)) {
 			return succeedsInWords(term.args[0].value, facts);
 		}
-		const [of] = GuardTerm.isCall(term, 'is.object') && term.known ? term.args : [];
+		const [of] = GuardTerm.isCall(term, GuardFn.IsObject) && term.known ? term.args : [];
 		return group !== undefined && of !== undefined ? `${GuardTerm.render(of.value)} may have a ${group} method` : undefined;
 	}
 	const readings = alternatives.map(read);
@@ -803,19 +826,19 @@ export function claimConditions(this: void, formal: string, { types, unclassedTy
 	function range(measure: string, [lower, upper]: ClaimedRange) {
 		const of = measure === 'value' ? formal : `${measure}(${formal})`;
 		return lower !== null && lower === upper ? [`${of} == ${lower}`]
-			: [...lower === null ? [] : [`${of} >= ${lower}`], ...upper === null ? [] : [`${of} <= ${upper}`]];
+			: [lower === null ? '' : `${of} >= ${lower}`, upper === null ? '' : `${of} <= ${upper}`];
 	}
 	return [
-		...types === undefined ? [] : [ofTypes(types, false)],
-		...unclassedTypes === undefined ? [] : [ofTypes(unclassedTypes, true)],
-		...values === undefined ? [] : [`${formal} ${partial ? 'pmatches' : 'in'} ${setOf(values.map(v => JSON.stringify(v)))}`],
-		...classes === undefined ? [] : [classes.length === 1 ? `inherits(${formal}, ${JSON.stringify(classes[0])})` : `inherits(${formal}, c(${classes.map(c => JSON.stringify(c)).join(', ')}))`],
+		types === undefined ? '' : ofTypes(types, false),
+		unclassedTypes === undefined ? '' : ofTypes(unclassedTypes, true),
+		values === undefined ? '' : `${formal} ${partial ? 'pmatches' : 'in'} ${setOf(values.map(v => JSON.stringify(v)))}`,
+		classes === undefined ? '' : classes.length === 1 ? `inherits(${formal}, ${JSON.stringify(classes[0])})` : `inherits(${formal}, c(${classes.map(c => JSON.stringify(c)).join(', ')}))`,
 		...Object.entries(bounds ?? {}).filter(([measure]) => !onlyNull || measure !== 'length').flatMap(([measure, bound]) => range(measure, bound)),
-		...notNA && !onlyNull ? [`!anyNA(${formal})`] : [],
-		...callable ? [`is.function(match.fun(${formal}))`] : [],
-		...whole ? [`trunc(${formal}) == ${formal}`] : [],
+		notNA && !onlyNull ? `!anyNA(${formal})` : '',
+		callable ? `is.function(match.fun(${formal}))` : '',
+		whole ? `trunc(${formal}) == ${formal}` : '',
 		...(resolves ?? []).map(r => `exists(${r.expression})`)
-	];
+	].filter(c => c !== '');
 }
 
 /** Reads a claim in a few words each, as a page or a terminal shows it. */
@@ -834,7 +857,7 @@ export function claimWords(this: void, claim: FormalClaim): string[] {
 		callable ? 'callable' : '',
 		whole ? 'whole number' : '',
 		...(resolves ?? []).map(r => `${r.expression} exists`),
-		...shownCases(claim).map(([when, said, relations]) => `if ${when}: ${[...claimWords(said), ...relations].join(', ')}`)
+		...shownCases(claim).map(([when, said, relations]) => `if ${when}: ${claimWords(said).concat(relations).join(', ')}`)
 	].filter(w => w !== '');
 }
 
@@ -846,15 +869,17 @@ function shownCases(this: void, { cases, ...always }: FormalClaim, stated: reado
 
 /** Each case of a claim as its condition and what holds in it, see {@link claimConditions}; `stated` are the relations said of the formals on their own. */
 export function caseConditions(this: void, formal: string, claim: FormalClaim, stated: readonly string[] = []): string[] {
-	return shownCases(claim, stated).map(([when, said, relations]) => `if (${when}): ${allOf([...claimConditions(formal, said), ...relations])}`);
+	return shownCases(claim, stated).map(([when, said, relations]) => `if (${when}): ${allOf(claimConditions(formal, said).concat(relations))}`);
 }
 
 /** What a call returns in a few words, see {@link claimWords}: what holds of it, and the formal it hands back. */
 export function returnWords(this: void, returns: FormalClaim | undefined, passes: BrandedIdentifier | undefined): string[] {
-	return [...passes === undefined ? [] : [`the value of ${passes}`], ...claimWords(returns ?? {})];
+	const words = claimWords(returns ?? {});
+	return passes === undefined ? words : [`the value of ${passes}`].concat(words);
 }
 
 /** The same as {@link claimConditions}, of the value a call returns, named `result`. */
 export function returnConditions(this: void, returns: FormalClaim | undefined, passes: BrandedIdentifier | undefined): string[] {
-	return [...passes === undefined ? [] : [`identical(result, ${passes})`], ...claimConditions('result', returns ?? {})];
+	const conditions = claimConditions('result', returns ?? {});
+	return passes === undefined ? conditions : [`identical(result, ${passes})`].concat(conditions);
 }

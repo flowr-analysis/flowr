@@ -2,7 +2,7 @@ import type { BrandedIdentifier } from '../../environments/identifier';
 import type { GuardFactsLookup } from '../../environments/guard-facts';
 import { s3GroupGenericOf } from '../../environments/group-generics';
 import { RGroupMethodGuards } from '../../../data/r-group-method-guards.generated';
-import { GuardTerm } from './guard-term';
+import { GuardFn, GuardTerm } from './guard-term';
 import { getOrSet } from '../../../util/collections/defaultmap';
 
 /**
@@ -27,9 +27,9 @@ const OfTheFrame: ReadonlySet<BrandedIdentifier> = new Set(['nargs', 'missing', 
 function withoutFrame(this: void, term: GuardTerm): GuardTerm {
 	if(!OfTheFrame.values().some(fn => GuardTerm.mentions(term, fn))) {
 		return term;
-	} else if(GuardTerm.isCall(term) && term.known && (term.fn === '&&' || term.fn === '||')) {
+	} else if(GuardTerm.isCall(term) && term.known && (term.fn === GuardFn.And || term.fn === GuardFn.Or)) {
 		const operands = term.args.map(a => withoutFrame(a.value));
-		return term.fn === '&&' ? GuardTerm.all(...operands) : GuardTerm.any(...operands);
+		return term.fn === GuardFn.And ? GuardTerm.allOf(operands) : GuardTerm.anyOf(operands);
 	}
 	return GuardTerm.True;
 }
@@ -64,17 +64,19 @@ export function groupMethodConditions(this: void, name: BrandedIdentifier, opera
 		})), undefined, facts);
 		const key = GuardTerm.render(asked);
 		if(!GuardTerm.isTrue(asked)) {
-			byAsked.set(key, { asked, classes: [...byAsked.get(key)?.classes ?? [], classes] });
+			const known = byAsked.get(key)?.classes ?? [];
+			known.push(classes);
+			byAsked.set(key, { asked, classes: known });
 		}
 	}
-	return [...byAsked.values()].flatMap(({ asked, classes }) => dispatched.flatMap((operand, at) => {
+	return byAsked.values().flatMap(({ asked, classes }) => dispatched.flatMap((operand, at) => {
 		/* the other operand having a class may bring a method of its own */
 		const others = dispatched.filter((_, i) => i !== at);
 		if(operand === undefined || operand.kind === 'constant' || others.includes(undefined)) {
 			return [];
 		}
-		const notOfClass = classes.map(cls => GuardTerm.known('!', GuardTerm.known('identical', GuardTerm.known('oldClass', operand), cls.length === 1 ? GuardTerm.string(cls[0]) : GuardTerm.known('c', ...cls.map(GuardTerm.string)))));
-		const classed = (others as GuardTerm[]).filter(o => o.kind !== 'constant').map(o => GuardTerm.known('is.object', o));
-		return [GuardTerm.any(GuardTerm.all(...notOfClass), ...classed, asked)];
-	}));
+		const notOfClass = classes.map(cls => GuardTerm.known(GuardFn.Not, GuardTerm.known(GuardFn.Identical, GuardTerm.known(GuardFn.OldClass, operand), cls.length === 1 ? GuardTerm.string(cls[0]) : GuardTerm.knownOf(GuardFn.Combine, cls.map(GuardTerm.string)))));
+		const classed = (others as GuardTerm[]).filter(o => o.kind !== 'constant').map(o => GuardTerm.known(GuardFn.IsObject, o));
+		return [GuardTerm.anyOf([GuardTerm.allOf(notOfClass), ...classed, asked])];
+	})).toArray();
 }

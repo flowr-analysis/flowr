@@ -135,7 +135,7 @@ export function reasonsOf(this: void, clauses: readonly GuardClause[], idMap: As
 		const brief = briefOf(node, message, idMap);
 		const called = RNode.ownLexeme(node);
 		const reads = readingOf(requires, defaultGuardFacts(), called === undefined ? undefined : s3GroupGenericOf(called));
-		const formals = [...GuardTerm.formalsOf(requires)];
+		const formals = GuardTerm.formalsOf(requires).values().toArray();
 		const loc = locationOf(node, idMap, qualified);
 		return compactRecord({
 			requires: rendered,
@@ -231,13 +231,13 @@ function requirementsOf(this: void, name: BrandedIdentifier): StatedGuards | und
 	}
 	const required = facts?.required ?? [];
 	const dispatched = formals.filter(f => f !== '...');
-	const terms = [...stated.map(c => c.requires), ...groupMethodConditions(name, dispatched.map(GuardTerm.formal), new Set(), defaultGuardFacts())];
+	const terms = stated.map(c => c.requires).concat(groupMethodConditions(name, dispatched.map(GuardTerm.formal), new Set(), defaultGuardFacts()));
 	const claims = claimsOf(terms, uniqueArrayMerge<BrandedIdentifier>(stated.map(c => c.formal), required), defaultGuardFacts());
 	const relations = relationsOf(terms, defaultGuardFacts());
 	const conditional = conditionalClaimsOf(terms, formals.filter(f => f !== '...'), defaultGuardFacts());
 	const calls = callsOfTerms(terms);
 	return compactRecord({
-		requires:    terms.length === 0 ? '' : GuardTerm.render(GuardTerm.all(...terms)),
+		requires:    terms.length === 0 ? '' : GuardTerm.render(GuardTerm.allOf(terms)),
 		required:    nonEmpty(required),
 		formals:     Object.keys(claims).length > 0 ? claims : undefined,
 		relations:   nonEmpty(relations),
@@ -254,7 +254,7 @@ export function namesWithGuards(this: void): [pkg: BrandedNamespace, name: Brand
 	const table = RBaseGuards();
 	const inTable = Object.entries(table).flatMap(([pkg, names]) => Object.keys(names).map(name => [pkg, name] as [BrandedNamespace, BrandedIdentifier]));
 	const known = new Set(inTable.map(([pkg, name]) => `${pkg}::${name}`));
-	return [...inTable, ...namesWithGuardFacts().filter(([, name]) => requirementsOf(name) !== undefined).map(([, name]) => [baseRExportOwner(name) ?? PkgName.Base, name] as [BrandedNamespace, BrandedIdentifier]).filter(([pkg, name]) => !known.has(`${pkg}::${name}`))];
+	return inTable.concat(namesWithGuardFacts().filter(([, name]) => requirementsOf(name) !== undefined).map(([, name]) => [baseRExportOwner(name) ?? PkgName.Base, name] as [BrandedNamespace, BrandedIdentifier]).filter(([pkg, name]) => !known.has(`${pkg}::${name}`)));
 }
 
 /**

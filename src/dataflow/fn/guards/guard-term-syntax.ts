@@ -1,12 +1,13 @@
 import type { BrandedIdentifier, BrandedNamespace } from '../../environments/identifier';
 import type { GuardFactsLookup } from '../../environments/guard-facts';
 import { baseRExportOwner } from '../../../util/r-base-packages';
-import { AtomPrecedence, GuardTerm, NegationPrecedence, Precedence, RConstantNames, type GuardArgument, type GuardCall } from './guard-term';
+import { AtomPrecedence, GuardFn, GuardTerm, NegationPrecedence, Precedence, RConstantNames, type GuardArgument, type GuardCall } from './guard-term';
 import { closingQuote } from '../../../util/text/args';
 import { unescapeRString } from '../../eval/values/string/string-constants';
+import { compactRecord } from '../../../util/objects';
 
 /** What flowR writes into terms beyond plain R, see {@link GuardTerm}. */
-const OwnNotation: ReadonlySet<string> = new Set(['succeeds', '...names']);
+const OwnNotation: ReadonlySet<string> = new Set([GuardFn.Succeeds, GuardFn.DotsNames]);
 
 const SignPrecedence = AtomPrecedence - 1;
 const SpecialPrecedence = 7;
@@ -81,20 +82,20 @@ class TermParser {
 	private call(fn: string, args: readonly GuardArgument[], pkg?: BrandedNamespace, syntax = true): GuardCall {
 		const bare = pkg === undefined || baseRExportOwner(fn) === pkg;
 		const known = bare && (syntax || OwnNotation.has(fn) || this.facts(fn) !== undefined || baseRExportOwner(fn) !== undefined);
-		return { kind: 'call', fn, args, ...(pkg === undefined || bare ? {} : { pkg }), ...(known ? { known: true } : {}) };
+		return compactRecord({ kind: 'call' as const, fn, args, pkg: bare ? undefined : pkg, known: known || undefined });
 	}
 
 	private expression(min: number): GuardTerm | undefined {
 		let left: GuardTerm | undefined;
 		const first = this.peek();
-		if(first?.kind === 'op' && first.text === '!') {
+		if(first?.kind === 'op' && first.text === GuardFn.Not) {
 			this.at++;
 			const operand = this.expression(NegationPrecedence);
-			left = operand === undefined ? undefined : this.call('!', [{ value: operand }]);
-		} else if(first?.kind === 'op' && (first.text === '-' || first.text === '+')) {
+			left = operand === undefined ? undefined : this.call(GuardFn.Not, [{ value: operand }]);
+		} else if(first?.kind === 'op' && (first.text === GuardFn.Minus || first.text === GuardFn.Plus)) {
 			this.at++;
 			const operand = this.expression(SignPrecedence);
-			left = operand?.kind === 'constant' && typeof operand.value === 'number' && first.text === '-'
+			left = operand?.kind === 'constant' && typeof operand.value === 'number' && first.text === GuardFn.Minus
 				? { kind: 'constant', lexeme: `-${operand.lexeme}`, value: -operand.value }
 				: operand === undefined ? undefined : this.call(first.text, [{ value: operand }]);
 		} else {
@@ -138,16 +139,16 @@ class TermParser {
 		for(;;) {
 			if(term === undefined) {
 				return undefined;
-			} else if(this.take('$') ?? this.take('@')) {
+			} else if(this.take(GuardFn.Dollar) ?? this.take(GuardFn.At)) {
 				const op = this.tokens[this.at - 1].text;
 				const field = this.take();
 				term = field?.kind === 'name' || field?.kind === 'string' ? this.call(op, [{ value: term }, { value: { kind: 'constant', lexeme: field.text } }]) : undefined;
-			} else if(this.take('[[') !== undefined) {
+			} else if(this.take(GuardFn.Element) !== undefined) {
 				const args = this.args(']');
-				term = args === undefined || this.take(']') === undefined ? undefined : this.call('[[', [{ value: term }, ...args]);
-			} else if(this.take('[') !== undefined) {
+				term = args === undefined || this.take(']') === undefined ? undefined : this.call(GuardFn.Element, [{ value: term }, ...args]);
+			} else if(this.take(GuardFn.Index) !== undefined) {
 				const args = this.args(']');
-				term = args === undefined ? undefined : this.call('[', [{ value: term }, ...args]);
+				term = args === undefined ? undefined : this.call(GuardFn.Index, [{ value: term }, ...args]);
 			} else {
 				return term;
 			}
@@ -162,7 +163,7 @@ class TermParser {
 			return { kind: 'constant', lexeme: token.text, value: token.value };
 		} else if(token.kind === 'number') {
 			const value = numberOf(token.text);
-			return { kind: 'constant', lexeme: token.text, ...(value === undefined ? {} : { value }) };
+			return compactRecord({ kind: 'constant' as const, lexeme: token.text, value });
 		} else if(token.kind === 'op') {
 			if(token.text !== '(') {
 				return undefined;

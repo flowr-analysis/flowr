@@ -23,7 +23,8 @@ export function splitTopLevel(this: void, text: string, separator: string): stri
 			i += separator.length - 1;
 		}
 	}
-	return [...parts, text.slice(start)];
+	parts.push(text.slice(start));
+	return parts;
 }
 
 /** the connectives a condition is written with, from the one binding loosest */
@@ -163,7 +164,7 @@ export function mergedRelations<T extends { readonly holds: string, readonly unl
 		entry.unless.push(relation.unless === undefined || relation.unless === '' ? undefined : splitTopLevel(bare(relation.unless), ' || '));
 		merged.set(key, entry);
 	}
-	return [...merged.values()].map(({ first, unless }) => {
+	return Array.from(merged.values(), ({ first, unless }) => {
 		if(unless.length === 1) {
 			return first;
 		} else if(unless.includes(undefined)) {
@@ -173,6 +174,6 @@ export function mergedRelations<T extends { readonly holds: string, readonly unl
 		const common = offers[0].filter(d => offers.every(u => u.includes(d)));
 		const rests = offers.map(u => u.filter(d => !common.includes(d))).filter((rest, at, all) => all.findIndex(r => r.join() === rest.join()) === at);
 		const own = rests.some(r => r.length === 0) ? [] : [rests.length === 1 ? rests[0].join(' || ') : `(${allOf(rests.map(r => r.join(' || ')))})`];
-		return { ...first, unless: [...common, ...own].join(' || ') };
+		return { ...first, unless: common.concat(own).join(' || ') };
 	});
 }

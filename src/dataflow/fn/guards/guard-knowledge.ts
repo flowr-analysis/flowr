@@ -4,7 +4,7 @@ import { DefaultBuiltinConfig } from '../../environments/default-builtin-config'
 import { RValueType, type GuardFacts, type GuardFactsLookup, type RCondition, type RFailure, type RRecycling, type RValueTypes, type RVersions } from '../../environments/guard-facts';
 import { compareRVersions } from '../../../util/r-version-order';
 import { RBaseGuardsVersion } from '../../../data/r-base-guards.generated';
-import { GuardTerm, type GuardCall } from './guard-term';
+import { GuardFn, GuardTerm, type GuardCall } from './guard-term';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { CacheScope, GlobalCaches } from '../../../util/global-caches';
 
@@ -78,12 +78,12 @@ const is = (fn: BrandedIdentifier, of: GuardTerm): GuardTerm => GuardTerm.known(
 
 /** The name of a function as a string in R, for `exists`. */
 function exists(this: void, of: GuardTerm): GuardTerm {
-	return { kind: 'call', fn: 'exists', known: true, args: [{ value: of }, { name: 'mode', value: GuardTerm.string('function') }] };
+	return { kind: 'call', fn: GuardFn.Exists, known: true, args: [{ value: of }, { name: 'mode', value: GuardTerm.string('function') }] };
 }
 
 /** Whether the term spells out a name at run time, like `paste0("f_", x)`. */
 export function composesName(this: void, term: GuardTerm): boolean {
-	return GuardTerm.isCall(term) && term.known === true && (term.fn === 'paste0' || term.fn === 'paste' || term.fn === 'sprintf');
+	return GuardTerm.isCall(term) && term.known === true && (term.fn === GuardFn.Paste0 || term.fn === GuardFn.Paste || term.fn === GuardFn.Sprintf);
 }
 
 /**
@@ -100,8 +100,8 @@ export function callable(this: void, of: GuardTerm, resolves: (name: BrandedIden
 		return GuardTerm.True;
 	}
 	const own = exists(GuardTerm.string(String(of.name)));
-	return byName ? GuardTerm.any(is('is.function', of), GuardTerm.all(is('is.character', of), exists(of)), is('is.symbol', of), own)
-		: GuardTerm.any(is('is.function', of), own);
+	return byName ? GuardTerm.any(is(GuardFn.IsFunction, of), GuardTerm.all(is(GuardFn.IsCharacter, of), exists(of)), is('is.symbol', of), own)
+		: GuardTerm.any(is(GuardFn.IsFunction, of), own);
 }
 
 /** The term of the value bound to a formal of the same call, `undefined` if flowR cannot state it. */
@@ -129,13 +129,13 @@ export function recyclingConditions(this: void, recycling: RRecycling, values: r
 	const { rule, skips } = recycling;
 	const size = (of: GuardTerm) => readerOf(recycling.size, of);
 	const skipped = (of: GuardTerm) => skips === undefined ? GuardTerm.False : conditionOn(skips, of, resolves, () => undefined);
-	const eq = (a: GuardTerm, b: GuardTerm) => GuardTerm.known('==', a, b);
+	const eq = (a: GuardTerm, b: GuardTerm) => GuardTerm.known(GuardFn.Equal, a, b);
 	const one = (of: GuardTerm) => eq(size(of), number(1));
 	if(rule === 'single') {
 		return values.map(v => GuardTerm.any(skipped(v), one(v)));
 	} else if(rule === 'one' && to !== undefined) {
 		/* R takes the first element of the size it is told, and recycles to no size for `NULL` */
-		const [target, unsized] = to.kind === 'constant' ? [to, GuardTerm.False] : [GuardTerm.known('[', to, number(1)), GuardTerm.known('is.null', to)];
+		const [target, unsized] = to.kind === 'constant' ? [to, GuardTerm.False] : [GuardTerm.known(GuardFn.Index, to, number(1)), GuardTerm.known(GuardFn.IsNull, to)];
 		return values.map(v => GuardTerm.any(skipped(v), unsized, eq(size(v), target), one(v)));
 	} else if(rule === 'one') {
 		return values.flatMap((a, at) => values.slice(at + 1).map(b => GuardTerm.any(skipped(a), skipped(b), eq(size(a), size(b)), one(a), one(b))));
@@ -144,14 +144,14 @@ export function recyclingConditions(this: void, recycling: RRecycling, values: r
 	}
 	/* `divides`: a value of a size flowR cannot read leaves the largest size open */
 	const open = values.map(skipped);
-	const positive = (of: GuardTerm) => GuardTerm.known('>', size(of), number(0));
-	const divides = (a: GuardTerm, b: GuardTerm) => eq(GuardTerm.known('%%', b, a), number(0));
+	const positive = (of: GuardTerm) => GuardTerm.known(GuardFn.Greater, size(of), number(0));
+	const divides = (a: GuardTerm, b: GuardTerm) => eq(GuardTerm.known(GuardFn.Modulo, b, a), number(0));
 	if(values.length === 2) {
 		const [a, b] = values;
-		return [GuardTerm.any(...open, eq(size(a), size(b)), GuardTerm.all(positive(a), positive(b), GuardTerm.any(divides(size(a), size(b)), divides(size(b), size(a)))))];
+		return [GuardTerm.anyOf(open.concat(eq(size(a), size(b)), GuardTerm.all(positive(a), positive(b), GuardTerm.any(divides(size(a), size(b)), divides(size(b), size(a))))))];
 	}
-	const largest = GuardTerm.known('max', ...values.map(size));
-	return values.map(v => GuardTerm.any(...open, eq(size(v), largest), GuardTerm.all(positive(v), divides(size(v), largest))));
+	const largest = GuardTerm.knownOf('max', values.map(size));
+	return values.map(v => GuardTerm.anyOf(open.concat(eq(size(v), largest), GuardTerm.all(positive(v), divides(size(v), largest)))));
 }
 
 /**
@@ -164,13 +164,13 @@ function conditionOn(this: void, condition: RCondition, of: GuardTerm, resolves:
 		return readerOf(condition.is, condition.of === undefined ? of : readerOf(condition.of, of));
 	} else if('not' in condition) {
 		const inner = conditionOn(condition.not, of, resolves, formals, !positive);
-		return GuardTerm.isTrue(inner) ? GuardTerm.False : GuardTerm.isFalse(inner) ? GuardTerm.True : GuardTerm.known('!', inner);
+		return GuardTerm.isTrue(inner) ? GuardTerm.False : GuardTerm.isFalse(inner) ? GuardTerm.True : GuardTerm.known(GuardFn.Not, inner);
 	} else if('any' in condition) {
-		return GuardTerm.any(...condition.any.map(c => conditionOn(c, of, resolves, formals, positive)));
+		return GuardTerm.anyOf(condition.any.map(c => conditionOn(c, of, resolves, formals, positive)));
 	} else if('all' in condition) {
-		return GuardTerm.all(...condition.all.map(c => conditionOn(c, of, resolves, formals, positive)));
+		return GuardTerm.allOf(condition.all.map(c => conditionOn(c, of, resolves, formals, positive)));
 	} else if('length' in condition) {
-		return GuardTerm.known(condition.length, is('length', of), { kind: 'constant', lexeme: String(condition.to), value: condition.to });
+		return GuardTerm.known(condition.length, is(GuardFn.Length, of), { kind: 'constant', lexeme: String(condition.to), value: condition.to });
 	} else if('on' in condition) {
 		const other = formals(condition.on);
 		return other === undefined ? unknown : conditionOn(condition.holds, other, resolves, formals, positive);
@@ -204,7 +204,8 @@ export function passes(this: void, failure: RFailure, of: GuardTerm, resolves: (
 		return GuardTerm.True;
 	}
 	const unchecked = when === undefined || looked === undefined ? GuardTerm.False : conditionOn({ not: when.holds }, looked, resolves, formals);
-	return GuardTerm.any(unchecked, condition, ...(failure.dispatches ? [is('is.object', of), ...(other === undefined || other.kind === 'constant' ? [] : [is('is.object', other)])] : []));
+	const classed = failure.dispatches ? [of].concat(other === undefined || other.kind === 'constant' ? [] : [other]) : [];
+	return GuardTerm.anyOf([unchecked, condition].concat(classed.map(c => is(GuardFn.IsObject, c))));
 }
 
 /** What R says on the failure for the value `of`. */
@@ -214,14 +215,14 @@ export function messageFor(this: void, { message }: RFailure, of: GuardTerm): st
 
 /** `succeeds(call)`, see {@link GuardTerm}. */
 export function succeeds(this: void, call: GuardCall): GuardTerm {
-	return GuardTerm.known('succeeds', call);
+	return GuardTerm.known(GuardFn.Succeeds, call);
 }
 
 /** Whether `get(x)` for the name `x` is the same as `exists(x)`, to state it as such: only as long as it looks in the same place. */
 export function getAsExists(this: void, call: GuardCall): GuardTerm {
 	const others = call.args.slice(1);
 	if(others.length === 0 || (others.length === 1 && others[0].name === 'mode')) {
-		return { ...call, fn: 'exists' };
+		return { ...call, fn: GuardFn.Exists };
 	}
 	return succeeds(call);
 }

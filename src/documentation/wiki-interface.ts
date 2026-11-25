@@ -237,6 +237,7 @@ The schema below documents every option; the ones you most likely want are:
 - ${ctx.linkConfig('semantics.environment.overwriteBuiltIns')}: overwrite _flowR_'s handling of built-in functions, or clear the preset definitions entirely.
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
 - ${ctx.linkConfig('semantics.ambient.drawingWritesDevice')}: whether calls drawing on a graphics device (e.g., \`plot\`) count as writing the device in the ambient state queries.
+- ${ctx.linkConfig('solver.resolveSource.unseenMethods')}: whether a sourced file _flowR_ cannot read may bind S3/S4 methods that later calls dispatch to (sound, but chains every such call, off by default).
 - ${ctx.linkConfig('solver.variables')}: how to resolve variables and their values (${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}).
 - ${ctx.linkConfig('engines')} and ${ctx.linkConfig('defaultEngine')}: the engines used to interact with R code, see the ${ctx.linkPage('wiki/Engines', 'Engines wiki page')}.
 - ${ctx.linkConfig('project.implicitSources')}: the files a framework loads without any \`source()\` call, in the order in which they are

@@ -2,6 +2,7 @@ import { assertSliced, assertSliceKeeps, assertSliceMatchesR, assumeLoadedPackag
 import { label } from '../../../_helper/label';
 import { describe } from 'vitest';
 import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
+import { FlowrConfig } from '../../../../../src/config';
 
 assumeLoadedPackages('ggplot2', 'magick');
 
@@ -196,9 +197,10 @@ cat("dump:", magick::image_write(img, format="jpg"))
 	});
 	/* programs where an earlier slice ran differently in R than the whole program, each slice checked against R */
 	describe('counterexamples', () => {
-		function counterexample(name: string, code: string, criterion: SlicingCriterion, expected: string) {
-			assertSliced(label(name, ['functions-with-global-side-effects', 'graphics-state', 'call-normal', 'newlines']), shell, code, [criterion], expected);
+		function counterexample(name: string, code: string, criterion: SlicingCriterion, expected: string, flowrConfig?: FlowrConfig) {
+			assertSliced(label(name, ['functions-with-global-side-effects', 'graphics-state', 'call-normal', 'newlines']), shell, code, [criterion], expected, { flowrConfig });
 		}
+		const unseenMethods = FlowrConfig.setInConfig(FlowrConfig.default(), 'solver.resolveSource.unseenMethods', true);
 		counterexample('B6-plot-window', 'png("a.png", type="cairo")\nplot.new()\nplot.window(c(0,10), c(0,10))\nlines(c(1,5), c(1,5))\ndev.off()', '5@dev.off', 'png("a.png", type="cairo")\nplot.new()\nplot.window(c(0,10), c(0,10))\nlines(c(1,5), c(1,5))\ndev.off()');
 		counterexample('B7b-dev-off-value', 'png("a.png", type="cairo")\npng("b.png", type="cairo")\nx <- dev.off()', '3@x', 'png("a.png", type="cairo")\npng("b.png", type="cairo")\nx <- dev.off()');
 		counterexample('B7d-dev-off-which', 'png("a.png", type="cairo")\nplot(1:3)\npng("b.png", type="cairo")\ndev.off(2)', '4@dev.off', 'png("a.png", type="cairo")\nplot(1:3)\npng("b.png", type="cairo")\ndev.off(2)');
@@ -321,27 +323,29 @@ cat("dump:", magick::image_write(img, format="jpg"))
 		counterexample('R9-B12-global-field-write-in-function', 'y <- 5\nf <- function() { e <- globalenv(); e$y <- 8; 1 }\ninvisible(f())\nprint(y)', '4@print', 'f <- function() {\n        e <- globalenv()\n        e$y <- 8\n        1\n    }\ninvisible(f())\nprint(y)');
 		counterexample('R10-B1-list2env-literal-method', 'invisible(list2env(list(length.cnt = function(x) { options(digits = 3); 5L }), envir = globalenv()))\no <- structure(list(), class = "cnt")\nn <- length(o)\nprint(pi)', '4@print', 'invisible(list2env(list(length.cnt = function(x) { options(digits = 3); 5L }), envir = globalenv()))\no <- structure(list(), class = "cnt")\nn <- length(o)\nprint(pi)');
 		counterexample('R10-B2-list2env-computed-method', 'm <- list(function(x) { options(digits = 3); 5L })\nnames(m) <- "length.cnt"\ninvisible(list2env(m, globalenv()))\no <- structure(list(), class = "cnt")\nn <- length(o)\nprint(pi)', '6@print', 'm <- list(function(x) { options(digits = 3); 5L })\nnames(m) <- "length.cnt"\ninvisible(list2env(m, globalenv()))\no <- structure(list(), class = "cnt")\nn <- length(o)\nprint(pi)');
-		counterexample('R10-B2b-source-of-unknown-file-method', 'writeLines("Ops.cnt <- function(e1, e2) { options(digits = 3); TRUE }", "m.R")\nfor(f in list.files(pattern = "^m[.]R$")) source(f)\no <- structure(1, class = "cnt")\ns <- o == 1\nprint(pi)', '5@print', 'writeLines("Ops.cnt <- function(e1, e2) { options(digits = 3); TRUE }", "m.R")\nfor(f in list.files(pattern = "^m[.]R$")) source(f)\no <- structure(1, class = "cnt")\ns <- o == 1\nprint(pi)');
+		counterexample('R10-B2b-source-of-unknown-file-method', 'writeLines("Ops.cnt <- function(e1, e2) { options(digits = 3); TRUE }", "m.R")\nfor(f in list.files(pattern = "^m[.]R$")) source(f)\no <- structure(1, class = "cnt")\ns <- o == 1\nprint(pi)', '5@print', 'writeLines("Ops.cnt <- function(e1, e2) { options(digits = 3); TRUE }", "m.R")\nfor(f in list.files(pattern = "^m[.]R$")) source(f)\no <- structure(1, class = "cnt")\ns <- o == 1\nprint(pi)', unseenMethods);
 		counterexample('R10-B2c-do-call-assign-method', 'do.call("assign", list("length.cnt", function(x) { options(digits = 3); 5L }))\no <- structure(list(), class = "cnt")\nn <- length(o)\nprint(pi)', '4@print', 'do.call("assign", list("length.cnt", function(x) { options(digits = 3); 5L }))\no <- structure(list(), class = "cnt")\nn <- length(o)\nprint(pi)');
 		/* a loop done before the unknown source cannot dispatch to what it binds */
-		counterexample('R10-B2d-loop-before-unknown-source', 'x <- c(1, 2)\nfor(i in 1:2) y <- x[i]\nsource("m.R")\nz <- 3', '4@z', 'source("m.R")\nz <- 3');
+		counterexample('R10-B2d-loop-before-unknown-source', 'x <- c(1, 2)\nfor(i in 1:2) y <- x[i]\nsource("m.R")\nz <- 3', '4@z', 'source("m.R")\nz <- 3', unseenMethods);
 		/* an unseen body writing into a handed environment changes only what is read of it afterwards */
 		counterexample('R10-B2e-read-before-unseen-env-write', 'e <- new.env()\nx <- e$a\nfoo(e)\ny <- e$a', '2@x', 'e <- new.env()\nx <- e$a');
 		counterexample('R10-B2f-read-after-unseen-env-write', 'e <- new.env()\nx <- e$a\nfoo(e)\ny <- e$a', '4@y', 'e <- new.env()\nfoo(e)\ny <- e$a');
 		/* a call that may run a method of the unknown source changes the state only for what reads it afterwards */
-		counterexample('R10-B2g-state-read-before-dispatch', 'source("m.R")\no <- structure(1, class = "k")\nz1 <- paste(1)\ns <- o == 1\nz2 <- paste(1)', '3@z1', 'source("m.R")\nz1 <- paste(1)');
-		counterexample('R10-B2h-state-read-after-dispatch', 'source("m.R")\no <- structure(1, class = "k")\nz1 <- paste(1)\ns <- o == 1\nz2 <- paste(1)', '5@z2', 'source("m.R")\no <- structure(1, class = "k")\ns <- o == 1\nz2 <- paste(1)');
+		counterexample('R10-B2g-state-read-before-dispatch', 'source("m.R")\no <- structure(1, class = "k")\nz1 <- paste(1)\ns <- o == 1\nz2 <- paste(1)', '3@z1', 'source("m.R")\nz1 <- paste(1)', unseenMethods);
+		counterexample('R10-B2h-state-read-after-dispatch', 'source("m.R")\no <- structure(1, class = "k")\nz1 <- paste(1)\ns <- o == 1\nz2 <- paste(1)', '5@z2', 'source("m.R")\no <- structure(1, class = "k")\ns <- o == 1\nz2 <- paste(1)', unseenMethods);
 		/* quoted code does not run where it is written */
-		counterexample('R10-B2i-quoted-dispatch', 'source("m.R")\nz <- paste(1)\ne <- quote(length(w))', '2@z', 'source("m.R")\nz <- paste(1)');
+		counterexample('R10-B2i-quoted-dispatch', 'source("m.R")\nz <- paste(1)\ne <- quote(length(w))', '2@z', 'source("m.R")\nz <- paste(1)', unseenMethods);
 		/* a function nothing calls runs, if at all, once the code is done, and the source runs before any method it binds */
-		counterexample('R10-B2j-uncalled-closure-after-source', 'source("m.R")\nnorm <- function(x) mean(x)\nz1 <- paste(1)\no <- structure(1, class = "k")\ns <- o == 1', '3@z1', 'source("m.R")\nz1 <- paste(1)');
-		counterexample('R10-B2k-source-before-called-closure', 'a <- 1\nf <- function(x) mean(x)\nsource("m.R")\no <- structure(1, class = "k")\ns <- o == 1\nr <- f(2)\nb <- a', '7@b', 'a <- 1\nsource("m.R")\nb <- a');
+		counterexample('R10-B2j-uncalled-closure-after-source', 'source("m.R")\nnorm <- function(x) mean(x)\nz1 <- paste(1)\no <- structure(1, class = "k")\ns <- o == 1', '3@z1', 'source("m.R")\nz1 <- paste(1)', unseenMethods);
+		counterexample('R10-B2k-source-before-called-closure', 'a <- 1\nf <- function(x) mean(x)\nsource("m.R")\no <- structure(1, class = "k")\ns <- o == 1\nr <- f(2)\nb <- a', '7@b', 'a <- 1\nsource("m.R")\nb <- a', unseenMethods);
 		/* a call in a function runs where the function is called */
-		counterexample('R10-B2l-closure-dispatch-after-read', 'source("m.R")\nf <- function(x) length(x)\no <- structure(1, class = "k")\nz1 <- paste(1)\nr <- f(o)\nz2 <- paste(1)\ns <- o == 1', '4@z1', 'source("m.R")\nz1 <- paste(1)');
-		counterexample('R10-B2m-closure-dispatch-before-read', 'source("m.R")\nf <- function(x) length(x)\no <- structure(1, class = "k")\nz1 <- paste(1)\nr <- f(o)\nz2 <- paste(1)\ns <- o == 1', '6@z2', 'source("m.R")\nf <- function(x) length(x)\no <- structure(1, class = "k")\nf(o)\nz2 <- paste(1)');
+		counterexample('R10-B2l-closure-dispatch-after-read', 'source("m.R")\nf <- function(x) length(x)\no <- structure(1, class = "k")\nz1 <- paste(1)\nr <- f(o)\nz2 <- paste(1)\ns <- o == 1', '4@z1', 'source("m.R")\nz1 <- paste(1)', unseenMethods);
+		counterexample('R10-B2m-closure-dispatch-before-read', 'source("m.R")\nf <- function(x) length(x)\no <- structure(1, class = "k")\nz1 <- paste(1)\nr <- f(o)\nz2 <- paste(1)\ns <- o == 1', '6@z2', 'source("m.R")\nf <- function(x) length(x)\no <- structure(1, class = "k")\nf(o)\nz2 <- paste(1)', unseenMethods);
 		/* a function handed to another runs where that one does */
-		counterexample('R10-B2n-handed-closure-after-read', 'source("m.R")\no <- structure(1, class = "k")\nz1 <- paste(1)\nr <- sapply(list(o), function(x) length(x))\nz2 <- paste(1)\ns <- o == 1', '3@z1', 'source("m.R")\nz1 <- paste(1)');
-		counterexample('R10-B2o-handed-closure-before-read', 'source("m.R")\no <- structure(1, class = "k")\nz1 <- paste(1)\nr <- sapply(list(o), function(x) length(x))\nz2 <- paste(1)\ns <- o == 1', '5@z2', 'source("m.R")\no <- structure(1, class = "k")\nr <- sapply(list(o), function(x) length(x))\nz2 <- paste(1)');
+		counterexample('R10-B2n-handed-closure-after-read', 'source("m.R")\no <- structure(1, class = "k")\nz1 <- paste(1)\nr <- sapply(list(o), function(x) length(x))\nz2 <- paste(1)\ns <- o == 1', '3@z1', 'source("m.R")\nz1 <- paste(1)', unseenMethods);
+		counterexample('R10-B2o-handed-closure-before-read', 'source("m.R")\no <- structure(1, class = "k")\nz1 <- paste(1)\nr <- sapply(list(o), function(x) length(x))\nz2 <- paste(1)\ns <- o == 1', '5@z2', 'source("m.R")\no <- structure(1, class = "k")\nr <- sapply(list(o), function(x) length(x))\nz2 <- paste(1)', unseenMethods);
+		/* by default a file we cannot read binds no methods, so earlier plots stay out */
+		counterexample('R10-B2p-unseen-source-other-plots', 'source("m.R")\nf1 <- magick::image_graph()\nplot(y ~ x)\nprint(magick::image_write(f1))\nf2 <- magick::image_graph()\nplot(1:3)\nprint(magick::image_write(f2))', '7@print', 'source("m.R")\nf2 <- magick::image_graph()\nplot(1:3)\nprint(magick::image_write(f2))');
 		counterexample('R10-B3-environment-of-top-closure', 'h <- function() NULL\nenvironment(h)$dd <- 3\noptions(digits = dd)\nprint(pi)', '4@print', 'h <- function() NULL\nenvironment(h)$dd <- 3\noptions(digits = dd)\nprint(pi)');
 		counterexample('R10-B3b-assign-into-environment-of-fn', 'h <- function() NULL\nassign("length.cnt", function(x) { options(digits = 3); 5L }, envir = environment(h))\no <- structure(list(), class = "cnt")\nn <- length(o)\nprint(pi)', '5@print', 'h <- function() { }\nassign("length.cnt", function(x) { options(digits = 3); 5L }, envir = environment(h))\no <- structure(list(), class = "cnt")\nn <- length(o)\nprint(pi)');
 		counterexample('R10-B4-active-binding-method', 'makeActiveBinding("length.cnt", function() function(x) { options(digits = 3); 5L }, globalenv())\no <- structure(list(), class = "cnt")\nn <- length(o)\nprint(pi)', '4@print', 'makeActiveBinding("length.cnt", function() function(x) { options(digits = 3); 5L }, globalenv())\no <- structure(list(), class = "cnt")\nn <- length(o)\nprint(pi)');

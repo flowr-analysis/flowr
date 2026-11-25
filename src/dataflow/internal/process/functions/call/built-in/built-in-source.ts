@@ -150,7 +150,7 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument === undefined) {
 		dataflowLogger.warn('Expected a file argument for source, skipping');
 		const unknown = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
-		bindsUnknownNames(unknown.graph, unknown.environment, rootId);
+		bindsUnseen(unknown, rootId, data);
 		return unknown;
 	}
 	const localArg = bound.get(config.envIn ?? 'local');
@@ -166,7 +166,7 @@ export function processSourceCall<OtherInfo>(
 
 	if(!config.forceFollow && data.ctx.config.ignoreSourceCalls) {
 		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFileArgument)} (disabled in config file)`);
-		bindsUnknownNames(information.graph, information.environment, rootId);
+		bindsUnseen(information, rootId, data);
 		return withAmbient();
 	}
 
@@ -179,7 +179,7 @@ export function processSourceCall<OtherInfo>(
 	const path = sourceFile?.length === 1 ? RString.unquote(sourceFile[0]) : undefined;
 	const filepath = path ? findSource(data.ctx.config.solver.resolveSource, path, data) : undefined;
 	if(localArg !== undefined && !RLogical.is(localArg.value) && resolution === undefined) {
-		bindsUnknownNames(information.graph, information.environment, rootId);
+		bindsUnseen(information, rootId, data);
 		return withAmbient();
 	}
 	if(filepath !== undefined && filepath.length > 0) {
@@ -220,8 +220,17 @@ export function processSourceCall<OtherInfo>(
 	}
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`);
-	bindsUnknownNames(information.graph, information.environment, rootId);
+	bindsUnseen(information, rootId, data);
 	return withAmbient();
+}
+
+/** Code we cannot see has an unknown side effect, and binds methods only if `solver.resolveSource.unseenMethods` is set. */
+function bindsUnseen(information: Pick<DataflowInformation, 'graph' | 'environment'>, rootId: NodeId, data: Pick<DataflowProcessorInformation<unknown>, 'ctx'>): void {
+	if(data.ctx.config.solver.resolveSource?.unseenMethods) {
+		bindsUnknownNames(information.graph, information.environment, rootId);
+	} else {
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
+	}
 }
 
 /** The reads of code evaluated in the global environment, which no frame of the function running it binds; the `call`'s own reads stay as they are. */
@@ -248,20 +257,20 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 
 		if(textRequest === undefined && request.request === 'file') {
 			dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}: file does not exist`);
-			bindsUnknownNames(information.graph, information.environment, rootId);
+			bindsUnseen(information, rootId, data);
 			return information;
 		}
 		guard(textRequest !== undefined, `Expected text request to be defined for sourced file ${JSON.stringify(request)}`);
 		const ext = textRequest.path ? /\.[^.]*$/.exec(textRequest.path)?.[0].toLowerCase() : undefined;
 		if(ext !== undefined && ext !== '.r') {
 			expensiveTrace(dataflowLogger, () => `Skipping source of non-R file ${JSON.stringify(textRequest.path)}`);
-			bindsUnknownNames(information.graph, information.environment, rootId);
+			bindsUnseen(information, rootId, data);
 			return information;
 		}
 		const gasLevel = data.ctx.gas.checkGas(GasFeatureKey.Source);
 		if(gasLevel >= GasLevel.Critical) {
 			dataflowLogger.warn(`Skipping source of ${JSON.stringify(request)} due to resource pressure (gas: critical). See ${GasWikiRef}`);
-			bindsUnknownNames(information.graph, information.environment, rootId);
+			bindsUnseen(information, rootId, data);
 			return information;
 		} else if(gasLevel >= GasLevel.Problematic) {
 			dataflowLogger.warn(`Approaching resource limits for source of ${JSON.stringify(request)} (gas: problematic). See ${GasWikiRef}`);
@@ -296,7 +305,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 	} catch(e) {
 		dataflowLogger.error(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`);
 		dataflowLogger.error((e as Error).stack);
-		bindsUnknownNames(information.graph, information.environment, rootId);
+		bindsUnseen(information, rootId, data);
 		return information;
 	}
 

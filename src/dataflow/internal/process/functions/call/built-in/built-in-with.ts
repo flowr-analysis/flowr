@@ -88,11 +88,35 @@ export function processWithEnv<OtherInfo>(
 	const envirResolution = envirOf(envirRouting);
 	if(!envirResolution) {
 		const fallback = markAsMaskedFallback(name, args, rootId, data, exprArg.value);
-		/* only a definition or a call we cannot see into (a closure of `data`) can write to a `data` we cannot pin down */
-		if((!fallback.graph.verticesOfType(VertexType.VariableDefinition).next().done || callsOpaque(fallback.graph, rootId)) && !unknownIfAmbiguous(envirRouting, fallback, rootId)) {
-			return mayWriteInto(dataArg.value, fallback, rootId, data);
+		const isWithin = Identifier.getName(name.content) === 'within';
+		if(isWithin) {
+			/* the copy `within` returns carries every variable `expr` defines, so the call needs all of these definitions, not just the last */
+			for(const [defId] of fallback.graph.verticesOfType(VertexType.VariableDefinition)) {
+				fallback.graph.addEdge(rootId, defId, EdgeType.Reads);
+			}
 		}
-		return fallback;
+		/*
+		 * `within` only has methods for lists and data frames and works on a copy of them, so what `expr` writes into a value
+		 * the program defines (but we cannot track as an environment) never reaches the caller; a parameter is left alone,
+		 * as the caller may hand in anything
+		 */
+		if(isWithin && envirRouting === 'ambiguous' && !mayBeParameter(dataArg.value, data)) {
+			return fallback;
+		}
+		const defines = !fallback.graph.verticesOfType(VertexType.VariableDefinition).next().done;
+		/* only a definition or a call we cannot see into (a closure of `data`) can write to a `data` we cannot pin down */
+		if(!defines && !callsOpaque(fallback.graph, rootId)) {
+			return fallback;
+		}
+		/*
+		 * a definition in `expr` lands in `data` if it is an environment, which may be the global one, so only a definition
+		 * makes the call an unknown side effect; a call we cannot see into is no more opaque than the same call outside of `with`,
+		 * it can at most change `data`, which `mayWriteInto` covers
+		 */
+		if(defines && unknownIfAmbiguous(envirRouting, fallback, rootId, dataArg.value.info.id)) {
+			return fallback;
+		}
+		return mayWriteInto(dataArg.value, fallback, rootId, data);
 	}
 
 	const pipedData = isPipedArgument(dataArg, rootId, data);
@@ -232,6 +256,15 @@ function processWithLiteralList<OtherInfo>(
 /** whether `graph` holds a call other than `rootId` that may run a closure of the data, like `with(e, inc())` */
 function callsOpaque(graph: DataflowGraph, rootId: NodeId): boolean {
 	return graph.verticesOfType(VertexType.FunctionCall).some(([id, vertex]) => id !== rootId && !vertex.onlyBuiltin);
+}
+
+/** whether `dataNode` is not a symbol, or a symbol of which some definition is a parameter of the enclosing function */
+function mayBeParameter<OtherInfo>(dataNode: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+	if(!RSymbol.is(dataNode)) {
+		return true;
+	}
+	const defs = Resolve.byNameAndType(dataNode.content, data.environment, ReferenceType.Variable);
+	return defs === undefined || defs.some(d => (d.type & ReferenceType.Parameter) !== 0);
 }
 
 /** `data` may be an untracked environment `expr` writes into, so later reads of its variable see the call as a maybe redefinition. */

@@ -172,6 +172,9 @@ export class DataflowGraph<
 	/* sparse: only the calls touching the global state (options, devices, files, ...) have an entry */
 	private readonly _ambientAccess = new Map<NodeId, AmbientAccess>();
 
+	/* the unknown side effects a call only has if the value at the node it maps to may be an environment, see {@link markUnknownUnlessNoEnvironment} */
+	private readonly _unlessNoEnvironment = new Map<NodeId, NodeId>();
+
 	constructor(idMap: AstIdMap | undefined) {
 		this._idMap = idMap;
 	}
@@ -681,6 +684,9 @@ export class DataflowGraph<
 		for(const unknown of otherGraph.unknownSideEffects) {
 			this._unknownSideEffects.add(unknown);
 		}
+		for(const [id, value] of otherGraph._unlessNoEnvironment) {
+			this._unlessNoEnvironment.set(id, value);
+		}
 		for(const [id, access] of otherGraph._ambientAccess) {
 			const known = this._ambientAccess.get(id);
 			this._ambientAccess.set(id, known === undefined ? access : AmbientAccess.ofCall(id, AmbientAccess.names(known), AmbientAccess.names(access)));
@@ -782,6 +788,22 @@ export class DataflowGraph<
 			linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp>
 		} : NodeId.normalize(id));
 		return this;
+	}
+
+	/**
+	 * Marks `id` as having unknown side effects that it only has if the value at `envir` may be an environment:
+	 * `eval(expr, envir = v)` writes into `v` if it is one, which may be any environment of the program, but into a frame of its own if `v` is a list or a data frame.
+	 * The dataflow extractor drops the effect once the complete graph shows `v` to be none, see {@link unknownSideEffectsUnlessNoEnvironment}.
+	 */
+	public markUnknownUnlessNoEnvironment(id: NodeId, envir: NodeId): this {
+		this.markIdForUnknownSideEffects(id);
+		this._unlessNoEnvironment.set(NodeId.normalize(id), NodeId.normalize(envir));
+		return this;
+	}
+
+	/** The calls marked by {@link markUnknownUnlessNoEnvironment}, with the node whose value they take as their environment. */
+	public get unknownSideEffectsUnlessNoEnvironment(): ReadonlyMap<NodeId, NodeId> {
+		return this._unlessNoEnvironment;
 	}
 
 	/** Constructs a dataflow graph instance from the given JSON data, e.g. as sent by the flowR server for further analysis. */

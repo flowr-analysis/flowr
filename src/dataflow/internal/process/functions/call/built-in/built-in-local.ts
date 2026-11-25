@@ -100,7 +100,7 @@ export function processLocal<OtherInfo>(
 		unknownReferences: []
 	};
 
-	unknownIfAmbiguous(envirRouting, baseResult, rootId);
+	unknownIfAmbiguous(envirRouting, baseResult, rootId, env?.info.id);
 	return baseResult;
 }
 

@@ -264,12 +264,19 @@ export function resolveFirstEnvirArg<OtherInfo>(args: readonly PotentiallyEmptyR
 	return undefined;
 }
 
-/** Marks `result` as an unknown side effect when the envir argument names a value that cannot be pinned down (e.g. a parameter), so routing the writes anywhere would be a guess (and what they bind may be any method); reports whether it did. */
-export function unknownIfAmbiguous<OtherInfo>(routing: EnvirArgRouting<OtherInfo>, result: DataflowInformation, rootId: NodeId): boolean {
+/**
+ * Marks `result` as an unknown side effect when the envir argument names a value that cannot be pinned down (e.g. a parameter), so routing the writes anywhere would be a guess (and what they bind may be any method); reports whether it did.
+ * With the node `envir` of the argument's value, the effect only holds while that value may be an environment, which the dataflow extractor decides on the complete graph
+ * (see {@link DataflowGraph#markUnknownUnlessNoEnvironment}): a list or a data frame gives the evaluation a frame of its own, which no other binding sees.
+ */
+export function unknownIfAmbiguous<OtherInfo>(routing: EnvirArgRouting<OtherInfo>, result: DataflowInformation, rootId: NodeId, envir?: NodeId): boolean {
 	if(routing !== 'ambiguous') {
 		return false;
 	}
 	handleUnknownSideEffect(result.graph, result.environment, rootId);
+	if(envir !== undefined) {
+		result.graph.markUnknownUnlessNoEnvironment(rootId, envir);
+	}
 	noteUnknownMethods(result.environment, rootId);
 	return true;
 }

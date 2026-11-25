@@ -361,10 +361,11 @@ export function standaloneSourceFile<OtherInfo>(
 		return information;
 	}
 
+	/* `sourceRequest` appends the file itself, so it runs at the top level just like the first file (e.g., auto-printing) */
 	return sourceRequest('file-' + idx, file, {
 		...data,
 		environment:    information.environment,
-		referenceChain: [file.filePath]
+		referenceChain: []
 	}, information, false, undefined, false, false);
 }
 

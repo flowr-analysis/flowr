@@ -45,4 +45,12 @@ describe('source', { concurrent: false }, withShell(shell => {
 			});
 		}
 	});
+	test('a requested file after the first still auto-prints its top level', async() => {
+		const main = 'library(ggplot2)\nd <- data.frame(a = 1)\nimg <- magick::image_graph(width=300, height=600)\nggplot(d, aes(x=a, y=a)) + geom_point()\nprint(magick::image_write(img))';
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
+		analyzer.addFile(new FlowrInlineTextFile('a.R', 'y <- 2'), new FlowrInlineTextFile('main.R', main));
+		analyzer.addRequest(['a.R', 'main.R'].map(content => ({ request: 'file' as const, content })));
+		const out = await executeStaticSliceQuery({ analyzer }, [{ type: 'static-slice', criteria: ['5@print(^main\\.R$)'], perFile: true }]);
+		assert.deepStrictEqual(Object.values(out.results)[0]?.reconstruct?.files?.map(f => f.code), ['', main]);
+	});
 }));

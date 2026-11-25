@@ -50,7 +50,7 @@ describe('Ambient Access Query', withTreeSitter(parser => {
 		analyzer.addRequest({ request: 'file', content: 'a.R' }, { request: 'file', content: 'b.R' });
 		const { results } = await analyzer.query({ type: 'ambient-access' });
 		assert.deepStrictEqual(results['a.R'].writes, []);
-		assert.deepStrictEqual(results['b.R'].writes, ['#option:digits', '#options']);
+		assert.deepStrictEqual(results['b.R'].writes, ['#option:digits', '#options', '#sink:output']);
 	});
 
 	test(label('criteria answer for the code their node spans', ['name-normal'], ['other']), async() => {

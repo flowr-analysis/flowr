@@ -230,7 +230,7 @@ function evaluateQuoted<OtherInfo>(
 	for(const r of results) {
 		result.graph.addEdge(rootId, r.entryPoint, EdgeType.Returns);
 	}
-	unknownIfAmbiguous(routing, result, rootId);
+	unknownIfAmbiguous(routing, result, rootId, envir === undefined ? undefined : RArgument.valueOf(envir)?.info.id);
 	return result;
 }
 

@@ -287,6 +287,8 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			['with(data.frame, { def })', 'v <- data.frame(a = 1)\nr <- with(v, { b <- a + 1; b })'],
 			['with(read.csv(...), { def })', 'v <- read.csv("x.csv")\nr <- with(v, { b <- a + 1; b })'],
 			['with(expand.grid(...), { def })', 'v <- expand.grid(a = 1:2, b = 3:4)\nr <- with(v, { s <- a + b; s })'],
+			['with(copy of a data.frame, { def })', 'w <- data.frame(a = 1)\nv <- w\nr <- with(v, { b <- a + 1; b })'],
+			['eval(expr, copy of a list rebound after the copy)', 'w <- list(a = 1)\nv <- w\nw <- new.env()\nr <- eval(quote(b <- a + 1), v)'],
 			['with(invisible(data.frame), { def })', 'v <- invisible(data.frame(a = 1))\nr <- with(v, { b <- a + 1; b })'],
 			['with(constant, { def })', 'v <- 42\nr <- with(v, { b <- 1; b })']
 		];
@@ -294,6 +296,12 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			assertSliced(label(`${name} stays out of an unrelated slice`, [...caps]), shell, `${code}\n${unrelated}`, [`${code.split('\n').length + 2}@d`], 'd <- 5\nd');
 		}
 		/* what may still be an environment keeps the call a possible writer of anything */
+		assertSliced(label('eval(expr, v) after an unknown side effect that may rebind v still may define anything', [...caps]), shell,
+			'v <- data.frame(a = 1)\nsource(foo)\neval(quote(y <- 1), v)\nprint(y)', ['4@y'],
+			'v <- data.frame(a = 1)\nsource(foo)\neval(quote(y <- 1), v)\ny');
+		assertSliced(label('within a function, eval(expr, p) on a parameter still may define anything', [...caps]), shell,
+			'f <- function(p) eval(quote(y <- 1), p)\nf(data.frame(a = 1))\nprint(y)', ['3@y'],
+			'f <- function(p) eval(quote(y <- 1), p)\nf(data.frame(a = 1))\ny');
 		assertSliced(label('with(f(), y <- 1) on a data.frame of a function shadowing the built-in still may define y', [...caps]), shell,
 			'data.frame <- function(...) foo()\nv <- data.frame(a = 1)\nwith(v, y <- 1)\nprint(y)', ['4@y'],
 			'data.frame <- function(...) foo()\nv <- data.frame(a = 1)\nwith(v, y <- 1)\ny');

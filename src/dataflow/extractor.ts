@@ -72,6 +72,7 @@ import type { RProjectFile } from '../r-bridge/lang-4.x/ast/model/nodes/r-projec
 import { IncrementalDataflow, type DataflowProcessorInformationBase, type IncrementalDataflowResult } from '../project/incremental/incremental-dataflow/incremental-dataflow';
 import type { ExpressionListCheckpoints } from './internal/process/functions/call/built-in/built-in-expression-list';
 import { ProgramOrder } from './internal/program-order';
+import { RValueType } from './environments/guard-facts';
 
 /** The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}. Maps every {@link RType} in the normalized AST to a processor. */
 export const processors: DataflowProcessors<ParentInformation> = {
@@ -154,6 +155,64 @@ function linkEnvironmentArgumentsWrittenByCallee(graph: DataflowGraph, environme
 				}
 			}
 		}
+	}
+}
+
+/** How deep {@link holdsNoEnvironment} follows values handed through a call returning its argument (`invisible(x)`). */
+const NoEnvironmentDepth = 8;
+
+/**
+ * Whether every value reaching `id` surely is no environment, read off the complete graph by {@link Dataflow.valueSources}:
+ * each is a constant, a function definition, or the result of a call of a built-in whose stated return type ({@link GuardFacts#returns}) has no environment,
+ * or of one returning its argument which is such a value. A parameter, a read nothing defines, a replacement of what nothing defines,
+ * and a call of a function of the program or of one whose body flowR does not see each may hold an environment.
+ */
+function holdsNoEnvironment(id: NodeId, graph: DataflowGraph, ctx: FlowrAnalyzerContext, depth = NoEnvironmentDepth): boolean {
+	const sources = depth > 0 ? Dataflow.valueSources(id, graph) : undefined;
+	return sources !== undefined && sources.length > 0 && sources.every(source => {
+		const vertex = graph.getVertex(source);
+		if(DfgVertex.isValue(vertex) || DfgVertex.isFunctionDefinition(vertex)) {
+			return true;
+		} else if(!DfgVertex.isFunctionCall(vertex) || !vertex.onlyBuiltin || EnvironmentProducers.some(o => DfgVertex.hasOrigin(vertex, o))) {
+			return false;
+		}
+		const returns = ctx.env.builtInFunctionOf(vertex.name)?.config?.guards?.[Identifier.getName(vertex.name)]?.returns;
+		if(returns === 'argument') {
+			const passed = vertex.args.length > 0 ? FunctionArgument.getReference(vertex.args[0]) : undefined;
+			return passed !== undefined && holdsNoEnvironment(passed, graph, ctx, depth - 1);
+		}
+		/* a method of a classed value may return anything */
+		return typeof returns === 'object' && returns.dispatchesOn === undefined && (returns.types & RValueType.Environment) === 0;
+	});
+}
+
+/**
+ * Drops the unknown side effect of each call marked by {@link DataflowGraph#markUnknownUnlessNoEnvironment} whose environment argument the complete graph shows to hold no environment:
+ * `eval(expr, v)`, `local(expr, v)` and `with(v, expr)` then evaluate in a frame of their own built from the list or data frame `v`, which no other binding sees.
+ * Another unknown side effect that may run before the call may rebind `v` to anything, so the effect stays then; dropping one may let others go, hence the fixpoint.
+ */
+function dropEffectsOnNoEnvironment(graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): void {
+	const pending = new Map(graph.unknownSideEffectsUnlessNoEnvironment);
+	const effects = graph.unknownSideEffects;
+	const dropped: NodeId[] = [];
+	for(let changed = pending.size > 0; changed;) {
+		changed = false;
+		for(const [call, envir] of pending) {
+			const rebindable = effects.values().some(e => {
+				const at = UnknownSideEffect.isLinked(e) ? e.id : e;
+				return at !== call && !ProgramOrder.runsBefore(call, at, graph);
+			});
+			if(!rebindable && holdsNoEnvironment(envir, graph, ctx)) {
+				effects.delete(call);
+				pending.delete(call);
+				dropped.push(call);
+				changed = true;
+			}
+		}
+	}
+	if(dropped.length > 0) {
+		const builtIn = REnvironment.findBuiltIn(environment.current);
+		builtIn.unknownMethodsAt = builtIn.unknownMethodsAt?.filter(at => !dropped.includes(at));
 	}
 }
 
@@ -922,6 +981,7 @@ function finalizeDataflow<OtherInfo>(df: DataflowInformation, dfData: DataflowPr
 	linkInstantiations(df.graph);
 	readFramesThroughEnvironment(df.graph);
 	df.graph.statementOrder = dfData.statementOrder;
+	dropEffectsOnNoEnvironment(df.graph, df.environment, ctx);
 	updateNestedFunctionCalls(df.graph, df.environment, ctx);
 	const escapedNames = new Set<BrandedIdentifier>();
 	/* carried across the rounds, so a definition already folded in does not read as growth again */

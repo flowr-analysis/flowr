@@ -46,13 +46,6 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { FnSig } from '../../../../../environments/built-in-props';
 import { noteUnknownMethods } from './built-in-expression-list';
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { RBinaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
-import { RUnaryOp } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
-import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
-import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { RLogical } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
-import { defaultGuardFacts } from '../../../../../fn/guards/guard-knowledge';
-import { RValueType } from '../../../../../environments/guard-facts';
 
 function stackKindOf(envState: REnvironmentInformation): StackEnv | undefined {
 	return envState.current.globalEnv === true ? 'global' : envState.current.builtInEnv === true ? 'base' : isEnclosingFrame(envState) ? 'enclosing' : undefined;
@@ -151,74 +144,8 @@ export function resolveArgToEnvirOrAmbiguous<OtherInfo>(arg: PotentiallyEmptyRAr
 	} else if(defs === undefined && data.environment.level > 0) {
 		return freeEnvirResolution(node.content, node.info.id, data);
 	}
-	/* an environment we do not track, unless every value the variable may hold is surely none */
-	return resolveDefsToEnvirResolution(defs, node.info.id, data) ?? (defs === undefined || holdsNoEnvironment(defs, data) ? undefined : 'ambiguous');
-}
-
-/** how deep {@link holdsNoEnvironment} follows pass-through calls (`invisible(x)`) before it gives up */
-const NoEnvironmentDepth = 8;
-
-/**
- * Whether each of `defs` surely binds a value that is no environment, so writing "into" it cannot reach any other binding of the program:
- * it is bound by a plain assignment (not a replacement like `v$a <- 1`, which keeps what `v` held, nor a parameter) to a constant,
- * a function definition, or a call of a built-in whose stated return type ({@link GuardFacts#returns}) rules out an environment.
- * The return types come from the guard facts of the built-in definitions, so every function they describe is covered, not a list kept here.
- */
-export function holdsNoEnvironment<OtherInfo>(defs: readonly IdentifierDefinition[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>, depth = NoEnvironmentDepth): boolean {
-	return defs.length > 0 && depth > 0 && defs.every(def => (def.type & ReferenceType.Parameter) === 0
-		&& valueIsNoEnvironment(assignedBy(def, data), data, depth - 1));
-}
-
-/** the expression a plain assignment (`v <- ...`, `v = ...`, `... -> v`) binds to the name of `def`, none for a replacement (`v$a <- 1`) or another kind of definition */
-function assignedBy<OtherInfo>(def: IdentifierDefinition, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): RNode<OtherInfo & ParentInformation> | undefined {
-	if(def.definedAt === undefined || NodeId.isBuiltIn(def.definedAt)) {
-		return undefined;
-	}
-	const at = data.completeAst.idMap.get(def.definedAt);
-	if(!RBinaryOp.is(at)) {
-		return undefined;
-	} else if(at.lhs.info.id === def.nodeId && (RSymbol.is(at.lhs) || RString.is(at.lhs))) {
-		return at.rhs;
-	} else if(at.rhs.info.id === def.nodeId && RSymbol.is(at.rhs)) {
-		return at.lhs;
-	}
-	return undefined;
-}
-
-/** whether the value of `node` is surely no environment, see {@link holdsNoEnvironment} */
-function valueIsNoEnvironment<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, depth: number): boolean {
-	if(node === undefined || depth <= 0) {
-		return false;
-	} else if(RNumber.is(node) || RString.is(node) || RLogical.is(node) || RFunctionDefinition.is(node) || RSymbol.isSpecial(node)) {
-		return true;
-	} else if(RSymbol.is(node)) {
-		/* a copy (`v <- w`) holds what `w` held at the assignment, which may have been rebound since, so only its definitions of then would tell */
-		return false;
-	}
-	let fn: Identifier | undefined;
-	let first: RNode<OtherInfo & ParentInformation> | undefined;
-	if(RBinaryOp.is(node) || RUnaryOp.is(node)) {
-		fn = Identifier.make(node.operator);
-		first = RBinaryOp.is(node) ? node.lhs : node.operand;
-	} else if(RFunctionCall.isNamed(node)) {
-		fn = node.functionName.content;
-		const arg = node.arguments[0];
-		first = arg === undefined || arg === EmptyArgument ? undefined : RArgument.valueOf(arg);
-	}
-	/* a function of the program, or one shadowing a built-in, may return anything */
-	if(fn === undefined || !Resolve.isBuiltIn(fn, data.environment, ReferenceType.Function)) {
-		return false;
-	}
-	const facts = defaultGuardFacts()(Identifier.getName(fn));
-	if(facts?.returns === 'argument') {
-		return valueIsNoEnvironment(first, data, depth - 1);
-	}
-	/* a method of a classed value may return anything */
-	if(facts?.returns !== undefined) {
-		return facts.returns.dispatchesOn === undefined && (facts.returns.types & RValueType.Environment) === 0;
-	}
-	/* a predicate or a measure yields a logical or a number */
-	return facts?.predicate !== undefined || facts?.measures !== undefined;
+	/* an environment we do not track */
+	return resolveDefsToEnvirResolution(defs, node.info.id, data) ?? (defs === undefined ? undefined : 'ambiguous');
 }
 
 /** `environment(fn)` names the frame the closure `fn` holds, tracked as the environment state of the variable holding the closure: what is written into the frame is read by the closure once it is called (see {@link linkClosureFrameReads}). */
@@ -337,12 +264,19 @@ export function resolveFirstEnvirArg<OtherInfo>(args: readonly PotentiallyEmptyR
 	return undefined;
 }
 
-/** Marks `result` as an unknown side effect when the envir argument names a value that cannot be pinned down (e.g. a parameter), so routing the writes anywhere would be a guess (and what they bind may be any method); reports whether it did. */
-export function unknownIfAmbiguous<OtherInfo>(routing: EnvirArgRouting<OtherInfo>, result: DataflowInformation, rootId: NodeId): boolean {
+/**
+ * Marks `result` as an unknown side effect when the envir argument names a value that cannot be pinned down (e.g. a parameter), so routing the writes anywhere would be a guess (and what they bind may be any method); reports whether it did.
+ * With the node `envir` of the argument's value, the effect only holds while that value may be an environment, which the dataflow extractor decides on the complete graph
+ * (see {@link DataflowGraph#markUnknownUnlessNoEnvironment}): a list or a data frame gives the evaluation a frame of its own, which no other binding sees.
+ */
+export function unknownIfAmbiguous<OtherInfo>(routing: EnvirArgRouting<OtherInfo>, result: DataflowInformation, rootId: NodeId, envir?: NodeId): boolean {
 	if(routing !== 'ambiguous') {
 		return false;
 	}
 	handleUnknownSideEffect(result.graph, result.environment, rootId);
+	if(envir !== undefined) {
+		result.graph.markUnknownUnlessNoEnvironment(rootId, envir);
+	}
 	noteUnknownMethods(result.environment, rootId);
 	return true;
 }

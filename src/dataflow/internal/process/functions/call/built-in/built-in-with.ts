@@ -113,7 +113,7 @@ export function processWithEnv<OtherInfo>(
 		 * makes the call an unknown side effect; a call we cannot see into is no more opaque than the same call outside of `with`,
 		 * it can at most change `data`, which `mayWriteInto` covers
 		 */
-		if(defines && unknownIfAmbiguous(envirRouting, fallback, rootId)) {
+		if(defines && unknownIfAmbiguous(envirRouting, fallback, rootId, dataArg.value.info.id)) {
 			return fallback;
 		}
 		return mayWriteInto(dataArg.value, fallback, rootId, data);

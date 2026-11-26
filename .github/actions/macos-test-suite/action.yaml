@@ -1,0 +1,68 @@
+name: "macOS Test Suite"
+description: "Set up node, R, the R packages and the signature database, then run the tests, shared by the legs of the macOS test workflow"
+
+inputs:
+  r-version:
+    description: "The R version to test with"
+    required: true
+  test-command:
+    description: "The flowR npm command that runs the tests"
+    required: true
+  system-tests:
+    description: "Whether to run the system tests as well"
+    required: true
+  codecov-token:
+    description: "Upload the coverage reports to Codecov with this token, or skip the upload if empty"
+    required: false
+    default: ""
+  token:
+    description: "The token the signature database sync downloads the bundles with"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: "🌍 Load Versions to Use"
+      shell: bash
+      run: bash .github/workflows/scripts/global-configuration.sh
+
+    - name: "⬇️ Use Node.js"
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ env.ACTION_NODE_VERSION }}
+        registry-url: "https://registry.npmjs.org/"
+        cache: npm
+
+    - name: "⬇️ Setup R"
+      uses: ./.github/actions/setup-r
+      with:
+        r-version: ${{ inputs.r-version || env.ACTION_R_VERSION }}
+
+    - name: "📦 Install R Packages"
+      shell: Rscript {0}
+      run: |
+        wanted <- readLines(".github/actions/setup-r/packages.txt")
+        install.packages(wanted, repos="https://cloud.r-project.org/")
+        missing <- setdiff(wanted, rownames(installed.packages()))
+        if(length(missing) > 0) cat("::warning::R", format(getRversion()), "lacks", missing, "so the tests that load them skip\n")
+
+    - name: "⬇️ Setup the Signature Database"
+      uses: ./.github/actions/setup-sigdb
+      with:
+        token: ${{ inputs.token }}
+
+    - name: "🧪 Run the Tests"
+      shell: bash
+      run: bash .github/workflows/scripts/run-flowr-command.sh "${{ inputs.test-command }}"
+
+    - name: "⚙️ Run System Tests"
+      if: inputs.system-tests == 'true'
+      shell: bash
+      run: bash .github/workflows/scripts/run-flowr-command.sh "test:system -- --no-watch"
+
+    - name: "⬆️ Upload Coverage Reports to Codecov"
+      if: inputs.codecov-token != ''
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ inputs.codecov-token }}
+        fail_ci_if_error: true

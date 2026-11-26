@@ -238,7 +238,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ windows-latest, macos-latest ]
+        os: [ windows-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: "🛒 Checkout Repository"
@@ -277,6 +277,18 @@ jobs:
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:all -- --run --allowOnly=false"
+
+  test-macos:
+    needs: [ debug ]
+    name: "🧪 Test Suite (macOS)"
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
+    uses: ./.github/workflows/test-macos.yaml
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+    with:
+      test-command: "test:all -- --run --allowOnly=false"
 
 
   performance-test:

@@ -52,8 +52,6 @@ jobs:
         os: [ ubuntu-latest ]
         include:
            - r-version: '4.5.0'
-             os: macos-latest
-           - r-version: '4.5.0'
              os: windows-latest
     runs-on: ${{ matrix.os }}
     concurrency:
@@ -97,7 +95,7 @@ jobs:
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
 
-      # `test:full` excludes them, so the matrix is the only place they meet macOS and windows. They shell out to
+      # `test:full` excludes them, so the release is the only place they meet macOS and windows. They shell out to
       # the cli, and the windows leg has never run them, so it reports without holding up a release until it is green.
       - name: "⚙️ Run System Tests"
         continue-on-error: ${{ matrix.os == 'windows-latest' }}
@@ -126,20 +124,41 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
 
+  test-macos:
+    name: "🧪 Test Suite (full, macOS)"
+    needs: ['lint']
+    if: startsWith(github.event.head_commit.message, '[release:minor]') ||
+        startsWith(github.event.head_commit.message, '[release:major]') ||
+        startsWith(github.event.head_commit.message, '[release:patch]')
+    uses: ./.github/workflows/test-macos.yaml
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+    with:
+      r-version: '4.5.0'
+      test-command: "test:full -- --allowOnly=false"
+      system-tests: true
+      codecov: true
+
   release:
     name: "📦 Release"
     runs-on: ubuntu-latest
     timeout-minutes: 75
-    needs: ['test-full']
+    # a missing macOS runner must not block the release, failing macOS tests must
+    needs: ['test-full', 'test-macos']
     permissions:
       contents: read
       id-token: write
     concurrency:
       group: release-main
       cancel-in-progress: false
-    if: startsWith(github.event.head_commit.message, '[release:minor]') ||
-        startsWith(github.event.head_commit.message, '[release:major]') ||
-        startsWith(github.event.head_commit.message, '[release:patch]')
+    # a cancelled arm64 leg marks test-macos as not successful, so we judge it by its verdict
+    if: ${{
+              !cancelled()
+          && needs.test-full.result == 'success'
+          && contains(fromJSON('["passed", "no-runner"]'), needs.test-macos.outputs.verdict)
+      }}
     steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v6

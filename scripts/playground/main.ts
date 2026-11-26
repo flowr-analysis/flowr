@@ -3303,7 +3303,10 @@ async function analyze(): Promise<number> {
 	return took;
 }
 
-/** what each function of the script asks of its calls, one card per definition */
+/** the contracts folded away by hand, kept across analyses like the unfolded lint groups */
+const foldedContracts = new Set<string>();
+
+/** what each function of the script asks of its calls, one card per definition, each folding away on its own */
 function showContracts(contracts: readonly ProgramContract[]): void {
 	const body = section(`Contracts: ${contracts.length}`, PlaygroundBox.Contracts, contracts.length === 0 ? undefined : 'inferred, what a call has to fulfill');
 	if(contracts.length === 0) {
@@ -3314,7 +3317,24 @@ function showContracts(contracts: readonly ProgramContract[]): void {
 	list.dataset.mark = PlaygroundBox.Contracts;
 	for(const c of contracts) {
 		const row = el('div', 'card fncontract');
-		row.append(el('div', 'tcall', `${c.name}(${c.formals.join(', ')})`), contractCard(c.name, c.formals, c.guards, { program: c }, place => reveal(place.file, place.line)));
+		const signature = `${c.name}(${c.formals.join(', ')})`;
+		const key = `${c.file ?? ''}:${signature}`;
+		const head = el('div', 'tcall', signature);
+		const card = contractCard(c.name, c.formals, c.guards, { program: c }, place => reveal(place.file, place.line));
+		function fold(away: boolean): void {
+			card.hidden = away;
+			head.classList.toggle('folded', away);
+			head.title = away ? 'click to show this contract again' : 'click to fold this contract away';
+		}
+		head.addEventListener('click', () => {
+			const away = !foldedContracts.delete(key);
+			if(away) {
+				foldedContracts.add(key);
+			}
+			fold(away);
+		});
+		fold(foldedContracts.has(key));
+		row.append(head, card);
 		list.append(linkRow(row, [c.file === undefined ? c.line : undefined]));
 	}
 	body.append(list);

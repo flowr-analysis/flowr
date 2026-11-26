@@ -131,6 +131,26 @@ describe('playground', { concurrent: false }, () => {
 		expect(page.errors).toEqual([]);
 	}, 5 * 60 * 1000);
 
+	test('a contract folds away on its own, and stays folded when the script is analyzed again', async() => {
+		const page = await open({
+			code: 'checked <- function(x) {\n\tstopifnot(is.numeric(x))\n\tx\n}\nnamed <- function(s) {\n\tstopifnot(is.character(s))\n\ts\n}\nprint(checked(1))\nprint(named("a"))',
+			at:   '9@print'
+		});
+		const cards = () => [...page.document.querySelectorAll<HTMLElement>('#panel .fncontract')];
+		const folded = (card: HTMLElement | undefined) => card?.querySelector<HTMLElement>('.contract')?.hidden;
+		await page.until(() => expect(cards()).toHaveLength(2));
+		cards()[0].querySelector<HTMLElement>('.tcall')?.click();
+		expect(cards().map(folded)).toEqual([true, false]);
+		const before = cards()[0];
+		[...page.document.querySelectorAll<HTMLElement>('#panel .way')].find(b => b.textContent === 'impact')?.click();
+		await page.until(() => expect(cards()[0]).not.toBe(before));
+		expect(cards().map(folded)).toEqual([true, false]);
+		cards()[0].querySelector<HTMLElement>('.tcall')?.click();
+		expect(cards().map(folded)).toEqual([false, false]);
+		page.close();
+		expect(page.errors).toEqual([]);
+	}, 5 * 60 * 1000);
+
 	test('a project opens its files from the tree, and its slice keeps them apart or splices them in under banners', async() => {
 		const page = await open({
 			files: [{ name: 'helpers.R', code: 'twice <- function(x) x * 2' }],

@@ -10,25 +10,25 @@ import { FileInput, NetworkInput, NetworkProtocolRegex, securityDomain, UserInpu
 
 export const securityDomainLifted = securityDomain.setLift();
 
-export const UserInputLifted = securityDomainLifted.create(UserInput).value;
-export const NetworkInputLifted = securityDomainLifted.create(NetworkInput).value;
-export const FileInputLifted = securityDomainLifted.create(FileInput).value;
-export const BottomLifted = securityDomainLifted.bottom().value;
-export const TopLifted = securityDomainLifted.top().value;
+export const UserInputLifted = securityDomainLifted.create(UserInput);
+export const NetworkInputLifted = securityDomainLifted.create(NetworkInput);
+export const FileInputLifted = securityDomainLifted.create(FileInput);
+export const BottomLifted = securityDomainLifted.bottom();
+export const TopLifted = securityDomainLifted.top();
 
 const protocolTaintLifted: TaintConditionFunction<typeof securityDomainLifted> =
 	([path]) => typeof path === 'string'
         && NetworkProtocolRegex.test(path)
-		? NetworkInputLifted
-		: FileInputLifted;
+		? NetworkInputLifted.value
+		: FileInputLifted.value;
 
 const securitySinkConditionLifted: TaintConditionFunction<typeof securityDomainLifted> =
 	(_args, taints) => taints.some(
-		taint => taint.value === UserInputLifted
-        || taint.value === NetworkInputLifted
-        || taint.value === FileInputLifted)
-		? BottomLifted
-		: taints.length > 0 ? AbstractDomain.joinAll(taints).value : TopLifted;
+		taint => taint.equals(UserInputLifted) // this is wrong for lifted domains {UserInput, NetworkInput} should evaluate to Bottom too
+        || taint.equals(NetworkInputLifted) // something like taint.contains operating on the super/subset properties of the reduced value of the taints should be useable?
+        || taint.equals(FileInputLifted)) // calling the conditionFunction on all elements of the set in a lifted taint may also be viable? to be discussed
+		? BottomLifted.value
+		: taints.length > 0 ? AbstractDomain.joinAll(taints).value : TopLifted.value;
 
 export const securityAnalysisLifted = TaintAnalysisDefinition.create('security', securityDomainLifted)
 	.on(TaintFnCategory.pureAlias)
@@ -37,11 +37,11 @@ export const securityAnalysisLifted = TaintAnalysisDefinition.create('security',
 	.from(
 		{
 			identifier: [...BuiltInIndex.default().with(SemanticCallTag.User, [SemanticCallTag.Network, SemanticCallTag.File])],
-			taint:      UserInputLifted
+			taint:      UserInputLifted.value
 		},
 		{
 			identifier: [...BuiltInIndex.default().with(SemanticCallTag.Network, SemanticCallTag.User)],
-			taint:      NetworkInputLifted,
+			taint:      NetworkInputLifted.value,
 		},
 		{
 			identifier: [
@@ -74,11 +74,11 @@ export const securityAnalysisLifted = TaintAnalysisDefinition.create('security',
 	.through(
 		{
 			identifier: ['shQuote', PkgName.Base],
-			taint:      TopLifted
+			taint:      TopLifted.value
 		},
 		{
 			identifier: [['match.arg', PkgName.Base], ['make.names', PkgName.Base]],
-			taint:      TopLifted
+			taint:      TopLifted.value
 		},
 		{
 			// additional common functions

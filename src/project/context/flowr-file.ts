@@ -1,8 +1,6 @@
-import type { PathLike } from 'fs';
-import fs from 'fs';
+import fs, { type PathLike } from 'fs';
 import type { RParseRequest } from '../../r-bridge/retriever';
-import type { InvalidationEventHandler } from '../cache/flowr-cache';
-import { InvalidationEventType } from '../cache/flowr-cache';
+import { type InvalidationEventHandler, InvalidationEventType } from '../cache/flowr-cache';
 
 /**
  * Just a readable alias for file paths, mostly for documentation purposes.
@@ -40,9 +38,9 @@ export enum FileRole {
 	Documentation = 'documentation',
 	/** Signals separate license files, but please note, that DESCRIPTION files may contain license info too */
 	License       = 'license',
-	/** Files describing a project's virtual/pinned package environment, e.g., `renv.lock`, `rv.lock` or `uvr.lock`. */
+	/** Files describing a project's virtual/pinned package environment, e.g., `renv.lock`, `rv.lock`, `uvr.lock` or rig's `rproj.lock`. */
 	VirtualEnv    = 'virtual-env',
-	/** A project manifest that is no `DESCRIPTION`, e.g. the `rproject.toml` of an rv project or the `uvr.toml` of a uvr project. */
+	/** A project manifest that is no `DESCRIPTION`, e.g. the `rproject.toml` of an rv project, the `uvr.toml` of a uvr project or the `rproj.toml` of a rig project. */
 	Manifest      = 'manifest',
 	/**
 	 * R sources evaluated at startup, before any project code (`.Rprofile`, `Rprofile.site`).
@@ -108,19 +106,13 @@ export interface FlowrFileProvider<Content extends { toString(): string } = { to
 	 */
 	assignRole(role: FileRole): void;
 
-	/**
-	 * Set the appropriate callback to trigger updates in case of an 'invalidate'
-	 */
+	/** Set the appropriate callback to trigger updates in case of an 'invalidate' */
 	addOnInvalidate(callback: InvalidationEventHandler<Content>): void;
 
-	/**
-	 * Remove a previously added callback
-	 */
+	/** Remove a previously added callback */
 	removeOnInvalidate(callback: InvalidationEventHandler<Content>): void;
 
-	/**
-	 * Reload the file content because something has changed.
-	 */
+	/** Reload the file content because something has changed. */
 	invalidate(): void;
 }
 
@@ -207,9 +199,7 @@ export abstract class FlowrFile<Content extends StringableContent = StringableCo
 	}
 }
 
-/**
- * A basic implementation of the {@link FlowrFileProvider} interface for text files that caches the content after the first load (i.e., updates on disk are ignored).
- */
+/** A basic implementation of the {@link FlowrFileProvider} interface for text files that caches the content after the first load (i.e., updates on disk are ignored). */
 export class FlowrTextFile extends FlowrFile<string> {
 	protected loadContent(): string {
 		return fs.readFileSync(this.filePath, 'utf8');
@@ -224,9 +214,13 @@ export class FlowrTextFile extends FlowrFile<string> {
 export class FlowrInlineTextFile extends FlowrFile<string> {
 	private contentStr: string;
 
-	constructor(path: PathLike, content: string) {
-		super(path);
+	constructor(path: PathLike, content: string, roles?: readonly FileRole[]) {
+		super(path, roles);
 		this.contentStr = content;
+	}
+
+	public copy(): FlowrInlineTextFile {
+		return new FlowrInlineTextFile(this.path(), this.contentStr, this.roles);
 	}
 
 	protected loadContent(): string {

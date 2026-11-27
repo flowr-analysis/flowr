@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-10-24, 20:38:50 UTC (v2.16.6), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-23, 15:23:58 UTC (v2.17.11), do not edit directly._
 <h2 id="Provenance Query">Provenance Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Calculate the provenance of a given variable, optionally restricted to its enveloping fdef\
@@ -20,21 +20,16 @@ x
 If you are interested in the provenance of the `x` in the last line you can use:
 
 ```json
-[
-  {
-    "type": "provenance",
-    "criterion": "4@x"
-  }
-]
+[ { "type": "provenance",   "criterion": "4@x" } ]
 ```
 
 (This can be shortened to `@provenance (4@x) "x <- 1\ny <- 2\nz <- 3\nx"` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
 
 _Results (prettified and summarized):_
 
-Query: **provenance** (5 ms)\
+Query: **provenance** (6 ms)\
 &nbsp;&nbsp;&nbsp;╰ Provenance for 4@x\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ [Mermaid Url](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMXt7XCJgKiM5MTtSTnVtYmVyIzkzOyogKioxKipcbiAgICAgICoxLjYqICgqKmlkOiAxKiopYFwifX1cbiAgICAwW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqeCoqXG4gICAgICAqMS4xKiAoKippZDogMCoqLCB2OiAxKWBcIl1cbiAgICAyW1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzYwOyM0NTsqKlxuICAgICAgKjEuMS02KiAoKippZDogMioqKVxuICAgIGFyZzogKDAsIDEpYFwiXV1cbiAgICBidWlsdC1pbjpfNjBfLVtcImBCdWlsdC1JbjpcbiM2MDsjNDU7YFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOl82MF8tIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgOShbXCJgKiM5MTtSU3ltYm9sIzkzOyogKip4KipcbiAgICAgICo0LjEqICgqKmlkOiA5KiopYFwiXSlcbiAgICAxIC0uLT58XCJmbG93XCJ8IDBcbiAgICBsaW5rU3R5bGUgMCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDAgLS0+fFwiZGVmaW5lZC1ieSwgZmxvd1wifCAyXG4gICAgMCAtLT58XCJkZWZpbmVkLWJ5XCJ8IDFcbiAgICAyIC0tPnxcInJlYWRzLCBhcmdcInwgMVxuICAgIDIgLS0+fFwicmV0dXJucywgYXJnXCJ8IDBcbiAgICAyIC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46XzYwXy1cbiAgICBsaW5rU3R5bGUgNSBzdHJva2U6Z3JheTtcbiAgICA5IC0tPnxcInJlYWRzXCJ8IDAiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ [Mermaid Url](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMXt7XCJgKiM5MTtSTnVtYmVyIzkzOyogKioxKipcbiAgICAgICoxLjYqICgqKmlkOiAxKiopYFwifX1cbiAgICAwW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqeCoqXG4gICAgICAqMS4xKiAoKippZDogMCoqLCB2OiAxKWBcIl1cbiAgICAyW1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzYwOyM0NTsqKlxuICAgICAgKjEuMS02KiAoKippZDogMioqKVxuICAgIGFyZzogKDAsIDEpYFwiXV1cbiAgICBidWlsdC1pbjpfNjBfLVtcImBCdWlsdC1JbjpcbiM2MDsjNDU7YFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOl82MF8tIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgOShbXCJgKiM5MTtSU3ltYm9sIzkzOyogKip4KipcbiAgICAgICo0LjEqICgqKmlkOiA5KiopYFwiXSlcbiAgICAxIC0uLT58XCJmbG93XCJ8IDBcbiAgICBsaW5rU3R5bGUgMCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDAgLS0+fFwiZGVmaW5lZC1ieSwgZmxvd1wifCAyXG4gICAgMCAtLT58XCJkZWZpbmVkLWJ5XCJ8IDFcbiAgICAyIC0tPnxcInJlYWRzLCBhcmdcInwgMVxuICAgIDIgLS0+fFwicmV0dXJucywgYXJnXCJ8IDBcbiAgICAyIC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46XzYwXy1cbiAgICBsaW5rU3R5bGUgNSBzdHJva2U6Z3JheTtcbiAgICA5IC0tPnxcInJlYWRzXCJ8IDAiLCJtZXJtYWlkIjoie1wiYXV0b1N5bmNcIjp0cnVlfSJ9)
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -52,6 +47,6 @@ The JSON contains the ids of the nodes in question (see the [Interface](https://
 
 <summary style="color:gray">Implementation Details</summary>
 
-The Provenance Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/provenance-query/provenance-query-executor.ts#L13"><code><span title="Execute a provenance query collection, Dataflow.provenance">executeProvenanceQuery</span></code></a>.
+The Provenance Query is executed by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/provenance-query/provenance-query-format.ts#L15"><code><span title="Execute a provenance query collection, Dataflow.provenance">executeProvenanceQuery</span></code></a>.
 
 </details>

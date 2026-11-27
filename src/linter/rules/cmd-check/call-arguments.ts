@@ -4,11 +4,12 @@ import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../../dataflow/environments/identifier';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { CallContracts } from '../../../dataflow/fn/guards/call-contracts';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
-import { fnInfo } from '../../../dataflow/environments/query-fn-props';
+import { fnEntry } from '../../../dataflow/environments/query-fn-props';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
@@ -18,7 +19,7 @@ import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
-import { at, boundName, calledDefinitions, isQuoted, type CmdCheckResult, formalNames, packageInfo, printer, projectNodes } from './cmd-check-util';
+import { at, boundName, type CmdCheckResult, formalNames, packageInfo, printer, projectNodes } from './cmd-check-util';
 
 export type CallArgumentsKind =
 	/** a named argument no formal of the called function takes */
@@ -37,9 +38,9 @@ export type CallArgumentsKind =
 export interface CallArgumentsResult extends CmdCheckResult {
 	readonly kind:      CallArgumentsKind
 	/** the function called or defined */
-	readonly function?: string
+	readonly function?: BrandedIdentifier
 	/** the argument concerned, if any */
-	readonly argument?: string
+	readonly argument?: BrandedIdentifier
 }
 
 export interface CallArgumentsConfig extends MergeableRecord {
@@ -57,13 +58,13 @@ export interface CallArgumentsMetadata extends MergeableRecord {
 const Dots = '...';
 
 /** the formals of a package function, if the signature database knows them: flowR's own built-ins merely state the ones they model */
-function packageFormals(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
-	const info = fnInfo(name, ctx);
-	return info?.entry === undefined || info.entry.signature.length === 0 ? undefined : [...info.parameters];
+function packageFormals(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext): BrandedIdentifier[] | undefined {
+	const signature = fnEntry(name, ctx).entry?.signature;
+	return signature === undefined || signature.length === 0 ? undefined : signature.map(p => p.name);
 }
 
 interface Targets {
-	readonly formals: readonly (readonly string[])[]
+	readonly formals: readonly (readonly BrandedIdentifier[])[]
 	/** whether the formals are those of the function the call binds to, rather than of a source that may be off */
 	readonly certain: boolean
 }
@@ -74,11 +75,11 @@ interface Targets {
  * through a function factory may have its formals rewritten (`formals(f) <- ...`), so it is not trusted when the
  * code rewrites formals anywhere.
  */
-function targetsOf(id: NodeId, name: Identifier, df: DataflowInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext, packages: boolean, rewritesFormals: boolean): Targets | undefined {
+function targetsOf(id: NodeId, name: Identifier, df: DataflowInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext, { packages, rewritesFormals }: { readonly packages: boolean, readonly rewritesFormals: boolean }): Targets | undefined {
 	/* a built-in also calls the functions it is handed (`lapply(x, f)`), so only the origins tell what is called */
 	const origins = Dataflow.origin(df.graph, id) ?? [];
 	if(!origins.some(o => o.type === OriginType.BuiltInFunctionOrigin)) {
-		const defs = calledDefinitions(df.graph, id, idMap);
+		const defs = Dataflow.calleeDefinitionsOf(df.graph, id);
 		if(defs.length > 0) {
 			const direct = defs.every(d => boundName(d, idMap) === Identifier.getName(name));
 			return !direct && rewritesFormals ? undefined : { formals: defs.map(formalNames), certain: direct };
@@ -92,24 +93,21 @@ function targetsOf(id: NodeId, name: Identifier, df: DataflowInformation, idMap:
 	return known === undefined ? undefined : { formals: [known], certain: false };
 }
 
-/** the replacement functions that rewrite a function, after which its formals are no longer those of its definition */
-const FormalsRewriters: ReadonlySet<string> = new Set(['formals<-', 'body<-', 'args<-']);
-
 interface Mismatch {
 	readonly kind:      CallArgumentsKind
-	readonly argument?: string
+	readonly argument?: BrandedIdentifier
 	readonly message:   string
 	/** the full name of the formal a partial match reaches, and where the abbreviated name is written */
-	readonly full?:     { readonly name: string, readonly loc: SourceLocation | undefined }
+	readonly full?:     { readonly name: BrandedIdentifier, readonly loc: SourceLocation | undefined }
 }
 
 /** how R would match the arguments of `call` to `formals`, the problems it would run into */
-function mismatchesOf(call: RFunctionCall<ParentInformation>, formals: readonly string[], partial: boolean): Mismatch[] {
+function mismatchesOf(call: RFunctionCall<ParentInformation>, formals: readonly BrandedIdentifier[], partial: boolean): Mismatch[] {
 	const dots = formals.indexOf(Dots);
 	/* only the formals before `...` match by a prefix of their name */
 	const prefixable = dots < 0 ? formals : formals.slice(0, dots);
 	const result: Mismatch[] = [];
-	const bound = new Set<string>();
+	const bound = new Set<BrandedIdentifier>();
 	let positional = 0;
 	let spreads = false;
 	for(const arg of call.arguments) {
@@ -152,14 +150,8 @@ function mismatchesOf(call: RFunctionCall<ParentInformation>, formals: readonly 
 }
 
 /** the given function definition and all definitions enclosing it */
-function enclosingFunctions(fn: RFunctionDefinition<ParentInformation>, idMap: ReadonlyMap<NodeId, RNode<ParentInformation>>): RFunctionDefinition<ParentInformation>[] {
-	const result = [fn];
-	for(let cur = idMap.get(fn.info.parent ?? ''); cur !== undefined; cur = idMap.get(cur.info.parent ?? '')) {
-		if(RFunctionDefinition.is(cur)) {
-			result.push(cur);
-		}
-	}
-	return result;
+function enclosingFunctions(fn: RFunctionDefinition<ParentInformation>, idMap: AstIdMap): RFunctionDefinition<ParentInformation>[] {
+	return [fn, ...RNode.iterateParents(fn, idMap).filter(RFunctionDefinition.is)];
 }
 
 /**
@@ -180,14 +172,14 @@ export const CALL_ARGUMENTS = {
 		const add = (node: RNode<ParentInformation>, r: Omit<CallArgumentsResult, 'loc' | 'involvedId' | 'certainty'>, certain = true) => results.push({ ...at(node, certain), ...r });
 
 		const calls = [...df.graph.verticesOfType(VertexType.FunctionCall)];
-		const rewritesFormals = calls.some(([, v]) => FormalsRewriters.has(Identifier.getName(v.name)));
+		const rewritesFormals = calls.some(([, v]) => CallContracts.FormalsRewriters.has(Identifier.getName(v.name)));
 		for(const [id, vertex] of calls) {
 			const node = idMap.get(id);
 			/* quoted code is data, as codetools sees it too */
-			if(!RFunctionCall.isNamed(node) || !pkg.isPackageCode(node.info.file) || isQuoted(df.graph, id, idMap)) {
+			if(!RFunctionCall.isNamed(node) || !pkg.isPackageCode(node.info.file) || Dataflow.isWithinQuoted(id, df.graph)) {
 				continue;
 			}
-			const targets = targetsOf(id, vertex.name, df, idMap, ctx, config.checkPackageFunctions, rewritesFormals);
+			const targets = targetsOf(id, vertex.name, df, idMap, ctx, { packages: config.checkPackageFunctions, rewritesFormals });
 			if(targets === undefined) {
 				continue;
 			}
@@ -195,7 +187,7 @@ export const CALL_ARGUMENTS = {
 			const perTarget = targets.formals.map(f => mismatchesOf(node, f, config.reportPartialMatches));
 			const fn = Identifier.toString(vertex.name);
 			/* a mismatch with every possible target is certain, with only some of them it is not */
-			const keys = new Map<string, { m: Mismatch, count: number, fulls: Set<string | undefined> }>();
+			const keys = new Map<string, { m: Mismatch, count: number, fulls: Set<BrandedIdentifier | undefined> }>();
 			for(const mismatches of perTarget) {
 				for(const m of mismatches) {
 					const key = `${m.kind}:${m.argument ?? ''}`;
@@ -207,7 +199,7 @@ export const CALL_ARGUMENTS = {
 				const everywhere = count === targets.formals.length;
 				/* the name is spelled out only when every target takes the same formal for it */
 				const quickFix: LintQuickFixReplacement[] | undefined = m.full?.loc !== undefined && everywhere && fulls.size === 1
-					? [{ type: 'replace', loc: m.full.loc, description: `Spell out \`${m.full.name}\``, replacement: m.full.name }] : undefined;
+					? [{ type: 'replace', loc: m.full.loc, description: `Spell out \`${m.full.name}\``, replacement: String(m.full.name) }] : undefined;
 				add(node, { kind: m.kind, function: fn, ...(m.argument !== undefined ? { argument: m.argument } : {}), message: `possible error in ${fn}(): ${m.message}`, ...(quickFix ? { quickFix } : {}) }, targets.certain && everywhere);
 			}
 		}
@@ -219,7 +211,7 @@ export const CALL_ARGUMENTS = {
 			}
 			const parent = idMap.get(node.info.parent ?? '');
 			/* the formal `...` and an argument named `...` (`switch(x, ... = 1)`, `alist(... = )`) use no dots */
-			if(!RSymbol.is(node) || RParameter.is(parent) || (RArgument.is(parent) && parent.name === node) || isQuoted(df.graph, node.info.id, idMap)) {
+			if(!RSymbol.is(node) || RParameter.is(parent) || (RArgument.is(parent) && parent.name === node) || Dataflow.isWithinQuoted(node.info.id, df.graph)) {
 				continue;
 			}
 			const name = Identifier.getName(node.content);
@@ -235,7 +227,7 @@ export const CALL_ARGUMENTS = {
 		}
 
 		/* functions bound to the same name twice within one function body, with other formals */
-		const scopes = new Map<NodeId | undefined, Map<string, RFunctionDefinition<ParentInformation>[]>>();
+		const scopes = new Map<NodeId | undefined, Map<BrandedIdentifier, RFunctionDefinition<ParentInformation>[]>>();
 		for(const node of nodes) {
 			if(!RFunctionDefinition.is(node) || !pkg.isPackageCode(node.info.file)) {
 				continue;
@@ -245,7 +237,7 @@ export const CALL_ARGUMENTS = {
 			if(name === undefined || scope === undefined) {
 				continue;
 			}
-			const perName = scopes.get(scope) ?? new Map<string, RFunctionDefinition<ParentInformation>[]>();
+			const perName = scopes.get(scope) ?? new Map<BrandedIdentifier, RFunctionDefinition<ParentInformation>[]>();
 			scopes.set(scope, perName);
 			perName.set(name, [...perName.get(name) ?? [], node]);
 		}
@@ -265,9 +257,6 @@ export const CALL_ARGUMENTS = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds calls with arguments the called function does not take, names that match a formal only partially or match several formals, `...` used in a function without `...`, and local functions defined twice with different formals. Calls are resolved through the dataflow graph.',
-		defaultConfig: () => ({
-			reportPartialMatches:  true,
-			checkPackageFunctions: true
-		})
+		defaultConfig: () => ({ reportPartialMatches: true, checkPackageFunctions: true })
 	}
 } as const satisfies LintingRule<CallArgumentsResult, CallArgumentsMetadata, CallArgumentsConfig>;

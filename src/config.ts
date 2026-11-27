@@ -27,6 +27,8 @@ import type { InputClassifierConfig } from './queries/catalog/input-sources-quer
 import { InputType } from './queries/catalog/input-sources-query/input-types';
 import { uniqueArray } from './util/collections/arrays';
 import { SecureMode } from './util/secure-mode';
+import type { BrandedNamespace } from './dataflow/environments/identifier';
+import { CacheScope, GlobalCaches } from './util/global-caches';
 
 /** Marks an option that decides what flowR executes or loads, it is dropped from untrusted configs (see {@link FlowrConfig.fromFile}). */
 function securitySensitive<T extends Joi.Schema>(schema: T): T {
@@ -60,9 +62,7 @@ export enum VersionSelection {
 	System = 'system'
 }
 
-/**
- * How to infer the working directory from a script
- */
+/** How to infer the working directory from a script */
 export enum InferWorkingDirectory {
 	/** Don't infer the working directory */
 	No = 'no',
@@ -74,9 +74,7 @@ export enum InferWorkingDirectory {
 	AnyScript = 'any-script'
 }
 
-/**
- * How to handle fixed strings in a source path
- */
+/** How to handle fixed strings in a source path */
 export enum DropPathsOption {
 	/** Don't drop any parts of the sourced path */
 	No = 'no',
@@ -99,13 +97,28 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	 */
 	readonly applyReplacements?:    Record<string, string>[]
 	readonly assumeFilesExist?:     boolean
+	readonly unseenMethods?:        boolean
 }
 
 export type ConfigPlugin<T extends BuiltInFlowrPluginName | string> =
-	T | string | (T extends BuiltInFlowrPluginName ? [T, BuiltInFlowrPluginArgs<T>] : [string, unknown[]]);
+	T | string | (T extends BuiltInFlowrPluginName ? [T, BuiltInFlowrPluginArgs<T>?] : [string, unknown[]?]);
+
+/**
+ * A plugin name or a `[name, args]` tuple. The args reach the plugin constructor and override what the config
+ * says (e.g., the on-demand mirrors), so an untrusted config keeps the plugin but loses its args.
+ */
+const ConfigPluginsSchema = Joi.array().items(Joi.alternatives().try(
+	Joi.string(),
+	Joi.array().ordered(Joi.string().required(), securitySensitive(Joi.array().items(Joi.any()))).min(1).max(2)
+));
 
 /** One {@link FlowrConfig.specializeConfig} entry: a config overwrite, optionally `inherit`ing another kind's overwrite (own keys win). */
 export type SpecializeConfigEntry = DeepPartial<FlowrConfig> & { readonly inherit?: ProjectKind };
+
+/** A config to amend, in which the built-in definitions stay as stated: they are replaced as a whole, not edited. */
+type Writable<T> = T extends string | BuiltInDefinitions | RegExp | ((...args: never[]) => unknown) ? T
+	: T extends object ? { -readonly [K in keyof T]: K extends 'specializeConfig' ? T[K] : Writable<T[K]> } : T;
+export type WritableFlowrConfig = Writable<FlowrConfig>;
 
 /**
  * The configuration file format for flowR.
@@ -126,6 +139,19 @@ export interface FlowrConfig {
 				readonly loadDefaults?: boolean
 				readonly definitions:   BuiltInDefinitions
 			}
+		}
+		readonly ambient?: {
+			/**
+			 * Whether a call drawing on a graphics device (`plot`, `lines`, ...) writes what is drawn, the pseudo variable `#canvas`, defaults to false.
+			 * Turn it on if the drawn plot is the output you slice for or compare, and keep it off if you only care about the
+			 * graphics parameters (`par`), as every plot then depends on all earlier plots on the same device.
+			 * It has to be set before the analysis runs, as the setting is applied when the calls are processed.
+			 * @example
+			 * ```ts
+			 * const analyzer = await new FlowrAnalyzerBuilder().configure('semantics.ambient.drawingWritesDevice', true).build();
+			 * ```
+			 */
+			readonly drawingWritesDevice?: boolean
 		}
 	},
 	readonly defaultPlugins: ConfigPlugin<string>[]
@@ -220,7 +246,7 @@ export interface FlowrConfig {
 			readonly autoSync?:                   boolean
 			readonly versionSelection?:           VersionSelection
 			/** Force an exact version for specific packages (mapping a package name to a version), overriding both the project constraint and the {@link versionSelection} policy; a version missing from the database falls back with a warning (default `{}`). */
-			readonly versionOverrides?:           Record<string, string>
+			readonly versionOverrides?:           Record<BrandedNamespace, string>
 			/**
 			 * Recovering a package no signature database knows (e.g. `maptools`) from its local install: `DESCRIPTION`
 			 * states the version, `NAMESPACE` the exports. Opt-in, since it reads outside the analyzed project.
@@ -232,6 +258,38 @@ export interface FlowrConfig {
 				readonly useProjectLibrary?: boolean
 				readonly maxDepth?:          number
 				readonly packages?:          string[]
+			}
+			/**
+			 * Recovering a package no signature database knows from its source, fetched when the analyzed code uses
+			 * it: from CRAN, Bioconductor, or the GitHub repository the project installs it from. Opt-in, as it
+			 * accesses the network. What it fetched is cached, so a later analysis can work offline.
+			 */
+			readonly onDemand?:                   {
+				readonly enabled:              boolean
+				/** where to look, in order (default `github`, `cran`, `bioconductor`), a plugin may add sources of its own */
+				readonly sources?:             string[]
+				/** GitHub repositories (`owner/repo[/subdir][@ref]`) to fetch packages from, by package name */
+				readonly repositories?:        Record<string, string>
+				/** only recover packages whose name matches one of these regular expressions, empty means any */
+				readonly packages?:            string[]
+				/** the CRAN `src/contrib/` to fetch from (default `https://cloud.r-project.org/src/contrib/`) */
+				readonly cranMirror?:          string
+				/** the Bioconductor host (default `https://bioconductor.org`) */
+				readonly bioconductorMirror?:  string
+				/** the Bioconductor release to fetch from (default `release`) */
+				readonly bioconductorRelease?: string
+				/** whether to use the GitHub mirrors of CRAN and Bioconductor (`cran/<pkg>`, `bioc/<pkg>`, default true) */
+				readonly githubMirrors?:       boolean
+				/** the most packages to fetch for one analysis (default 25) */
+				readonly maxPackages?:         number
+				/** the most MiB a package archive may have (default 32), it may unpack to three times that */
+				readonly maxArchiveMb?:        number
+				/** only use what was fetched before, never the network (default false) */
+				readonly offline?:             boolean
+				/** how many hours to wait before asking again for a package no source had (default 24) */
+				readonly retryAfterHours?:     number
+				/** where to cache what was fetched (default the `on-demand` directory of the signature cache) */
+				readonly cacheDir?:            string
 			}
 		}
 		readonly versionManagement?: {
@@ -284,6 +342,16 @@ export interface FlowrConfig {
 				readonly alwaysWithEdits: boolean;
 				readonly minFiles:        number
 			}
+		}
+		readonly dataflow: {
+			/** Hand out the last dataflow analysis again if the files did not change besides their comments, which costs next to nothing. */
+			readonly reuse:         boolean;
+			/** Resume the analysis of a file after its last unchanged top-level statement, from checkpoints the analysis before kept, see {@link checkpoints}. */
+			readonly activated:     boolean;
+			/** After how many of the last top-level statements to keep a checkpoint to resume from (each copies the graph). */
+			readonly checkpoints:   number;
+			/** Keep checkpoints only for files with at least this many top-level statements. */
+			readonly minStatements: number;
 		}
 	}
 
@@ -425,10 +493,12 @@ export const FlowrDefaultPlugins = [
 	'versions:description',
 	'versions:sigdb',
 	'versions:library',
+	'versions:on-demand',
 	'versions:namespace',
 	'versions:renv',
 	'versions:rv',
 	'versions:uvr',
+	'versions:rig',
 	'versions:packrat',
 	'versions:session-info',
 	'loading-order:description',
@@ -438,6 +508,8 @@ export const FlowrDefaultPlugins = [
 	'meta:description',
 	'meta:rproject',
 	'meta:uvr',
+	'meta:rig',
+	'meta:rig-script',
 	'file-roles:vignette',
 	'file-roles:test',
 	'file-roles:inst',
@@ -461,6 +533,7 @@ export const FlowrDefaultPlugins = [
 	'file:virtualenv',
 	'file:rproject',
 	'file:uvr',
+	'file:rig',
 	'file:rprofile',
 ] satisfies ConfigPlugin<string>[];
 
@@ -510,7 +583,7 @@ function specialize(current: unknown, base: unknown, overwrite: unknown): unknow
  * default one instead of being appended to it, so options such as `defaultPlugins` can be reduced and not just extended.
  */
 function mergeConfigOntoDefaults(base: FlowrConfig, addon: DeepPartial<FlowrConfig>): FlowrConfig {
-	const merge = (b: unknown, a: unknown): unknown => {
+	function merge(b: unknown, a: unknown): unknown {
 		if(a === undefined) {
 			return b;
 		}
@@ -522,7 +595,7 @@ function mergeConfigOntoDefaults(base: FlowrConfig, addon: DeepPartial<FlowrConf
 			out[key] = merge(out[key], value);
 		}
 		return out;
-	};
+	}
 	return merge(base, addon) as FlowrConfig;
 }
 
@@ -577,12 +650,8 @@ export const FlowrConfig = {
 			ignoreSourceCalls: false,
 			ignoreLoadCalls:   false,
 			semantics:         {
-				environment: {
-					overwriteBuiltIns: {
-						loadDefaults: true,
-						definitions:  []
-					}
-				}
+				environment: { overwriteBuiltIns: { loadDefaults: true, definitions: [] } },
+				ambient:     { drawingWritesDevice: false }
 			},
 			defaultPlugins: FlowrDefaultPlugins,
 			repl:           {
@@ -594,12 +663,8 @@ export const FlowrConfig = {
 				queryStats:          true,
 				showPlugins:         false,
 			},
-			project: {
-				resolveUnknownPathsOnDisk: true,
-				failOnInaccessiblePath:    false,
-				assumeImplicitEcho:        true
-			},
-			linter: {
+			project: { resolveUnknownPathsOnDisk: true, failOnInaccessiblePath: false, assumeImplicitEcho: true },
+			linter:  {
 				/* tests and the R CMD check rules only make sense for a package, which re-enables them below */
 				disabledRules: ['software-has-tests'],
 				disabledTags:  ['cmd-check']
@@ -623,7 +688,7 @@ export const FlowrConfig = {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, blobCacheBudgetMb: 16, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {}, installedLibrary: { enabled: false, paths: [], useEnvironment: true, useProjectLibrary: true, maxDepth: 3, packages: [] } },
+				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, blobCacheBudgetMb: 16, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {}, installedLibrary: { enabled: false, paths: [], useEnvironment: true, useProjectLibrary: true, maxDepth: 3, packages: [] }, onDemand: { enabled: false } },
 				versionManagement: { linkedVersionGroups: [] },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
@@ -631,49 +696,30 @@ export const FlowrConfig = {
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 					searchPath:            [],
 					repeatedSourceLimit:   2,
-					assumeFilesExist:      false
+					assumeFilesExist:      false,
+					unseenMethods:         false
 				},
 				transitiveSideEffectRounds: DefaultTransitiveSideEffectRounds,
 				maxOverlayDepth:            DefaultMaxOverlayDepth,
-				instrument:                 {
-					dataflowExtractors: undefined
-				},
-				slicer: {
-					threshold:  50,
-					autoExtend: false
-				}
+				instrument:                 { dataflowExtractors: undefined },
+				slicer:                     { threshold: 50, autoExtend: false }
 			},
 			abstractInterpretation: {
 				wideningThreshold: 4,
 				followCalls:       true,
-				dataFrame:         {
-					maxColNames:    50,
-					readLoadedData: {
-						readExternalFiles: true,
-						maxReadLines:      1e6
-					}
-				}
+				dataFrame:         { maxColNames: 50, readLoadedData: { readExternalFiles: true, maxReadLines: 1e6 } }
 			},
 			incremental: {
 				alwaysIncremental: false,
 				parsing:           {
 					activated:  false,
-					heuristics: {
-						activated:       true,
-						mtime:           true,
-						linesFrom:       500,
-						bytesFrom:       50_000,
-						alwaysWithEdits: false,
-						minFiles:        1,
-					}
-				}
+					heuristics: { activated: true, mtime: true, linesFrom: 500, bytesFrom: 50_000, alwaysWithEdits: false, minFiles: 1 }
+				},
+				dataflow: { reuse: true, activated: false, checkpoints: 2, minStatements: 0 }
 			},
 			gas: {
-				thresholds: {
-					memory: { problematic: 0.7,       critical: 0.9 },
-					timeMs: { problematic: 100_000,   critical: 120_000 }
-				},
-				features: {}
+				thresholds: { memory: { problematic: 0.7,       critical: 0.9 }, timeMs: { problematic: 100_000,   critical: 120_000 } },
+				features:   {}
 			}
 		};
 	},
@@ -690,14 +736,17 @@ export const FlowrConfig = {
 					loadDefaults: Joi.boolean().optional().description('Should the default configuration still be loaded?'),
 					definitions:  Joi.array().items(Joi.object()).optional().description('The definitions to load/overwrite.')
 				}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
-			}).optional().description('Semantics regarding how to handle the R environment.')
+			}).optional().description('Semantics regarding how to handle the R environment.'),
+			ambient: Joi.object({
+				drawingWritesDevice: Joi.boolean().optional().description('Whether calls drawing on a graphics device (e.g., `plot`) count as writing to it, which the ambient state queries then report.')
+			}).optional().description('Semantics regarding the global state (options, devices, files, ...) calls access.')
 		}).description('Configure language semantics and how flowR handles them.'),
-		defaultPlugins: Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The default plugins to load when creating a new instance of FlowrAnalyzer'),
+		defaultPlugins: ConfigPluginsSchema.optional().description('The default plugins to load when creating a new instance of FlowrAnalyzer'),
 		repl:           Joi.object({
 			quickStats:          Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
 			dfProcessorHeat:     Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.'),
 			hints:               Joi.boolean().optional().description('Whether to show dim inline hints on the empty prompt (automatically disabled on non-interactive terminals).'),
-			plugins:             Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode'),
+			plugins:             ConfigPluginsSchema.optional().description('The plugins to load in REPL mode'),
 			autoUseFileProtocol: Joi.boolean().optional().description('Prepend the file protocol to a repl input that looks like a path, instead of only warning about it.'),
 			queryStats:          Joi.boolean().optional().description('Whether `:query` closes with the line stating how long the queries took (`:query*` never prints it).'),
 			showPlugins:         Joi.boolean().optional().description('Whether `:version` grays out the plugins that did not activate during the last analysis.')
@@ -758,7 +807,7 @@ export const FlowrConfig = {
 			trackEnvironments: Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
 			sigdb:             Joi.object({
 				enabled:                     Joi.boolean().optional().description('Resolve library()/use() exports from a signature database (default true); when false no database is consulted.'),
-				loadProjectDependencies:     Joi.boolean().optional().description('Load the project\'s declared dependencies from its metadata files (DESCRIPTION Imports/Depends, rproject.toml, uvr.toml, renv.lock, rv.lock, uvr.lock) (default true); when false these files are not read for dependencies.'),
+				loadProjectDependencies:     Joi.boolean().optional().description('Load the project\'s declared dependencies from its metadata files (DESCRIPTION Imports/Depends, rproject.toml, uvr.toml, rig rproj.toml and script blocks, renv.lock, rv.lock, uvr.lock, rig lockfiles) (default true); when false these files are not read for dependencies.'),
 				eagerlyLoad:                 Joi.boolean().optional().description('Parse the database up front rather than on the first package load (default false, ignored if disabled).'),
 				eagerlyLoadExports:          Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.'),
 				assumedRVersion:             Joi.string().optional().description('R version assumed when resolving versioned (base-R) exports: a pin like "4.5" or "auto" to detect the installed R (default "auto").'),
@@ -768,8 +817,8 @@ export const FlowrConfig = {
 				linkDescriptionDependencies: Joi.boolean().optional().description('Eagerly attach the namespaces of the project\'s declared DESCRIPTION dependencies (Imports/Depends) so their exports resolve without an explicit library() (default false).'),
 				warmInBackground:            Joi.boolean().optional().description('Decompress the hot shards (base + most-downloaded) in a background task on startup so the first library() lookup is warm (default false; for long-running servers/REPLs).'),
 				additionalPaths:             securitySensitive(Joi.array().items(Joi.string()).optional()).description('Extra directories or bundle/manifest files searched for signature databases (alongside the shipped default and $FLOWR_SIGDB_DIR); a downloaded full-history bundle placed here is mounted automatically.'),
-				downloadRepo:                securitySensitive(Joi.string().optional()).description('GitHub owner/repo the full-history bundle is downloaded from via ":signature download" (default "flowr-analysis/flowr", release tag "sigdb-v<flowR-version>").'),
-				autoSync:                    Joi.boolean().optional().description('On startup, re-download shards whose committed sigdb.remote.json hash no longer matches the cache, in the background (default false; opt-in network sync after a git pull).'),
+				downloadRepo:                securitySensitive(Joi.string().optional()).description('GitHub owner/repo the full-history bundle is downloaded from via ":signature download" (default "flowr-analysis/flowr"; the release tag comes from the committed sigdb.remote.json unless a version is given).'),
+				autoSync:                    securitySensitive(Joi.boolean().optional()).description('On startup, re-download shards whose committed sigdb.remote.json hash no longer matches the cache, in the background (default false; opt-in network sync after a git pull).'),
 				installedLibrary:            Joi.object({
 					enabled:           Joi.boolean().required().description('Recover packages no signature database knows from their installed copy (default false).'),
 					paths:             securitySensitive(Joi.array().items(Joi.string()).optional()).description('Library directories to search; when empty they are discovered from the environment and the project.'),
@@ -778,6 +827,21 @@ export const FlowrConfig = {
 					maxDepth:          Joi.number().optional().description('How far to descend into the nested layout of a project-local library (default 3).'),
 					packages:          regexOption(Joi.array().items(Joi.string()).optional()).description('Only recover packages whose name matches one of these regular expressions; empty means any.')
 				}).optional().description('Recovering packages no signature database knows from the copy installed on this machine.'),
+				onDemand: Joi.object({
+					enabled:             securitySensitive(Joi.boolean().required()).description('Fetch and recover the sources of packages no signature database knows when the analyzed code uses them (default false, accesses the network).'),
+					sources:             Joi.array().items(Joi.string()).optional().description('Where to look, in order: github, cran, bioconductor, or a source a plugin adds (default ["github", "cran", "bioconductor"]).'),
+					repositories:        securitySensitive(Joi.object().pattern(Joi.string(), Joi.string()).optional()).description('GitHub repositories (owner/repo[/subdir][@ref]) to fetch packages from, by package name. The analyzed project may name more (DESCRIPTION Remotes, install_github calls).'),
+					packages:            regexOption(Joi.array().items(Joi.string()).optional()).description('Only recover packages whose name matches one of these regular expressions, empty means any.'),
+					cranMirror:          securitySensitive(Joi.string().optional()).description('The CRAN src/contrib/ to fetch from, over https (default https://cloud.r-project.org/src/contrib/). It may be on the local network.'),
+					bioconductorMirror:  securitySensitive(Joi.string().optional()).description('The Bioconductor host, over https (default https://bioconductor.org). It may be on the local network.'),
+					bioconductorRelease: Joi.string().pattern(/^(release|devel|\d+\.\d+)$/).optional().description('The Bioconductor release to fetch from: release, devel, or a number like 3.20 (default release).'),
+					githubMirrors:       Joi.boolean().optional().description('Use the GitHub mirrors of CRAN (cran/<pkg>) and Bioconductor (bioc/<pkg>) (default true).'),
+					maxPackages:         Joi.number().min(0).optional().description('The most packages to fetch for one analysis (default 25).'),
+					maxArchiveMb:        Joi.number().min(0).optional().description('The most MiB a package archive may have (default 32). It may unpack to three times that, at most 128 MiB.'),
+					offline:             Joi.boolean().optional().description('Only use what was fetched before, never the network (default false).'),
+					retryAfterHours:     Joi.number().min(0).optional().description('How many hours to wait before asking again for a package no source had (default 24).'),
+					cacheDir:            securitySensitive(Joi.string().optional()).description('Where to cache what was fetched (default the on-demand directory of the signature cache).')
+				}).optional().description('Recovering packages no signature database knows from their sources on CRAN, Bioconductor, or GitHub.'),
 				blobCacheBudgetMb: Joi.number().min(0).optional().description('How many MiB of decoded package blobs every open bundle may hold together (default 16).'),
 				versionSelection:  Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
 				versionOverrides:  Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
@@ -789,7 +853,7 @@ export const FlowrConfig = {
 			transitiveSideEffectRounds: Joi.number().min(1).optional().description(`How many rounds the transitive side-effect fixpoint may run before it is cut off (default ${DefaultTransitiveSideEffectRounds}); the propagation stops on its own as soon as a round adds nothing.`),
 			maxOverlayDepth:            Joi.number().min(0).optional().description(`How many binding overlays may stack on one environment frame before a write flattens them (default ${DefaultMaxOverlayDepth}); a pure performance knob, trading lookup cost against copy cost without changing any result.`),
 			instrument:                 Joi.object({
-				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
+				dataflowExtractors: securitySensitive(Joi.any().optional()).description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),
 			resolveSource: Joi.object({
 				dropPaths:             Joi.string().valid(...Object.values(DropPathsOption)).description('Allow to drop the first or all parts of the sourced path, if it is relative.'),
@@ -798,7 +862,8 @@ export const FlowrConfig = {
 				searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.'),
 				repeatedSourceLimit:   Joi.number().optional().description('How often the same file can be sourced within a single run? Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.'),
 				applyReplacements:     regexOption(Joi.array().items(Joi.object())).description('Provide name replacements for loaded files'),
-				assumeFilesExist:      Joi.boolean().optional().description('Assume a sourced file is always there, making what it defines certain instead of conditional on the source call.')
+				assumeFilesExist:      Joi.boolean().optional().description('Assume a sourced file is always there, making what it defines certain instead of conditional on the source call.'),
+				unseenMethods:         Joi.boolean().optional().description('Whether a sourced file flowR cannot read may bind S3/S4 methods that later calls dispatch to. This is sound, but chains every later call that may dispatch, so it is off by default.')
 			}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
 			slicer: Joi.object({
 				threshold:  Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.'),
@@ -828,6 +893,12 @@ export const FlowrConfig = {
 					alwaysWithEdits: Joi.boolean().optional().description('Always take the incremental path whenever there is a computed edit region, regardless of the other thresholds.'),
 					minFiles:        Joi.number().min(1).optional().description('Only apply these heuristics once the project has at least this many files loaded.'),
 				}),
+			}),
+			dataflow: Joi.object({
+				reuse:         Joi.boolean().optional().description('Hand out the last dataflow analysis again if the files did not change besides their comments.'),
+				activated:     Joi.boolean().description('Resume the analysis of a file after its last unchanged top-level statement, from checkpoints the analysis before kept.'),
+				checkpoints:   Joi.number().integer().min(0).optional().description('After how many of the last top-level statements to keep a checkpoint to resume from (each copies the graph).'),
+				minStatements: Joi.number().integer().min(0).optional().description('Keep checkpoints only for files with at least this many top-level statements.'),
 			}),
 		}),
 		gas: Joi.object({
@@ -904,20 +975,16 @@ export const FlowrConfig = {
 	},
 	/** Like {@link FlowrConfig.dropSecuritySensitive}, but in {@link SecureMode} also drops the {@link FlowrConfig.regexPaths}. */
 	dropUntrusted(this: void, raw: unknown): string[] {
-		const dropped = FlowrConfig.dropSecuritySensitive(raw);
+		const dropped = [...dropPrototypeKeys(raw, ''), ...FlowrConfig.dropSecuritySensitive(raw)];
 		return SecureMode.isEnabled() ? [...dropped, ...FlowrConfig.regexPaths().flatMap(p => dropPath(raw, p, ''))] : dropped;
 	},
-	/**
-	 * Creates a new flowr config that has the updated values.
-	 */
+	/** Creates a new flowr config that has the updated values. */
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- amendments usually mutate in place and return nothing
-	amend(this: void, config: FlowrConfig, amendmentFunc: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): FlowrConfig {
+	amend(this: void, config: FlowrConfig, amendmentFunc: (config: WritableFlowrConfig) => FlowrConfig | void): FlowrConfig {
 		const newConfig = FlowrConfig.clone(config);
 		return amendmentFunc(newConfig) ?? newConfig;
 	},
-	/**
-	 * Clones the given flowr config object.
-	 */
+	/** Clones the given flowr config object. */
 	clone(this: void, config: FlowrConfig): FlowrConfig {
 		return deepClonePreserveUnclonable(config);
 	},
@@ -959,9 +1026,7 @@ export const FlowrConfig = {
 	specializationFor(this: void, config: FlowrConfig, kind: ProjectKind): DeepPartial<FlowrConfig> | undefined {
 		return resolveSpecialization(config.specializeConfig, kind);
 	},
-	/**
-	 * Gets the configuration for the given engine type from the config.
-	 */
+	/** Gets the configuration for the given engine type from the config. */
 	getForEngine<T extends EngineConfig['type']>(this: void, config: FlowrConfig, engine: T): EngineConfig & { type: T } | undefined {
 		const engines = config.engines;
 		if(engines.length > 0) {
@@ -982,7 +1047,7 @@ export const FlowrConfig = {
 	 */
 	changedPaths(this: void, config: FlowrConfig): string[] {
 		const found: string[] = [];
-		const walk = (current: unknown, base: unknown, path: string[], siblings: readonly string[][]): void => {
+		function walk(current: unknown, base: unknown, path: string[], siblings: readonly string[][]): void {
 			if(current !== null && base !== null && typeof current === 'object' && typeof base === 'object'
 				&& !Array.isArray(current) && !Array.isArray(base)) {
 				const keys = uniqueArray([...Object.keys(current), ...Object.keys(base)]);
@@ -994,7 +1059,7 @@ export const FlowrConfig = {
 				const short = path.map((key, at) => shortestPrefix(key, siblings[at]));
 				found.push(`${short.join('.')}=${JSON.stringify(current)}`);
 			}
-		};
+		}
 		walk(config, FlowrConfig.default(), [], []);
 		return found;
 	},
@@ -1081,7 +1146,8 @@ export function persistSigDbPathToGlobalConfig(dbPath: string): string {
 	return file;
 }
 
-const taggedPathsCache = new Map<string, readonly (readonly string[])[]>();
+/** per schema meta tag, of which there are a handful */
+const taggedPathsCache = GlobalCaches.map<string, readonly (readonly string[])[]>('config-tagged-paths', CacheScope.Process, 64);
 
 function taggedPaths(meta: string): readonly (readonly string[])[] {
 	let paths = taggedPathsCache.get(meta);
@@ -1096,6 +1162,7 @@ function taggedPaths(meta: string): readonly (readonly string[])[] {
 interface JoiDescription {
 	readonly keys?:    Record<string, JoiDescription>
 	readonly items?:   readonly JoiDescription[]
+	readonly ordered?: readonly JoiDescription[]
 	readonly matches?: readonly { readonly schema?: JoiDescription }[]
 	readonly metas?:   readonly Record<string, unknown>[]
 }
@@ -1109,8 +1176,31 @@ function collectTaggedPaths(d: JoiDescription | undefined, meta: string, at: rea
 	return [
 		...Object.entries(d.keys ?? {}).flatMap(([k, v]) => collectTaggedPaths(v, meta, [...at, k])),
 		...(d.items ?? []).flatMap(i => collectTaggedPaths(i, meta, [...at, '*'])),
+		...(d.ordered ?? []).flatMap((o, i) => collectTaggedPaths(o, meta, [...at, String(i)])),
 		...(d.matches ?? []).flatMap(m => collectTaggedPaths(m.schema, meta, at))
 	];
+}
+
+/**
+ * Removes every own `__proto__` key: merging the config assigns it as the prototype, which hides the options below it
+ * from {@link dropPath} while reads still find them (e.g. `specializeConfig.package.solver.sigdb.__proto__.downloadRepo`).
+ */
+function dropPrototypeKeys(obj: unknown, at: string): string[] {
+	if(obj === null || typeof obj !== 'object') {
+		return [];
+	}
+	const record = obj as Record<string, unknown>;
+	const dropped: string[] = [];
+	for(const key of Object.keys(record)) {
+		const next = at === '' ? key : `${at}.${key}`;
+		if(key === '__proto__') {
+			Reflect.deleteProperty(record, key);
+			dropped.push(next);
+		} else {
+			dropped.push(...dropPrototypeKeys(record[key], next));
+		}
+	}
+	return dropped;
 }
 
 function dropPath(obj: unknown, path: readonly string[], at: string): string[] {
@@ -1120,11 +1210,13 @@ function dropPath(obj: unknown, path: readonly string[], at: string): string[] {
 	const [head, ...rest] = path;
 	const record = obj as Record<string, unknown>;
 	const dropped: string[] = [];
-	for(const key of head === '*' ? Object.keys(record) : Object.hasOwn(record, head) ? [head] : []) {
+	const keys = head === '*' ? Object.keys(record) : Object.hasOwn(record, head) ? [head] : [];
+	// back to front, so removing an array element does not shift the ones still to visit
+	for(const key of Array.isArray(obj) ? keys.reverse() : keys) {
 		const next = at === '' ? key : `${at}.${key}`;
 		if(rest.length > 0) {
 			dropped.push(...dropPath(record[key], rest, next));
-		} else if(Reflect.deleteProperty(record, key)) {
+		} else if(Array.isArray(obj) ? obj.splice(Number(key), 1).length > 0 : Reflect.deleteProperty(record, key)) {
 			dropped.push(next);
 		}
 	}

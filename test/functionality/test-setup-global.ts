@@ -5,18 +5,43 @@ import { DefaultMap } from '../../src/util/collections/defaultmap';
 import { DetailedInfoFile, GlobalSummaryFile, TestSuites } from './summary-def';
 import { jsonReplacer } from '../../src/util/json';
 import { ensureTestTmp, pruneStaleTestTmp } from '../test-tmp.mjs';
+import type { TestProject } from 'vitest/node';
+import { checkNetworkConnection } from './_helper/network';
+import { RShell } from '../../src/r-bridge/shell';
+
+declare module 'vitest' {
+	export interface ProvidedContext {
+		/** whether the machine running the tests resolves names on the network */
+		hasNetwork: boolean
+		/** the version of the R the tests run with, `undefined` if R is not available */
+		rVersion:   string | undefined
+	}
+}
 
 
 /**
  * Runs once before the whole suite: prepares what every test file assumes to be there.
  */
-export function setup() {
+export async function setup(project: TestProject) {
 	ensureTestTmp();
 	pruneStaleTestTmp();
 	try {
 		fs.unlinkSync(GlobalSummaryFile);
 	} catch{
 		/* if it does not work it is not a big deal, this is just for summary reasons */
+	}
+	/* asked once here rather than in every test file, which would start an R process per file */
+	project.provide('hasNetwork', await checkNetworkConnection());
+	let shell: RShell | undefined;
+	try {
+		shell = new RShell();
+		shell.tryToInjectHomeLibPath();
+		project.provide('rVersion', (await shell.usedRVersion())?.raw);
+	} catch(e) {
+		console.error(e);
+		project.provide('rVersion', undefined);
+	} finally {
+		shell?.close();
 	}
 }
 
@@ -37,14 +62,14 @@ function removeAll(dir: string) {
 	try {
 		fs.rmSync(dir, { recursive: true, force: true });
 	} catch{
-		const writable = (d: string): void => {
+		function writable(d: string): void {
 			fs.chmodSync(d, 0o700);
 			for(const e of fs.readdirSync(d, { withFileTypes: true })) {
 				if(e.isDirectory() && !e.isSymbolicLink()) {
 					writable(path.join(d, e.name));
 				}
 			}
-		};
+		}
 		writable(dir);
 		fs.rmSync(dir, { recursive: true, force: true });
 	}

@@ -1,6 +1,5 @@
 import { assert, describe, test } from 'vitest';
-import type { RLicenseElementInfo } from '../../../src/util/r-license';
-import { parseRLicense } from '../../../src/util/r-license';
+import { type RLicenseElementInfo, parseRLicense } from '../../../src/util/r-license';
 import { Range } from 'semver';
 
 describe('R license parsing', () => {

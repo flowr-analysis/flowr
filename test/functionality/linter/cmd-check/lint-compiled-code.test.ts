@@ -6,7 +6,7 @@ import { withTreeSitter } from '../../_helper/shell';
 import { assertLinterPackage } from '../../_helper/linter';
 import { LintingResultCertainty } from '../../../../src/linter/linter-format';
 import type { CompiledCodeKind } from '../../../../src/linter/rules/cmd-check/compiled-code';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
+import { analyze } from '../../_helper/analyzer';
 
 const Desc = 'Package: pkg\nVersion: 1.0\nTitle: A Package\nLicense: MIT\n';
 const Ns = 'useDynLib(pkg)\n';
@@ -241,10 +241,9 @@ describe('flowR linter', withTreeSitter(parser => {
 						fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true });
 						fs.writeFileSync(path.join(root, f), c);
 					}
-					const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-					analyzer.addRequest(`file://${root}`);
-					const res = await analyzer.query([{ type: 'linter', rules: ['compiled-code'] }]);
-					const found = (res.linter.results['compiled-code'] as unknown as { results: { kind: string, message: string, loc: unknown[] }[] }).results;
+					const analyzer = await analyze(parser, `file://${root}`);
+					const res = await analyzer.query({ type: 'linter', rules: ['compiled-code'] });
+					const found = (res.results['compiled-code'] as unknown as { results: { kind: string, message: string, loc: unknown[] }[] }).results;
 					assert.lengthOf(found, 1);
 					assert.strictEqual(found[0].kind, 'whether package can be installed');
 					assert.strictEqual(found[0].loc[4], path.join(root, 'NAMESPACE'));

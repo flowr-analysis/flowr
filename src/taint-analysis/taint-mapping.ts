@@ -1,22 +1,31 @@
 import type { AbstractDomain, AbstractValue, AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { FunctionParameterLocation } from '../abstract-interpretation/data-frame/arguments';
 import type { ArgProps, FnSig } from '../dataflow/environments/built-in-props';
-import { Identifier } from '../dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../dataflow/environments/identifier';
 
 export class TaintMapper<Domain extends AnyAbstractDomain> {
-	public mapper: TaintMappingInternal<Domain>[] = [];
+	public readonly mapper: TaintMappingInternal<Domain>[] = [];
+	/** the mappings by the name they map, in the order they were added; a mapping only ever applies to a call of its name */
+	private readonly byName = new Map<BrandedIdentifier, TaintMappingInternal<Domain>[]>();
 
-	constructor(mapper?: TaintMappingInternal<Domain>[]) {
-		if(mapper) {
-			this.mapper = mapper;
+	constructor(mapper?: readonly TaintMappingInternal<Domain>[]) {
+		mapper?.forEach(m => this.add(m));
+	}
+
+	private add(mapping: TaintMappingInternal<Domain>): void {
+		this.mapper.push(mapping);
+		const name = Identifier.getName(mapping.identifier);
+		const named = this.byName.get(name);
+		if(named === undefined) {
+			this.byName.set(name, [mapping]);
+		} else {
+			named.push(mapping);
 		}
 	}
 
-	/**
-	 * Add one or more taint mapping rules to the mapper
-	 */
+	/** Add one or more taint mapping rules to the mapper */
 	public pushMapping(mappings: TaintMapping<Domain>[]) {
-		this.mapper.push(...this.mapRulesToInternal(mappings));
+		this.mapRulesToInternal(mappings).forEach(m => this.add(m));
 	}
 
 	/**
@@ -29,25 +38,23 @@ export class TaintMapper<Domain extends AnyAbstractDomain> {
 			if(this.hasMappingForRole(rule)) {
 				continue;
 			}
-			this.mapper.push(rule);
+			this.add(rule);
 		}
 	}
 
-	/**
-	 * Get all mappings belonging to the given identifier
-	 */
+	/** Get all mappings belonging to the given identifier */
 	public getMappings(identifier: Identifier) {
-		const matchesCall = (id: Identifier) => Identifier.matches(id, identifier)
-			|| (Identifier.getNamespace(identifier) === undefined && Identifier.matches(identifier, id));
-
-		return this.mapper.filter(m => matchesCall(m.identifier));
+		return this.byName.get(Identifier.getName(identifier))?.filter(m => TaintMapper.matches(m.identifier, identifier)) ?? [];
 	}
 
-	/**
-	 * Create a new, independent mapper containing the same taint mappings
-	 */
+	/** Whether a mapped identifier applies to a call of `called`, which matches any namespace when it names none */
+	public static matches(this: void, mapped: Identifier, called: Identifier): boolean {
+		return Identifier.matches(mapped, called) || (Identifier.getNamespace(called) === undefined && Identifier.matches(called, mapped));
+	}
+
+	/** Create a new, independent mapper containing the same taint mappings */
 	public clone(): TaintMapper<Domain> {
-		return new TaintMapper<Domain>([...this.mapper]);
+		return new TaintMapper<Domain>(this.mapper);
 	}
 
 	private hasMappingForRole(rule: TaintMappingInternal<Domain>): boolean {
@@ -96,6 +103,8 @@ export type TaintCondition<Domain extends AnyAbstractDomain = AnyAbstractDomain>
 	argValues?:     FunctionParameterLocation<unknown>[],
 	argDefinition?: TaintParameterLocation[],
 	argSignature?:  { sig: FnSig, props: ArgProps },
+	/** additionally consider the taints of every argument of the call */
+	allArgs?:       boolean,
 	conditionFn:    TaintConditionFunction<Domain>
 };
 
@@ -107,10 +116,7 @@ export type TaintMapping<Domain extends AnyAbstractDomain> =
 	| TaintFixedMapping<Domain>
 	| TaintConditionMapping<Domain>;
 
-/**
- * Internal representation of a taint rule.
- * Each rule is mapped to a single identifier simplifying search and retrieval.
- */
+/** Internal representation of a taint rule. Each rule is mapped to a single identifier simplifying search and retrieval. */
 type TaintMappingInternal<Domain extends AnyAbstractDomain> = {
 	readonly role?:      TaintRole;
 	readonly category?:  string;

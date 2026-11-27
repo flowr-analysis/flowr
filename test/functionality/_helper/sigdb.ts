@@ -1,11 +1,10 @@
 import fs from 'fs';
+import { testAnalyzerBuilder } from './analyzer';
 import os from 'os';
 import path from 'path';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { FlowrConfig } from '../../../src/config';
 import type { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
-import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { SigDatabase, type PackageSignatureSource } from '../../../src/project/sigdb/reader';
 import { SigDbBuilder, writeSignatureDb } from '../../../src/project/sigdb/build';
 import { isBaseRPackage } from '../../../src/util/r-base-packages';
@@ -41,11 +40,7 @@ export async function writeAndOpen(dir: string, db: SigDb, name = 'db'): Promise
 
 /** an analyzer with our sigdb as the sole (deterministic) version resolver */
 export async function sigdbAnalyzer(ts: TreeSitterExecutor, db: PackageSignatureSource, config?: FlowrConfig): Promise<FlowrAnalyzer> {
-	let builder = new FlowrAnalyzerBuilder().setParser(ts);
-	if(config) {
-		builder = builder.setConfig(config);
-	}
-	return builder.unregisterPlugins(SigDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(db)).build();
+	return testAnalyzerBuilder(ts, { config, sigDb: db }).build();
 }
 
 /** an exported, side-effect-free function record */

@@ -8,9 +8,7 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 
 interface ParserContent<T> {
 	readonly name:        string;
-	/**
-	 * Whether the parser has incremental parsing capabilities
-	 */
+	/** Whether the parser has incremental parsing capabilities */
 	readonly incremental: boolean;
 	information(analyzer: FlowrAnalysisProvider): BaseParserInformation;
 
@@ -22,12 +20,16 @@ interface ParserContent<T> {
 	close(): void;
 }
 
+/** The parser engines flowR knows. */
+export const ParserName = { Shell: 'r-shell', TreeSitter: 'tree-sitter' } as const;
+export type ParserName = typeof ParserName[keyof typeof ParserName];
+
 export interface BaseParserInformation {
 	readonly name: KnownParserName
 }
 
 export interface BaseRShellInformation extends BaseParserInformation {
-	readonly name: 'r-shell'
+	readonly name: typeof ParserName.Shell
 	rVersion(): Promise<string>
 }
 
@@ -43,7 +45,7 @@ export interface RShellInformation extends BaseRShellInformation {
 }
 
 export interface TreeSitterInformation extends BaseParserInformation {
-	readonly name:           'tree-sitter'
+	readonly name:           typeof ParserName.TreeSitter
 	readonly grammarVersion: number
 	/**
 	 * Runs the given tree-sitter query using the underlying tree-sitter parser and returns the resulting capture.

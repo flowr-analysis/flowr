@@ -1,10 +1,11 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import { executeLinterQuery } from '../../../src/queries/catalog/linter-query/linter-query-executor';
+import { executeLinterQuery } from '../../../src/queries/catalog/linter-query/linter-query-format';
 import { type LintingRuleNames, LintingRules } from '../../../src/linter/linter-rules';
 import { LintingRuleTag } from '../../../src/linter/linter-tags';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
+import { analyze } from '../_helper/analyzer';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('active by default', () => {
@@ -103,8 +104,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 
 		test('a query for the cmd-check tag runs exactly the R CMD check rules', async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest('cat("hello")');
+			const analyzer = await analyze(parser, 'cat("hello")');
 			const keys = Object.keys((await executeLinterQuery({ analyzer }, [{ type: 'linter', tags: [LintingRuleTag.CmdCheck] }])).results);
 			const all = (Object.keys(LintingRules) as LintingRuleNames[]).filter(r => (LintingRules[r].info.tags as readonly LintingRuleTag[]).includes(LintingRuleTag.CmdCheck));
 			assert.deepStrictEqual(keys.sort(), all.sort());
@@ -118,8 +118,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 
 		test('explicitly requested rules always run, even a config-disabled one on a script', async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest('cat("hello")');
+			const analyzer = await analyze(parser, 'cat("hello")');
 			const rules: LintingRuleNames[] = ['software-has-license', 'software-has-tests'];
 			const result = await executeLinterQuery({ analyzer }, [{ type: 'linter', rules }]);
 			assert.deepEqual(Object.keys(result.results).sort(), [...rules].sort());

@@ -1,9 +1,8 @@
 import { describe, test, expect } from 'vitest';
 import { withTreeSitter } from '../../../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../../src/r-bridge/retriever';
 import { FlowrConfig } from '../../../../../src/config';
 import { DataflowMermaid } from '../../../../../src/util/mermaid/dfg';
+import { analyze } from '../../../_helper/analyzer';
 
 /**
  * The built-in argument matchers (`with`, `load`) draw their formal parameter names from the signature database
@@ -16,8 +15,7 @@ describe('built-in arg matching falls back to hardcoded formals without a sigdb'
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
 			c.solver.sigdb.enabled = sigdb;
 		});
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).setConfig(config).build();
-		analyzer.addRequest(requestFromInput(code));
+		const analyzer = await analyze(parser, code, { config: config });
 		return DataflowMermaid.raw((await analyzer.dataflow()).graph, false);
 	}
 

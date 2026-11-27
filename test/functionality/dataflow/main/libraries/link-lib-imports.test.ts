@@ -6,7 +6,7 @@ import { Package } from '../../../../../src/project/plugins/package-version-plug
 import { EnvType, REnvironment } from '../../../../../src/dataflow/environments/environment';
 import { VertexType } from '../../../../../src/dataflow/graph/vertex';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
-import { Identifier } from '../../../../../src/dataflow/environments/identifier';
+import { type BrandedNamespace, Identifier, type BrandedIdentifier } from '../../../../../src/dataflow/environments/identifier';
 
 const randomPlaceholder1Callable = ['test1', 'test2'];
 const randomPlaceholder2Callable = ['test1', 'test2', 'test3'];
@@ -28,10 +28,11 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		const ggplotSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		const rPSsymbols = ['test1', 'test2'];
 		//namespace:ggplot2 -> imports:ggplot2 -> globalEnv -> ...
-		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace && compare(new Set(ggplotSymbols), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace && compare(new Set<BrandedIdentifier>(ggplotSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		const imported = createImportedFunctions([['random_placeholder', rPSsymbols], ['ggplot2', ggplotSymbols], ['random_placeholder3', ['a']]]);
-		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set(imported), new Set(env.memory.keys()))).toBeTruthy();
+		/* as in R, only what the NAMESPACE itself imports, not what the imported packages import in turn */
+		const imported = createImportedFunctions([['random_placeholder', rPSsymbols]]);
+		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set<BrandedIdentifier>(imported), new Set(env.memory.keys()))).toBeTruthy();
 	});
 
 	test('Linked library loads circular imports 2', async() => {
@@ -52,19 +53,19 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		const rP3Symbols = ['a', 'b'];
 		// random_placeholder3 namespace -> random_placeholder3 imports -> random_placeholder2 namespace -> random_placeholder2 imports -> ggplot2 namespace -> ggplot2 imports -> global environment
 		const imp3 = createImportedFunctions([['random_placeholder2', ['test3']]]);
-		const imp2 = createImportedFunctions([['random_placeholder3', ['a']], ['ggplot2', ggplotSymbols], ['random_placeholder', rP1symbols]]);
-		const impggplot = createImportedFunctions([['random_placeholder', rP1symbols], ['ggplot2', ggplotSymbols], ['random_placeholder3', ['a']]]);
-		expect(env.n === 'random_placeholder3' && env.t === EnvType.Namespace && compare(new Set(rP3Symbols), new Set(env.memory.keys()))).toBeTruthy();
+		const imp2 = createImportedFunctions([['random_placeholder', rP1symbols]]);
+		const impggplot = createImportedFunctions([['random_placeholder', rP1symbols]]);
+		expect(env.n === 'random_placeholder3' && env.t === EnvType.Namespace && compare(new Set<BrandedIdentifier>(rP3Symbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		expect(env.n === 'random_placeholder3' && env.t === EnvType.Imports && compare(new Set(imp3), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'random_placeholder3' && env.t === EnvType.Imports && compare(new Set<BrandedIdentifier>(imp3), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		expect(env.n === 'random_placeholder2' && env.t === EnvType.Namespace && compare(new Set(rP2Symbols), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'random_placeholder2' && env.t === EnvType.Namespace && compare(new Set<BrandedIdentifier>(rP2Symbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		expect(env.n === 'random_placeholder2' && env.t === EnvType.Imports && compare(new Set(imp2), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'random_placeholder2' && env.t === EnvType.Imports && compare(new Set<BrandedIdentifier>(imp2), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace && compare(new Set(ggplotSymbols), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace && compare(new Set<BrandedIdentifier>(ggplotSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set(impggplot), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set<BrandedIdentifier>(impggplot), new Set(env.memory.keys()))).toBeTruthy();
 	});
 
 	test('Linked library only partly imports another library (only importFrom)', async() => {
@@ -79,11 +80,11 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		const exportedSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		//namespace:ggplot2 -> imports: ggplot2 -> globalEnv -> ...
 		//ggplot namespace
-		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace && compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace && compare(new Set<BrandedIdentifier>(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		//ggplot imports
 		env = env.parent;
 		const imported = [Package.functionIdentifier('random_placeholder', 'test1')];
-		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set(imported), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set<BrandedIdentifier>(imported), new Set(env.memory.keys()))).toBeTruthy();
 	});
 
 	test('the analyzed package\'s own importFrom resolves a bare imported call to its source package', async() => {
@@ -92,7 +93,7 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		addPackages(analyzer, namespacePackage('zoo', 'export(index)', ['index']));
 		analyzer.addRequest('index(x)');
 		const df = await analyzer.dataflow();
-		let resolved: string | undefined;
+		let resolved: BrandedNamespace | undefined;
 		for(const [id, vtx] of df.graph.verticesOfType(VertexType.FunctionCall)) {
 			if(Identifier.getName(vtx.name) === 'index') {
 				const qualified = Dataflow.qualify(id, df.graph, true);
@@ -113,10 +114,10 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		let env = REnvironment.findGlobal(df.environment.current).parent;
 		const exportedSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		//namespace:ggplot -> imports:ggplot -> globalEnv
-		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace && compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace && compare(new Set<BrandedIdentifier>(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
 		const imported = createImportedFunctions([['random_placeholder', ['test1', 'test2']]]);
-		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set(imported), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set<BrandedIdentifier>(imported), new Set(env.memory.keys()))).toBeTruthy();
 	});
 }));
 

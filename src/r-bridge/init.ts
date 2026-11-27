@@ -20,7 +20,7 @@ export function initCommand(eol: string, pipeBind = false): string {
 		+ (pipeBind ? 'Sys.setenv("_R_USE_PIPEBIND_"="true");' : '')
 		+ 'flowr_output<-NULL;flowr_get_ast<-compiler::cmpfun(function(...){tryCatch({'
 		/* the actual code to parse the R code, ... allows us to keep the old 'file=path' and 'text=content' semantics. we define flowr_output using the super assignment to persist it in the env! */
-		+ 'flowr_output<<-getParseData(parse(...,keep.source=TRUE),includeText=TRUE);'
+		+ 'flowr_output<<-utils::getParseData(parse(...,keep.source=TRUE),includeText=TRUE);'
 		/* json conversion of the output, dataframe="values" allows us to receive a list of lists (which is more compact)!
 		 * so we do not depend on jsonlite and friends, we do so manually (:sparkles:)
 		 */

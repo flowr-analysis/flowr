@@ -1,6 +1,5 @@
 import { Bottom, Top } from '../../abstract-interpretation/domains/lattice';
-import type { FiniteLatticeConfig, LatticeElements } from '../finite-domain';
-import { FiniteDomain } from '../finite-domain';
+import { type FiniteLatticeConfig, type LatticeElements, FiniteDomain } from '../finite-domain';
 import { guard } from '../../util/assert';
 
 export class FiniteDomainBuilder<Top extends symbol, Bottom extends symbol, Elements extends LatticeElements<Top, Bottom> = [Top, Bottom]> {
@@ -64,12 +63,7 @@ export class FiniteDomainBuilder<Top extends symbol, Bottom extends symbol, Elem
 			this.setBottom(Bottom as Bottom);
 		}
 
-		return {
-			top:      this._top as Top,
-			bottom:   this._bottom as Bottom,
-			elements: new Set(this.elements),
-			leq:      new Map(this.leqMap),
-		};
+		return { top: this._top as Top, bottom: this._bottom as Bottom, elements: new Set(this.elements), leq: new Map(this.leqMap) };
 	}
 
 	build(initialElement?: Elements[number]): FiniteDomain<Top, Bottom, Elements> {

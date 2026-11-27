@@ -3,7 +3,6 @@ import type { AsyncOrSync } from 'ts-essentials';
 import { expensiveTrace, log } from '../../util/log';
 import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 
-
 /**
  * Based on *when* and *what-for* the plugin is applied during the analysis,
  * plugins are categorized into different types.
@@ -52,7 +51,20 @@ export enum PluginType {
 	 * Multiple Gas plugins are combined by taking the maximum level returned.
 	 * @see {@link FlowrAnalyzerGasPlugin} - for the base class to implement such a plugin.
 	 */
-	Gas                      = 'gas'
+	Gas                      = 'gas',
+	/**
+	 * Plugins that classifies the {@link IncrementalUpdateType}, so the dataflow analysis can be
+	 * patched incrementally instead of fully recomputed. At most one may be registered; the default
+	 * plugin runs otherwise.
+	 * @see {@link FlowrAnalyzerIncrementalDataflowUpdateTypePlugin} - for the base class to implement such a plugin.
+	 */
+	IncrementalDataflowUpdateType = 'incremental-dataflow-update-type',
+	/**
+	 * Plugins that plan how a dataflow analysis builds on the one before (reuse it, resume from checkpoints, or start over).
+	 * At most one may be registered; the plugin following the configuration runs otherwise.
+	 * @see {@link FlowrAnalyzerIncrementalDataflowHeuristicPlugin} - for the base class to implement such a plugin.
+	 */
+	IncrementalDataflowHeuristic = 'incremental-dataflow-heuristic'
 }
 
 /**
@@ -80,7 +92,6 @@ export interface FlowrAnalyzerPluginInterface<In = unknown, Out = In> {
 	processor(analyzer: FlowrAnalyzerContext, args: In): Out;
 }
 
-
 const generalPluginLog = log.getSubLogger({ name: 'plugins' });
 
 /**
@@ -97,12 +108,16 @@ export abstract class FlowrAnalyzerPlugin<In = unknown, Out extends AsyncOrSync<
 	public abstract readonly version:     SemVer;
 	public abstract readonly type:        PluginType;
 
-	/**
-	 * Returns a default/dummy implementation to be used when no plugin of this type is registered or triggered.
-	 */
+	/** Returns a default/dummy implementation to be used when no plugin of this type is registered or triggered. */
 	public static defaultPlugin(): FlowrAnalyzerPlugin<unknown, unknown> {
 		throw new Error('This is to be implemented by every Plugin Layer');
 	}
+
+	/**
+	 * Optional Hook to create deep copies of a Plugin for analyzer forks
+	 * If not implemented forking an analyzer will copy by reference
+	 */
+	fork?(): FlowrAnalyzerPlugin<In, Out>;
 
 	/**
 	 * Run the plugin with the given context and arguments.

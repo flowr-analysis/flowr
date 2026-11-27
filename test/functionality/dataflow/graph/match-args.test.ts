@@ -1,17 +1,16 @@
 import { assert, describe, test } from 'vitest';
 import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
 import { withTreeSitter } from '../../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { RFunctionCall } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RProject } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { Identifier, PkgName } from '../../../../src/dataflow/environments/identifier';
 import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { analyze } from '../../_helper/analyzer';
 
 describe('FunctionSemantics.call.match.toDefinition', withTreeSitter(parser => {
 	/** the analyzer for `code`, plus the call to `name` in it */
 	async function callTo(code: string, name: string) {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest(code);
+		const analyzer = await analyze(parser, code);
 		const dfg = await analyzer.dataflow();
 		const ast = await analyzer.normalize();
 		let found: RFunctionCall<ParentInformation> | undefined;

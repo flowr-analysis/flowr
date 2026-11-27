@@ -1,13 +1,12 @@
 import { assert, describe, it } from 'vitest';
 import { type BasicCfgGuidedVisitorConfiguration, BasicCfgGuidedVisitor } from '../../../src/control-flow/basic-cfg-guided-visitor';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import { extractCfg, CfgVertex  } from '../../../src/control-flow/control-flow-graph';
+import { extractCfg, CfgVertex } from '../../../src/control-flow/control-flow-graph';
 import { withTreeSitter } from '../_helper/shell';
 import { simplifyControlFlowInformation } from '../../../src/control-flow/cfg-simplification';
-import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import { visitCfgInOrder } from '../../../src/control-flow/simple-visitor';
 import { FlowrConfig } from '../../../src/config';
+import { analyze } from '../_helper/analyzer';
 
 describe('Control Flow Graph', withTreeSitter(parser => {
 	function assertOrderBasic(
@@ -29,13 +28,12 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					}
 				}
 
-				const context = contextFromInput(code, config);
-				const result = await createDataflowPipeline(parser, {
-					context
-				}).allRemainingSteps();
-				let cfg = extractCfg(result.dataflow);
+				const analyzer = await analyze(parser, code, { config });
+				const dataflow = await analyzer.dataflow();
+				const normalize = await analyzer.normalize();
+				let cfg = extractCfg(dataflow);
 				if(useBasicBlocks) {
-					cfg = simplifyControlFlowInformation(cfg, { ast: result.normalize, dfg: result.dataflow.graph, ctx: context }, ['to-basic-blocks', 'remove-dead-code']);
+					cfg = simplifyControlFlowInformation(cfg, { ast: normalize, dfg: dataflow.graph, ctx: analyzer.inspectContext() }, ['to-basic-blocks', 'remove-dead-code']);
 				}
 
 				const configuration: BasicCfgGuidedVisitorConfiguration = {
@@ -51,9 +49,8 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 	}
 
 	it('walking the control flow does not copy it out of the dataflow graph', async() => {
-		const context = contextFromInput('x <- 1\nif(u) { y <- 2 } else { y <- 3 }\nprint(y)', FlowrConfig.default());
-		const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
-		const cfg = extractCfg(result.dataflow);
+		const analyzer = await analyze(parser, 'x <- 1\nif(u) { y <- 2 } else { y <- 3 }\nprint(y)', { config: FlowrConfig.default() });
+		const cfg = extractCfg(await analyzer.dataflow());
 		const projection = cfg.graph as unknown as { projected: boolean };
 
 		visitCfgInOrder(cfg.graph, cfg.entryPoints, () => { /* just walk it */ });

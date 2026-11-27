@@ -1,9 +1,8 @@
 import { resolveByName, resolveByNameAnyType, resolvesToBuiltIn, resolvesToBuiltInConstant } from './resolve-by-name';
-import type { ResolveInfo } from '../eval/resolve/alias-tracking';
+import { type ResolveInfo, resolveIdToValue, resolveIdToSingleString, resolveToConstants, parameterMayHoldUnknown } from '../eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
-import { resolveIdToValue, resolveIdToSingleString, resolveToConstants } from '../eval/resolve/alias-tracking';
 import {
 	resolveIdToArgName,
 	resolveIdToArgStringVector,
@@ -69,6 +68,8 @@ export const Resolve = {
 	toValue:        resolveIdToValue,
 	/** The single string the node resolves to, or `undefined` if it is not exactly one. */
 	toSingleString: resolveIdToSingleString,
+	/** Whether a call may hand the parameter a value that does not resolve, see {@link parameterMayHoldUnknown}. */
+	mayHoldUnknown: parameterMayHoldUnknown,
 	/** The same, for the arguments of a call. */
 	argument:       {
 		name:         'argument',

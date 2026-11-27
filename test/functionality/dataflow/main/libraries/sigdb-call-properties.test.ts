@@ -14,13 +14,13 @@ const meta = { date: '2026-05-23', generated: 0 };
 
 describe('The generic call property', () => {
 	/** the decoded view of one function, which is what flowR reads its properties off */
-	const decoded = (props: number, callees: string[] = []) => {
+	function decoded(props: number, callees: string[] = []) {
 		const b = new SigDbBuilder();
 		b.addPackage('p', { latest: '1.0' });
 		b.addVersion('p', '1.0', ver([{ name: 'f', props: FnProp.Exported | props, params: [], callees }]));
 		const db = b.build(meta);
 		return decodeFunction(SigDict.of(db.strings), db.blobs[db.pkgs['p']], 0);
-	};
+	}
 
 	test('the generic bit is stored and read back as a property', () => {
 		expect(decoded(FnProp.Generic).props).toContain('generic');
@@ -47,9 +47,17 @@ describe('The concurrent call property', () => {
 		expect(!!(propsOf(name, pkg) & CallProp.Concurrent)).toBe(expected);
 	});
 
-	test('`parallel` stays with the signature database, so its exports still need a library() call', () => {
-		/* declaring them here would resolve a bare `mclapply()` and silence the undefined-symbol linter */
-		expect(builtIns.get(Identifier.make('mclapply', 'parallel'))).toBeUndefined();
+	test.each(['mclapply', 'parLapply', 'clusterApply', 'makeCluster', 'pvec'])('parallel::%s sends work to other processes', name => {
+		expect(propsOf(name, 'parallel') & CallProp.Concurrent).toBeTruthy();
+	});
+
+	test('a stored concurrent bit states the call property', () => {
+		const b = new SigDbBuilder();
+		b.addPackage('p', { latest: '1.0' });
+		b.addVersion('p', '1.0', ver([{ name: 'f', props: FnProp.Exported | FnProp.Concurrent, params: [], callees: [] }]));
+		const db = b.build(meta);
+		const fn = decodeFunction(SigDict.of(db.strings), db.blobs[db.pkgs['p']], 0);
+		expect((fnInfoFromSignature(fn).props ?? 0) & CallProp.Concurrent).toBeTruthy();
 	});
 
 	test('it carries over, so a function reaching one is concurrent too', () => {

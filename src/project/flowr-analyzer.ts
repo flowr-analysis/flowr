@@ -1,10 +1,9 @@
-import type { FlowrConfig } from '../config';
+import { FlowrConfig } from '../config';
 import type { DeepPartial } from 'ts-essentials';
-import type { KnownParser, KnownParserInformation } from '../r-bridge/parser';
-import { executeQueries, type Queries, type QueryResults, type SupportedQueryTypes } from '../queries/query';
+import { type KnownParser, type KnownParserInformation, ParserName } from '../r-bridge/parser';
+import { executeQueries, Query, type Queries, type QueryArgumentsWithType, type QueryResults, type SingleQueryResult, type SupportedQueryTypes } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { decorateAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type NormalizedAst, decorateAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
 import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
@@ -13,22 +12,24 @@ import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-build
 import { type GetSearchElements, runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
-import type { RParseRequest, RParseRequestFromFile } from '../r-bridge/retriever';
-import { isParseRequest, fileProtocol, requestFromInput } from '../r-bridge/retriever';
+import { type RParseRequest, type RParseRequestFromFile, isParseRequest, fileProtocol, requestFromInput } from '../r-bridge/retriever';
 import { isFilePath } from '../util/files';
-import type { FlowrFileProvider } from './context/flowr-file';
+import { type FlowrFileProvider, FlowrInlineTextFile } from './context/flowr-file';
 import type { Tree } from 'web-tree-sitter';
 import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { CallGraph } from '../dataflow/graph/call-graph';
 import { TaintAnalysis, type TaintAnalysisBuilder } from '../taint-analysis/builder/taint-analysis';
+/* the guards of functions read how code is reached, which the abstract interpreter works out */
+import '../abstract-interpretation/branch-paths-interpreter';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { VertexType } from '../dataflow/graph/vertex';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import type { InvalidationEvent } from './cache/flowr-cache';
 import type { GasOverrides } from '../gas';
-import type { FnInfo } from '../dataflow/environments/query-fn-props';
+import type { FnInfo, FnInfoOptions } from '../dataflow/environments/query-fn-props';
 import type { Identifier } from '../dataflow/environments/identifier';
+import { FlowrAnalyzerBuilder } from './flowr-analyzer-builder';
 
 /** Options for a single analyzer operation, bounding what it may cost. */
 export interface FlowrAnalysisOptions {
@@ -41,6 +42,16 @@ export interface FlowrAnalysisOptions {
 	 * ```
 	 */
 	readonly gas?: GasOverrides;
+}
+
+/** Options for forking an analyzer */
+export interface ForkOptions {
+	/** Shares state until modified */
+	readonly lazy?:          boolean;
+	/** Reuses the dataflow result from the parent analyzer */
+	readonly forkDataflow?:  boolean;
+	/** Decouples inline files instead of using their references */
+	readonly decoupleFiles?: boolean;
 }
 
 /**
@@ -67,13 +78,15 @@ export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser>
 	 */
 	addFile(...f: (string | FlowrFileProvider<string> | RParseRequestFromFile)[]): void
 	/**
-	 * Reset the analyzer state, including the context and the cache.
+	 * Tell the analyzer that the file at `path` changed, e.g., as an editor edits it.
+	 * With `content`, the analyzer analyzes that content instead of what is on disk, without `content` it reads the file again.
+	 * Only what depends on the file is analyzed again, and with {@link FlowrConfig.incremental.dataflow} the dataflow analysis continues the one before.
 	 */
+	updateFile(path: string, content?: string): void
+	/** Reset the analyzer state, including the context and the cache. */
 	reset(): void;
 
-	/**
-	 * Receive cache invalidation events from the cache and propagate them to the context and other relevant components.
-	 */
+	/** Receive cache invalidation events from the cache and propagate them to the context and other relevant components. */
 	receive(event: InvalidationEvent): void
 }
 
@@ -100,9 +113,9 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * A string is read the way R source spells a name, so `'dplyr::lead'` and `'dplyr:::internal'` name the
 	 * package function rather than a symbol with a `::` in it (pass an {@link Identifier} for that one).
 	 * @param name    - The function to ask about, `'dplyr::lead'` or `Identifier.make('lead', 'dplyr')` to pin the package down.
-	 * @param version - The package version to answer for, the one the analysis assumes if omitted.
+	 * @param options - The package version to answer for (the one the analysis assumes if omitted), and the fields to leave out (all are there by default).
 	 */
-	functionInfo(name: Identifier | string, version?: string): FnInfo | undefined
+	functionInfo(name: Identifier | string, options?: FnInfoOptions): FnInfo | undefined
 	/**
 	 * Get the parse output for the request.
 	 *
@@ -111,9 +124,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekParse} - to get the parse output if already available without triggering a new computation.
 	 */
 	parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>>
-	/**
-	 * Peek at the parse output for the request, if it was already computed.
-	 */
+	/** Peek at the parse output for the request, if it was already computed. */
 	peekParse(): NonNullable<AnalyzerCacheType<Parser>['parse']> | undefined;
 	/**
 	 * Parse standalone R code provided as a string or via the `file://` protocol.
@@ -127,9 +138,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekNormalize} - to get the normalized AST if already available without triggering a new computation.
 	 */
 	normalize(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;
-	/**
-	 * Peek at the normalized abstract syntax tree for the request, if it was already computed.
-	 */
+	/** Peek at the normalized abstract syntax tree for the request, if it was already computed. */
 	peekNormalize(): NormalizedAst & PipelinePerStepMetaInformation | undefined;
 
 	/**
@@ -144,9 +153,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekDataflow} - to get the dataflow graph if already available without triggering a new computation.
 	 */
 	dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation>;
-	/**
-	 * Peek at the dataflow graph for the request, if it was already computed.
-	 */
+	/** Peek at the dataflow graph for the request, if it was already computed. */
 	peekDataflow(): DataflowInformation & PipelinePerStepMetaInformation | undefined;
 	/**
 	 * Get the control flow graph (CFG) for the request.
@@ -155,31 +162,52 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekControlflow} - to get the CFG if already available without triggering a new computation.
 	 */
 	controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation>;
-	/**
-	 * Peek at the control flow graph (CFG) for the request, if it was already computed.
-	 */
+	/** Peek at the control flow graph (CFG) for the request, if it was already computed. */
 	peekControlflow(simplifications?: readonly CfgSimplificationPassName[]): ControlFlowInformation | undefined;
-	/**
-	 * Calculate the call graph for the request.
-	 */
+	/** Calculate the call graph for the request. */
 	callGraph(force?: boolean): Promise<CallGraph>;
-	/**
-	 * Peek at the call graph for the request, if it was already computed.
-	 */
+	/** Peek at the call graph for the request, if it was already computed. */
 	peekCallGraph(): CallGraph | undefined;
 	/**
+	 * A value computed from the current analysis once per `key` (e.g. the function computing it), shared by
+	 * every query and linter rule asking for it until the analysis is invalidated.
+	 * Keep in mind that:
+	 * - the key is compared by identity, so use a module-level function or object, not a fresh closure per call
+	 * - the value is kept in memory until the analysis changes, so derive small summaries, not copies of the graph
+	 * - `compute` runs against the configured gas bounds only, and a result computed under pressure is returned but not kept
+	 * - a failed computation is not kept, the next caller runs it again
+	 * @example
+	 * ```ts
+	 * const pdgs = await analyzer.derive(computePdgs, async() => computePdgs(await analyzer.dataflow()));
+	 * ```
+	 */
+	derive<T>(key: object, compute: () => Promise<T>): Promise<T>;
+	/**
 	 * Access the query API for the request.
-	 * @param query   - The list of queries.
+	 * Pass a single query to get its result directly (see {@link Query.one}), a failing query then throws.
+	 * Pass a list of queries to get a record of their results by query type, where a failing query type is reported
+	 * as an error without affecting the others.
+	 * Keep in mind that:
+	 * - a single query is the one to use if you ask for one thing, a list is for several kinds of results of one
+	 *   analysis. Queries of the same type in a list run as one batch, while the single form returns the one
+	 *   entry of a query with {@link SupportedQuery#perQueryResults} (for `static-slice`, `{ slice, reconstruct }`)
+	 * - the list form does not throw but reports `{ error }` for the failing type, so check before you use a result
+	 * - queries share the analysis (and its cache) of the analyzer, so adding a request after a query invalidates it
+	 * @param query   - The query or the list of queries.
 	 * @param options - Bounds for this call, see {@link FlowrAnalysisOptions}.
+	 * @example
+	 * ```ts
+	 * const { reconstruct } = await analyzer.query({ type: 'static-slice', criteria: ['3@x'] });
+	 * const results = await analyzer.query([{ type: 'id-map' }, { type: 'static-slice', criteria: ['3@x'] }]);
+	 * const { slice } = results['static-slice'].results['3@x']; // keyed by the criteria
+	 * ```
 	 */
 	query<Types extends SupportedQueryTypes = SupportedQueryTypes>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>>;
-	/**
-	 * Access the taint analysis API for the request.
-	 */
+	query<Type extends SupportedQueryTypes>(query: QueryArgumentsWithType<Type>, options?: FlowrAnalysisOptions): Promise<SingleQueryResult<Type>>;
+	/** Access the taint analysis API for the request. */
 	taint<Names extends readonly string[] = []>(): TaintAnalysisBuilder<Names>;
 	/**
 	 * Run a search on the current analysis.
-	 * @param search  - The search to run.
 	 * @param options - Bounds for this call, see {@link FlowrAnalysisOptions}.
 	 */
 	runSearch<Search extends FlowrSearchLike>(search: Search, options?: FlowrAnalysisOptions): Promise<GetSearchElements<SearchOutput<Search>>>;
@@ -196,7 +224,6 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	/** Discard every {@link updateConfig} override made so far and invalidate the cached analysis. */
 	resetConfig(): void;
 }
-
 
 /**
  * Central class for conducting analyses with FlowR.
@@ -216,6 +243,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	private parserInfo:      KnownParserInformation | undefined;
 	/** the graph whose calls are already being qualified in the background, see {@link qualifyInBackground} */
 	private qualifying:      DataflowGraph | undefined;
+	/** stops the background qualification of {@link qualifying}, so a dropped graph is neither worked on nor kept */
+	private stopQualifying:  (() => void) | undefined;
 
 	/**
 	 * Create a new analyzer instance.
@@ -231,6 +260,22 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.cache = cache;
 	}
 
+	public async fork(options?: ForkOptions): Promise<FlowrAnalyzer> {
+		const forkedPlugins = this.ctx.plugins.values().toArray().flat().map(plugin => {
+			return typeof plugin.fork === 'function' ? plugin.fork() : plugin;
+		});
+
+		const fork = await  new FlowrAnalyzerBuilder(false)
+			.setEngine(this.parser.name)
+			.setConfig(FlowrConfig.clone(this.flowrConfig))
+			.registerPlugins(...forkedPlugins)
+			.build();
+
+		fork.ctx.fork(this.ctx, options);
+		fork.cache.fork(this.cache, options);
+		return fork;
+	}
+
 	public get flowrConfig(): FlowrConfig {
 		return this.ctx.config;
 	}
@@ -240,67 +285,66 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public parserInformation(): KnownParserInformation {
-		this.parserInfo ??= this.parser.information(this);
-		return this.parserInfo;
+		return this.parserInfo ??= this.parser.information(this);
 	}
 
 	public inspectContext(): ReadOnlyFlowrAnalyzerContext {
 		return this.ctx.inspect();
 	}
 
-	public functionInfo(name: Identifier | string, version?: string): FnInfo | undefined {
-		return this.ctx.functionInfo(name, version);
+	public functionInfo(name: Identifier | string, options?: FnInfoOptions): FnInfo | undefined {
+		return this.ctx.functionInfo(name, options);
 	}
 
 	public reset() {
+		this.stopBackgroundWork();
 		this.ctx.reset();
 		this.cache.reset();
 	}
 
+	private stopBackgroundWork(): void {
+		this.stopQualifying?.();
+		this.stopQualifying = undefined;
+		this.qualifying = undefined;
+	}
+
 	public receive(event: InvalidationEvent): void {
+		this.stopBackgroundWork();
 		this.ctx.receive(event);
 		this.cache.receive(event);
 	}
 
 	public updateConfig(update: DeepPartial<FlowrConfig>): void {
+		this.stopBackgroundWork();
 		this.ctx.updateConfig(update);
 		// the parse/dataflow results were computed under the previous config, so they must be recomputed
 		this.cache.reset();
 	}
 
 	public resetConfig(): void {
+		this.stopBackgroundWork();
 		this.ctx.resetConfig();
 		this.cache.reset();
 	}
 
 	public parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree {
 		const request = isParseRequest(data) ? data : requestFromInput(data);
-		if(this.parser.name === 'tree-sitter') {
-			return this.parser.parse(request, this.ctx);
-		} else {
-			const ts = new TreeSitterExecutor();
-			return ts.parse(request, this.ctx);
-		}
+		return this.parser.name === ParserName.TreeSitter ? this.parser.parse(request, this.ctx) : new TreeSitterExecutor().parse(request, this.ctx);
 	}
 
 	public normalizeStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): NormalizedAst {
-		const parse = this.parseStandalone(data);
-		return decorateAst(normalizeTreeSitterTreeToAst([{ parsed: parse, filePath: undefined }], true), {});
+		return decorateAst(normalizeTreeSitterTreeToAst([{ parsed: this.parseStandalone(data), filePath: undefined }], true), {});
 	}
 
 	public addRequest(...request: (RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string)[]): this {
-		for(const r of request) {
-			if(typeof r === 'string') {
-				const trimmed = r.slice(fileProtocol.length);
-				if(r.startsWith(fileProtocol) && !isFilePath(trimmed)) {
-					this.addAnalysisRequest({ request: 'project', content: trimmed });
-				} else {
-					this.addRequestFromInput(r);
-				}
-			} else {
-				this.addAnalysisRequest(r);
+		/* added at once, so that every request knows the folders of the others when its files are added */
+		this.ctx.addRequests(request.flatMap((r): RAnalysisRequest | readonly RAnalysisRequest[] => {
+			if(typeof r !== 'string') {
+				return r;
 			}
-		}
+			const trimmed = r.slice(fileProtocol.length);
+			return r.startsWith(fileProtocol) && !isFilePath(trimmed) ? { request: 'project', content: trimmed } : requestFromInput(r);
+		}));
 		return this;
 	}
 
@@ -309,20 +353,22 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this;
 	}
 
-	/**
-	 * Add a request created from the given input.
-	 * This is a convenience method that uses {@link requestFromInput} internally.
-	 */
-	private addRequestFromInput(input: Parameters<typeof requestFromInput>[0]): this {
-		this.addAnalysisRequest(requestFromInput(input));
-		return this;
-	}
-
-	/**
-	 * Add one or multiple requests to analyze the builder.
-	 */
-	private addAnalysisRequest(request: RAnalysisRequest | readonly RAnalysisRequest[]): this {
-		this.ctx.addRequests((Array.isArray(request) ? request : [request]) as RAnalysisRequest[]);
+	public updateFile(path: string, content?: string): this {
+		const known = this.ctx.files.getFileByPath(path);
+		if(content === undefined) {
+			known?.invalidate();
+		} else if(known instanceof FlowrInlineTextFile) {
+			if(known.content() !== content) {
+				known.updateInlineContent(content);
+			}
+		} else {
+			/* the file stands in for the one known, starting out as what it held, so the change is one from that */
+			const before = known === undefined ? undefined : String(known.content());
+			const file = new FlowrInlineTextFile(known?.path() ?? path, before ?? content);
+			this.ctx.addFiles([file]);
+			file.content();
+			file.updateInlineContent(content);
+		}
 		return this;
 	}
 
@@ -345,8 +391,9 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	public async dataflow(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['dataflow']>> {
 		const dataflow = await this.cache.dataflow(force);
 		if(this.qualifying !== dataflow.graph) {
+			this.stopBackgroundWork();
 			this.qualifying = dataflow.graph;
-			qualifyInBackground(dataflow.graph);
+			this.stopQualifying = qualifyInBackground(dataflow.graph, () => this.cache.peekDataflow()?.graph === dataflow.graph);
 		}
 		return dataflow;
 	}
@@ -357,7 +404,6 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public async runFull(force?: boolean, options?: FlowrAnalysisOptions): Promise<void> {
 		await this.ctx.gas.withGas(options?.gas, () => this.dataflow(force));
-		return;
 	}
 
 	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation> {
@@ -376,15 +422,18 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.cache.peekCallGraph();
 	}
 
-	public async query<
-		Types extends SupportedQueryTypes = SupportedQueryTypes
-	>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>> {
-		return this.ctx.gas.withGas(options?.gas, () => executeQueries({ analyzer: this }, query));
+	public derive<T>(key: object, compute: () => Promise<T>): Promise<T> {
+		return this.cache.derive(key, compute);
 	}
 
-	public async runSearch<
-		Search extends FlowrSearchLike
-	>(search: Search, options?: FlowrAnalysisOptions): Promise<GetSearchElements<SearchOutput<Search>>> {
+	public async query<Types extends SupportedQueryTypes = SupportedQueryTypes>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>>;
+	public async query<Type extends SupportedQueryTypes>(query: QueryArgumentsWithType<Type>, options?: FlowrAnalysisOptions): Promise<SingleQueryResult<Type>>;
+	public async query(query: Query | Queries, options?: FlowrAnalysisOptions): Promise<unknown> {
+		return this.ctx.gas.withGas(options?.gas, () => Array.isArray(query) ? executeQueries({ analyzer: this }, query as Queries) : Query.one({ analyzer: this }, query as Query));
+	}
+
+	public async runSearch<Search extends FlowrSearchLike>(search: Search, options?: FlowrAnalysisOptions): Promise<GetSearchElements<SearchOutput<Search>>> {
+
 		return this.ctx.gas.withGas(options?.gas, () => runSearch(search, this));
 	}
 
@@ -397,27 +446,44 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	 * Closing is only required for an RShell/remote engine, but this also frees the cached parse trees.
 	 */
 	public close() {
+		this.stopBackgroundWork();
 		this.cache.reset();
 		return this.parser?.close();
 	}
 }
 
-/** Qualifies calls (see {@link Dataflow.qualify}) in idle time on unreferenced timers, so later queries find it done. */
-function qualifyInBackground(graph: DataflowGraph): void {
+/**
+ * Qualifies calls (see {@link Dataflow.qualify}) in idle time on unreferenced timers, so later queries find it done.
+ * Stops once the graph is no longer `current`, and returns how to stop it right away: a pending timer keeps the graph alive.
+ */
+function qualifyInBackground(graph: DataflowGraph, current: () => boolean): () => void {
 	const calls = Array.from(graph.verticesOfType(VertexType.FunctionCall), ([id]) => id);
 	let next = 0;
-	const step = () => {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	function step() {
+		timer = undefined;
+		if(!current()) {
+			return;
+		}
 		for(const end = Math.min(next + 256, calls.length); next < end; next++) {
 			Dataflow.qualify(calls[next], graph, false);
 		}
 		if(next < calls.length) {
-			later(step);
+			timer = later(step);
+		}
+	}
+	timer = later(step);
+	return () => {
+		if(timer !== undefined) {
+			clearTimeout(timer);
+			timer = undefined;
 		}
 	};
-	later(step);
 }
 
 /** an unreferenced timer where there are such (node), a plain one elsewhere (the browser returns a number) */
-function later(step: () => void): void {
-	(setTimeout(step, 0) as { unref?: () => void }).unref?.();
+function later(step: () => void): ReturnType<typeof setTimeout> {
+	const timer = setTimeout(step, 0);
+	(timer as { unref?: () => void }).unref?.();
+	return timer;
 }

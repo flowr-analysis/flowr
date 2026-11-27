@@ -24,6 +24,44 @@ export function closingQuote(text: string, start = 0): number | undefined {
 }
 
 /**
+ * Walks the R code in `text` from `from` on, skipping string literals and quoted names (see {@link closingQuote}),
+ * and calls `visit` with every other character, its index, and the bracket depth after it (counting the brackets in `open` and `close`).
+ * @returns the index at which `visit` first returns `true`, `undefined` if it never does
+ */
+export function scanRCode(text: string, visit: (c: string, i: number, depth: number) => unknown, from = 0, open = '([{', close = ')]}'): number | undefined {
+	let depth = 0;
+	for(let i = from; i < text.length; i++) {
+		const c = text[i];
+		if(c === '"' || c === '\'' || c === '`') {
+			i = closingQuote(text, i) ?? text.length;
+			continue;
+		} else if(open.includes(c)) {
+			depth++;
+		} else if(close.includes(c)) {
+			depth--;
+		}
+		if(visit(c, i, depth) === true) {
+			return i;
+		}
+	}
+	return undefined;
+}
+
+/** splits the R code in `text` at the commas outside of brackets (see {@link scanRCode}) and strings, trimming each part */
+export function splitRCodeArgs(text: string, open?: string, close?: string): string[] {
+	const parts: string[] = [];
+	let from = 0;
+	scanRCode(text, (c, i, depth) => {
+		if(c === ',' && depth === 0) {
+			parts.push(text.slice(from, i));
+			from = i + 1;
+		}
+	}, 0, open, close);
+	parts.push(text.slice(from));
+	return parts.map(p => p.trim());
+}
+
+/**
  * This splits an input string on the given split string (e.g., ` `), but checks if the string is quoted or escaped.
  *
  * Given an input string like `a "b c" d`, with a space character as split, and escapeQuote set to true,
@@ -31,7 +69,6 @@ export function closingQuote(text: string, start = 0): number | undefined {
  *
  * When escapeQuote is set to false instead, we keep quotation marks in the result (i.e., `a`, `"b c"`, and `d`.).
  * A name in backticks is never split either, and keeps its backticks, as they belong to the name.
- * @param inputString - The string to split
  * @param escapeQuote - Keep quotes in args
  * @param split       - The character or character sequence to split on (can not be backslash or quote!)
  */
@@ -84,19 +121,11 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 	return args;
 }
 
-
-const MatchingClose = {
-	'<': '>',
-	'[': ']',
-	'(': ')',
-	'"': '"',
-	"'": "'"
-} as const;
+const MatchingClose = { '<': '>', '[': ']', '(': ')', '"': '"', "'": "'" } as const;
 
 /**
  * Splits the given string on 'and', but only if not nested inside `<>`, `[]`, `()`, or quotes.
  * This also handles escaped quotes.
- * @param str     - The string to split
  * @param splitOn - The string to split on (default: 'and')
  * @param closes  - The matching of closing characters for nesting, structures with different open and close characters only can be nested
  *                 of each other, while those with the same open and close character (like quotes) can not be nested inside themselves.

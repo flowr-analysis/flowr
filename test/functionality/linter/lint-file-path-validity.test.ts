@@ -1,7 +1,7 @@
 import { describe } from 'vitest';
 import { assertLinter, assertLintedLines, assertLinterFields } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
-import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependency-values';
 import { withTreeSitter } from '../_helper/shell';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import { getPlatform } from '../../../src/util/os';

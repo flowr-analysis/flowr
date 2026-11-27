@@ -1,17 +1,14 @@
-import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { type RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import { FunctionSemantics } from '../dataflow/fn/function-semantics';
-import { ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
-import type { VertexType } from '../dataflow/graph/vertex';
-import { DfgVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
+import { type VertexType, DfgVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
-import type { Enrichment } from './search-executor/search-enrichers';
-import { enrichmentContent, EnrichmentElementContent } from './search-executor/search-enrichers';
+import { type Enrichment, enrichmentContent, EnrichmentElementContent } from './search-executor/search-enrichers';
 import type { DataflowInformation } from '../dataflow/info';
 import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { looselyCompareObjects } from '../util/objects';
-import { searchLogger } from './search-executor/search-generators';
+import { searchLogger } from './search-logger';
 import { callFnProps } from '../dataflow/environments/query-fn-props';
 import type { CallProp, PropSelector, SemanticCallTag } from '../dataflow/environments/built-in-props';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -123,9 +120,7 @@ export interface CallPropsArgs {
 }
 
 type ValidFilterTypes<F extends FlowrFilter = FlowrFilter> = FlowrFilterName | FlowrFilterWithArgs<F, FlowrFilterArgs<F>> | RType | VertexType;
-/**
- * By default, we provide filter for every {@link RType} and {@link VertexType}.
- */
+/** By default, we provide filter for every {@link RType} and {@link VertexType}. */
 export type FlowrFilterExpression<F extends FlowrFilter = FlowrFilter> = FlowrFilterCombinator | ValidFilterTypes<F>;
 
 interface BooleanBinaryNode<Composite> {
@@ -144,11 +139,9 @@ type LeafSpecial<F extends FlowrFilter = FlowrFilter> = { readonly type: 'specia
 
 type Leaf = LeafRType | LeafVertexType | LeafSpecial;
 
-
 type BooleanNode = BooleanBinaryNode<BooleanNode>
 	| BooleanUnaryNode<BooleanNode>
 	| Leaf;
-
 
 type BooleanNodeOrCombinator = BooleanNode | FlowrFilterCombinator;
 
@@ -212,11 +205,7 @@ export class FlowrFilterCombinator {
 	}
 
 	private binaryRight<F extends FlowrFilter = FlowrFilter>(op: BooleanBinaryNode<BooleanNode>['type'], right: BooleanNodeOrCombinator | ValidFilterTypes<F>): this {
-		this.tree = {
-			type:  op,
-			left:  this.tree,
-			right: this.unpack(FlowrFilterCombinator.is(right))
-		};
+		this.tree = { type: op, left: this.tree, right: this.unpack(FlowrFilterCombinator.is(right)) };
 		return this;
 	}
 
@@ -225,10 +214,7 @@ export class FlowrFilterCombinator {
 	}
 
 	private unary(op: BooleanUnaryNode<BooleanNode>['type']): this {
-		this.tree = {
-			type:    op,
-			operand: this.tree
-		};
+		this.tree = { type: op, operand: this.tree };
 		return this;
 	}
 
@@ -242,9 +228,7 @@ export class FlowrFilterCombinator {
 }
 export const F = FlowrFilterCombinator;
 
-/**
- * Converts the given binary tree to a string representation.
- */
+/** Converts the given binary tree to a string representation. */
 export function binaryTreeToString(tree: BooleanNode): string {
 	const res = treeToStringImpl(tree, 0);
 	// drop outer parens
@@ -285,6 +269,11 @@ export function isBinaryTree(tree: unknown): tree is { tree: BooleanNode } {
 /** A filter expression resolved to the function testing one element. */
 export type PreparedFilter = (element: FlowrSearchElement<ParentInformation>, data: { dataflow: DataflowInformation }) => boolean;
 
+function bindFilter(name: FlowrFilterName, args: unknown): PreparedFilter {
+	const handler = FlowrFilters[name] as FlowrFilterFunction<unknown>;
+	return (e, d) => handler(e, args, d);
+}
+
 const compileVisit = {
 	and: ({ left, right }: BooleanBinaryNode<BooleanNode>): PreparedFilter => {
 		const l = compileTree(left), r = compileTree(right);
@@ -308,12 +297,10 @@ const compileVisit = {
 		(e, d) => d.dataflow.graph.getVertex(e.node.info.id)?.tag === value,
 	'special': ({ value }: LeafSpecial): PreparedFilter => {
 		const name = typeof value === 'string' ? value : value.name;
-		const args = typeof value === 'string' ? undefined as unknown as FlowrFilterArgs<FlowrFilter> : value.args;
-		const handler = FlowrFilters[name];
-		if(!handler) {
+		if(!FlowrFilters[name]) {
 			throw new Error(`Couldn't find special filter with name ${name}`);
 		}
-		return (e, d) => handler(e, args, d);
+		return bindFilter(name, typeof value === 'string' ? undefined : value.args);
 	}
 };
 
@@ -331,12 +318,9 @@ export function prepareFilter<Filter extends FlowrFilter>(filter: FlowrFilterExp
 	if(filter instanceof FlowrFilterCombinator) {
 		return compileTree(filter.get());
 	} else if(typeof filter === 'string' && ValidFlowrFilters.has(filter)) {
-		const handler = FlowrFilters[filter as FlowrFilter];
-		return (e, d) => handler(e, undefined as unknown as FlowrFilterArgs<FlowrFilter>, d);
+		return bindFilter(filter as FlowrFilter, undefined);
 	} else if(typeof filter === 'object' && 'name' in filter) {
-		const handler = FlowrFilters[filter.name];
-		const args = ('args' in filter ? filter.args : undefined) as unknown as never;
-		return (e, d) => handler(e, args, d);
+		return bindFilter(filter.name, 'args' in filter ? filter.args : undefined);
 	} else {
 		return compileTree(FlowrFilterCombinator.is(filter).get());
 	}

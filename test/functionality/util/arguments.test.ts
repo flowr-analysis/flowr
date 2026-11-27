@@ -3,11 +3,11 @@ import { assert, describe, test } from 'vitest';
 
 
 describe('Arguments', () => {
-	const positive = (input: string, expected: readonly string[], escapeQuote = true, split: RegExp | string = ' ') => {
+	function positive(input: string, expected: readonly string[], escapeQuote = true, split: RegExp | string = ' ') {
 		test(`${JSON.stringify(input)}`, () => {
 			assert.deepEqual(splitAtEscapeSensitive(input, escapeQuote, split), expected);
 		});
-	};
+	}
 
 	describe('split arguments', () => {
 		positive('', []);

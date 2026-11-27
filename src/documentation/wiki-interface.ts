@@ -19,8 +19,7 @@ import { markdownFormatter } from '../util/text/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { block } from './doc-util/doc-structure';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import type { KnownParser } from '../r-bridge/parser';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { explainWritingCode } from './data/interface/doc-writing-code';
@@ -38,12 +37,9 @@ Additionally, the server is not well guarded against attacks (e.g., you can theo
 Every message has to be given in a single line (i.e., without a newline in-between) and end with a newline character. Nevertheless, we will pretty-print example given in the following segments for the ease of reading.
 
 ${
-	block({
-		type:    'NOTE',
-		content: `
+	block('NOTE', `
 The default ${getCliLongOptionOf('flowr', 'server', false)} uses a simple [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)
-connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the ${getCliLongOptionOf('flowr', 'ws', false)} flag (i.e., ${multipleCliOptions('flowr', 'server', 'ws')}) when starting _flowR_ from the command line.`
-	})
+connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the ${getCliLongOptionOf('flowr', 'ws', false)} flag (i.e., ${multipleCliOptions('flowr', 'server', 'ws')}) when starting _flowR_ from the command line.`)
 }
 
 ${await printServerMessages(parser)}
@@ -103,7 +99,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 `;
 }
 
-
 async function explainRepl(parser: KnownParser, ctx: GeneralDocContext): Promise<string> {
 	return `
 > [!NOTE]
@@ -138,17 +133,14 @@ ${printReplHelpAsMarkdownTable()}
 </details>
 
 ${
-	block({
-		type:    'TIP',
-		content: `
+	block('TIP', `
 As indicated by the examples before, all REPL commands that operate on code keep track of the state.
 Hence, if you run a command like ${getReplCommand('dataflow*')} without providing R code,
 the REPL will re-use the R code provided in a previous command.
 Likewise, doing this will benefit from incrementality!
 If you request the dataflow graph with \`:df* x <- 2 * y\` and then want to see the parsed AST with \`:parse\`,
 the REPL will re-use previously obtained information and not re-parse the code again.
-		`
-	})
+		`)
 }
 
 Generally, many commands offer shortcut versions in the REPL. Many queries, for example, offer a shortened format (see the example below).
@@ -244,6 +236,8 @@ The schema below documents every option; the ones you most likely want are:
 - ${ctx.linkConfig('ignoreLoadCalls')}: ignore load calls when analyzing the code, i.e., ignore the loading of r-data files.
 - ${ctx.linkConfig('semantics.environment.overwriteBuiltIns')}: overwrite _flowR_'s handling of built-in functions, or clear the preset definitions entirely.
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
+- ${ctx.linkConfig('semantics.ambient.drawingWritesDevice')}: whether calls drawing on a graphics device (e.g., \`plot\`) count as writing the device in the ambient state queries.
+- ${ctx.linkConfig('solver.resolveSource.unseenMethods')}: whether a sourced file _flowR_ cannot read may bind S3/S4 methods that later calls dispatch to (sound, but chains every such call, off by default).
 - ${ctx.linkConfig('solver.variables')}: how to resolve variables and their values (${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}).
 - ${ctx.linkConfig('engines')} and ${ctx.linkConfig('defaultEngine')}: the engines used to interact with R code, see the ${ctx.linkPage('wiki/Engines', 'Engines wiki page')}.
 - ${ctx.linkConfig('project.implicitSources')}: the files a framework loads without any \`source()\` call, in the order in which they are
@@ -267,31 +261,17 @@ ${codeBlock('json', JSON.stringify(
 			semantics:         {
 				environment: {
 					overwriteBuiltIns: {
-						definitions: [
-							{ type: 'function', names: ['foo'], processor: BuiltInProcName.Assignment, config: {} }
-						]
+						definitions: [{ type: 'function', names: ['foo'], processor: BuiltInProcName.Assignment, config: {} }]
 					}
 				}
 			},
-			defaultPlugins: ['file:description', 'versions:description'],
-			repl:           {
-				quickStats:      false,
-				dfProcessorHeat: false,
-				hints:           true,
-				plugins:         ['flowr:default']
-			},
-			project: {
-				resolveUnknownPathsOnDisk: true,
-				implicitSources:           ['global.R', 'app.R']
-			},
-			linter: {
-				disabledRules: []
-			},
-			specializeConfig: {
-				[ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } }
-			},
-			engines: [{ type: 'r-shell' }],
-			solver:  {
+			defaultPlugins:   ['file:description', 'versions:description'],
+			repl:             { quickStats: false, dfProcessorHeat: false, hints: true, plugins: ['flowr:default'] },
+			project:          { resolveUnknownPathsOnDisk: true, implicitSources: ['global.R', 'app.R'] },
+			linter:           { disabledRules: [] },
+			specializeConfig: { [ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } } },
+			engines:          [{ type: 'r-shell' }],
+			solver:           {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
@@ -303,41 +283,24 @@ ${codeBlock('json', JSON.stringify(
 					searchPath:            []
 				},
 				instrument: {},
-				slicer:     {
-					threshold: 50
-				}
+				slicer:     { threshold: 50 }
 			},
 			abstractInterpretation: {
 				wideningThreshold: 4,
 				followCalls:       true,
-				dataFrame:         {
-					maxColNames:    20,
-					readLoadedData: {
-						readExternalFiles: true,
-						maxReadLines:      1_000_000
-					}
-				}
+				dataFrame:         { maxColNames: 20, readLoadedData: { readExternalFiles: true, maxReadLines: 1_000_000 } }
 			},
 			incremental: {
 				alwaysIncremental: false,
 				parsing:           {
 					activated:  false,
-					heuristics: {
-						activated:       true,
-						mtime:           true,
-						linesFrom:       500,
-						bytesFrom:       50_000,
-						alwaysWithEdits: false,
-						minFiles:        1,
-					},
+					heuristics: { activated: true, mtime: true, linesFrom: 500, bytesFrom: 50_000, alwaysWithEdits: false, minFiles: 1 },
 				},
+				dataflow: FlowrConfig.default().incremental.dataflow,
 			},
 			gas: {
-				thresholds: {
-					memory: { problematic: 0.7,     critical: 0.9 },
-					timeMs: { problematic: 100_000, critical: 120_000 }
-				},
-				features: {}
+				thresholds: { memory: { problematic: 0.7,     critical: 0.9 }, timeMs: { problematic: 100_000, critical: 120_000 } },
+				features:   {}
 			}
 		} satisfies FlowrConfig,
 		null, 2))
@@ -358,7 +321,7 @@ ${codeBlock('json', JSON.stringify(
   | Type            | Description                                                                                                                                                                                                                                                                                              | Example                                                                                                    |
   | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
   | \`constant\`    | Additionally allows for a \`value\` this should resolve to.                                                                                                                                                                                                                                                | \`{ type: 'constant', names: ['NULL', 'NA'],  value: null }\`                                                |
-  | \`function\`    | Is a rather flexible way to define and bind built-in functions. For the time, we do not have extensive documentation to cover all the cases, so please either consult the sources with the \`default-builtin-config.ts\` or open a [new issue](${NewIssueUrl}). | \`{ type: 'function', names: ['next'], processor: '${BuiltInProcName.Default}', config: { cfg: ExitPointType.Next } }\` |
+  | \`function\`    | Is a rather flexible way to define and bind built-in functions. For the time, we do not have extensive documentation to cover all the cases, so please either consult the sources with the \`default-builtin-config/\` folder or open a [new issue](${NewIssueUrl}). | \`{ type: 'function', names: ['next'], processor: '${BuiltInProcName.Default}', config: { cfg: ExitPointType.Next } }\` |
   | \`replacement\` | A comfortable way to specify replacement functions like \`$<-\` or \`names<-\`. \`suffixes\` describes the... suffixes to attach automatically. | \`{ type: 'replacement', suffixes: ['<-', '<<-'], names: ['[', '[['] }\` |
 
 
@@ -375,9 +338,7 @@ ${describeSchema(FlowrConfig.Schema, markdownFormatter)}
 	`;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Interface
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Interface */
 export class WikiInterface extends DocMaker<'wiki/Interface.md'> {
 	constructor() {
 		super('wiki/Interface.md', module.filename, 'interface');

@@ -16,7 +16,7 @@ import { RAccess } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-acc
 import { RArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RParameter } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { RString } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { type BrandedIdentifier, Identifier } from '../../../../src/dataflow/environments/identifier';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../../../src/util/r-base-packages';
 import type { SourceRange } from '../../../../src/util/range';
 import { MutationProgram, Rewrite, type MutationTarget, type SimpleAssignment } from './mutation-program';
@@ -119,11 +119,13 @@ class ConstructPass<T extends RNodeWithParent> extends RewritePass {
 /** a pass that renames variables, each binding and every reference to it alike */
 class RenamingPass extends RewritePass {
 	constructor(spec: PassSpec, onlyCriterion: boolean, fresh: (index: number) => string) {
+		const nonSyntactic = fresh(1).startsWith('`');
 		super(spec, async(program, edit) => {
 			const at = program.criterion;
-			const names = onlyCriterion
+			const names = (onlyCriterion
 				? at !== undefined && program.assignments.some(a => a.name === at.name) && !program.spellsOut(at.name) ? [at.name] : []
-				: program.readsNamesAsData ? [] : renameableNames(program);
+				: program.readsNamesAsData ? [] : renameableNames(program))
+				.filter(n => !nonSyntactic || !program.namedByCall(n));
 			const renames: Record<string, string> = {};
 			for(const name of names) {
 				const places = await program.occurrencesOf(name);
@@ -195,15 +197,15 @@ function sameRanges(a: readonly SourceRange[], b: readonly SourceRange[]): boole
 }
 
 /** the names R binds no matter how they are written, which a renaming has to leave alone */
-const NotRenameable: ReadonlySet<string> = new Set(['T', 'F']);
+const NotRenameable: ReadonlySet<BrandedIdentifier> = new Set(['T', 'F']);
 
 /**
  * The names a program binds that every reference reaches under the same spelling: never an argument name, a
  * `$` or `@` field, a package, a name a string spells out or an attached package exports, as a renaming must leave those be.
  */
-function renameableNames(program: MutationProgram): string[] {
-	const bound = new Set<string>();
-	const unsafe = new Set<string>();
+function renameableNames(program: MutationProgram): BrandedIdentifier[] {
+	const bound = new Set<BrandedIdentifier>();
+	const unsafe = new Set<BrandedIdentifier>();
 	for(const node of program.nodes()) {
 		if(MutationProgram.isAssignment(node)) {
 			const target = node.operator === '->' || node.operator === '->>' ? node.rhs : node.lhs;
@@ -361,8 +363,8 @@ const equalsAssign = new AssignmentPass({
 const superAssign = new AssignmentPass({
 	name:        'top level super assignment',
 	category:    MutationCategory.Assignment,
-	description: '`x <- 1` becomes `x <<- 1`, except for a name an attached base package exports, as a `<<-` would try to change that binding'
-}, ({ name }, rhs) => shadowsAttachedBase(name) ? undefined : `${name} <<- ${rhs}`);
+	description: '`x <- 1` becomes `x <<- 1`, except for a name an attached package exports, as a `<<-` would try to change that locked binding'
+}, ({ name }, rhs, program) => shadowsAttachedBase(name) || program.attachedExports(name) ? undefined : `${name} <<- ${rhs}`);
 
 const irregularWhitespace = new AssignmentPass({
 	name:        'irregular whitespace around assignments',
@@ -563,7 +565,7 @@ const nestedCallToPipe = new AssignmentPass({
 		|| rest.includes(undefined)) {
 		return undefined;
 	}
-	return `${name} <- ${program.text(piped)} |> ${program.token(call.functionName)}(${rest.map(a => program.text(a as RNodeWithParent)).join(', ')}) |> ${program.token(outer.functionName)}()`;
+	return `${name} <- ${program.text(piped)} |> ${program.callee(call)}(${rest.map(a => program.text(a as RNodeWithParent)).join(', ')}) |> ${program.callee(outer)}()`;
 });
 
 const pipeAsCall = new ConstructPass({
@@ -577,7 +579,7 @@ const pipeAsCall = new ConstructPass({
 	/* the placeholder `_` names where the left side goes, which is no longer the first argument */
 	const placeholder = program.nodes(call).some(n => (RSymbol.is(n) && Identifier.getName(n.content) === '_') || RPipe.is(n));
 	return args === undefined || lhs === undefined || !MutationProgram.isPrimary(lhs) || placeholder || !RFunctionCall.is(call) || !call.named ? undefined
-		: `${program.token(call.functionName)}(${[program.text(lhs), ...args].join(', ')})`;
+		: `${program.callee(call)}(${[program.text(lhs), ...args].join(', ')})`;
 });
 
 const doCall: PassSpec = {
@@ -637,13 +639,13 @@ const doCallPass = new PlainCallPass(doCall, (call, program) => {
 		|| program.nodes(a).some(n => RFunctionDefinition.is(n) || (RSymbol.is(n) && Identifier.getName(n.content) === '...')))) {
 		return undefined;
 	}
-	return `do.call(${program.token(call.functionName)}, list(${args.map(a => program.text(a as RNodeWithParent)).join(', ')}))`;
+	return `do.call(${program.callee(call)}, list(${args.map(a => program.text(a as RNodeWithParent)).join(', ')}))`;
 });
 
 const identityPass = new PlainCallPass(identityArgument, (call, program) => {
 	const args = MutationProgram.argumentsOf(call);
 	const at = args.findIndex(a => isArgument(a) && a.name === undefined && RSymbol.is(a.value) && !Identifier.getName(a.value.content).startsWith('..'));
-	return at < 0 ? undefined : `${program.token(call.functionName)}(${args.map((a, i) => i === at ? `identity(${program.text(a as RNodeWithParent)})` : program.text(a as RNodeWithParent)).join(', ')})`;
+	return at < 0 ? undefined : `${program.callee(call)}(${args.map((a, i) => i === at ? `identity(${program.text(a as RNodeWithParent)})` : program.text(a as RNodeWithParent)).join(', ')})`;
 });
 
 /** how many passes follow each pass in a chain of two the robustness checks try, so chains reach every pass without trying every pair */

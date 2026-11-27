@@ -1,18 +1,17 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { guard } from '../../../../src/util/assert';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import { RFunctionDefinition } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
+import { analyze } from '../../_helper/analyzer';
 
 describe('Provenance Test', withTreeSitter((ts => {
 	function assertProvenance(code: string, provenanceFor: SlicingCriterion, subgraph: DataflowGraph): void {
 		test(code, async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-			analyzer.addRequest(code);
+			const analyzer = await analyze(ts, code);
 			const df = await analyzer.dataflow();
 			const nast = await analyzer.normalize();
 			const provenanceId = SlicingCriterion.tryParse(provenanceFor, nast.idMap);

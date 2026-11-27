@@ -9,17 +9,16 @@ import { minVersion, type Range } from 'semver';
 import { FunctionSemantics } from '../dataflow/fn/function-semantics';
 import { RRange, RVersion, rReleaseDate, type VersionString } from '../util/r-version';
 import { findByPrefixIfUnique } from '../util/prefix';
-import { RBasePrimitives } from '../data/r-base-primitives.generated';
 import { availableVersionEntries, classOwnerIndexFor, sourceForPackage, type PackageSignatureSource } from './sigdb/reader';
 import type { DecodedFunction, ResolvedDependency } from './sigdb/decode';
 import { DepType } from './sigdb/schema';
 import { parseDateWindow } from './sigdb/sigdb-version';
-import { Identifier } from '../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier, type BrandedNamespace } from '../dataflow/environments/identifier';
 import { VertexType } from '../dataflow/graph/vertex';
 import { FunctionArgument, type DataflowGraph } from '../dataflow/graph/graph';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
-import { AttachedBasePackages, baseRExportOwner } from '../util/r-base-packages';
+import { AttachedBasePackages, baseRExportOwner, isBasePrimitive } from '../util/r-base-packages';
 import { collectScopeDefinedNames, isDefinedInEnclosingScope, isNonStandardEvaluated } from '../linter/rules/undefined-symbol-util';
 import { S7SyntheticFunArgSuffix } from '../dataflow/internal/process/functions/call/built-in/built-in-s-seven-new-generic';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from './context/flowr-analyzer-dependencies-context';
@@ -27,6 +26,9 @@ import type { ReadonlyFlowrAnalysisProvider } from './flowr-analyzer';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { arraySum, uniqueArray } from '../util/collections/arrays';
+import { memoize } from '../util/collections/defaultmap';
+import { isNotUndefined } from '../util/assert';
+
 
 /** the pseudo-package standing for the analyzed project itself, never one of its own dependencies */
 export const ProjectPackage = 'current';
@@ -48,7 +50,7 @@ export interface DerivedConstraint {
 	/** the qualified function that carried the evidence (for {@link ConstraintSource|signature} constraints) */
 	readonly function?:  string;
 	/** the argument/parameter that carried the evidence (for signature constraints) */
-	readonly parameter?: string;
+	readonly parameter?: BrandedIdentifier;
 	/** the call site that carried the evidence, so a bound can point at the line forcing it */
 	readonly at?:        NodeId;
 	/** the version bound this constraint establishes, if any (e.g. `>=1.1.0`, `<=2021-05-31`) */
@@ -65,19 +67,19 @@ export interface DerivedConstraint {
 export type ConstraintObserver = (constraint: DerivedConstraint) => void;
 
 /** resolves (and memoizes) one function's decoded signature at a given version of the current package */
-export type FnResolver = (fn: string, version: VersionString) => DecodedFunction | undefined;
+export type FnResolver = (fn: BrandedIdentifier, version: VersionString) => DecodedFunction | undefined;
 
 /** how a single function of a package is used in the code */
 interface FunctionUsage {
 	/** per named argument used anywhere, the first call supplying it (drives the lower-bound evidence) */
-	readonly named: Map<string, NodeId>;
+	readonly named: Map<BrandedIdentifier, NodeId>;
 	/** one representative argument list per distinct call *shape* (drives signature compatibility) */
-	readonly calls: Map<string, readonly FunctionArgument[]>;
+	readonly calls: Map<BrandedIdentifier, readonly FunctionArgument[]>;
 	/** the first call of the function, absent when only a class use implies it */
 	at?:            NodeId;
 }
 /** per-package function usage, keyed by the function's (unqualified) name */
-export type PackageUsage = Map<string, FunctionUsage>;
+export type PackageUsage = Map<BrandedIdentifier, FunctionUsage>;
 
 /** one dated release in a package's version timeline */
 export interface TimelineEntry {
@@ -126,7 +128,7 @@ export interface SurvivingEntries {
 
 /** one package's surviving versions, ordered by preference for the constraint-space explosion */
 export interface OrderedCandidates {
-	readonly pkg:      string;
+	readonly pkg:      BrandedNamespace;
 	readonly versions: readonly VersionString[];
 }
 
@@ -146,7 +148,7 @@ export interface VersionExplodeOptions {
 
 /** a concrete, sigdb-available version choice for every resolvable dependency */
 export interface VersionAssignment {
-	readonly versions:    ReadonlyMap<string, VersionString>;
+	readonly versions:    ReadonlyMap<BrandedNamespace, VersionString>;
 	/**
 	 * The requirements of the chosen versions that nothing here could settle, because they bear on a package the
 	 * assignment does not choose (`dplyr 1.1.0 requires rlang >= 1.0.0`). Such an assignment holds for what it
@@ -159,7 +161,7 @@ export interface VersionAssignment {
 const LoadRelevantDeps: ReadonlySet<DepType> = new Set([DepType.Depends, DepType.Imports, DepType.LinkingTo]);
 
 /** The requirements `pkg@version` places on other packages that a load has to satisfy (see {@link LoadRelevantDeps}). */
-function loadRequirements(src: PackageSignatureSource | undefined, pkg: string, version?: VersionString): readonly ResolvedDependency[] {
+function loadRequirements(src: PackageSignatureSource | undefined, pkg: BrandedNamespace, version?: VersionString): readonly ResolvedDependency[] {
 	return (src?.dependencies(pkg, version) ?? []).filter(d => LoadRelevantDeps.has(d.type));
 }
 
@@ -178,8 +180,8 @@ export function isoDay(date: Date): string {
 }
 
 /** memoizing resolver for one function's signature, one decode per (function, version) pair */
-function makeFnResolver(src: PackageSignatureSource | undefined, name: string): FnResolver {
-	const cache = new Map<string, DecodedFunction | undefined>();
+function makeFnResolver(src: PackageSignatureSource | undefined, name: BrandedNamespace): FnResolver {
+	const cache = new Map<BrandedIdentifier, DecodedFunction | undefined>();
 	return (fn, version) => {
 		const key = version + '\0' + fn;
 		if(!cache.has(key)) {
@@ -199,7 +201,7 @@ function projectS3Classes(deps: ReadOnlyFlowrAnalyzerDependenciesContext): Set<s
 }
 
 /** builtins whose string-literal argument names an S3/S4 class in use, and which slot carries it */
-const ClassUsageArgs: Record<string, { readonly positional?: number, readonly named?: string }> = {
+const ClassUsageArgs: Record<BrandedIdentifier, { readonly positional?: number, readonly named?: string }> = {
 	inherits:  { positional: 1, named: 'what' },
 	is:        { positional: 1, named: 'class2' },
 	as:        { positional: 1, named: 'Class' },
@@ -209,10 +211,7 @@ const ClassUsageArgs: Record<string, { readonly positional?: number, readonly na
 
 function argStringLiteral(graph: DataflowGraph, arg: FunctionArgument): string | undefined {
 	const id = FunctionArgument.isNamed(arg) ? arg.valueId : FunctionArgument.getId(arg);
-	if(id === undefined) {
-		return undefined;
-	}
-	const node = graph.idMap?.get(id);
+	const node = id === undefined ? undefined : graph.idMap?.get(id);
 	return RString.is(node) ? node.content.str : undefined;
 }
 
@@ -236,11 +235,9 @@ function collectCodeClassUses(graph: DataflowGraph): Set<string> {
 			if(!named) {
 				positional++;
 			}
-			if(target) {
-				const literal = argStringLiteral(graph, arg);
-				if(literal !== undefined && literal.length > 0) {
-					classes.add(literal);
-				}
+			const literal = target ? argStringLiteral(graph, arg) : undefined;
+			if(literal) {
+				classes.add(literal);
 			}
 		}
 	}
@@ -260,7 +257,7 @@ function collectCodeClassUses(graph: DataflowGraph): Set<string> {
  * dependency, and it costs reading every package in the database. A class-name literal in code is weaker still and
  * may only ever refine a package already in play.
  */
-function addClassOwnershipUsage(usage: Map<string, PackageUsage>, deps: ReadOnlyFlowrAnalyzerDependenciesContext, graph: DataflowGraph): void {
+function addClassOwnershipUsage(usage: Map<BrandedNamespace, PackageUsage>, deps: ReadOnlyFlowrAnalyzerDependenciesContext, graph: DataflowGraph): void {
 	const namespaceClasses = projectS3Classes(deps);
 	const codeClasses = collectCodeClassUses(graph);
 	if(namespaceClasses.size === 0 && codeClasses.size === 0) {
@@ -269,34 +266,26 @@ function addClassOwnershipUsage(usage: Map<string, PackageUsage>, deps: ReadOnly
 	const sources = deps.signatureSources();
 	const declared = deps.declaredPackageNames();
 	// `current` is the analyzed project itself, not a dependency (see `defaultTargets`)
-	const anchored = new Set<string>([...usage.keys(), ...deps.getDependencies().map(d => d.name), ...declared].filter(n => n !== ProjectPackage));
+	const anchored = new Set<BrandedNamespace>([...usage.keys(), ...deps.getDependencies().map(d => d.name), ...declared].filter(n => n !== ProjectPackage));
 	const owners = sources.map(src => classOwnerIndexFor(src, anchored));
 	const mayIntroduce = declared.length === 0;
 
-	const attribute = (cls: string, fromNamespace: boolean): void => {
+	function attribute(cls: string, fromNamespace: boolean): void {
 		for(const [i, src] of sources.entries()) {
 			const owner = owners[i].get(cls) ?? (fromNamespace && mayIntroduce ? src.classOwner(cls) : undefined);
 			if(owner === undefined) {
 				continue;
 			}
-			let pkgUsage = usage.get(owner);
-			if(pkgUsage === undefined) {
-				pkgUsage = new Map();
-				usage.set(owner, pkgUsage);
-			}
+			const pkgUsage = atKey(usage, owner, () => new Map());
 			// narrow by the same-named constructor's presence only when it actually resolves (else just mark used)
 			if(!pkgUsage.has(cls) && src.functionByName(owner, cls) !== undefined) {
 				pkgUsage.set(cls, { named: new Map(), calls: new Map([['#0', []]]) });
 			}
 			return;
 		}
-	};
-	for(const cls of namespaceClasses) {
-		attribute(cls, true);
 	}
-	for(const cls of codeClasses) {
-		attribute(cls, false);
-	}
+	namespaceClasses.forEach(cls => attribute(cls, true));
+	codeClasses.forEach(cls => attribute(cls, false));
 }
 
 /**
@@ -309,15 +298,11 @@ function isSyntheticArgument(arg: FunctionArgument): boolean {
 }
 
 /** record one call of `fn` (made at `at`) into `pkgUsage`: union its named argument names and keep one representative per call shape */
-function recordCallUsage(pkgUsage: PackageUsage, fn: string, rawArgs: readonly FunctionArgument[], at: NodeId): void {
-	let entry = pkgUsage.get(fn);
-	if(entry === undefined) {
-		entry = { named: new Map(), calls: new Map() };
-		pkgUsage.set(fn, entry);
-	}
+function recordCallUsage(pkgUsage: PackageUsage, fn: BrandedIdentifier, rawArgs: readonly FunctionArgument[], at: NodeId): void {
+	const entry = atKey(pkgUsage, fn, () => ({ named: new Map(), calls: new Map() }));
 	entry.at ??= at;
 	const args = rawArgs.some(isSyntheticArgument) ? rawArgs.filter(a => !isSyntheticArgument(a)) : rawArgs;
-	const named: string[] = [];
+	const named: BrandedIdentifier[] = [];
 	let positional = 0;
 	for(const arg of args) {
 		if(FunctionArgument.isNamed(arg)) {
@@ -337,24 +322,15 @@ function recordCallUsage(pkgUsage: PackageUsage, fn: string, rawArgs: readonly F
 }
 
 /** scan the dataflow graph for every call that resolves (via {@link Dataflow.qualify}) to a package export */
-export function collectUsage(graph: DataflowGraph, deps?: ReadOnlyFlowrAnalyzerDependenciesContext): Map<string, PackageUsage> {
-	const usage = new Map<string, PackageUsage>();
+export function collectUsage(graph: DataflowGraph, deps?: ReadOnlyFlowrAnalyzerDependenciesContext): Map<BrandedNamespace, PackageUsage> {
+	const usage = new Map<BrandedNamespace, PackageUsage>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		// use canonical qualification to reconstruct pkg::fn identifier
 		const qualified = Dataflow.qualify(id, graph, true);
-		if(qualified === undefined) {
-			continue;
+		const pkg = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
+		if(qualified !== undefined && pkg !== undefined) {
+			recordCallUsage(atKey(usage, pkg, () => new Map()), Identifier.getName(qualified), vertex.args, id);
 		}
-		const pkg = Identifier.getNamespace(qualified);
-		if(pkg === undefined) {
-			continue;
-		}
-		let pkgUsage = usage.get(pkg);
-		if(pkgUsage === undefined) {
-			pkgUsage = new Map();
-			usage.set(pkg, pkgUsage);
-		}
-		recordCallUsage(pkgUsage, Identifier.getName(qualified), vertex.args, id);
 	}
 	if(deps) {
 		addClassOwnershipUsage(usage, deps, graph);
@@ -379,16 +355,14 @@ export interface OrphanCall {
 	readonly exporters: number;
 }
 
-/**
- * What the orphan calls of one analyzed program implicated, as {@link collectOrphanUsage} reports it.
- */
+/** What the orphan calls of one analyzed program implicated, as {@link collectOrphanUsage} reports it. */
 export interface OrphanUsage {
 	/** per package the project does not already know: the orphan calls that pointed at it, by function name */
-	readonly attributed:       Map<string, Map<string, OrphanCall>>;
+	readonly attributed:       Map<BrandedNamespace, Map<BrandedIdentifier, OrphanCall>>;
 	/** per such package: the other exporters of those names that lost the pick, most downloaded first */
-	readonly alternatives:     Map<string, string[]>;
+	readonly alternatives:     Map<BrandedNamespace, BrandedNamespace[]>;
 	/** the same calls recorded against every alternative, so a caller can ask which of its versions would fit */
-	readonly alternativeUsage: Map<string, PackageUsage>;
+	readonly alternativeUsage: Map<BrandedNamespace, PackageUsage>;
 }
 
 /** options for {@link collectOrphanUsage} */
@@ -396,7 +370,7 @@ export interface OrphanUsageOptions {
 	/** the analyzed project's own namespace, never inferred as one of its own orphan dependencies */
 	readonly self?:             string;
 	/** flowR's curated map of a builtin-modeled library function to its package (e.g. `ggplot` to `ggplot2`), the authoritative disambiguator when several packages export the name */
-	readonly builtinLibraryOf?: (name: string) => string | undefined;
+	readonly builtinLibraryOf?: (name: BrandedIdentifier) => BrandedNamespace | undefined;
 }
 
 /**
@@ -415,11 +389,11 @@ export interface OrphanUsageOptions {
  * uses and forward-referenced closures. The exporters that lost the pick are kept as
  * {@link OrphanUsage.alternatives}, since the guess is exactly that -- a guess.
  */
-export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnalyzerDependenciesContext, usage: Map<string, PackageUsage>, isKnown: (pkg: string) => boolean, options: OrphanUsageOptions = {}): OrphanUsage {
+export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnalyzerDependenciesContext, usage: Map<BrandedNamespace, PackageUsage>, isKnown: (pkg: BrandedNamespace) => boolean, options: OrphanUsageOptions = {}): OrphanUsage {
 	const { self, builtinLibraryOf } = options;
-	const attributed = new Map<string, Map<string, OrphanCall>>();
-	const alternatives = new Map<string, string[]>();
-	const alternativeUsage = new Map<string, PackageUsage>();
+	const attributed = new Map<BrandedNamespace, Map<BrandedIdentifier, OrphanCall>>();
+	const alternatives = new Map<BrandedNamespace, BrandedNamespace[]>();
+	const alternativeUsage = new Map<BrandedNamespace, PackageUsage>();
 	const scopeDefined = collectScopeDefinedNames(graph);
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		// an anonymous callee, or an already-qualified `pkg::fn` (handled by collectUsage)
@@ -454,13 +428,13 @@ export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnal
 		if(pkg === undefined || Dataflow.origin(graph, id)?.some(o => o.type === OriginType.FunctionCallOrigin) === true) {
 			continue;
 		}
-		recordCallUsage(atKey(usage, pkg, (): PackageUsage => new Map()), name, vertex.args, id);
+		recordCallUsage(atKey(usage, pkg, () => new Map()), name, vertex.args, id);
 		// a package the project already declares or loads is a normal target, not an orphan needing attachment
 		if(isKnown(pkg)) {
 			continue;
 		}
 		const reason: OrphanReason = builtin ? 'builtin' : providers.length === 1 ? 'sole exporter' : 'most downloaded';
-		const calls = atKey(attributed, pkg, () => new Map<string, OrphanCall>());
+		const calls = atKey(attributed, pkg, () => new Map<BrandedIdentifier, OrphanCall>());
 		if(!calls.has(name)) {
 			calls.set(name, { at: id, reason, exporters: providers.length });
 		}
@@ -468,14 +442,14 @@ export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnal
 		const losers = providers.filter(p => p !== pkg);
 		alternatives.set(pkg, uniqueArray([...alternatives.get(pkg) ?? [], ...losers]));
 		for(const alt of losers) {
-			recordCallUsage(atKey(alternativeUsage, alt, (): PackageUsage => new Map()), name, vertex.args, id);
+			recordCallUsage(atKey(alternativeUsage, alt, () => new Map()), name, vertex.args, id);
 		}
 	}
 	return { attributed, alternatives, alternativeUsage };
 }
 
 /** the entry of `key`, inserting what `make` builds when the map has none yet */
-function atKey<V>(map: Map<string, V>, key: string, make: () => V): V {
+function atKey<K, V>(map: Map<K, V>, key: K, make: () => NoInfer<V>): V {
 	let found = map.get(key);
 	if(found === undefined) {
 		map.set(key, found = make());
@@ -484,7 +458,7 @@ function atKey<V>(map: Map<string, V>, key: string, make: () => V): V {
 }
 
 /** the dated releases + base-R core releases + latest of a package, ascending by R-version order */
-function versionTimeline(src: PackageSignatureSource, pkg: string): TimelineEntry[] {
+function versionTimeline(src: PackageSignatureSource, pkg: BrandedNamespace): TimelineEntry[] {
 	return availableVersionEntries(src, pkg).map(e => ({ ver: e.version, ...(e.date ? { date: e.date } : {}) }));
 }
 
@@ -494,28 +468,20 @@ function suppliedArgs(args: readonly FunctionArgument[]): number {
 }
 
 /** whether a version's signatures accept how the code calls it; tracked names absent here are removals, untracked names are unknown primitives */
-function isCompatible(getFn: FnResolver, version: string, usage: PackageUsage, tracked: ReadonlySet<string>): boolean {
+function isCompatible(getFn: FnResolver, version: string, usage: PackageUsage, tracked: ReadonlySet<BrandedIdentifier>): boolean {
 	for(const [fn, use] of usage) {
 		const decoded = getFn(fn, version);
-		if(decoded === undefined) {
-			if(tracked.has(fn)) {
-				return false; // a tracked function removed in this version
-			}
-			continue; // an untracked primitive: unknown, not a removal
+		/* a tracked function absent here was removed; an untracked one is an unknown primitive */
+		if(decoded === undefined && tracked.has(fn)) {
+			return false;
 		}
-		if(decoded.signature.length === 0) {
-			continue; // an empty capture is uninformative (a generic like `seq`, or a data gap): it cannot disprove a call
+		/* an empty capture is uninformative (a generic like `seq`, or a data gap): it cannot disprove a call */
+		if(decoded === undefined || decoded.signature.length === 0) {
+			continue;
 		}
-		for(const args of use.calls.values()) {
-			// R's matching: exact, pmatch prefix, or positional; `...` absorbs the rest
-			const bound = FunctionSemantics.call.match.toSpec(args, decoded.signature);
-			let placed = 0;
-			for(const ids of bound.values()) {
-				placed += ids.length;
-			}
-			if(placed < suppliedArgs(args)) {
-				return false;
-			}
+		/* R's matching: exact, pmatch prefix, or positional; `...` absorbs the rest */
+		if([...use.calls.values()].some(args => arraySum([...FunctionSemantics.call.match.toSpec(args, decoded.signature).values()].map(ids => ids.length)) < suppliedArgs(args))) {
+			return false;
 		}
 	}
 	return true;
@@ -526,7 +492,7 @@ function isCompatible(getFn: FnResolver, version: string, usage: PackageUsage, t
  * `undefined` (the function is absent) is a no; an empty capture (a generic like `seq` whose formals became
  * `UseMethod`, or a data gap) is uninformative and treated as accepting (so it never reports a false removal).
  */
-function argumentSupported(decoded: DecodedFunction | undefined, arg: string): boolean {
+function argumentSupported(decoded: DecodedFunction | undefined, arg: BrandedIdentifier): boolean {
 	if(decoded === undefined) {
 		return false;
 	}
@@ -535,23 +501,13 @@ function argumentSupported(decoded: DecodedFunction | undefined, arg: string): b
 }
 
 /** the earliest *carried* version in `timeline` (ascending) whose signature satisfies `predicate` */
-function earliestSupporting(src: PackageSignatureSource, pkg: string, timeline: readonly TimelineEntry[], predicate: (version: string) => boolean): string | undefined {
-	for(const entry of timeline) {
-		if(src.hasVersion(pkg, entry.ver) && predicate(entry.ver)) {
-			return entry.ver;
-		}
-	}
-	return undefined;
+function earliestSupporting(src: PackageSignatureSource, pkg: BrandedNamespace, timeline: readonly TimelineEntry[], predicate: (version: string) => boolean): string | undefined {
+	return timeline.find(e => src.hasVersion(pkg, e.ver) && predicate(e.ver))?.ver;
 }
 
 /** the latest *carried* version in `timeline` (ascending) whose signature satisfies `predicate` */
-function latestSupporting(src: PackageSignatureSource, pkg: string, timeline: readonly TimelineEntry[], predicate: (version: string) => boolean): string | undefined {
-	for(let i = timeline.length - 1; i >= 0; i--) {
-		if(src.hasVersion(pkg, timeline[i].ver) && predicate(timeline[i].ver)) {
-			return timeline[i].ver;
-		}
-	}
-	return undefined;
+function latestSupporting(src: PackageSignatureSource, pkg: BrandedNamespace, timeline: readonly TimelineEntry[], predicate: (version: string) => boolean): string | undefined {
+	return timeline.findLast(e => src.hasVersion(pkg, e.ver) && predicate(e.ver))?.ver;
 }
 
 /** emit one signature bound: `>=v` only when `v` is after the floor, `<=v` only when before the ceiling */
@@ -563,7 +519,7 @@ function emitSignatureBound(observe: ConstraintObserver, fn: Identifier, v: stri
 }
 
 /** emit signature bounds from a package's version history: when functions/parameters appear or vanish */
-function addSignatureEvidence(observe: ConstraintObserver, src: PackageSignatureSource, getFn: FnResolver, pkg: string, usage: PackageUsage, timeline: readonly TimelineEntry[]): void {
+function addSignatureEvidence(observe: ConstraintObserver, src: PackageSignatureSource, getFn: FnResolver, pkg: BrandedNamespace, usage: PackageUsage, timeline: readonly TimelineEntry[]): void {
 	const floor = earliestSupporting(src, pkg, timeline, () => true);
 	const ceiling = latestSupporting(src, pkg, timeline, () => true);
 	if(floor === undefined || ceiling === undefined) {
@@ -584,12 +540,9 @@ function addSignatureEvidence(observe: ConstraintObserver, src: PackageSignature
 
 /** intersection of multiple survivor sets: versions that survive in every set */
 export function intersectSurvivors(survivorSets: readonly (readonly TimelineEntry[])[]): TimelineEntry[] {
-	if(survivorSets.length === 0) {
-		return [];
-	}
 	const [first, ...rest] = survivorSets;
 	const restVersions = rest.map(set => new Set(set.map(e => e.ver)));
-	return first.filter(e => restVersions.every(set => set.has(e.ver)));
+	return first?.filter(e => restVersions.every(set => set.has(e.ver))) ?? [];
 }
 
 /**
@@ -628,8 +581,8 @@ function collapseAlternatives(ranges: readonly Range[]): readonly Range[] {
  * constraint only ever filters when *every* one of them declares it (see {@link TransitiveConstraint}). Without it,
  * the single {@link Package.resolvedVersion|resolved version} is used, which is by definition universal.
  */
-export function collectTransitiveConstraints(deps: ReadOnlyFlowrAnalyzerDependenciesContext, sources: readonly PackageSignatureSource[], versionsOf?: (pkg: string) => readonly VersionString[] | undefined): Map<string, TransitiveConstraint[]> {
-	const out = new Map<string, TransitiveConstraint[]>();
+export function collectTransitiveConstraints(deps: ReadOnlyFlowrAnalyzerDependenciesContext, sources: readonly PackageSignatureSource[], versionsOf?: (pkg: BrandedNamespace) => readonly VersionString[] | undefined): Map<BrandedNamespace, TransitiveConstraint[]> {
+	const out = new Map<BrandedNamespace, TransitiveConstraint[]>();
 	for(const pkg of deps.getDependencies()) {
 		// merged across sources: a single source may only carry part of the package's history, and a version it lacks
 		// would look like "declares nothing" and wrongly turn the requirement into a partial one
@@ -641,20 +594,16 @@ export function collectTransitiveConstraints(deps: ReadOnlyFlowrAnalyzerDependen
 		// `undefined` asks the source for its own default version, so a package with no candidates still yields its requirements
 		const versions: readonly (VersionString | undefined)[] = known && known.length > 0 ? known : [pkg.resolvedVersion];
 		// per required package: the distinct requirements found, and from how many of `versions` they were read
-		const perDep = new Map<string, { readonly ranges: Map<string, Range>, declaredBy: number }>();
+		const perDep = new Map<BrandedNamespace, { readonly ranges: Map<BrandedNamespace, Range>, declaredBy: number }>();
 		for(const version of versions) {
-			const seen = new Set<string>();
+			const seen = new Set<BrandedNamespace>();
 			for(const dep of loadRequirements(src, pkg.name, version)) {
 				const range = dep.constraint ? RRange.parse(dep.constraint) : undefined;
 				if(!range || seen.has(dep.name)) {
 					continue;
 				}
 				seen.add(dep.name);
-				let entry = perDep.get(dep.name);
-				if(entry === undefined) {
-					entry = { ranges: new Map(), declaredBy: 0 };
-					perDep.set(dep.name, entry);
-				}
+				const entry = atKey(perDep, dep.name, () => ({ ranges: new Map(), declaredBy: 0 }));
 				entry.ranges.set(range.raw, range);
 				entry.declaredBy++;
 			}
@@ -662,9 +611,7 @@ export function collectTransitiveConstraints(deps: ReadOnlyFlowrAnalyzerDependen
 		const only = versions.length === 1 ? versions[0] : undefined;
 		const from = `${pkg.name}${only ? ' ' + only : ''}`;
 		for(const [name, entry] of perDep) {
-			const arr = out.get(name) ?? [];
-			arr.push({ ranges: collapseAlternatives([...entry.ranges.values()]), from, universal: entry.declaredBy === versions.length });
-			out.set(name, arr);
+			atKey(out, name, (): TransitiveConstraint[] => []).push({ ranges: collapseAlternatives([...entry.ranges.values()]), from, universal: entry.declaredBy === versions.length });
 		}
 	}
 	return out;
@@ -682,7 +629,7 @@ export function iterateToFixpoint(maxIterations: number, step: () => boolean): v
 export interface VersionSpaceOptions {
 	readonly deps:      ReadOnlyFlowrAnalyzerDependenciesContext;
 	/** how the analyzed code calls each package, from {@link collectUsage} */
-	readonly usage:     ReadonlyMap<string, PackageUsage>;
+	readonly usage:     ReadonlyMap<BrandedNamespace, PackageUsage>;
 	/** only consider releases up to this instant */
 	readonly cutoff?:   Date;
 	/** the assumed R version bounding base packages, when genuinely known */
@@ -693,7 +640,7 @@ export interface VersionSpaceOptions {
 
 /** a target's sigdb package key, merged source, and memoized signature resolver */
 interface PackageResolution {
-	readonly key:         string;
+	readonly key:         BrandedNamespace;
 	readonly src:         PackageSignatureSource | undefined;
 	readonly getFn:       FnResolver;
 	/** the package's release timeline, ascending */
@@ -708,21 +655,13 @@ interface PackageResolution {
  * Whether a version's signatures accept how the code calls the package. The verdict depends only on the code and the
  * database, never on the constraints, so it is decided once per version and reused across the fixpoint's passes.
  */
-function makeSignatureFilter(src: PackageSignatureSource | undefined, pkg: string, getFn: FnResolver, timeline: readonly TimelineEntry[], usage: PackageUsage | undefined): (version: VersionString) => boolean {
+function makeSignatureFilter(src: PackageSignatureSource | undefined, pkg: BrandedNamespace, getFn: FnResolver, timeline: readonly TimelineEntry[], usage: PackageUsage | undefined): (version: VersionString) => boolean {
 	if(!src || !usage) {
 		return () => true;
 	}
 	// tracked names appear in some carried version; untracked names must not reject all versions
 	const tracked = new Set([...usage.keys()].filter(fn => timeline.some(e => getFn(fn, e.ver) !== undefined)));
-	const verdict = new Map<VersionString, boolean>();
-	return version => {
-		let ok = verdict.get(version);
-		if(ok === undefined) {
-			ok = !src.hasVersion(pkg, version) || isCompatible(getFn, version, usage, tracked);
-			verdict.set(version, ok);
-		}
-		return ok;
-	};
+	return memoize(version => !src.hasVersion(pkg, version) || isCompatible(getFn, version, usage, tracked));
 }
 
 /**
@@ -734,11 +673,11 @@ function makeSignatureFilter(src: PackageSignatureSource | undefined, pkg: strin
 export class VersionSpace {
 	public readonly deps:     ReadOnlyFlowrAnalyzerDependenciesContext;
 	public readonly sources:  readonly PackageSignatureSource[];
-	public readonly usage:    ReadonlyMap<string, PackageUsage>;
+	public readonly usage:    ReadonlyMap<BrandedNamespace, PackageUsage>;
 	public readonly cutoff:   Date | undefined;
 	public readonly rVersion: string | undefined;
 	public readonly disabled: ReadonlySet<ConstraintSource>;
-	private readonly resolved = new Map<string, PackageResolution>();
+	private readonly resolved = new Map<BrandedNamespace, PackageResolution>();
 
 	constructor({ deps, usage, cutoff, rVersion, disabled = NoDisabledSources }: VersionSpaceOptions) {
 		this.deps = deps;
@@ -750,7 +689,7 @@ export class VersionSpace {
 	}
 
 	/** the sigdb package, source, and signature resolver of a target, resolved once */
-	public resolve(name: string): PackageResolution {
+	public resolve(name: BrandedNamespace): PackageResolution {
 		let entry = this.resolved.get(name);
 		if(entry === undefined) {
 			const key = timelinePackageKey(name, this.sources);
@@ -759,7 +698,7 @@ export class VersionSpace {
 			const timeline = src ? versionTimeline(src, key) : [];
 			const all = this.usage.get(name);
 			// base primitives are captured inconsistently, so their absence from a base package is a data gap, not a removal
-			const usage = all && src?.isBaseR(key) ? new Map([...all].filter(([fn]) => !RBasePrimitives.has(fn))) : all;
+			const usage = all && src?.isBaseR(key) ? new Map([...all].filter(([fn]) => !isBasePrimitive(fn))) : all;
 			entry = { key, src, getFn, timeline, usage, signatureOk: makeSignatureFilter(src, key, getFn, timeline, usage) };
 			this.resolved.set(name, entry);
 		}
@@ -767,7 +706,7 @@ export class VersionSpace {
 	}
 
 	/** the versions of `name` surviving every constraint, see {@link survivingEntries} */
-	public survivors(name: string, transitive: readonly TransitiveConstraint[], observe?: ConstraintObserver): SurvivingEntries {
+	public survivors(name: BrandedNamespace, transitive: readonly TransitiveConstraint[], observe?: ConstraintObserver): SurvivingEntries {
 		return survivingEntries(this, name, transitive, observe);
 	}
 
@@ -782,17 +721,14 @@ export class VersionSpace {
 	 * at `maxIterations` leaves it on the permissive side rather than at an arbitrary point. A declaring package that
 	 * is not among the `targets` is not being guessed, so its {@link Package.resolvedVersion} stands in.
 	 */
-	public refineTransitive(targets: readonly string[], maxIterations = DefaultFixpointIterations): Map<string, TransitiveConstraint[]> {
+	public refineTransitive(targets: readonly BrandedNamespace[], maxIterations = DefaultFixpointIterations): Map<BrandedNamespace, TransitiveConstraint[]> {
 		if(this.disabled.has('transitive')) {
 			return collectTransitiveConstraints(this.deps, this.sources);
 		}
-		let transitive = new Map<string, TransitiveConstraint[]>();
+		let transitive = new Map<BrandedNamespace, TransitiveConstraint[]>();
 		let previous = '';
 		iterateToFixpoint(maxIterations, () => {
-			const pass = new Map<string, readonly VersionString[]>();
-			for(const name of targets) {
-				pass.set(name, this.survivors(name, transitive.get(name) ?? []).survivors.map(e => e.ver));
-			}
+			const pass = new Map(targets.map(name => [name, this.survivors(name, transitive.get(name) ?? []).survivors.map(e => e.ver)]));
 			// the sets only ever shrink, so their sizes and endpoints identify the state
 			const signature = Array.from(pass, ([k, v]) => `${k}=${v.length}:${v[0] ?? ''}-${v[v.length - 1] ?? ''}`).sort().join(',');
 			if(signature === previous) {
@@ -808,28 +744,24 @@ export class VersionSpace {
 
 /** the outcome of {@link enforceArcConsistency}: the pruned version sets, and which partner blocked each package */
 export interface ArcConsistency {
-	readonly survivors: Map<string, TimelineEntry[]>;
+	readonly survivors: Map<BrandedNamespace, TimelineEntry[]>;
 	/** per package, the partner that rejected a version and the requirement it could not meet */
-	readonly blockers:  Map<string, Map<string, string>>;
+	readonly blockers:  Map<BrandedNamespace, Map<BrandedNamespace, string>>;
 }
 
 /** drop, to a fixpoint, the versions of each package that no co-guessed dependency can satisfy */
-export function enforceArcConsistency(space: VersionSpace, initial: ReadonlyMap<string, TimelineEntry[]>, maxIterations = DefaultFixpointIterations): ArcConsistency {
+export function enforceArcConsistency(space: VersionSpace, initial: ReadonlyMap<BrandedNamespace, TimelineEntry[]>, maxIterations = DefaultFixpointIterations): ArcConsistency {
 	const survivors = new Map(initial);
-	const blockers = new Map<string, Map<string, string>>();
+	const blockers = new Map<BrandedNamespace, Map<BrandedNamespace, string>>();
 	iterateToFixpoint(maxIterations, () => {
-		const versionsByName = new Map([...survivors].map(([name, entries]) => [name, entries.map(e => e.ver)]));
+		const versionsByName = new Map<BrandedNamespace, string[]>([...survivors].map(([name, entries]) => [name, entries.map(e => e.ver)]));
 		let changed = false;
 		for(const [name, entries] of survivors) {
 			const { src, key } = space.resolve(name);
 			if(src === undefined) {
 				continue;
 			}
-			const kept = entries.filter(v => versionMeetsPartners(src, key, v.ver, versionsByName, name, (partner, constraint) => {
-				const forPkg = blockers.get(name) ?? new Map<string, string>();
-				forPkg.set(partner, constraint);
-				blockers.set(name, forPkg);
-			}));
+			const kept = entries.filter(v => versionMeetsPartners(src, key, v.ver, versionsByName, name, (partner, constraint) => atKey(blockers, name, () => new Map<BrandedNamespace, string>()).set(partner, constraint)));
 			if(kept.length !== entries.length) {
 				changed = true;
 				survivors.set(name, kept);
@@ -873,10 +805,10 @@ interface FactorCoupling {
 }
 
 /** the parseable requirements each surviving version of `f` places on the other packages, resolved once */
-function factorRequirements(space: VersionSpace, f: CountFactor): Map<string, Range>[] {
+function factorRequirements(space: VersionSpace, f: CountFactor): Map<BrandedNamespace, Range>[] {
 	const { src, key } = space.resolve(f.name);
 	return f.survivors.map(v => {
-		const out = new Map<string, Range>();
+		const out = new Map<BrandedNamespace, Range>();
 		for(const dep of loadRequirements(src, key, v)) {
 			const range = dep.constraint ? RRange.parse(dep.constraint) : undefined;
 			if(range && !out.has(dep.name)) {
@@ -888,7 +820,7 @@ function factorRequirements(space: VersionSpace, f: CountFactor): Map<string, Ra
 }
 
 /** the coupling between two factors, or `undefined` when neither ever constrains the other */
-function coupleFactors(a: number, b: number, factors: readonly CountFactor[], requirements: readonly Map<string, Range>[][]): FactorCoupling | undefined {
+function coupleFactors(a: number, b: number, factors: readonly CountFactor[], requirements: readonly Map<BrandedNamespace, Range>[][]): FactorCoupling | undefined {
 	const onB = requirements[a].map(r => r.has(factors[b].name));
 	const onA = requirements[b].map(r => r.has(factors[a].name));
 	if(!onB.some(Boolean) && !onA.some(Boolean)) {
@@ -900,7 +832,7 @@ function coupleFactors(a: number, b: number, factors: readonly CountFactor[], re
 }
 
 /** `ok[i][j]`: version `i` of factor `a` runs with version `j` of factor `b` */
-function compatibilityMatrix(c: FactorCoupling, factors: readonly CountFactor[], requirements: readonly Map<string, Range>[][]): boolean[][] {
+function compatibilityMatrix(c: FactorCoupling, factors: readonly CountFactor[], requirements: readonly Map<BrandedNamespace, Range>[][]): boolean[][] {
 	const [fa, fb] = [factors[c.a], factors[c.b]];
 	const onB = requirements[c.a].map(r => r.get(fb.name));
 	const onA = requirements[c.b].map(r => r.get(fa.name));
@@ -921,15 +853,7 @@ function compatibilityMatrix(c: FactorCoupling, factors: readonly CountFactor[],
  */
 export function countRunnableCombinations(space: VersionSpace, factors: readonly CountFactor[]): CountedCombinations {
 	const requirements = factors.map(f => factorRequirements(space, f));
-	const found: FactorCoupling[] = [];
-	for(let a = 0; a < factors.length; a++) {
-		for(let b = a + 1; b < factors.length; b++) {
-			const coupling = coupleFactors(a, b, factors, requirements);
-			if(coupling) {
-				found.push(coupling);
-			}
-		}
-	}
+	const found = factors.flatMap((_, a) => factors.slice(a + 1).map((_, k) => coupleFactors(a, a + 1 + k, factors, requirements))).filter(isNotUndefined);
 	const parent = factors.map((_, i) => i);
 	const find = (i: number): number => parent[i] === i ? i : (parent[i] = find(parent[i]));
 	const tree: (FactorCoupling & { ok: boolean[][] })[] = [];
@@ -954,7 +878,7 @@ function countOverForest(factors: readonly CountFactor[], tree: readonly (Factor
 	}
 	// weight[i] of a node: how many assignments of its subtree exist with that node fixed to version i
 	const visited = factors.map(() => false);
-	const subtree = (node: number, from: number): number[] => {
+	function subtree(node: number, from: number): number[] {
 		visited[node] = true;
 		const weight = factors[node].survivors.map(() => 1);
 		for(const edge of neighbours[node]) {
@@ -963,15 +887,11 @@ function countOverForest(factors: readonly CountFactor[], tree: readonly (Factor
 			}
 			const child = subtree(edge.to, node);
 			for(let i = 0; i < weight.length; i++) {
-				let sum = 0;
-				for(let j = 0; j < child.length; j++) {
-					sum += (edge.flipped ? edge.ok[j][i] : edge.ok[i][j]) ? child[j] : 0;
-				}
-				weight[i] *= sum;
+				weight[i] *= arraySum(child.map((c, j) => (edge.flipped ? edge.ok[j][i] : edge.ok[i][j]) ? c : 0));
 			}
 		}
 		return weight;
-	};
+	}
 	let total = 1;
 	for(let i = 0; i < factors.length; i++) {
 		if(!visited[i]) {
@@ -982,17 +902,11 @@ function countOverForest(factors: readonly CountFactor[], tree: readonly (Factor
 }
 
 /** whether every requirement `pkg@ver` places on a co-guessed dependency is met by one of that partner's surviving versions */
-function versionMeetsPartners(src: PackageSignatureSource, pkg: string, ver: string, partnerSurvivors: ReadonlyMap<string, readonly string[]>, selfName: string, onReject?: (partner: string, constraint: string) => void): boolean {
+function versionMeetsPartners(src: PackageSignatureSource, pkg: BrandedNamespace, ver: string, partnerSurvivors: ReadonlyMap<BrandedNamespace, readonly string[]>, selfName: BrandedNamespace, onReject?: (partner: BrandedNamespace, constraint: string) => void): boolean {
 	for(const dep of loadRequirements(src, pkg, ver)) {
-		if(dep.name === selfName || !dep.constraint) {
-			continue;
-		}
-		const partner = partnerSurvivors.get(dep.name);
-		if(partner === undefined || partner.length === 0) {
-			continue;
-		}
-		const req = RRange.parse(dep.constraint);
-		if(req && !partner.some(v => RRange.satisfies(v, req))) {
+		const partner = dep.name === selfName ? undefined : partnerSurvivors.get(dep.name);
+		const req = dep.constraint && partner?.length ? RRange.parse(dep.constraint) : undefined;
+		if(dep.constraint && req && !partner?.some(v => RRange.satisfies(v, req))) {
 			onReject?.(dep.name, dep.constraint);
 			return false;
 		}
@@ -1017,7 +931,7 @@ interface ConstraintInputs {
  * emitting each constraint to `observe` (when given) as it is applied, so the filtering and its explanation cannot
  * drift apart. A source disabled on `space` is skipped entirely: neither filtered on nor reported as evidence.
  */
-function applyConstraints(space: VersionSpace, name: string, timeline: readonly TimelineEntry[], inputs: ConstraintInputs, observe?: ConstraintObserver): TimelineEntry[] {
+function applyConstraints(space: VersionSpace, name: BrandedNamespace, timeline: readonly TimelineEntry[], inputs: ConstraintInputs, observe?: ConstraintObserver): TimelineEntry[] {
 	const { disabled, rVersion, cutoff } = space;
 	const { declaredRange, declaredConstraints, transitive, base } = inputs;
 	let t = timeline.slice();
@@ -1061,7 +975,7 @@ function applyConstraints(space: VersionSpace, name: string, timeline: readonly 
  * `observe` callback is given, emits the provenance of each constraint (including the signature lower bounds).
  * Prefer {@link VersionSpace.survivors}, which is the same call with the shared inputs already bound.
  */
-export function survivingEntries(space: VersionSpace, name: string, transitive: readonly TransitiveConstraint[], observe?: ConstraintObserver): SurvivingEntries {
+export function survivingEntries(space: VersionSpace, name: BrandedNamespace, transitive: readonly TransitiveConstraint[], observe?: ConstraintObserver): SurvivingEntries {
 	const { deps, disabled } = space;
 	// packageKey: sigdb package (R reuses base, others use themselves)
 	const { key: packageKey, src, getFn, timeline, usage, signatureOk } = space.resolve(name);
@@ -1094,7 +1008,7 @@ export function survivingEntries(space: VersionSpace, name: string, transitive: 
 }
 
 /** the sigdb package a target's version history is drawn from: `R` reuses `base` (their releases coincide), everything else is itself */
-export function timelinePackageKey(name: string, sources: readonly PackageSignatureSource[]): string {
+export function timelinePackageKey(name: BrandedNamespace, sources: readonly PackageSignatureSource[]): BrandedNamespace {
 	return name === 'R' && !sources.some(s => s.has(name)) ? 'base' : name;
 }
 
@@ -1118,7 +1032,7 @@ function constraintsContradict(declaredConstraints: readonly string[], declaredR
  * version first, then still-on-CRAN (non-archived) releases before archived ones, then by release (newest or oldest
  * first per {@link VersionExplodeOptions.order}).
  */
-function orderCandidates(src: PackageSignatureSource, name: string, survivors: readonly TimelineEntry[], prefer: string | undefined, order: 'newest' | 'oldest'): string[] {
+function orderCandidates(src: PackageSignatureSource, name: BrandedNamespace, survivors: readonly TimelineEntry[], prefer: string | undefined, order: 'newest' | 'oldest'): string[] {
 	const preferred = prefer !== undefined && survivors.some(e => e.ver === prefer) ? prefer : undefined;
 	// decide archived/non-CRAN status once per version (a cheap `noncran` check), not inside the O(n log n) comparator
 	const archived = new Set(survivors.filter(e => !src.isCranVersion(name, e.ver)).map(e => e.ver));
@@ -1128,17 +1042,17 @@ function orderCandidates(src: PackageSignatureSource, name: string, survivors: r
 }
 
 /** the ordered candidate list for one package, or `undefined` when nothing survives (shared by the query and the iterator) */
-export function orderedCandidatesOf(src: PackageSignatureSource | undefined, name: string, surviving: SurvivingEntries, prefer: string | undefined, order: 'newest' | 'oldest'): OrderedCandidates | undefined {
+export function orderedCandidatesOf(src: PackageSignatureSource | undefined, name: BrandedNamespace, surviving: SurvivingEntries, prefer: string | undefined, order: 'newest' | 'oldest'): OrderedCandidates | undefined {
 	return src && surviving.survivors.length > 0 ? { pkg: name, versions: orderCandidates(src, name, surviving.survivors, prefer, order) } : undefined;
 }
 
 /** the default explosion targets: every declared and used dependency (excluding `current`, the analyzed package's own namespace) */
-export function defaultTargets(deps: ReadOnlyFlowrAnalyzerDependenciesContext, usage: ReadonlyMap<string, PackageUsage>): string[] {
+export function defaultTargets(deps: ReadOnlyFlowrAnalyzerDependenciesContext, usage: ReadonlyMap<BrandedNamespace, PackageUsage>): BrandedNamespace[] {
 	return uniqueArray([...deps.getDependencies().map(d => d.name), ...usage.keys()]).filter(name => name !== ProjectPackage);
 }
 
 /** the requirements one concrete version declares, as {@link coInstallability} reads them */
-export type DependencyResolver = (pkg: string, version: VersionString) => readonly ResolvedDependency[] | undefined;
+export type DependencyResolver = (pkg: BrandedNamespace, version: VersionString) => readonly ResolvedDependency[] | undefined;
 
 /**
  * Whether the chosen versions can be loaded together, checking every requirement the chosen versions declare
@@ -1146,7 +1060,7 @@ export type DependencyResolver = (pkg: string, version: VersionString) => readon
  * on a package the assignment does not choose cannot be settled here and is reported as
  * {@link VersionAssignment.unverified} instead of silently passing, as `library()` still enforces it.
  */
-export function coInstallability(versions: ReadonlyMap<string, VersionString>, declares: DependencyResolver): { ok: boolean, unverified?: readonly string[] } {
+export function coInstallability(versions: ReadonlyMap<BrandedNamespace, VersionString>, declares: DependencyResolver): { ok: boolean, unverified?: readonly string[] } {
 	const unverified: string[] = [];
 	for(const [pkg, version] of versions) {
 		for(const dep of declares(pkg, version) ?? []) {
@@ -1179,10 +1093,7 @@ export function* assignmentsOf(perPackage: readonly OrderedCandidates[], limit: 
 	}
 	const idx = perPackage.map(() => 0);
 	for(let count = 0; count < limit; count++) {
-		const versions = new Map<string, string>();
-		for(let i = 0; i < perPackage.length; i++) {
-			versions.set(perPackage[i].pkg, perPackage[i].versions[idx[i]]);
-		}
+		const versions = new Map(perPackage.map((p, i) => [p.pkg, p.versions[idx[i]]]));
 		const checked = declares === undefined ? undefined : coInstallability(versions, declares);
 		if(checked === undefined) {
 			yield { versions };
@@ -1219,15 +1130,8 @@ async function orderedCandidatesFor(analyzer: ReadonlyFlowrAnalysisProvider, opt
 	const space = new VersionSpace({ deps, usage, cutoff, rVersion });
 	const transitive = space.refineTransitive(targets);
 	const order = options.order ?? 'newest';
-	const out: OrderedCandidates[] = [];
-	for(const name of targets) {
-		const surviving = space.survivors(name, transitive.get(name) ?? []);
-		const oc = orderedCandidatesOf(space.resolve(name).src, name, surviving, options.prefer?.[name], order);
-		if(oc) {
-			out.push(oc);
-		}
-	}
-	return { candidates: out, declares: declaredDependenciesOf(space) };
+	const candidates = targets.map(name => orderedCandidatesOf(space.resolve(name).src, name, space.survivors(name, transitive.get(name) ?? []), options.prefer?.[name], order)).filter(isNotUndefined);
+	return { candidates, declares: declaredDependenciesOf(space) };
 }
 
 /** the {@link DependencyResolver} backed by the signature database a version space resolves each package in */

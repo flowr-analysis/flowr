@@ -1,0 +1,61 @@
+name: "Performance Test"
+# Runs every benchmark suite with every parser and uploads the results as `benchmark-results-<suite>-<parser>`.
+# Called by the QA and the release workflow, which merge the results into the benchmark data afterwards.
+
+'on':
+  workflow_call:
+    inputs:
+      runs:
+        description: "How often each suite runs"
+        required: false
+        default: 1
+        type: number
+      r-packages:
+        description: "Whether to install the R packages the suites may use"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  performance-test:
+    name: "⏱️ Performance Test"
+    runs-on: ubuntu-22.04
+    timeout-minutes: 75
+    strategy:
+      fail-fast: true
+      matrix:
+        # add new suites and parsers here and in `.github/actions/upload-benchmarks`
+        name: ['artificial', 'real-world']
+        parser: ["tree-sitter", "r-shell"]
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v6
+        with:
+            submodules: true
+
+      - name: "🌍 Load Versions to Use"
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+          cache: npm
+
+      - name: "⬇️ Setup R"
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
+        with:
+          r-version: ${{ env.ACTION_R_VERSION }}
+          packages: ${{ inputs.r-packages && 'true' || 'false' }}
+
+      - name: "⏱️ Run the performance benchmarks"
+        run: bash .github/workflows/scripts/run-flowr-command.sh test:performance -- 1 ${{ inputs.runs }} "${{ matrix.name }}" "${{ matrix.parser }}"
+
+      - name: "⬆️ Upload Benchmark Results"
+        uses: actions/upload-artifact@v6
+        with:
+          name: benchmark-results-${{ matrix.name }}-${{ matrix.parser }}
+          path: test/performance/results/
+          if-no-files-found: error

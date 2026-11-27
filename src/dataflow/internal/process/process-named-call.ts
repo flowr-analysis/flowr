@@ -13,9 +13,7 @@ import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-o
 import { RPipe } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import { guard } from '../../../util/assert';
 
-/**
- * Helper function for {@link processNamedCall} using the given `content` as the name of the function.
- */
+/** Helper function for {@link processNamedCall} using the given `content` as the name of the function. */
 export function processAsNamedCall<OtherInfo>(
 	{ info, lexeme, location }: RNode<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,

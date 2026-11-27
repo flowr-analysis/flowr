@@ -29,7 +29,6 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 					origin:      [BuiltInProcName.NewEnv],
 					reads:       [NodeId.toBuiltIn('new.env')]
 				})
-				.calls('1@new.env', NodeId.toBuiltIn('new.env'))
 				.defineVariable('1@e', 'e', { definedBy: ['1@<-', '1@new.env'] })
 				.call('1@<-', '<-', [argumentInCall('1@e'), argumentInCall('1@new.env')], {
 					returns:     ['1@e'],
@@ -52,7 +51,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		assertDataflow(label('assign to custom env: e is read, x not in global scope', ['dynamic-environment-resolution', 'environment-sharing']),
+		assertDataflow(label('assign to custom env: e is read, x not in global scope', ['dynamic-environment-resolution', 'environment-sharing', 'environment-parent']),
 			shell,
 			'e <- new.env()\nassign("x", 42, envir=e)\nx',
 			emptyGraph()
@@ -363,7 +362,6 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 					reads:       [getName('3@get'), '3@nm', NodeId.toBuiltIn('get')],
 					onlyBuiltIn: true
 				})
-				.calls('3@get', NodeId.toBuiltIn('get'))
 				.reads(getName('3@get'), '1@x')),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
@@ -499,7 +497,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 	});
 
 	describe('attach() search path injection', () => {
-		assertDataflow(label('attach(e) injects env contents into scope', ['dynamic-environment-resolution', 'environment-sharing']),
+		assertDataflow(label('attach(e) injects env contents below a masking global', ['dynamic-environment-resolution', 'environment-sharing']),
 			shell,
 			[
 				'x <- 0',
@@ -512,12 +510,13 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				.defineVariable('2@e', 'e')
 				.use('3@e').reads('3@e', '2@e')
 				.use('4@e').reads('4@e', '2@e')
-				.reads('5@x', '3@"x"')
+				.reads('5@x', '1@x')
 				.use('5@x'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true,
-				mustNotHaveEdges:      [['5@x', '3@assign'], ['5@x', '1@x']]
+				/* the global `x` masks the attached one, R prints 0 */
+				mustNotHaveEdges:      [['5@x', '3@assign'], ['5@x', '3@"x"']]
 			}
 		);
 
@@ -746,20 +745,6 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				mustNotHaveEdges:      [['3@x', '2@assign']]
 			}
 		);
-
-		assertDataflow(label('new.env() without parent uses default (parent.frame()), tracked normally', ['dynamic-environment-resolution', 'environment-parent']),
-			shell,
-			'e <- new.env()\nassign("x", 42, envir=e)\nx',
-			emptyGraph()
-				.defineVariable('1@e', 'e')
-				.use('2@e').reads('2@e', '1@e')
-				.use('3@x'),
-			{
-				expectIsSubgraph:      true,
-				resolveIdsAsCriterion: true,
-				mustNotHaveEdges:      [['3@x', '2@assign']]
-			}
-		);
 	});
 
 	describe('rlang::new_environment()', () => {
@@ -892,6 +877,21 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 	});
 
 	describe('with() / within()', () => {
+		assertDataflow(label('with(list(x = v), x): x reads the element of the list, not the variable of the caller', ['dynamic-environment-resolution', 'environment-with']),
+			shell,
+			'x <- 3\nwith(list(x = readline()), system(x))\nx',
+			emptyGraph()
+				.use(12, 'x').reads(12, 7)
+				.use(17, 'x').reads(17, 0),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: false, mustNotHaveEdges: [[12, 0]] }
+		);
+		assertDataflow(label('with(list(f = system), f(y)): the element is the function it names', ['dynamic-environment-resolution', 'environment-with', 'environment-alias']),
+			shell,
+			'with(list(f = system), f(readline()))',
+			emptyGraph()
+				.calls(11, NodeId.toBuiltIn('system')),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: false }
+		);
 		assertDataflow(label('with(e, x): x resolves from envState, e is read', ['dynamic-environment-resolution', 'environment-with']),
 			shell,
 			[

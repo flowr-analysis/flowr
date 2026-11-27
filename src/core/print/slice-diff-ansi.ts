@@ -12,10 +12,7 @@ function mergeJointRangesInSorted(loc: { location: SourceRange; selected: boolea
 	return loc.reduce((acc, curr) => {
 		const last = acc[acc.length - 1];
 		if(SourceRange.overlap(last.location, curr.location)) {
-			acc[acc.length - 1] = {
-				selected: curr.selected || last.selected,
-				location: SourceRange.merge([last.location, curr.location])
-			};
+			acc[acc.length - 1] = { selected: curr.selected || last.selected, location: SourceRange.merge([last.location, curr.location]) };
 		} else {
 			acc.push(curr);
 		}
@@ -28,9 +25,7 @@ function highlight(s: string, selected: boolean): string {
 	return selected ? ansiFormatter.format(primary, { style: FontStyles.Underline }) : primary;
 }
 
-/**
- * Print a slice diff with ANSI colors
- */
+/** Print a slice diff with ANSI colors */
 export function sliceDiffAnsi(slice: ReadonlySet<NodeId>, normalized: NormalizedAst, criteriaIds: ReadonlySet<NodeId>, originalCode: string) {
 	let importantLocations = Array.from(normalized.idMap.entries())
 		.filter(([id, { location }]) => slice.has(id) && isNotUndefined(location))

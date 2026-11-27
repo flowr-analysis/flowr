@@ -2,11 +2,11 @@ import { SourceLocation, SourceRange } from '../../../src/util/range';
 import { allPermutations } from '../../../src/util/collections/arrays';
 import { describe, assert, test } from 'vitest';
 import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { withTreeSitter } from '../_helper/shell';
 import { isNotUndefined } from '../../../src/util/assert';
 import type { RNodeWithParent } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { analyze } from '../_helper/analyzer';
 
 describe('Range', () => {
 	describe('SourceRange.from', () => {
@@ -82,6 +82,11 @@ describe('Range', () => {
 		assertOverlap('lines apart', SourceRange.from(1, 5, 1, 9), SourceRange.from(3, 1, 3, 2), false);
 	});
 	describe('SourceLocation', () => {
+		test('a location never is the range it is made of', () => {
+			const range = SourceRange.from(1, 1, 2, 4);
+			assert.notStrictEqual(SourceLocation.from(range), range);
+			assert.deepStrictEqual(SourceLocation.from(range), range);
+		});
 		const located = SourceLocation.from(SourceRange.from(1, 1, 2, 4), 'a.R');
 		test('the range of a location carries no file', () => {
 			assert.deepStrictEqual(SourceLocation.getRange(located), SourceRange.from(1, 1, 2, 4));
@@ -175,11 +180,11 @@ describe('Range', () => {
 		});
 	});
 	describe('rangeStartsCompletelyBefore', () => {
-		const assertStarts = (
+		function assertStarts(
 			a: SourceRange,
 			b: SourceRange,
 			yesNo: boolean
-		): void => {
+		): void {
 			test(`${SourceRange.format(a)} ${yesNo ? '<' : 'not <'} ${SourceRange.format(b)}`, () => {
 				assert.strictEqual(
 					SourceRange.startsCompletelyBefore(a, b),
@@ -189,7 +194,7 @@ describe('Range', () => {
 					)})`
 				);
 			});
-		};
+		}
 		describe('identical ranges', () => {
 			for(const sameRange of [SourceRange.from(1, 1, 1, 1), SourceRange.from(2, 1, 4, 7)]) {
 				assertStarts(sameRange, sameRange, false);
@@ -211,26 +216,26 @@ describe('Range', () => {
 		});
 	});
 	describe('addRanges', () => {
-		const assertAdd = (
+		function assertAdd(
 			expected: SourceRange,
 			a: SourceRange,
 			b: SourceRange
-		): void => {
+		): void {
 			assert.deepStrictEqual(
 				SourceRange.add(a, b),
 				expected,
 				`addRanges(${JSON.stringify(a)}, ${JSON.stringify(b)})`
 			);
-		};
+		}
 
-		const assertIndependentOfOrder = (
+		function assertIndependentOfOrder(
 			expected: SourceRange,
 			a: SourceRange,
 			b: SourceRange
-		): void => {
+		): void {
 			assertAdd(expected, a, b);
 			assertAdd(expected, b, a);
-		};
+		}
 		test('with zero', () => {
 			assertIndependentOfOrder(
 				SourceRange.from(1, 1, 1, 1),
@@ -260,8 +265,7 @@ describe('Range', () => {
 	describe('innermost', withTreeSitter(ts => {
 		function check(code: string, provide: readonly SlicingCriterion[], expect: readonly SlicingCriterion[], treatChildAsInner = true) {
 			test(`${code} (${treatChildAsInner ? 'child' : 'both'})`, async() => {
-				const a = await new FlowrAnalyzerBuilder().setParser(ts).build();
-				a.addRequest(code);
+				const a = await analyze(ts, code);
 				const nast = await a.normalize();
 				const [provNodes, expectNodes] = [provide, expect].map(e =>
 					e.map(p => nast.idMap.get(SlicingCriterion.parse(p, nast.idMap)))
@@ -309,8 +313,7 @@ describe('Range', () => {
 
 	describe('node sets', () => {
 		/** the parts of a node these two look at: its range, its id, and who its parent is */
-		const node = (id: NodeId, range: SourceRange | undefined, parent?: NodeId): RNodeWithParent =>
-			({ info: { id, parent, ...(range ? { fullRange: range } : {}) } }) as unknown as RNodeWithParent;
+		const node = (id: NodeId, range: SourceRange | undefined, parent?: NodeId): RNodeWithParent => ({ info: { id, parent, ...(range ? { fullRange: range } : {}) } }) as unknown as RNodeWithParent;
 		const ids = (nodes: readonly RNodeWithParent[]): NodeId[] => nodes.map(n => n.info.id);
 
 		describe('nodesContaining', () => {

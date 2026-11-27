@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../src/dataflow/environments/identifier';
 /**
  * Recompute the R-core / base-package store from the bundled flowr-sigdb, run automatically when flowR is
  * bundled (see `build:copy-data`). For every base package it records the R-version range it was part of
@@ -35,7 +36,7 @@ const formatVersion = 9;
  * Base has no NAMESPACE, so what its sources bind is what it exports, the temporaries its `zzz.R` binds and removes
  * again included (`f`, `i`, `env`, ...). Of such a name nothing is known beyond it: no manual page, no place in the sources.
  */
-function leftOver(db: PackageSignatureSource, pkg: string, name: string): boolean {
+function leftOver(db: PackageSignatureSource, pkg: string, name: BrandedIdentifier): boolean {
 	const fn = pkg === 'base' ? db.functionByName(pkg, name) : undefined;
 	return fn !== undefined && fn.topic === undefined && fn.file === undefined && fn.props.every(p => p === 'exported');
 }
@@ -94,13 +95,13 @@ async function main(): Promise<void> {
 	];
 	// the exports of each current base package (each export listed under its first owner, so no name repeats),
 	// used to answer base-R qualification (`sd` -> `stats`); grouped by package so a package name is written once
-	const claimed = new Set<string>();
+	const claimed = new Set<BrandedIdentifier>();
 	const exportsByPackage: Record<string, string[]> = {};
 	// the exports that dispatch, so a built-in hiding one can still be labeled as the generic it shadows
-	const generics = new Set<string>();
+	const generics = new Set<BrandedIdentifier>();
 	let exportCount = 0;
 	for(const pkg of claimOrder) {
-		const names: string[] = [];
+		const names: BrandedIdentifier[] = [];
 		for(const name of db.lookup(pkg)?.exported ?? []) {
 			if(!claimed.has(name) && !leftOver(db, pkg, name)) {
 				claimed.add(name);

@@ -13,8 +13,7 @@ import { getCliLongOptionOf } from './doc-util/doc-cli-option';
 import { DfEdge } from '../dataflow/graph/edge';
 import { Resolve } from '../dataflow/environments/resolve-helper';
 import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import { ChainedWith, MutationCategory, MutationPasses } from '../../test/functionality/_helper/r-mutations';
 import { linkToQueryOfName } from './doc-util/doc-query';
 
@@ -26,10 +25,7 @@ function mutationCategories(): string {
 		MutationPasses.filter(p => p.category === category).map(p => `- \`${p.name}\`: ${p.description}`).join('\n'))).join('\n');
 }
 
-
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing */
 export class WikiLintingAndTesting extends DocMaker<'wiki/Linting and Testing.md'> {
 	constructor() {
 		super('wiki/Linting and Testing.md', module.filename, 'linting and testing definitions');
@@ -86,6 +82,14 @@ You can run the tests by issuing (some quick benchmarks may be available with \`
 
 ${codeBlock('shell', 'npm run test')}
 
+By default, this only runs the tests affected by your uncommitted changes, that is, the tests that import a changed file directly or through other files (see [\`vitest --changed\`](https://vitest.dev/guide/cli#changed)).
+This already works on the very first run and runs nothing if you have no changes.
+If you name test files, directories, or a name filter (\`-t\`), \`npm run test\` runs exactly those instead, changed or not.
+Changes to the test setup, the test files under \`test/testfiles\`, the vitest configuration, or \`package.json\` run every test.
+Use \`npm run test:all\` to run every test, \`npm run test:branch\` for the tests affected by all changes against \`main\`, and \`npm run test:related -- <files>\` for the tests depending on the given source files (see [\`vitest related\`](https://vitest.dev/guide/cli#vitest-related)).
+CI, \`npm run test:full\`, and \`npm run checkup\` always run every test.
+The section on [running only some tests](#running-only-some-tests) explains when the selection may be too broad or too narrow.
+
 Within the commandline,
 this should automatically drop you into a watch mode which will automatically re-run (potentially) affected tests if you change the code.
 If, at any time there are too many errors for you to comprehend, you can use \`--bail=<value>\` to stop the tests after a certain number of errors.
@@ -117,9 +121,7 @@ This folder contains three special and important elements:
 - \`_helper/\` folder which contains helper functions to be used by other tests.
 - \`test-summary.ts\` which may produce a summary of the covered capabilities.
 
-${block({
-	type:    'WARNING',
-	content: `
+${block('WARNING', `
 We name all test files using the \`.test.ts\` suffix and try to run them in parallel.
 Whenever this is impossible (e.g., when using ${ctx.link('withShell')}), pass \`{ concurrent: false }\` to the
 \`describe\` to disable parallel execution for the respective test (otherwise, such tests are flaky):
@@ -127,8 +129,7 @@ Whenever this is impossible (e.g., when using ${ctx.link('withShell')}), pass \`
 ${codeBlock('typescript', 'describe(\'my suite\', { concurrent: false }, withShell(shell => { /* ... */ }));')}
 
 Vitest deprecated the \`describe.sequential\` form in favour of that option, so please do not reintroduce it.
-`
-})}
+`)}
 
 <a id='test-labels'></a>
 #### 🏷️ Test Labels
@@ -155,7 +156,7 @@ These can be found in [the \`_helper\` subdirectory](${RemoteFlowrFilePathBaseRe
 For example, an [existing test](${RemoteFlowrFilePathBaseRef}test/functionality/dataflow/main/atomic/dataflow-atomic.test.ts) that tests the dataflow graph of a simple variable looks like this:
 ${codeBlock('typescript', `
 assertDataflow(label('simple variable', ['name-normal']), shell,
-	'x', emptyGraph().use('0', 'x')
+	'x', emptyGraph().use(0, 'x')
 );
 `)}
 Have a look at ${ctx.link('assertDataflow')}, ${ctx.link('label')}, and ${ctx.link('emptyGraph')} for more information.
@@ -169,7 +170,7 @@ When writing dataflow tests, additional settings can be used to reduce the amoun
 
 The following example shows both in use:
 ${codeBlock('typescript', `
-assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
+assertDataflow(label('without distractors', [...BuiltInOperators.byName['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
 	shell, '\`a\` <- 2\\na',
 	emptyGraph()
 		.use('2@a')
@@ -185,7 +186,12 @@ assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilit
 #### 🤏 Running Only Some Tests
 
 To run only some tests, vitest allows you to [filter](https://vitest.dev/guide/filtering.html) tests. 
-Besides, you can use the watch mode (with \`npm run test\`) to only run tests that are affected by your changes.
+By default, \`npm run test\` already runs only the tests affected by your uncommitted changes, even on the first run, and its watch mode re-runs the tests affected by every further change.
+For other selections, use \`npm run test:branch\` for all changes against \`main\`, \`npm run test:related -- <files>\` for the tests depending on the given files, or \`npm run test:all\` for every test.
+These scripts build on vitest's [\`--changed\`](https://vitest.dev/guide/cli#changed) and [\`related\`](https://vitest.dev/guide/cli#vitest-related) commands, which follow the imports of the test files.
+Most tests import the shared test helpers and the setup, so the selection is often broader than you might expect.
+Changes to the test setup, the test files under \`test/testfiles\`, the vitest configuration, or \`package.json\` run every test.
+Other data files and generated files are not visible in the imports and may select too few tests. When in doubt, run \`npm run test:all\`.
 
 <a id='system-tests'></a>
 ### 💽 System Tests

@@ -3,8 +3,7 @@ import path from 'path';
 import { guard, isNotUndefined } from '../util/assert';
 import { section } from './doc-util/doc-structure';
 import { Mermaid } from '../util/mermaid/mermaid';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 
 interface HelperCategory {
 	readonly id:      string;
@@ -53,7 +52,7 @@ function summarize(doc: string): string {
  */
 function declaredHelperObjects(): Map<string, DeclaredHelper> {
 	const found = new Map<string, DeclaredHelper>();
-	const walk = (dir: string): void => {
+	function walk(dir: string): void {
 		for(const entry of fs.readdirSync(dir, { withFileTypes: true })) {
 			const at = path.join(dir, entry.name);
 			if(entry.isDirectory()) {
@@ -67,14 +66,12 @@ function declaredHelperObjects(): Map<string, DeclaredHelper> {
 				}
 			}
 		}
-	};
+	}
 	walk(path.join(__dirname, '..'));
 	return found;
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Helper-Objects
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Helper-Objects */
 export class WikiHelperObjects extends DocMaker<'wiki/Helper Objects.md'> {
 	constructor() {
 		super('wiki/Helper Objects.md', module.filename, 'helper objects, by what they are about');

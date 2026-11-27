@@ -7,9 +7,7 @@ import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
-/**
- * Tries to normalize a while-loop structure from the given tokens.
- */
+/** Tries to normalize a while-loop structure from the given tokens. */
 export function tryNormalizeWhile(
 	data: NormalizerData,
 	[whileToken, leftParen, condition, rightParen, body]: [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry]

@@ -1,6 +1,11 @@
 import { Identifier, PkgName } from '../../../dataflow/environments/identifier';
-import type { LinkedInputDeclaration, LinkedInputEntryPoint, LinkedInputObject, NarrowingFunction } from './simple-input-classifier';
-import { InputType } from './simple-input-classifier';
+import {
+	type LinkedInputDeclaration,
+	type LinkedInputEntryPoint,
+	type LinkedInputObject,
+	type NarrowingFunction,
+	InputType
+} from './simple-input-classifier';
 import { ArgProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import type { BuiltInIndex } from '../../../dataflow/environments/query-fn-props';
 

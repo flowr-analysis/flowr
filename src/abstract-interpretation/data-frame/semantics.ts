@@ -111,11 +111,7 @@ function applyAccessColsSemantics(
 	{ columns }: { columns: string[] | number[] | undefined }
 ): DataFrameDomain {
 	if(columns?.every(col => typeof col === 'string')) {
-		return value.create({
-			colnames: value.colnames.union(setRange(columns)),
-			cols:     value.cols,
-			rows:     value.rows
-		});
+		return value.create({ colnames: value.colnames.union(setRange(columns)), cols: value.cols, rows: value.rows });
 	} else if(columns?.every(col => typeof col === 'number')) {
 		return value.create({
 			colnames: value.colnames,
@@ -142,9 +138,14 @@ function applyAccessRowsSemantics(
 
 function applyAssignColsSemantics(
 	value: DataFrameDomain,
-	{ columns }: { columns: string[] | number[] | undefined }
+	{ columns }: { columns: string[] | number[] | undefined },
+	options?: { maybeNull?: boolean }
 ): DataFrameDomain {
-	if(columns?.every(col => typeof col === 'string')) {
+	/* a value that may be `NULL` removes the columns instead */
+	if(options?.maybeNull) {
+		const removed = applyRemoveColsSemantics(value, { colnames: columns?.every(col => typeof col === 'string') ? columns : undefined }, { maybe: true });
+		return applyAssignColsSemantics(value, { columns }).join(removed);
+	} else if(columns?.every(col => typeof col === 'string')) {
 		return value.create({
 			colnames: value.colnames.union(setRange(columns)),
 			cols:     value.cols.add([0, columns.length]).max([columns.length, columns.length]),
@@ -157,11 +158,7 @@ function applyAssignColsSemantics(
 			rows:     value.rows
 		});
 	}
-	return value.create({
-		colnames: value.colnames.widenUp(),
-		cols:     value.cols.widenUp(),
-		rows:     value.rows
-	});
+	return value.create({ colnames: value.colnames.widenUp(), cols: value.cols.widenUp(), rows: value.rows });
 }
 
 function applyAssignRowsSemantics(
@@ -175,11 +172,7 @@ function applyAssignRowsSemantics(
 			rows:     rows.reduce((current, row) => current.max([row, row]), value.rows)
 		});
 	}
-	return value.create({
-		colnames: value.colnames,
-		cols:     value.cols,
-		rows:     value.rows.widenUp()
-	});
+	return value.create({ colnames: value.colnames, cols: value.cols, rows: value.rows.widenUp() });
 }
 
 function applySetColNamesSemantics(
@@ -188,11 +181,7 @@ function applySetColNamesSemantics(
 	options?: { partial?: boolean }
 ): DataFrameDomain {
 	if(options?.partial) {
-		return value.create({
-			colnames: value.colnames.widenDown().union(setRange(colnames)),
-			cols:     value.cols,
-			rows:     value.rows
-		});
+		return value.create({ colnames: value.colnames.widenDown().union(setRange(colnames)), cols: value.cols, rows: value.rows });
 	}
 	const allColNames = colnames?.every(isNotUndefined) && value.cols.isValue() && colnames.length >= value.cols.upper;
 
@@ -284,11 +273,7 @@ function applyConcatColsSemantics(
 	value: DataFrameDomain,
 	{ other }: { other: DataFrameDomain }
 ): DataFrameDomain {
-	return value.create({
-		colnames: value.colnames.union(other.colnames),
-		cols:     value.cols.add(other.cols),
-		rows:     value.rows
-	});
+	return value.create({ colnames: value.colnames.union(other.colnames), cols: value.cols.add(other.cols), rows: value.rows });
 }
 
 function applyConcatRowsSemantics(
@@ -302,11 +287,7 @@ function applyConcatRowsSemantics(
 			rows:     value.rows.add(other.rows)
 		});
 	}
-	return value.create({
-		colnames: value.colnames,
-		cols:     value.cols,
-		rows:     value.rows.add(other.rows)
-	});
+	return value.create({ colnames: value.colnames, cols: value.cols, rows: value.rows.add(other.rows) });
 }
 
 function applySubsetColsSemantics(
@@ -342,10 +323,11 @@ function applySubsetColsSemantics(
 function applySubsetRowsSemantics(
 	value: DataFrameDomain,
 	{ rows }: { rows: number | undefined },
-	options?: { atMost?: boolean }
+	options?: { atMost?: boolean, repeats?: boolean }
 ): DataFrameDomain {
 	if(rows === undefined) {
-		return value.create({ colnames: value.colnames, cols: value.cols, rows: value.rows.widenDown() });
+		/* an index may name a row twice or past the end, a condition only selects among them */
+		return value.create({ colnames: value.colnames, cols: value.cols, rows: options?.repeats ? value.rows.top() : value.rows.widenDown() });
 	}
 	return value.create({
 		colnames: value.colnames,
@@ -383,11 +365,7 @@ function applyGroupBySemantics(
 	options?: { mutatedCols?: boolean }
 ): DataFrameDomain {
 	if(options?.mutatedCols) {
-		return value.create({
-			colnames: value.colnames.union(setRange(by)),
-			cols:     value.cols.add([0, by.length]),
-			rows:     value.rows
-		});
+		return value.create({ colnames: value.colnames.union(setRange(by)), cols: value.cols.add([0, by.length]), rows: value.rows });
 	}
 	// Group by only marks columns as groups but does not change the shape itself
 	return value;
@@ -404,61 +382,62 @@ function applySummarizeSemantics(
 	});
 }
 
+/** Which rows of the two data frames a join keeps beyond the matching ones. */
+export enum JoinType {
+	Inner = 'inner',
+	Left = 'left',
+	Right = 'right',
+	Full = 'full'
+}
+
 function applyJoinSemantics(
 	value: DataFrameDomain,
 	{ other, by }: { other: DataFrameDomain, by: (string | undefined)[] | undefined },
-	options?: { join?: 'inner' | 'left' | 'right' | 'full', natural?: boolean }
+	options?: { join?: JoinType, natural?: boolean }
 ): DataFrameDomain {
 	// Merge two intervals by creating the maximum of the lower bounds and adding the upper bounds
-	const mergeInterval = (interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
+	function mergeInterval(interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain {
 		if(interval1.isValue() && interval2.isValue()) {
 			return new PosIntervalDomain([Math.max(interval1.lower, interval2.lower), interval1.upper + interval2.upper]);
 		}
 		return interval1.bottom();
-	};
-	// Creating the Cartesian product of two intervals by keeping the lower bound and multiplying the upper bounds
-	const productInterval = (lower: PosIntervalDomain, interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
+	}
+	// Creating the Cartesian product of two intervals by keeping the lower bound and multiplying the upper bounds (but never below the upper bound of the rows kept anyway)
+	function productInterval(lower: PosIntervalDomain, interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain {
 		if(lower.isValue() && interval1.isValue() && interval2.isValue()) {
-			return new PosIntervalDomain([lower.lower, interval1.upper * interval2.upper]);
+			return new PosIntervalDomain([lower.lower, Math.max(lower.upper, interval1.upper * interval2.upper)]);
 		}
 		return lower.bottom();
-	};
+	}
 	let duplicateCols: string[] | undefined;  // columns that may be renamed due to occurring in both data frames
-	let productRows: boolean;  // whether the resulting rows may be a Cartesian product of the rows of the data frames
 
 	if(options?.natural) {
-		const commonCols = value.colnames.intersect(other.colnames).upper();
 		duplicateCols = [];
-		productRows = commonCols !== Bottom && commonCols !== Top && commonCols.size === 0;
 	} else if(by === undefined) {
 		duplicateCols = undefined;
-		productRows = true;
 	} else if(by.length === 0) {
 		const commonCols = value.colnames.intersect(other.colnames).upper();
 		duplicateCols = commonCols !== Bottom ? commonCols !== Top ? [...commonCols] : undefined : [];
-		productRows = true;
 	} else if(by.every(isNotUndefined)) {
 		const remainingCols = value.colnames.intersect(other.colnames).subtract(setRange(by)).upper();
 		duplicateCols = remainingCols !== Bottom ? remainingCols !== Top ? [...remainingCols] : undefined : [];
-		productRows = false;
 	} else {
 		duplicateCols = undefined;
-		productRows = false;
 	}
-	const joinType = options?.join ?? 'inner';
+	const joinType = options?.join ?? JoinType.Inner;
 	let rows: PosIntervalDomain;
 
 	switch(joinType) {
-		case 'inner':
+		case JoinType.Inner:
 			rows = value.rows.max(other.rows).widenDown();
 			break;
-		case 'left':
+		case JoinType.Left:
 			rows = value.rows.max(other.rows.isValue() ? [0, other.rows.upper] : Bottom);
 			break;
-		case 'right':
+		case JoinType.Right:
 			rows = other.rows.max(value.rows.isValue() ? [0, value.rows.upper] : Bottom);
 			break;
-		case 'full':
+		case JoinType.Full:
 			rows = mergeInterval(value.rows, other.rows);
 			break;
 		default:
@@ -467,7 +446,8 @@ function applyJoinSemantics(
 	return value.create({
 		colnames: duplicateCols === undefined ? value.colnames.top() : duplicateCols.length > 0 ? value.colnames.union(other.colnames).subtract(setRange(duplicateCols)).widenUp() : value.colnames.union(other.colnames),
 		cols:     by !== undefined ? value.cols.add(other.cols).subtract([by.length, by.length]) : mergeInterval(value.cols, other.cols),
-		rows:     productRows ? productInterval(rows, value.rows, other.rows) : rows
+		// the keys need not be unique, so every row of one may match every row of the other
+		rows:     productInterval(rows, value.rows, other.rows)
 	});
 }
 

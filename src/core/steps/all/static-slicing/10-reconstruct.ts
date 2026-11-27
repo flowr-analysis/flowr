@@ -1,5 +1,5 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
-import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep, PipelineStepStage, requires } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { SliceResult } from '../../../../slicing/static/slicer-types';
 import { reconstructToCode, type InlineFull, type InlineSources } from '../../../../reconstruct/reconstruct';
@@ -48,9 +48,7 @@ export const NAIVE_RECONSTRUCT = {
 	description:       'Reconstruct R code from the static slice',
 	processor,
 	executed:          PipelineStepStage.OncePerRequest,
-	printer:           {
-		[StepOutputFormat.Internal]: internalPrinter
-	},
-	dependencies:  ['slice'],
-	requiredInput: undefined as unknown as ReconstructRequiredInput
+	printer:           { [StepOutputFormat.Internal]: internalPrinter },
+	dependencies:      ['slice'],
+	requiredInput:     requires<ReconstructRequiredInput>()
 } as const satisfies DeepReadonly<IPipelineStep<'reconstruct', typeof processor>>;

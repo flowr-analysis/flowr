@@ -1,9 +1,7 @@
 import { FlowrGithubRef } from './doc-util/doc-files';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
-import type { LintingResult, LintingRule } from '../linter/linter-format';
-import { LintingRuleCertainty } from '../linter/linter-format';
+import { type LintingResult, type LintingRule, LintingRuleCertainty } from '../linter/linter-format';
 import { Q } from '../search/flowr-search-builder';
 import type { MergeableRecord } from '../util/objects';
 import { DEPRECATED_FUNCTIONS } from '../linter/rules/deprecated-functions';
@@ -31,10 +29,7 @@ function defineRule() {
 	const MY_NEW_RULE = {
 		createSearch: (_config) => Q.all(),
 
-		processSearchResult: (_elements, _config, _data) => ({
-			results: [],
-			'.meta': {}
-		}),
+		processSearchResult: (_elements, _config, _data) => ({ results: [], '.meta': {} }),
 
 		prettyPrint: {
 			query: (_result, _metadata) => 'my-rule finding',

@@ -106,33 +106,21 @@ export const randomnessAnalysis = TaintAnalysisDefinition.create('randomness', r
 				// additional common functions
 				['which', PkgName.Base]
 			],
-			condition: {
-				argDefinition: [{ pos: 0, name: 'x' }],
-				conditionFn:   (_args, [taint]) => taint.value
-			}
+			condition: { argDefinition: [{ pos: 0, name: 'x' }], conditionFn: (_args, [taint]) => taint.value }
 		},
 	)
 	.to(
 		{
 			identifier: ['summary', PkgName.Base],
-			condition:  {
-				argDefinition: [{ pos: 0, name: 'object' }],
-				conditionFn:   randomnessSinkCondition
-			}
+			condition:  { argDefinition: [{ pos: 0, name: 'object' }], conditionFn: randomnessSinkCondition }
 		},
 		{
 			identifier: ['lm', PkgName.Base],
-			condition:  {
-				argDefinition: [{ pos: 0, name: 'formula' }, { pos: 1, name: 'data' }],
-				conditionFn:   randomnessSinkCondition
-			}
+			condition:  { argDefinition: [{ pos: 0, name: 'formula' }, { pos: 1, name: 'data' }], conditionFn: randomnessSinkCondition }
 		},
 		{
 			identifier: ['ggplot', PkgName.GgPlot2],
-			condition:  {
-				argDefinition: [{ pos: 0, name: 'data' }],
-				conditionFn:   randomnessSinkCondition
-			}
+			condition:  { argDefinition: [{ pos: 0, name: 'data' }], conditionFn: randomnessSinkCondition }
 		},
 		...taintMappingFromBuiltInIndex<typeof randomnessDomain>([SemanticCallTag.Writes, SemanticCallTag.Graphics], ArgProp.Value, randomnessSinkCondition),
 	).report((f) => {

@@ -4,12 +4,9 @@ import type { FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrAnalyzerPatternFilePlugin } from '../flowr-analyzer-file-plugin';
 import { FlowrSweaveFile } from '../files/flowr-sweave-file';
 
-
 const SweavePattern = /\.Rnw$/i;
 
-/**
- * The plugin provides support for Sweave (`.Rnw`) files
- */
+/** The plugin provides support for Sweave (`.Rnw`) files */
 export class FlowrAnalyzerSweaveFilePlugin extends FlowrAnalyzerPatternFilePlugin {
 	public readonly name =    'sweave-file-plugin';
 	public readonly description = 'Parses R Sweave files';

@@ -8,10 +8,9 @@ import {
 	type DependenciesQueryResult,
 	defaultDependencyCategories,
 	type DependencyInfo,
-	Attached,
-	Constant,
-	Unknown
+	Attached
 } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import { Constant, Unknown } from '../../../src/queries/catalog/dependencies-query/dependency-values';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { assert, describe, test } from 'vitest';
@@ -20,11 +19,10 @@ import { execFileSync } from 'child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { Identifier } from '../../../src/dataflow/environments/identifier';
+import { type BrandedNamespace, type BrandedIdentifier, Identifier } from '../../../src/dataflow/environments/identifier';
 import { DefaultBuiltinConfig } from '../../../src/dataflow/environments/default-builtin-config';
 import { builtInNames, BuiltInIndex } from '../../../src/dataflow/environments/query-fn-props';
-import type { BuiltInFnInfo } from '../../../src/dataflow/environments/built-in-props';
-import { ArgProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
+import { type BuiltInFnInfo, ArgProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
 import { readFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/read-functions';
 import { writeFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { OtherPathFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
@@ -33,12 +31,13 @@ import { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyze
 import { FlowrConfig } from '../../../src/config';
 import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
 import { controlledSigDb } from '../_helper/linter';
+import { analyze } from '../_helper/analyzer';
 
 assumeLoadedPackages('car', 'ggplot2', 'ggthemes', 'jmcm', 'magrittr', 'maps', 'plotly', 'remotes', 'rlang', 'tinyplot');
 
 const defaultCtx = new FlowrAnalyzerContext(FlowrConfig.default());
 
-const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], transform: [], test: [], statistics: [] };
+const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], transform: [], test: [], statistics: [], interactive: [] };
 
 function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Partial<DependenciesQueryResult> {
 	const out: Partial<DependenciesQueryResult> = {
@@ -124,6 +123,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('a handle writes what it was opened on', 'con <- file("o.txt", "w")\nwriteLines("a", con)', {
 			write: [{ nodeId: '1@file', functionName: 'file', value: 'o.txt' }, { nodeId: '2@writeLines', functionName: 'writeLines', value: 'o.txt' }]
 		});
+		testQuery('a handle opened in braces writes what it was opened on', 'con <- { file("o.txt", "w") }\nwriteLines("a", con)', {
+			write: [{ nodeId: '1@file', functionName: 'file', value: 'o.txt' }, { nodeId: '2@writeLines', functionName: 'writeLines', value: 'o.txt' }]
+		});
 		testQuery('a default parameter names the file', 'ld <- function(p = "def.csv") read.csv(p)\nld()', {
 			/* the call reads what the function it calls reads */
 			read:  [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'def.csv' }, { nodeId: '2@ld', functionName: 'ld', value: 'def.csv', via: 7 }],
@@ -136,6 +138,69 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				{ nodeId: '3@g', functionName: 'g', value: 'stdout', via: 10 }
 			]
 		});
+		describe('archives and copies read one file and write another', () => {
+			const caps = ['file-dependencies'] as const;
+			for(const [code, fn, read, write] of [
+				['unzip("a.zip", exdir = "data")', 'unzip', 'a.zip', 'data'],
+				['unzip("a.zip")', 'unzip', 'a.zip', '.'],
+				['untar("a.tar.gz", exdir = "t")', 'untar', 'a.tar.gz', 't'],
+				['untar("a.tar.gz")', 'untar', 'a.tar.gz', '.'],
+				['zip("a.zip", "b.csv")', 'zip', 'b.csv', 'a.zip'],
+				['tar("a.tar", "b.csv")', 'tar', 'b.csv', 'a.tar'],
+				['file.append("a.txt", "b.txt")', 'file.append', 'b.txt', 'a.txt'],
+				['file.copy("a.txt", "b.txt")', 'file.copy', 'a.txt', 'b.txt'],
+				['file.copy(to = "b.txt", from = "a.txt")', 'file.copy', 'a.txt', 'b.txt'],
+				['file.rename("a.txt", "b.txt")', 'file.rename', 'a.txt', 'b.txt'],
+				['file.symlink("a.txt", "b.txt")', 'file.symlink', 'a.txt', 'b.txt'],
+				['file.link("a.txt", "b.txt")', 'file.link', 'a.txt', 'b.txt'],
+				['library(fs)\nfile_copy("a.txt", "b.txt")', 'file_copy', 'a.txt', 'b.txt'],
+				['library(zip)\nzipr("a.zip", "b.csv")', 'zipr', 'b.csv', 'a.zip'],
+				['library(R.utils)\ngunzip("b.csv.gz", "b.csv")', 'gunzip', 'b.csv.gz', 'b.csv'],
+				['library(R.utils)\ngunzip("b.csv.gz")', 'gunzip', 'b.csv.gz', 'unknown'],
+				['library(archive)\narchive_extract("a.zip", "d")', 'archive_extract', 'a.zip', 'd'],
+				['library(archive)\narchive_extract("a.zip")', 'archive_extract', 'a.zip', '.']
+			] as const) {
+				const line = code.split('\n').length;
+				testQuery(`${fn} reads ${read} and writes ${write}`, code, {
+					...code.startsWith('library') ? { library: [{ nodeId: '1@library', functionName: 'library', value: code.slice(8, code.indexOf(')')) }] } : {},
+					read:  [{ nodeId: `${line}@${fn}`, functionName: fn, value: read }],
+					write: [{ nodeId: `${line}@${fn}`, functionName: fn, value: write }]
+				}, {}, caps);
+			}
+		});
+		describe('downloads read their source and write where they save it', () => {
+			const caps = ['file-dependencies'] as const;
+			for(const [code, fn, read, write] of [
+				['download.file("https://x.org/a.csv", "a.csv")', 'download.file', 'https://x.org/a.csv', 'a.csv'],
+				['library(curl)\ncurl_download("https://x.org/a.csv", "a.csv")', 'curl_download', 'https://x.org/a.csv', 'a.csv'],
+				['library(curl)\ncurl_fetch_disk("https://x.org/a.csv", "a.csv")', 'curl_fetch_disk', 'https://x.org/a.csv', 'a.csv'],
+				['library(curl)\nmulti_download("https://x.org/a.csv", "a.csv")', 'multi_download', 'https://x.org/a.csv', 'a.csv'],
+				['library(xfun)\ndownload_file("https://x.org/a.csv", "a.csv")', 'download_file', 'https://x.org/a.csv', 'a.csv'],
+				['library(downloader)\ndownload("https://x.org/a.csv", destfile = "a.csv")', 'download', 'https://x.org/a.csv', 'a.csv'],
+				['library(xml2)\ndownload_html("https://x.org/a.html", "a.html")', 'download_html', 'https://x.org/a.html', 'a.html'],
+				['library(googledrive)\ndrive_download("a-id", path = "a.csv")', 'drive_download', 'a-id', 'a.csv'],
+				['library(aws.s3)\nsave_object("o.csv", bucket = "b", file = "a.csv")', 'save_object', 'o.csv', 'a.csv'],
+				['library(zen4R)\ndownload_zenodo("10.5281/zenodo.1", path = "z")', 'download_zenodo', '10.5281/zenodo.1', 'z'],
+				['library(piggyback)\npb_download("a.csv", dest = "d", repo = "me/r")', 'pb_download', 'me/r', 'd'],
+				['library(osfr)\nosf_download("x", path = "d")', 'osf_download', 'x', 'd']
+			] as const) {
+				const line = code.split('\n').length;
+				testQuery(`${fn} reads ${read} and writes ${write}`, code, {
+					...code.startsWith('library') ? { library: [{ nodeId: '1@library', functionName: 'library', value: code.slice(8, code.indexOf(')')) }] } : {},
+					read:  [{ nodeId: `${line}@${fn}`, functionName: fn, value: read }],
+					write: [{ nodeId: `${line}@${fn}`, functionName: fn, value: write }]
+				}, {}, caps);
+			}
+			testQuery('a request performed into a file writes it, and reads no file', 'library(httr2)\nreq_perform(request("https://x.org/a.csv"), path = "a.csv")', {
+				library: [{ nodeId: '1@library', functionName: 'library', value: 'httr2' }],
+				write:   [{ nodeId: '2@req_perform', functionName: 'req_perform', value: 'a.csv' }]
+			}, {}, caps);
+			testQuery('write_disk names what the request it configures writes', 'library(httr)\nGET("https://x.org/a.csv", write_disk("a.csv"))', {
+				library: [{ nodeId: '1@library', functionName: 'library', value: 'httr' }],
+				write:   [{ nodeId: '2@write_disk', functionName: 'write_disk', value: 'a.csv' }, printed('2@GET', 'GET')]
+			}, {}, caps);
+		});
+
 		testQuery('each call writes only the file it names', 'save_it <- function(p) write.csv(d, p)\nsave_it("a.csv")\nsave_it("b.csv")', {
 			write: [
 				{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'b.csv', inputVariables: ['d'] },
@@ -193,7 +258,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 		testQuery('a function ending in a visible call echoes, also when called through another', 'make_it <- function(p) file.create(p)\nvia <- function(p) make_it(p)\nvia("r.txt")', {
 			write: [
-				{ nodeId: '1@file.create', functionName: 'file.create', value: 'r.txt', inputVariables: ['p'] },
+				/* the path is no data the call consumes */
+				{ nodeId: '1@file.create', functionName: 'file.create', value: 'r.txt' },
 				{ nodeId: '3@via', functionName: 'via', value: 'stdout', implicit: true },
 				{ nodeId: '2@make_it', functionName: 'make_it', value: 'r.txt', via: 6 },
 				{ nodeId: '3@via', functionName: 'via', value: 'r.txt', via: 16 }
@@ -409,6 +475,12 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('the bare name once the library is loaded', 'library(remotes)\ninstall_github("user/repo")', { library: [{ nodeId: '1@library', functionName: 'library', value: 'remotes' }], remote: [{ nodeId: '2@install_github', functionName: 'install_github', value: 'user/repo', packageName: 'repo' }] });
 		/* a CRAN install is no remote one, whatever it installs comes from a configured repository */
 		testQuery('install.packages is no remote install', 'install.packages("dplyr")', {});
+		testQuery('pak installing from CRAN is no remote install', 'pak::pkg_install("dplyr")', { library: [{ nodeId: '1@pkg_install', functionName: '::', value: 'pak' }] });
+		testQuery('a local archive is a remote install', 'install.packages("pkg_1.0.tar.gz", repos = NULL)', { remote: [{ nodeId: '1@install.packages', functionName: 'install.packages', value: 'pkg_1.0.tar.gz', packageName: 'pkg' }] });
+		testQuery('a loader installing from GitHub', 'pacman::p_load_gh("user/repo")', {
+			library: [{ nodeId: '1:1', functionName: Identifier.make('p_load_gh', 'pacman'), value: 'user/repo' }, { nodeId: '1@p_load_gh', functionName: '::', value: 'pacman' }],
+			remote:  [{ nodeId: '1:1', functionName: Identifier.make('p_load_gh', 'pacman'), value: 'user/repo', packageName: 'repo' }]
+		});
 	});
 
 	describe('Sourced files', () => {
@@ -563,9 +635,11 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('save_graph', 'save_graph(obj, "a")', { write: [{ nodeId: '1@save_graph', functionName: 'save_graph', value: 'a', inputVariables: ['obj'] }] });
 		testQuery('export_graph', 'export_graph(file_name = "a")', { write: [{ nodeId: '1@export_graph', functionName: 'export_graph', value: 'a' }] });
 
-		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt' }] });
+		/* dump names the variable it writes, so it reads it */
+		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt', inputVariables: ['My text'] }] });
 		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'foo.txt' }] });
 		testQuery('cat', 'cat("Hello!")', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'stdout' }] });
+		testQuery('cat to a console stream', 'cat("Hello!", file = stderr())', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'stderr' }] });
 		testQuery('cat with sink', 'sink("foo")\ncat("Hello!")', { write: [{ nodeId: '2@cat', functionName: 'cat', value: 'foo', linkedIds: [3] }] });
 		testQuery('multiple sinks', 'sink("x")\nk <- "k.txt"\nsink(k)\nprint("hey")', { write: [
 			{ nodeId: '4@print', functionName: 'print', value: 'k.txt', linkedIds: [10] }
@@ -590,7 +664,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 
 		testCustomFunctions('write', { writeFunctions: [{ name: 'write.custom.file', argIdx: 1, argName: 'file' }] }, 'write.custom.file',
-			'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt' }] },
+			'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt', inputVariables: ['My text'] }] },
 			['library', 'read', 'source']);
 	});
 
@@ -1063,6 +1137,18 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 	});
 
+	describe('Interactive use', () => {
+		testQuery('View left in a script', 'p <- mtcars\nView(p)', { interactive: [{ nodeId: '2@View', functionName: 'View' }] });
+		testQuery('the debugger', 'browser()', { interactive: [{ nodeId: '1@browser', functionName: 'browser' }] });
+		testQuery('a namespaced viewer', 'utils::View(mtcars)', { library: [{ nodeId: '1@View', functionName: '::', value: 'utils' }], interactive: [{ nodeId: '1@utils::View', functionName: Identifier.make('View', 'utils') }] });
+		test('the category is what the built-ins state', () => {
+			assert.deepStrictEqual(
+				defaultDependencyCategories(defaultCtx).interactive.functions.map(f => `${f.package as string}::${f.name}`).sort(),
+				BuiltInIndex.default().with(SemanticCallTag.Interactive).map(Identifier.toString).sort()
+			);
+		});
+	});
+
 	describe('Implicit echo', () => {
 		describe('Visible results are auto-printed', () => {
 			testQuery('a plain call', 'summary(x)', { write: [{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true, inputVariables: ['x'] }] });
@@ -1210,10 +1296,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				}
 			}
 			async function flowrPrints(code: string): Promise<boolean> {
-				const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-				analyzer.addRequest(code);
-				const results = await analyzer.query([{ type: 'dependencies' }]);
-				return (results.dependencies.write ?? []).some(d => d.implicit === true);
+				const analyzer = await analyze(parser, code);
+				const results = await analyzer.query({ type: 'dependencies' });
+				return (results.write ?? []).some(d => d.implicit === true);
 			}
 			test.each([
 				/* echoed */
@@ -1258,8 +1343,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				})
 				.build();
 			analyzer.addRequest('summary(x)');
-			const results = await analyzer.query([{ type: 'dependencies' }]);
-			assert.deepStrictEqual(results.dependencies.write.filter(d => d.implicit), []);
+			const results = await analyzer.query({ type: 'dependencies' });
+			assert.deepStrictEqual(results.write.filter(d => d.implicit), []);
 		});
 	});
 
@@ -1321,13 +1406,12 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 	describe('Package attribution', () => {
 		/* the database records these as an S4 generic or an S3 method, so their name is not in the export list */
-		const recordedElsewhere = new Set(['rast', 'vect', 'writeRaster', 'writeVector', 'writeCDF', 'readMat', 'writeMat', 'open.nc', 'create.nc']);
+		const recordedElsewhere = new Set<BrandedIdentifier>(['rast', 'vect', 'writeRaster', 'writeVector', 'writeCDF', 'readMat', 'writeMat', 'open.nc', 'create.nc']);
 
 		test('every entry names a package that exports it', async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest('1');
+			const analyzer = await analyze(parser, '1');
 			const sources = analyzer.inspectContext().deps.signatureSources();
-			const exportsOf = (pkg: string): string[] => sources.filter(s => s.packageNames().includes(pkg))
+			const exportsOf = (pkg: BrandedNamespace): BrandedIdentifier[] => sources.filter(s => s.packageNames().includes(pkg))
 				.flatMap(s => [...s.lookup(pkg)?.exported ?? [], ...(s.functions(pkg) ?? []).map(f => f.name)]);
 			for(const [category, { functions }] of Object.entries(defaultDependencyCategories(defaultCtx))) {
 				for(const f of functions) {

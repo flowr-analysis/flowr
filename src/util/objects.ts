@@ -5,9 +5,7 @@ import { expensiveTrace } from './log';
 import type { ILogObj, Logger } from 'tslog';
 import { FlowrFilter } from '../search/flowr-search-filters';
 
-/**
- * checks if `item` is an object (it may be an array, ...)
- */
+/** checks if `item` is an object (it may be an array, ...) */
 export function isObjectOrArray(item: unknown): boolean {
 	return typeof item === 'object';
 }
@@ -127,6 +125,11 @@ type DefinedRecord<T> = {
 	[K in keyof T as T[K] extends undefined ? never : K]: Defined<T[K]>;
 };
 
+/** The array, `undefined` for an empty one, to leave it out of a {@link compactRecord}. */
+export function nonEmpty<A extends readonly unknown[]>(array: A | undefined): A | undefined {
+	return array === undefined || array.length === 0 ? undefined : array;
+}
+
 export function compactRecord<T extends Record<string, unknown>>(record: T): DefinedRecord<T>;
 export function compactRecord(record: undefined): undefined;
 export function compactRecord<T extends Record<string, unknown>>(record: T | undefined): DefinedRecord<T> | undefined;
@@ -155,10 +158,7 @@ type Primitive =
 	| Date
 	| ((...args: never[]) => unknown);
 
-/**
- * What sits at the given path of `T`, the counterpart of {@link AutocompletablePaths}.
- * `never` whenever the path names nothing.
- */
+/** What sits at the given path of `T`, the counterpart of {@link AutocompletablePaths}. `never` whenever the path names nothing. */
 export type ValueAtPath<T, Path extends string> =
 	Path extends `${infer Key}.${infer Rest}`
 		? Key extends keyof T ? ValueAtPath<NonNullable<T[Key]>, Rest> : never
@@ -186,9 +186,7 @@ export type AutocompletablePaths<T, Depth extends number = 6> =
 					: `${K}.${AutocompletablePaths<NonNullable<T[K]>, OneLess[Depth]> & string}`)
 			}[keyof T & string];
 
-/**
- * This is a version of a deep clone that preserves unclonable values (like functions, symbols, ...) by keeping the same reference to them.
- */
+/** This is a version of a deep clone that preserves unclonable values (like functions, symbols, ...) by keeping the same reference to them. */
 export function deepClonePreserveUnclonable<T>(obj: T): T {
 	if(typeof obj !== 'object' || obj === null) {
 		return obj;
@@ -298,10 +296,15 @@ export function getOnPath(obj: unknown, path: string): unknown {
 /**
  * Writes `value` at the given dot-separated `path` of `obj`, creating the intermediate steps that do not exist yet.
  * An intermediate is created as an array if the segment indexing it is a number, and as an object otherwise.
+ * A path naming the prototype (`__proto__`, `constructor`, `prototype`) is refused.
  * @see {@link getOnPath} for the counterpart that reads such a path
  */
 export function setOnPath(obj: object, path: string, value: unknown): void {
 	const segments = pathSegments(path);
+	/* a segment naming the prototype would write into every object */
+	if(segments.some(s => s === '__proto__' || s === 'constructor' || s === 'prototype')) {
+		throw new Error(`the path '${path}' names the prototype of an object`);
+	}
 	let at = obj as Record<string | number, unknown>;
 	for(let i = 0; i < segments.length - 1; i++) {
 		const segment = segments[i];
@@ -323,4 +326,106 @@ export function setOnPath(obj: object, path: string, value: unknown): void {
  */
 export function enumMembers<T extends object>(enumObject: T): [name: string, value: T[keyof T]][] {
 	return Object.entries(enumObject).filter(([name]) => Number.isNaN(Number(name))) as [string, T[keyof T]][];
+}
+
+/** How {@link deepCloneSharing} copies the properties of a class instance that are not cloned as they are. */
+export interface ClonedFields {
+	/** the properties left out of the clone */
+	readonly drop?:    ReadonlySet<PropertyKey>;
+	/** the properties copied by the given copier, which may hand values on to the clone */
+	readonly replace?: ReadonlyMap<PropertyKey, (value: unknown, clone: (v: unknown) => unknown) => unknown>;
+}
+
+/**
+ * Deep clones `obj` and keeps the shape of what it reaches: an object reached twice is cloned once, cycles are kept,
+ * and class instances (including those of `Map`, `Set`, and `Array` subclasses) keep their prototype.
+ * Functions, and every object `keep` says so of, are shared by reference instead of cloned.
+ * `fields` may state for a class instance which of its properties are left out or copied in a way of their own, see {@link ClonedFields}.
+ */
+export function deepCloneSharing<T>(obj: T, keep: (o: object) => boolean, fields?: (owner: object) => ClonedFields | undefined): T {
+	const seen = new Map<object, unknown>();
+	function clone(value: unknown): unknown {
+		if(typeof value !== 'object' || value === null) {
+			return value;
+		}
+		const known = seen.get(value);
+		if(known !== undefined) {
+			return known;
+		}
+		if(keep(value) || value instanceof RegExp) {
+			return value;
+		}
+		const proto = Object.getPrototypeOf(value) as object | null;
+		if(proto === Array.prototype) {
+			const source = value as unknown[];
+			const arr: unknown[] = new Array(source.length);
+			seen.set(value, arr);
+			for(let i = 0; i < source.length; i++) {
+				arr[i] = clone(source[i]);
+			}
+			return arr;
+		} else if(proto === Map.prototype) {
+			const map = new Map<unknown, unknown>();
+			seen.set(value, map);
+			for(const [k, v] of value as Map<unknown, unknown>) {
+				map.set(clone(k), clone(v));
+			}
+			return map;
+		} else if(proto === Set.prototype) {
+			const set = new Set<unknown>();
+			seen.set(value, set);
+			for(const v of value as Set<unknown>) {
+				set.add(clone(v));
+			}
+			return set;
+		}
+		if(proto === Object.prototype) {
+			const record: Record<string, unknown> = {};
+			seen.set(value, record);
+			for(const key in value) {
+				record[key] = clone((value as Record<string, unknown>)[key]);
+			}
+			return record;
+		}
+		const ctor = (proto?.constructor ?? Object) as new () => object;
+		let result: object;
+		if(value instanceof Map) {
+			const map = Reflect.construct<[], Map<unknown, unknown>>(Map, [], ctor);
+			seen.set(value, map);
+			for(const [k, v] of value) {
+				map.set(clone(k), clone(v));
+			}
+			result = map;
+		} else if(value instanceof Set) {
+			const set = Reflect.construct<[], Set<unknown>>(Set, [], ctor);
+			seen.set(value, set);
+			for(const v of value) {
+				set.add(clone(v));
+			}
+			result = set;
+		} else if(Array.isArray(value)) {
+			const arr = Reflect.construct<[], unknown[]>(Array, [], ctor);
+			seen.set(value, arr);
+			for(const v of value) {
+				arr.push(clone(v));
+			}
+			return arr;
+		} else if(value instanceof Date) {
+			return new Date(value.getTime());
+		} else {
+			result = Object.create(proto) as object;
+			seen.set(value, result);
+		}
+		const special = fields?.(value);
+		for(const key of Reflect.ownKeys(value)) {
+			if(special?.drop?.has(key)) {
+				continue;
+			}
+			const copier = special?.replace?.get(key);
+			const field = (value as Record<PropertyKey, unknown>)[key];
+			(result as Record<PropertyKey, unknown>)[key] = copier === undefined ? clone(field) : copier(field, clone);
+		}
+		return result;
+	}
+	return clone(obj) as T;
 }

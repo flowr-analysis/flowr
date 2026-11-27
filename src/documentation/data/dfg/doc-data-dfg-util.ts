@@ -17,18 +17,12 @@ export interface ExplanationParameters {
 	readonly expectedSubgraph: DataflowGraph
 }
 
-
-/**
- * Every {@link VertexType} as a name/value pair, for the wiki pages that list them.
- */
+/** Every {@link VertexType} as a name/value pair, for the wiki pages that list them. */
 export function getAllVertices(): [string, VertexType][] {
 	return Object.entries(VertexType);
 }
 
-
-/**
- * Every {@link EdgeType} as a name/value pair, the reverse lookups of the bit-flag enum dropped.
- */
+/** Every {@link EdgeType} as a name/value pair, the reverse lookups of the bit-flag enum dropped. */
 export function getAllEdges(): [string, EdgeType][] {
 	return Object.entries(EdgeType).filter(([, v]) => Number.isInteger(v)) as [string, EdgeType][];
 }

@@ -1,21 +1,24 @@
 import type { Range } from 'semver';
-import { functionFinderUtil, hasArgumentValue  } from './function-finder-util';
+import { functionFinderUtil, hasArgumentValue } from './function-finder-util';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { BuiltInDefinitions } from '../../dataflow/environments/built-in-config';
-import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
-import { Identifier } from '../../dataflow/environments/identifier';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { FunctionArgument } from '../../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { DfgVertex } from '../../dataflow/graph/vertex';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier } from '../../dataflow/environments/identifier';
+import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
+import { type DataflowGraphVertexFunctionCall, DfgVertex } from '../../dataflow/graph/vertex';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { uniqueArray } from '../../util/collections/arrays';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
-import type { LintingResult, LintingRule, LintQuickFix } from '../linter-format';
-import { prettyPrint, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import {
+	type LintingResult,
+	type LintingRule,
+	type LintQuickFix,
+	prettyPrint,
+	LintingResultCertainty,
+	LintingRuleCertainty
+} from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { RRange } from '../../util/r-version';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -25,8 +28,8 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer
 import { Ternary } from '../../util/logic';
 import type  { KnownParser } from '../../r-bridge/parser';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
-import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
-import type { DeprecatedArgumentInformation, DeprecatedFunctionInformation, DeprecationState  } from '../../dataflow/environments/deprecation-info';
+import { Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
+import type { DeprecatedArgumentInformation, DeprecatedFunctionInformation, DeprecationState } from '../../dataflow/environments/deprecation-info';
 
 /**
  * Result of the {@link DEPRECATED_FUNCTIONS} linting rule
@@ -94,24 +97,13 @@ interface ConditionalEntry {
 }
 
 /** The entries by bare name, as a call names its package only when written `pkg::fn`. */
-function indexConditionals(conditionally: DeprecatedFunctionsConfig['conditionally']): Map<string, ConditionalEntry[]> {
-	const index = new Map<string, ConditionalEntry[]>();
-	for(const [key, info] of Object.entries(conditionally)) {
-		const id = Identifier.parse(key);
-		const name = Identifier.getName(id);
-		const known = index.get(name);
-		const entry = { info, pkg: Identifier.getNamespace(id) };
-		if(known === undefined) {
-			index.set(name, [entry]);
-		} else {
-			known.push(entry);
-		}
-	}
-	return index;
+function indexConditionals(conditionally: DeprecatedFunctionsConfig['conditionally']): Map<BrandedIdentifier, ConditionalEntry[]> {
+	const entries = Object.entries(conditionally).map(([key, info]) => [Identifier.parse(key), info] as const);
+	return new Map([...Map.groupBy(entries, ([id]) => Identifier.getName(id))].map(([name, group]) => [name, group.map(([id, info]) => ({ info, pkg: Identifier.getNamespace(id) }))]));
 }
 
 /** The entry for `target`: its own package's, else a bare one; a call naming no package takes the first. */
-function conditionalFor(index: ReadonlyMap<string, ConditionalEntry[]>, target: Identifier): ConditionalEntry | undefined {
+function conditionalFor(index: ReadonlyMap<BrandedIdentifier, ConditionalEntry[]>, target: Identifier): ConditionalEntry | undefined {
 	const found = index.get(Identifier.getName(target));
 	if(found === undefined) {
 		return undefined;
@@ -121,25 +113,14 @@ function conditionalFor(index: ReadonlyMap<string, ConditionalEntry[]>, target: 
 }
 
 /** The packages each `always` name belongs to; `undefined` for an entry claiming none. */
-function indexAlways(always: readonly Identifier[]): Map<string, (BrandedNamespace | undefined)[]> {
-	const index = new Map<string, (BrandedNamespace | undefined)[]>();
-	for(const entry of always) {
-		const name = Identifier.getName(entry);
-		const known = index.get(name);
-		const namespace = Identifier.getNamespace(entry);
-		if(known === undefined) {
-			index.set(name, [namespace]);
-		} else if(!known.includes(namespace)) {
-			known.push(namespace);
-		}
-	}
-	return index;
+function indexAlways(always: readonly Identifier[]): Map<BrandedIdentifier, (BrandedNamespace | undefined)[]> {
+	return new Map([...Map.groupBy(always, entry => Identifier.getName(entry))].map(([name, group]) => [name, uniqueArray(group.map(entry => Identifier.getNamespace(entry)))]));
 }
 
 /** The packages the code attaches; `undefined` when one of them cannot be named, so nothing is ruled out. */
-async function librariesAttachedBy(analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>): Promise<ReadonlySet<string> | undefined> {
-	const attached = new Set<string>();
-	for(const lib of (await analyzer.query([{ type: 'dependencies', enabledCategories: ['library'] }]))['dependencies'].library) {
+async function librariesAttachedBy(analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>): Promise<ReadonlySet<BrandedNamespace> | undefined> {
+	const attached = new Set<BrandedNamespace>();
+	for(const lib of (await analyzer.query({ type: 'dependencies', enabledCategories: ['library'] })).library) {
 		if(lib.value === undefined || lib.value === Unknown) {
 			return undefined;
 		}
@@ -149,31 +130,21 @@ async function librariesAttachedBy(analyzer: ReadonlyFlowrAnalysisProvider<Known
 }
 
 /** A call naming its package, or whose package is attached, is that function; any other is a guess. */
-function certaintyOf(target: Identifier, owners: readonly (BrandedNamespace | undefined)[], attached: ReadonlySet<string> | undefined): LintingResultCertainty {
+function certaintyOf(target: Identifier, owners: readonly (BrandedNamespace | undefined)[], attached: ReadonlySet<BrandedNamespace> | undefined): LintingResultCertainty {
 	const namespace = Identifier.getNamespace(target);
 	const sure = owners.some(owner => owner === undefined || owner === namespace || attached === undefined || attached.has(owner));
 	return sure ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain;
 }
 
 function alwayDeprecatedFromBuiltinConfig(definitions: BuiltInDefinitions): Identifier[] {
-	return definitions.filter(def => def.type === 'function'
-		&& FunctionSemantics.call.props.hasAny(def.config, SemanticCallTag.Deprecated))
-		.flatMap(def => def.names);
+	return definitions.filter(def => def.type === 'function' && FunctionSemantics.call.props.hasAny(def.config, SemanticCallTag.Deprecated)).flatMap(def => def.names);
 }
 
 function conditionalyDeprecatedFromBuiltinConfig(definitions: BuiltInDefinitions): DeprecatedFunctionsConfig['conditionally'] {
-	const result: DeprecatedFunctionsConfig['conditionally'] = {};
-	for(const def of definitions.filter(def => def.type === 'function')) {
-		const info = def.config?.deprInfo;
-		if(info === undefined) {
-			continue;
-		}
-
-		for(const name of def.names) {
-			result[Identifier.toString(name)] = info;
-		}
-	}
-	return result;
+	return Object.fromEntries(definitions.flatMap(def => {
+		const info = def.type === 'function' ? def.config?.deprInfo : undefined;
+		return info === undefined ? [] : def.names.map(name => [Identifier.toString(name), info] as const);
+	}));
 }
 
 export const DEPRECATED_FUNCTIONS = {
@@ -188,15 +159,9 @@ export const DEPRECATED_FUNCTIONS = {
 
 		// 1. Collect all function call targets from detected function calls
 		const detectedFunctions = elements.getElements().flatMap(e => {
-			return enrichmentContent(e, Enrichment.CallTargets).targets.map(target => {
-				const sourceLocation = SourceLocation.fromNode(e.node);
-				if(sourceLocation !== undefined) {
-					return {
-						node: e.node, target: Identifier.parse(target as string), sourceLocation
-					};
-				}
-			});
-		}).filter(p => isNotUndefined(p));
+			const sourceLocation = SourceLocation.fromNode(e.node);
+			return sourceLocation === undefined ? [] : enrichmentContent(e, Enrichment.CallTargets).targets.map(target => ({ node: e.node, target: Identifier.parse(target as string), sourceLocation }));
+		});
 
 		// 2. Uses hardcoded information about deprecated arguments and deprecated functions
 		const matched = detectedFunctions.map(candidate => ({
@@ -207,13 +172,9 @@ export const DEPRECATED_FUNCTIONS = {
 		/* only asked once something matched, so a clean file queries nothing */
 		const attached = matched.length === 0 ? undefined : await librariesAttachedBy(data);
 		const packageVersions = await inferPackageVersions(data, matched.map(m => m.conditional));
-		const results: DeprecatedFunctionRuleResult[] = matched.map(({ candidate, conditional, owners }) => {
-			if(conditional !== undefined) {
-				return deprecateFunctionConditionally(candidate, graph, idMap, data, conditional, packageVersions, attached);
-			} else {
-				return deprecateFunctionAlways(candidate, owners as (BrandedNamespace | undefined)[], attached);
-			}
-		}).flat();
+		const results: DeprecatedFunctionRuleResult[] = matched.flatMap(({ candidate, conditional, owners }) => conditional !== undefined
+			? deprecateFunctionConditionally(candidate, graph, idMap, data, conditional, packageVersions, attached)
+			: deprecateFunctionAlways(candidate, owners as (BrandedNamespace | undefined)[], attached));
 
 		// 3. If available, use sigdb to flag deprecated functions
 		const deps = data.inspectContext().deps;
@@ -224,44 +185,25 @@ export const DEPRECATED_FUNCTIONS = {
 		// sigdb-driven detection: flag any resolved call whose signature-database entry marks it deprecated,
 		// even when it is not part of the hardcoded `fns` list above
 		const alreadyFlagged = new Set(results.map(r => r.involvedId));
-		const deprecatedByName = new Map<string, boolean>();
+		const deprecatedByName = new Map<BrandedIdentifier, boolean>();
 		const sigdbFlagged: DeprecatedFunctionRuleResult[] = [];
 		for(const element of elements.getElements()) {
 			const id = element.node.info.id;
-			if(alreadyFlagged.has(id)) {
-				continue;
-			}
-			const qualified = Dataflow.qualify(id, graph);
+			const qualified = alreadyFlagged.has(id) ? undefined : Dataflow.qualify(id, graph);
 			if(qualified === undefined) {
 				continue;
 			}
 			const name = Identifier.toString(qualified);
-			let deprecated = deprecatedByName.get(name);
-			if(deprecated === undefined) {
-				deprecated = deps.signatures().functionOf(qualified)?.props.includes('deprecated') === true;
-				deprecatedByName.set(name, deprecated);
-			}
-			if(!deprecated) {
-				continue;
-			}
-			const loc = SourceLocation.fromNode(element.node);
+			const deprecated = deprecatedByName.get(name) ?? deps.signatures().functionOf(qualified)?.props.includes('deprecated') === true;
+			deprecatedByName.set(name, deprecated);
+			const loc = deprecated ? SourceLocation.fromNode(element.node) : undefined;
 			if(loc === undefined) {
 				continue;
 			}
 			alreadyFlagged.add(id);
-			sigdbFlagged.push({
-				type:       'deprecated-function',
-				certainty:  LintingResultCertainty.Certain,
-				involvedId: id,
-				function:   qualified,
-				loc
-			});
+			sigdbFlagged.push({ type: 'deprecated-function', certainty: LintingResultCertainty.Certain, involvedId: id, function: qualified, loc });
 		}
-
-		return {
-			results: results.concat(sigdbFlagged),
-			'.meta': { builtin: results.length, sigdb: sigdbFlagged.length }
-		};
+		return { results: results.concat(sigdbFlagged), '.meta': { builtin: results.length, sigdb: sigdbFlagged.length } };
 	},
 	prettyPrint: prettyPrint(
 		(result: DeprecatedFunctionRuleResult) => `${result.type === 'deprecated-argument' ? `Argument \`${result.arg}\` of ` : ''}function \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)}`,
@@ -298,24 +240,13 @@ export const DEPRECATED_FUNCTIONS = {
 type PackageVersionMap = Map<BrandedNamespace, Range>;
 /** The version of each package a matched entry constrains, asked for only when one does. */
 async function inferPackageVersions(analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, matched: readonly (ConditionalEntry | undefined)[]): Promise<PackageVersionMap> {
-	const packages = matched.filter(isNotUndefined)
-		.filter(({ info }) => info.sinceVersion !== undefined || info.whenArgs?.some(arg => arg.sinceVersion) === true)
-		.map(({ pkg }) => pkg)
-		.filter(isNotUndefined);
-
+	const packages = matched.filter(isNotUndefined).filter(({ info }) => info.sinceVersion !== undefined || info.whenArgs?.some(arg => arg.sinceVersion) === true)
+		.map(({ pkg }) => pkg).filter(isNotUndefined);
 	if(packages.length === 0) {
 		return new Map<BrandedNamespace, Range>();
 	}
-
-	const queryResult = await analyzer.query([{
-		type:     'guess-dep-versions',
-		packages: uniqueArray(packages)
-	}]);
-	const versions = queryResult['guess-dep-versions'].dependencies
-		.map(d => [d.package, RRange.parse(d.range)])
-		.filter(([_, version]) => isNotUndefined(version)) as [BrandedNamespace, Range][];
-
-	return new Map<BrandedNamespace, Range>(versions);
+	const { dependencies } = await analyzer.query({ type: 'guess-dep-versions', packages: uniqueArray(packages) });
+	return new Map<BrandedNamespace, Range>(dependencies.map(d => [d.package, RRange.parse(d.range)]).filter(([_, version]) => isNotUndefined(version)) as [BrandedNamespace, Range][]);
 }
 
 /**
@@ -332,30 +263,22 @@ type SetUncertainFn = () => void;
 function doesPackageVersionMatch(derivedVersion: Range | undefined, info: DeprecatedArgumentInformation, setUncertain: SetUncertainFn): boolean  {
 	if(info.sinceVersion === undefined) {
 		return true;
-	}
-
-	if(derivedVersion == undefined) {
+	} else if(derivedVersion === undefined) {
 		setUncertain();
 		return true;
-	} else {
-		const version = RRange.parse(info.sinceVersion);
-		return version ? version?.intersects(derivedVersion) : false;
 	}
+	return RRange.parse(info.sinceVersion)?.intersects(derivedVersion) ?? false;
 }
 
 function doesArgumentValueMatch(info: DeprecatedArgumentInformation, vertex: DataflowGraphVertexFunctionCall, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, dataflow: DataflowGraph, setUncertain: SetUncertainFn): boolean {
 	if(info.ifValue === undefined) {
 		return true;
 	}
-
 	const hasArg = hasArgumentValue(info.ifValue, vertex, analyzer, dataflow, true, info.argName, info.argIdx);
-	if(hasArg === Ternary.Never) {
-		return false;
-	} else if(hasArg === Ternary.Maybe) {
+	if(hasArg === Ternary.Maybe) {
 		setUncertain();
 	}
-
-	return true;
+	return hasArg !== Ternary.Never;
 }
 
 /**
@@ -378,49 +301,30 @@ function renameFix(node: RNode<ParentInformation> | undefined, replacedBy: strin
 
 /** The name to rename, `undefined` for `pkg::fn` as the replacement states no package to put back. */
 function renamableCallee(node: RNode<ParentInformation>): RNode<ParentInformation> | undefined {
-	return RFunctionCall.isNamed(node) && Identifier.getNamespace(node.functionName.content) === undefined
-		? node.functionName : undefined;
+	return RFunctionCall.isNamed(node) && Identifier.getNamespace(node.functionName.content) === undefined ? node.functionName : undefined;
 }
 
-/**
- * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.conditionally} map.
- */
-function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, entry: ConditionalEntry, packageVersions: PackageVersionMap, attached: ReadonlySet<string> | undefined): DeprecatedFunctionRuleResult[] {
+/** This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.conditionally} map. */
+function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, entry: ConditionalEntry, packageVersions: PackageVersionMap, attached: ReadonlySet<BrandedNamespace> | undefined): DeprecatedFunctionRuleResult[] {
 	const { info, pkg } = entry;
 	const results: DeprecatedFunctionRuleResult[] = [];
 	const derivedRange = pkg === undefined ? undefined : packageVersions.get(pkg);
 	const known = certaintyOf(candidate.target, [pkg], attached);
 
-	// Deprecated Argument: If `whenArgs` is provided, only mark deprecated arguments
 	if(info.whenArgs) {
 		const vertex = dataflow.getVertex(candidate.node.info.id);
-		if(vertex === undefined || !DfgVertex.isFunctionCall(vertex)) {
+		if(!DfgVertex.isFunctionCall(vertex)) {
 			return results;
 		}
-
 		for(const deprecatedArgInfo of info.whenArgs) {
 			const argNode = isDeprecatedArgumentPresent(vertex, deprecatedArgInfo, idMap);
-			if(argNode === undefined) {
-				continue;
-			}
-
 			let certainty = known;
-			const setUncertain = () => {
+			function setUncertain() {
 				certainty = LintingResultCertainty.Uncertain;
-			};
-
-			// If `sinceVersion` is set, check package version before marking argument as deprecated
-			if(!doesPackageVersionMatch(derivedRange, deprecatedArgInfo, setUncertain)) {
+			}
+			if(argNode === undefined || !doesPackageVersionMatch(derivedRange, deprecatedArgInfo, setUncertain) || !doesArgumentValueMatch(deprecatedArgInfo, vertex, analyzer, dataflow, setUncertain)) {
 				continue;
 			}
-
-
-			// If `ifValue` is set, check argument value before marking argument as deprecate
-			if(!doesArgumentValueMatch(deprecatedArgInfo, vertex, analyzer, dataflow, setUncertain)) {
-				continue;
-			}
-
-			// If all checks passed, mark as deprecated
 			results.push({
 				type:         'deprecated-argument',
 				certainty:    certainty,
@@ -436,44 +340,31 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 		}
 	}
 
-	// Deprecated Function: If `sinceVersion` is set, check package version before marking as deprecated
 	const fnSinceVersion = info.sinceVersion ? RRange.parse(info.sinceVersion) : undefined;
-	if(fnSinceVersion) {
-		const isDeprecatedVersion = derivedRange ? fnSinceVersion.intersects(derivedRange) : undefined;
-		if(isDeprecatedVersion === true || isDeprecatedVersion === undefined) {
-			results.push({
-				type:         'deprecated-function',
-				certainty:    isDeprecatedVersion === undefined ? LintingResultCertainty.Uncertain : known,
-				involvedId:   candidate.node.info.id,
-				loc:          candidate.sourceLocation,
-				function:     candidate.target,
-				state:        info.state,
-				replacedBy:   info.replacedBy,
-				sinceVersion: fnSinceVersion,
-				quickFix:     renameFix(renamableCallee(candidate.node), info.replacedBy, 'the call')
-			} satisfies DeprecatedFunctionResult);
-		}
+	if(fnSinceVersion && (derivedRange === undefined || fnSinceVersion.intersects(derivedRange))) {
+		results.push({
+			type:         'deprecated-function',
+			certainty:    derivedRange === undefined ? LintingResultCertainty.Uncertain : known,
+			involvedId:   candidate.node.info.id,
+			loc:          candidate.sourceLocation,
+			function:     candidate.target,
+			state:        info.state,
+			replacedBy:   info.replacedBy,
+			sinceVersion: fnSinceVersion,
+			quickFix:     renameFix(renamableCallee(candidate.node), info.replacedBy, 'the call')
+		} satisfies DeprecatedFunctionResult);
 	}
-
 	return results;
 }
-
 
 /**
  * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.always} map.
  * A call naming a package the list does not have under that name is another function and is left alone.
  */
-function deprecateFunctionAlways(candidate: PotentialFunction, owners: readonly (BrandedNamespace | undefined)[], attached: ReadonlySet<string> | undefined): DeprecatedFunctionResult[] {
+function deprecateFunctionAlways(candidate: PotentialFunction, owners: readonly (BrandedNamespace | undefined)[], attached: ReadonlySet<BrandedNamespace> | undefined): DeprecatedFunctionResult[] {
 	const namespace = Identifier.getNamespace(candidate.target);
 	if(namespace !== undefined && !owners.some(owner => owner === undefined || owner === namespace)) {
 		return [];
 	}
-
-	return [{
-		type:       'deprecated-function',
-		certainty:  certaintyOf(candidate.target, owners, attached),
-		involvedId: candidate.node.info.id,
-		loc:        candidate.sourceLocation,
-		function:   candidate.target,
-	} satisfies DeprecatedFunctionResult];
+	return [{ type: 'deprecated-function', certainty: certaintyOf(candidate.target, owners, attached), involvedId: candidate.node.info.id, loc: candidate.sourceLocation, function: candidate.target }];
 }

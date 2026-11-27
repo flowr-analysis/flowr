@@ -49,10 +49,10 @@ export const NodeValue = {
 	setOf<OtherInfo>(this: void, id: Target, against: Against<OtherInfo>, overrides?: Partial<ResolveInfo>): ValueSet<Value[]> | undefined {
 		return valueSetGuard(Resolve.toValue(id, infoOf(against, overrides)));
 	},
-	/** The strings the node may hold, `undefined` if it does not resolve to strings. */
+	/** The strings the node may hold, those of a vector of strings (`c("a", "b")`) included, `undefined` if it does not resolve to strings. */
 	stringsOf<OtherInfo>(this: void, id: Target, against: Against<OtherInfo>, overrides?: Partial<ResolveInfo>): string[] | undefined {
 		const resolved = valueSetGuard(Resolve.toValue(id, infoOf(against, overrides)));
-		return resolved ? collectStrings(resolved.elements) : undefined;
+		return resolved ? collectStrings(resolved.elements.flatMap(v => v.type === 'vector' && isValue(v.elements) ? v.elements : [v])) : undefined;
 	},
 	/** The strings the node may hold, dropping every value that is not one (in contrast to {@link NodeValue.stringsOf}, which gives up on them). */
 	knownStringsOf<OtherInfo>(this: void, id: Target, against: Against<OtherInfo>, overrides?: Partial<ResolveInfo>): string[] {

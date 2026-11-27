@@ -2,14 +2,10 @@ import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RLoopConstructs, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { FunctionArgument } from '../../dataflow/graph/graph';
-import type { EdgeTypeBits } from '../../dataflow/graph/edge';
-import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
-import type { DataflowInformation } from '../../dataflow/info';
-import { ControlDependency } from '../../dataflow/info';
+import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
+import { type EdgeTypeBits, DfEdge, EdgeType } from '../../dataflow/graph/edge';
+import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../dataflow/graph/vertex';
+import { type DataflowInformation, ControlDependency } from '../../dataflow/info';
 import { ArgProp, SemanticCallTag, type FnSig } from '../../dataflow/environments/built-in-props';
 import { callFnProps } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
@@ -18,8 +14,14 @@ import { Q } from '../../search/flowr-search-builder';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation, SourceRange } from '../../util/range';
 import { isNotUndefined } from '../../util/assert';
-import type { LintingResult, LintingRule, LintQuickFix } from '../linter-format';
-import { prettyPrint, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import {
+	type LintingResult,
+	type LintingRule,
+	type LintQuickFix,
+	prettyPrint,
+	LintingResultCertainty,
+	LintingRuleCertainty
+} from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
@@ -61,8 +63,7 @@ function handleArguments(vertex: DataflowGraphVertexFunctionCall, sig: FnSig | u
 function openCallsReaching(graph: DataflowGraph, start: NodeId, opens: ReadonlySet<NodeId>, out: Set<NodeId>): void {
 	const visited = new Set<NodeId>([start]);
 	const pending = [start];
-	while(pending.length > 0) {
-		const current = pending.pop() as NodeId;
+	for(let current; (current = pending.pop()) !== undefined;) {
 		if(opens.has(current)) {
 			out.add(current);
 			continue;
@@ -241,9 +242,6 @@ export const UNCLOSED_CONNECTION = {
 		/* a connection handed to code flowR cannot resolve, as in `lapply(cons, close)`, is reported although it is closed */
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds connections that are opened but not closed on every path opening them.',
-		defaultConfig: () => ({
-			openFns:  [],
-			closeFns: []
-		})
+		defaultConfig: () => ({ openFns: [], closeFns: [] })
 	}
 } as const satisfies LintingRule<UnclosedConnectionResult, UnclosedConnectionMetadata, UnclosedConnectionConfig>;

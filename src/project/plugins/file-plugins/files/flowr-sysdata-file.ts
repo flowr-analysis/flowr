@@ -1,7 +1,5 @@
-import type { FlowrFileProvider } from '../../../context/flowr-file';
-import { FlowrWrappedFile } from '../../../context/flowr-file';
-import type { SexpType } from './flowr-rda-file';
-import { elementOf, FlowrRDAFile, namesOf, RDAParser } from './flowr-rda-file';
+import { type FlowrFileProvider, FlowrWrappedFile } from '../../../context/flowr-file';
+import { type SexpType, elementOf, FlowrRDAFile, namesOf, RDAParser } from './flowr-rda-file';
 import { log } from '../../../../util/log';
 
 const sysdataLog = log.getSubLogger({ name: 'flowr-sysdata-file' });

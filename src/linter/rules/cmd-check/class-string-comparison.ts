@@ -11,7 +11,7 @@ import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation } from '../../../util/range';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { callsBuiltIn } from '../../linter-util';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
@@ -155,9 +155,6 @@ export const CLASS_STRING_COMPARISON = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds `if`/`while` conditions comparing `class(x)` with a string, which fail for objects with several classes. Offers `inherits(x, ...)` as a quick fix.',
-		defaultConfig: () => ({
-			checkWhile:     true,
-			resolveStrings: true
-		})
+		defaultConfig: () => ({ checkWhile: true, resolveStrings: true })
 	}
 } as const satisfies LintingRule<ClassStringComparisonResult, ClassStringComparisonMetadata, ClassStringComparisonConfig>;

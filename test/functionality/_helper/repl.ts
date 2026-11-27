@@ -1,5 +1,5 @@
 import { FlowrConfig } from '../../../src/config';
-import type { CommandCompletions } from '../../../src/cli/repl/core';
+import type { CommandCompletions } from '../../../src/cli/repl/completion';
 import { assert, expect, test } from 'vitest';
 import { type ReplOutput, standardReplOutput } from '../../../src/cli/repl/commands/repl-main';
 import type { ParsedQueryLine } from '../../../src/queries/query';

@@ -1,15 +1,12 @@
+import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
-import {
-	FlowrAnalyzerPackageVersionsPlugin
-} from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
-import {
-	namespaceFileLog
-} from '../plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
+import { FlowrAnalyzerPackageVersionsPlugin } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
+import { namespaceFileLog } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
 
 export interface FunctionInfo {
-	name:            string;
-	packageOrigin:   string;
+	name:            BrandedIdentifier;
+	packageOrigin:   BrandedNamespace;
 	isExported:      boolean;
 	isS3Generic:     boolean;
 	s3TypeDispatch?: string;
@@ -33,11 +30,12 @@ export interface ReadOnlyFlowrAnalyzerFunctionsContext {
 	readonly name: string;
 
 	/**
-	 * Get the function information for the given function name and optional class name.
-	 * @param name      - The name of the function to get information for.
-	 * @param className - The optional class name (e.g., for S3 generics).
+	 * Get the function information for the given package, function name, and optional S3 class.
+	 * @param pkg            - The package the function belongs to.
+	 * @param name           - The name of the function to get information for.
+	 * @param s3TypeDispatch - The optional class name (e.g., for S3 generics).
 	 */
-	getFunctionInfo(name: string, className?: string): FunctionInfo | FunctionInfo[] | undefined;
+	getFunctionInfo(pkg: BrandedNamespace, name: BrandedIdentifier, s3TypeDispatch?: string): FunctionInfo | FunctionInfo[] | undefined;
 }
 
 /**
@@ -49,17 +47,18 @@ export interface ReadOnlyFlowrAnalyzerFunctionsContext {
 export class FlowrAnalyzerFunctionsContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerFunctionsContext {
 	public readonly name = 'flowr-analyzer-functions-context';
 
-	private functionInfo: Map<string, FunctionInfo[]> = new Map<string, FunctionInfo[]>();
+	/** the functions the analyzed packages declare, by name; `ctx.functionInfo` is what flowR knows of a function by name */
+	private byName: Map<BrandedIdentifier, FunctionInfo[]> = new Map<BrandedIdentifier, FunctionInfo[]>();
 
 	public constructor(ctx: FlowrAnalyzerContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
 		super(ctx, FlowrAnalyzerPackageVersionsPlugin.defaultPlugin(), plugins);
 	}
 
 	public addFunctionInfo(info: FunctionInfo): void {
-		const list = this.functionInfo.get(info.name);
+		const list = this.byName.get(info.name);
 
 		if(!list) {
-			this.functionInfo.set(info.name, [info]);
+			this.byName.set(info.name, [info]);
 			return;
 		}
 
@@ -96,21 +95,28 @@ export class FlowrAnalyzerFunctionsContext extends AbstractFlowrAnalyzerContext<
 		functionInfo.isS4Class ||= other.isS4Class;
 	}
 
-	public getFunctionInfo(pkg: string, name: string, s3TypeDispatch?: string): FunctionInfo | FunctionInfo[] | undefined {
+	public getFunctionInfo(pkg: BrandedNamespace, name: BrandedIdentifier, s3TypeDispatch?: string): FunctionInfo | FunctionInfo[] | undefined {
 		if(s3TypeDispatch) {
-			return this.functionInfo.get(name)?.find(e => e.packageOrigin === pkg && e.s3TypeDispatch === s3TypeDispatch);
+			return this.byName.get(name)?.find(e => e.packageOrigin === pkg && e.s3TypeDispatch === s3TypeDispatch);
 		} else if(name.includes('.')) {
 			const parts = name.split('.');
 			s3TypeDispatch = parts.pop();
 			const splitName = parts.join('.');
-			if(this.functionInfo.has(splitName)) {
-				return this.functionInfo.get(splitName)?.find(e => e.packageOrigin === pkg && e.s3TypeDispatch === s3TypeDispatch);
+			if(this.byName.has(splitName)) {
+				return this.byName.get(splitName)?.find(e => e.packageOrigin === pkg && e.s3TypeDispatch === s3TypeDispatch);
 			}
 		}
-		return this.functionInfo.get(name)?.filter(e => e.packageOrigin === pkg);
+		return this.byName.get(name)?.filter(e => e.packageOrigin === pkg);
 	}
 
 	public reset(): void {
-		this.functionInfo = new Map<string, FunctionInfo[]>();
+		this.byName = new Map<BrandedIdentifier, FunctionInfo[]>();
+	}
+
+	public fork(source: FlowrAnalyzerFunctionsContext): void {
+		this.byName = new Map<BrandedIdentifier, FunctionInfo[]>();
+		source.byName.forEach((infos, name) => {
+			this.byName.set(name, infos.map(info => ({ ...info })));
+		});
 	}
 }

@@ -1,0 +1,63 @@
+name: "Upload Benchmarks"
+description: "Add the results of every benchmark suite and parser that `performance-test.yaml` runs to the benchmark data"
+
+inputs:
+  token:
+    description: "The token used to read and write the benchmark data"
+    required: true
+  ref:
+    description: "The ref the benchmark data is compared against, if not the checked-out one"
+    required: false
+    default: ""
+  mutation-results:
+    description: "Whether the counters include the mutation test results"
+    required: false
+    default: "true"
+  guard:
+    description: "`fail` to fail when a run regressed against the previous one, `warn` to only report it"
+    required: false
+    default: "fail"
+
+runs:
+  using: composite
+  # one step per suite and parser in the matrix of `performance-test.yaml`, they must run one after the other
+  steps:
+    - name: "⬆️ Benchmark (artificial, r-shell)"
+      uses: ./.github/actions/upload-benchmark
+      with:
+        suite:            artificial
+        parser:           r-shell
+        token:            ${{ inputs.token }}
+        ref:              ${{ inputs.ref }}
+        mutation-results: ${{ inputs.mutation-results }}
+        guard:            ${{ inputs.guard }}
+
+    - name: "⬆️ Benchmark (artificial, tree-sitter)"
+      uses: ./.github/actions/upload-benchmark
+      with:
+        suite:            artificial
+        parser:           tree-sitter
+        token:            ${{ inputs.token }}
+        ref:              ${{ inputs.ref }}
+        mutation-results: ${{ inputs.mutation-results }}
+        guard:            ${{ inputs.guard }}
+
+    - name: "⬆️ Benchmark (real-world, r-shell)"
+      uses: ./.github/actions/upload-benchmark
+      with:
+        suite:            real-world
+        parser:           r-shell
+        token:            ${{ inputs.token }}
+        ref:              ${{ inputs.ref }}
+        mutation-results: ${{ inputs.mutation-results }}
+        guard:            ${{ inputs.guard }}
+
+    - name: "⬆️ Benchmark (real-world, tree-sitter)"
+      uses: ./.github/actions/upload-benchmark
+      with:
+        suite:            real-world
+        parser:           tree-sitter
+        token:            ${{ inputs.token }}
+        ref:              ${{ inputs.ref }}
+        mutation-results: ${{ inputs.mutation-results }}
+        guard:            ${{ inputs.guard }}

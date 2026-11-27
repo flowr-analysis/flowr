@@ -4,12 +4,10 @@ import { compileRegex } from '../../../util/text/regex';
 import { isNotUndefined } from '../../../util/assert';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { FileRole, type FlowrFileProvider } from '../../../project/context/flowr-file';
-import { SourceLocation } from '../../../util/range';
+import { SourceLocation, type Line } from '../../../util/range';
 import { RPath } from '../../../util/files';
 
-/**
- * One file or directory of the package, as `R CMD build` would put it into the tarball.
- */
+/** One file or directory of the package, as `R CMD build` would put it into the tarball. */
 export interface PackageEntry {
 	/** the path relative to the package root, with `/` as separator */
 	readonly relative:    string
@@ -31,7 +29,7 @@ export interface PackageFiles {
 	/** the text of a file given relative to the root, `undefined` if it does not exist or cannot be read */
 	readonly read:    (relative: string) => string | undefined
 	/** a location naming the file (and optionally a line) for a finding */
-	readonly locate:  (relative: string, line?: number, endLine?: number) => SourceLocation
+	readonly locate:  (relative: string, line?: Line, endLine?: Line) => SourceLocation
 }
 
 /** the version-control directories `R CMD build` drops (`tools:::.vc_dir_names`) */
@@ -99,7 +97,7 @@ export function packageFiles(ctx: ReadOnlyFlowrAnalyzerContext, pkgName?: string
 	}
 	const root = path.dirname(desc.path());
 	const known = new Map(ctx.files.getAllFiles().map(f => [RPath.normalize(f.path()), f]));
-	const readKnownOrDisk = (absolute: string): string | undefined => {
+	function readKnownOrDisk(absolute: string): string | undefined {
 		const file = known.get(RPath.normalize(absolute));
 		try {
 			if(file !== undefined) {
@@ -109,7 +107,7 @@ export function packageFiles(ctx: ReadOnlyFlowrAnalyzerContext, pkgName?: string
 		} catch{
 			return undefined;
 		}
-	};
+	}
 	const patterns = excludePatterns(readKnownOrDisk(path.join(root, '.Rbuildignore')));
 	const toRelative = (absolute: string) => path.relative(root, absolute).split(path.sep).join('/');
 	const entries: PackageEntry[] = [];

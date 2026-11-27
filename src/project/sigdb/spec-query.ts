@@ -1,18 +1,34 @@
 import { ArgProps, CallProps, SemanticCallTag, type PropWord } from '../../dataflow/environments/built-in-props';
 import { compileRegex, slashedRegex, tryRegex } from '../../util/text/regex';
-/** The query language of the sigdb page: `name(arg, [role], name[role], *)[prop]`. */
+/** The query language of the sigdb page: `name(arg, [role], name[role], *)[prop]{trait}`. */
 
-/** the kinds of words a query states: roles of an argument in parentheses, properties of a call outside */
+/** the kinds of words a query states: roles of an argument in parentheses, properties of a call outside, traits of a name in braces */
 export enum WordKind {
 	Role = 'role',
-	Prop = 'prop'
+	Prop = 'prop',
+	Trait = 'trait'
 }
 
-/** the words of each kind, as the built-in configuration words them */
+/** the traits a page can tell of a name (a contract, a method, a reader, ...), see {@link defineTraits} */
+const TraitWords: PropWord[] = [];
+
+/** the words of each kind, as the built-in configuration words them, the traits as the page defines them */
 export const Vocabulary: Readonly<Record<WordKind, readonly PropWord[]>> = {
-	[WordKind.Role]: Object.values(ArgProps.vocabulary),
-	[WordKind.Prop]: Object.values(CallProps.vocabulary)
+	[WordKind.Role]:  Object.values(ArgProps.vocabulary),
+	[WordKind.Prop]:  Object.values(CallProps.vocabulary),
+	[WordKind.Trait]: TraitWords
 };
+
+/** Sets the words `{trait}` takes, which only the page knows how to tell of a name. */
+export function defineTraits(words: readonly PropWord[]): void {
+	TraitWords.splice(0, TraitWords.length, ...words);
+}
+
+/** the brackets of each kind of word outside the parentheses */
+const Brackets = { '[': ']', '{': '}' } as const;
+type Open = keyof typeof Brackets;
+const isOpen = (c: string): c is Open => c in Brackets;
+const kindOutside = (open: Open): WordKind => open === '{' ? WordKind.Trait : WordKind.Prop;
 
 /** the short forms of the tags whose words are long, the roles and properties state their own */
 const TagShorts: Readonly<Partial<Record<SemanticCallTag, string>>> = {
@@ -28,7 +44,7 @@ const TagShorts: Readonly<Partial<Record<SemanticCallTag, string>>> = {
 };
 
 /** every word of either kind */
-const AllWords: readonly PropWord[] = Object.values(Vocabulary).flat();
+const AllWords: readonly PropWord[] = [...Vocabulary[WordKind.Role], ...Vocabulary[WordKind.Prop]];
 
 const Shorts: ReadonlyMap<string, string> = new Map([
 	...AllWords.flatMap(({ word, short }) => short === undefined ? [] : [[word, short] as const]),
@@ -42,7 +58,7 @@ export function shortOf(word: string): string {
 
 /** what a role or property word means, `undefined` for any other word */
 export function aboutWord(word: string): string | undefined {
-	return AllWords.find(w => w.word === word)?.about;
+	return [...AllWords, ...TraitWords].find(w => w.word === word)?.about;
 }
 
 /** The words of a `|`-joined statement. */
@@ -73,35 +89,40 @@ export interface Spec {
 	readonly nameRegex?: RegExp;
 	readonly args?:      readonly ArgPattern[];
 	readonly props:      readonly string[];
+	/** the `{traits}` asked for, as the words {@link defineTraits} set */
+	readonly traits:     readonly string[];
 }
 
 /** The short form of a word, so `forced` and `F` are the same. */
 export const norm = (word: string): string => shortOf(word.trim().toLowerCase()).toLowerCase();
 const listOf = (words: string): string[] => words.split(/[,|+]/).map(norm).filter(Boolean);
 
-/** The `[props]` groups outside the parentheses, wherever they sit, and what is left of the query without them. */
-function takeProps(typed: string): { body: string, props: string[] } {
+/** The `[props]` and `{traits}` groups outside the parentheses, wherever they sit, and what is left of the query without them. */
+function takeProps(typed: string): { body: string, props: string[], traits: string[] } {
 	const props: string[] = [];
+	const traits: string[] = [];
 	let body = '';
 	let depth = 0;
 	for(let at = 0; at < typed.length; at++) {
 		const c = typed[at];
-		const close = typed.indexOf(']', at);
-		if(c === '[' && depth === 0 && close >= 0 && ((at > 0 && typed[at - 1] !== '[') || (at === 0 && leads(typed)))) {
-			props.push(...listOf(typed.slice(at + 1, close)));
+		const close = isOpen(c) ? typed.indexOf(Brackets[c], at) : -1;
+		if(isOpen(c) && depth === 0 && close >= 0 && opens(typed, at)) {
+			(c === '{' ? traits : props).push(...listOf(typed.slice(at + 1, close)));
 			at = close;
 		} else {
 			depth += c === '(' ? 1 : c === ')' ? -1 : 0;
 			body += c;
 		}
 	}
-	return { body: body.trim().replace(/\s+\(/, '('), props };
+	return { body: body.trim().replace(/\s+\(/, '('), props, traits };
 }
 
-/** `[props] rest`: a bracket group at the start only counts when something follows it, so `[` and `[[` stay names */
-const LeadingProps = /^\[([^\]]*)\]\s+(\S.*)$/;
-/** whether a `[` at the very start opens properties: something follows the group, or it is all there is */
-const leads = (text: string): boolean => LeadingProps.test(text) || /^\[[^\]]+\]$/.test(text);
+/** `[props] rest` or `{traits} rest`: a group at the start only counts when something follows it, so `[`, `[[` and `{` stay names */
+const LeadingProps = /^(?:\[[^\]]*\]|\{[^}]*\})\s+(\S.*)$/;
+/** whether a bracket at the very start opens a group: something follows the group, or it is all there is */
+const leads = (text: string): boolean => LeadingProps.test(text) || /^(?:\[[^\]]+\]|\{[^}]+\})$/.test(text);
+/** whether the bracket at `at` opens a group rather than being part of a name like `[[<-` */
+const opens = (text: string, at: number): boolean => (at > 0 && text[at - 1] !== text[at]) || (at === 0 && leads(text));
 const anyArgs: ArgPattern = { repeat: '*', name: '', roles: [] };
 
 const Mark = '\uE000';
@@ -116,11 +137,11 @@ export function parseSpec(input: string): Spec {
 		const pattern = compileRegex(source, 'i');
 		return pattern === undefined ? whole : before + Mark + (patterns.push(pattern) - 1) + Mark;
 	});
-	const patternOf = (word: string): RegExp | undefined => {
+	function patternOf(word: string): RegExp | undefined {
 		const held = new RegExp(`^${Mark}(\\d+)${Mark}$`).exec(word.trim());
 		return held === null ? undefined : patterns[Number(held[1])];
-	};
-	const { body: left, props } = takeProps(shielded);
+	}
+	const { body: left, props, traits } = takeProps(shielded);
 	const withArgs = /^([^(]*)\(([^]*)\)$/.exec(left);
 	const args = withArgs === null || withArgs[2].trim() === '' ? undefined : withArgs[2].split(/,(?![^[]*\])/).flatMap((item): ArgPattern[] => {
 		const part = new RegExp(`^(${Mark}\\d+${Mark}|[^[*+?]*)(?:\\[([^\\]]*)\\])?([*+?])?$`).exec(item.trim());
@@ -135,14 +156,14 @@ export function parseSpec(input: string): Spec {
 		/* `[role]?` is at least one argument like it, with any others around it */
 		return part?.[3] === '?' ? [anyArgs, own, anyArgs] : [own];
 	});
-	if(args === undefined && props.length === 0) {
-		/* no constraint was asked for, so this is a plain name: `*`, `[`, `[[<-` or `(` are functions too */
+	if(args === undefined && props.length === 0 && traits.length === 0) {
+		/* no constraint was asked for, so this is a plain name: `*`, `[`, `[[<-`, `{` or `(` are functions too */
 		const nameRegex = slashedRegex(typed, 'i');
-		return { rest: nameRegex === undefined ? typed.replace(/\(\s*\)$/, '').replace(/^`(.*)`$/, '$1').trim() : '', nameRegex, props };
+		return { rest: nameRegex === undefined ? typed.replace(/\(\s*\)$/, '').replace(/^`(.*)`$/, '$1').trim() : '', nameRegex, props, traits };
 	}
 	const rest = (args === undefined ? left.replace(/\(\s*\)$/, '') : withArgs?.[1] ?? '').replace(/^`(.*)`$/, '$1').trim();
 	const nameRegex = patternOf(rest);
-	return { rest: nameRegex !== undefined || /^\*+$/.test(rest) ? '' : rest, nameRegex, args, props };
+	return { rest: nameRegex !== undefined || /^\*+$/.test(rest) ? '' : rest, nameRegex, args, props, traits };
 }
 
 /** Whether the arguments a signature states fit the patterns, `*` standing for any number of them. */
@@ -155,8 +176,7 @@ export function matchArgs(patterns: readonly ArgPattern[], actual: readonly (rea
 		return actual.length === 0;
 	}
 	const [first, ...others] = patterns;
-	const one = ([name, roles]: readonly [string, readonly string[]]) =>
-		(first.regex?.test(name) ?? (first.name === '' || first.name === name)) && first.roles.every(role => roles.map(norm).includes(role));
+	const one = ([name, roles]: readonly [string, readonly string[]]) => (first.regex?.test(name) ?? (first.name === '' || first.name === name)) && first.roles.every(role => roles.map(norm).includes(role));
 	if(first.repeat === undefined) {
 		return actual.length > 0 && one(actual[0]) && matchArgs(others, actual.slice(1));
 	}
@@ -167,7 +187,6 @@ export function matchArgs(patterns: readonly ArgPattern[], actual: readonly (rea
 	}
 	return false;
 }
-
 
 /**
  * The pattern for a name with `*` in it, like `read*` or `*csv`, which has to match the whole name.
@@ -193,14 +212,16 @@ export interface Completion {
  */
 export function completeAt(text: string, caret: number): Completion | undefined {
 	const before = text.slice(0, caret);
-	const open = before.lastIndexOf('[');
-	if(open <= 0 || before[open - 1] === '[' || before.includes(']', open)) {
+	const open = Math.max(before.lastIndexOf('['), before.lastIndexOf('{'));
+	const bracket = before[open] as Open | undefined;
+	if(open <= 0 || bracket === undefined || before[open - 1] === bracket || before.includes(Brackets[bracket], open)) {
 		return undefined;
 	}
 	const inside = before.slice(open + 1);
 	const start = open + 1 + Math.max(inside.lastIndexOf(','), inside.lastIndexOf('|'), inside.lastIndexOf('+')) + 1;
 	const typed = before.slice(start).trimStart();
-	const words = Vocabulary[[...before.slice(0, open)].filter(c => c === '(').length > [...before.slice(0, open)].filter(c => c === ')').length ? WordKind.Role : WordKind.Prop].map(w => w.word);
+	const inArgs = [...before.slice(0, open)].filter(c => c === '(').length > [...before.slice(0, open)].filter(c => c === ')').length;
+	const words = Vocabulary[bracket === '{' ? WordKind.Trait : inArgs ? WordKind.Role : WordKind.Prop].map(w => w.word);
 	const taken = new Set(listOf(inside));
 	const options = words.filter(word => word.startsWith(typed.toLowerCase()) && word !== typed.toLowerCase() && !taken.has(norm(word)));
 	return options.length === 0 ? undefined : { from: caret - typed.length, to: caret, options };
@@ -214,10 +235,10 @@ export type TokenKind = 'plain' | 'punct' | 'op' | WordKind | 'bad' | 'regex';
  */
 export function highlight(text: string): readonly (readonly [text: string, kind: TokenKind])[] {
 	const spec = parseSpec(text.trim().replace(/^\?/, '').trim());
-	if(spec.nameRegex !== undefined && spec.args === undefined && spec.props.length === 0) {
+	if(spec.nameRegex !== undefined && spec.args === undefined && spec.props.length === 0 && spec.traits.length === 0) {
 		return [[text, 'regex']];
 	}
-	if(spec.args === undefined && spec.props.length === 0 && !/[^[]\[/.test(text)) {
+	if(spec.args === undefined && spec.props.length === 0 && spec.traits.length === 0 && !/[^[]\[|[^{]\{/.test(text)) {
 		return [[text, 'plain']];
 	}
 	const out: [string, TokenKind][] = [];
@@ -233,17 +254,17 @@ export function highlight(text: string): readonly (readonly [text: string, kind:
 			const whole = found[0].slice(found[1].length);
 			out.push([whole, 'regex']);
 			at += whole.length;
-		} else if(c === '[' && ((at > 0 && text[at - 1] !== '[') || (at === 0 && leads(text)))) {
-			const close = text.indexOf(']', at);
+		} else if(isOpen(c) && (c === '[' || depth === 0) && opens(text, at)) {
+			const close = text.indexOf(Brackets[c], at);
 			const end = close < 0 ? text.length : close;
-			const kind = depth > 0 ? WordKind.Role : WordKind.Prop;
-			out.push(['[', 'punct']);
+			const kind = depth > 0 ? WordKind.Role : kindOutside(c);
+			out.push([c, 'punct']);
 			for(const part of text.slice(at + 1, end).split(/([,|+])/)) {
 				const known = Vocabulary[kind].some(({ word }) => norm(word) === norm(part));
 				out.push([part, /^[,|+]$/.test(part) ? 'punct' : part.trim() === '' ? 'plain' : known ? kind : 'bad']);
 			}
 			if(close >= 0) {
-				out.push([']', 'punct']);
+				out.push([Brackets[c], 'punct']);
 			}
 			at = end + 1;
 		} else if('(),*+?'.includes(c)) {
@@ -274,7 +295,8 @@ export function explainAt(text: string, at: number): string | undefined {
 		if(at >= start && at < start + part.length) {
 			switch(kind) {
 				case WordKind.Role:
-				case WordKind.Prop: return Vocabulary[kind].find(({ word }) => norm(word) === norm(part))?.about;
+				case WordKind.Prop:
+				case WordKind.Trait: return Vocabulary[kind].find(({ word }) => norm(word) === norm(part))?.about;
 				case 'bad':  return 'unknown';
 				case 'regex': return 'pattern';
 				default:     return kind === 'plain' ? undefined : SymbolInfo[part];
@@ -295,18 +317,22 @@ export function isIncomplete(text: string): boolean {
 	if(pieces.some(([, kind]) => kind === 'bad')) {
 		return true;
 	}
-	/* what is written outside the closed bracket groups and patterns, where only the parentheses are left to count */
-	const bare = text.replace(Slashed, '$1').replace(/(?<=[^[])\[[^\]]*\]/g, '');
+	const { open, depth } = shapeOf(text);
+	return open !== undefined || depth > 0;
+}
+
+/** What is written outside the closed groups and patterns: the bracket left open, if any, and how deep the parentheses are. */
+function shapeOf(text: string): { readonly open: Open | undefined, readonly depth: number } {
+	const bare = text.replace(Slashed, '$1').replace(/(?<=[^[])\[[^\]]*\]/g, '').replace(/(?<=[^{])\{[^}]*\}/g, '');
 	const depth = [...bare.replace(/^\(+/, '')].reduce((sum, c) => sum + (c === '(' ? 1 : c === ')' ? -1 : 0), 0);
-	return /(?<=[^[])\[[^\]]*$/.test(bare) || depth > 0;
+	const open = /(?<=[^[])\[[^\]]*$/.test(bare) ? '[' : /(?<=[^{])\{[^}]*$/.test(bare) ? '{' : undefined;
+	return { open, depth };
 }
 
 /** The query with whatever is open closed again, so a word offered inside brackets can be judged as if it were finished. */
 export function closed(text: string): string {
-	const bare = text.replace(Slashed, '$1').replace(/(?<=[^[])\[[^\]]*\]/g, '');
-	const depth = [...bare.replace(/^\(+/, '')].reduce((sum, c) => sum + (c === '(' ? 1 : c === ')' ? -1 : 0), 0);
-	const open = /(?<=[^[])\[[^\]]*$/.test(bare) ? ']' : '';
-	return text + open + ')'.repeat(Math.max(0, depth));
+	const { open, depth } = shapeOf(text);
+	return text + (open === undefined ? '' : Brackets[open]) + ')'.repeat(Math.max(0, depth));
 }
 
 /** The closest known word to a misspelled one: one it starts, or else within two edits. */
@@ -316,7 +342,7 @@ function closestWord(word: string, words: readonly string[]): string | undefined
 	if(starts !== undefined) {
 		return starts;
 	}
-	const distance = (a: string, b: string): number => {
+	function distance(a: string, b: string): number {
 		let row = Array.from({ length: b.length + 1 }, (_, i) => i);
 		for(let i = 1; i <= a.length; i++) {
 			const next = [i];
@@ -326,17 +352,16 @@ function closestWord(word: string, words: readonly string[]): string | undefined
 			row = next;
 		}
 		return row[b.length];
-	};
+	}
 	return words.map((w): [string, number] => [w, distance(lower, w)]).filter(([, d]) => d <= 2).sort((a, b) => a[1] - b[1])[0]?.[0];
 }
 
 /** What is wrong with the query as written, for the reader to fix: an open bracket, an unknown word, a pattern that does not compile. */
 export function problemsOf(text: string): string[] {
 	const out: string[] = [];
-	const bare = text.replace(Slashed, '$1').replace(/(?<=[^[])\[[^\]]*\]/g, '');
-	const depth = [...bare.replace(/^\(+/, '')].reduce((sum, c) => sum + (c === '(' ? 1 : c === ')' ? -1 : 0), 0);
-	if(/(?<=[^[])\[[^\]]*$/.test(bare)) {
-		out.push('missing `]`');
+	const { open, depth } = shapeOf(text);
+	if(open !== undefined) {
+		out.push(`missing \`${Brackets[open]}\``);
 	}
 	if(depth > 0) {
 		out.push(depth === 1 ? 'missing `)`' : `missing ${depth} times \`)\``);
@@ -344,14 +369,18 @@ export function problemsOf(text: string): string[] {
 		out.push('unexpected `)`');
 	}
 	let parens = 0;
+	let group: Open | undefined;
 	for(const [part, kind] of highlight(text)) {
 		if(kind === 'punct' && (part === '(' || part === ')')) {
 			parens += part === '(' ? 1 : -1;
+		} else if(kind === 'punct' && isOpen(part)) {
+			group = part;
 		} else if(kind === 'bad') {
 			const word = part.trim();
-			const role = parens > 0;
-			const near = closestWord(word, Vocabulary[role ? WordKind.Role : WordKind.Prop].map(w => w.word));
-			out.push(`\`${word}\` is no known ${role ? 'argument role' : 'function property'}${near === undefined ? '' : `, did you mean \`${near}\`?`}`);
+			const asked = parens > 0 ? WordKind.Role : kindOutside(group ?? '[');
+			const near = closestWord(word, Vocabulary[asked].map(w => w.word));
+			const what = asked === WordKind.Role ? 'argument role' : asked === WordKind.Trait ? 'trait' : 'function property';
+			out.push(`\`${word}\` is no known ${what}${near === undefined ? '' : `, did you mean \`${near}\`?`}`);
 		}
 	}
 	for(const slashed of text.matchAll(Slashed)) {

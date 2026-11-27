@@ -1,3 +1,4 @@
+import type { BrandedIdentifier } from '../../../../../environments/identifier';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
@@ -15,23 +16,22 @@ import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import type { ArgumentSlot } from './built-in-assignment';
 
 export interface RegisterHookConfig {
 	/** name of the hook to register, 'fn-exit' if it triggers on exit */
 	hook: KnownHooks;
 	args: {
 		/** the expression to register as hook */
-		expr:   { idx?: number, name: string },
+		expr:   ArgumentSlot,
 		/** argument to control whether to add or replace the current hook */
-		add?:   { idx?: number, name: string, default: boolean },
+		add?:   ArgumentSlot & { default: boolean },
 		/** argument to control whether to run the hook before or after other hooks */
-		after?: { idx?: number, name: string, default: boolean },
+		after?: ArgumentSlot & { default: boolean },
 	}
 }
 
-/**
- * Process a hook such as `on.exit`
- */
+/** Process a hook such as `on.exit` */
 export function processRegisterHook<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -39,9 +39,7 @@ export function processRegisterHook<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: RegisterHookConfig
 ): DataflowInformation {
-	const params = {
-		[config.args.expr.name]: 'expr',
-	};
+	const params: Record<BrandedIdentifier, string> = { [config.args.expr.name]: 'expr' };
 	if(config.args.add) {
 		params[config.args.add.name] = 'add';
 	}
@@ -70,16 +68,10 @@ export function processRegisterHook<OtherInfo>(
 				parameters: [],
 				body:       val,
 				lexeme:     'function',
-				info:       {
-					...val.info,
-					id: wrapId,
-				}
+				info:       { ...val.info, id: wrapId }
 			} satisfies RFunctionDefinition<OtherInfo & ParentInformation>;
 			data.completeAst.idMap.set(wrapId, wrapped);
-			return {
-				...arg,
-				value: wrapped
-			} satisfies RArgument;
+			return { ...arg, value: wrapped } satisfies RArgument;
 		} else {
 			return arg;
 		}
@@ -87,14 +79,14 @@ export function processRegisterHook<OtherInfo>(
 
 	const res = processKnownFunctionCall({ name, args: transformed, rootId, data, origin: BuiltInProcName.RegisterHook });
 	const where = { graph: res.information.graph, environment: res.information.environment };
-	const isSet = (ids: ReadonlySet<NodeId>): boolean =>
-		Array.from(ids).flatMap(id => NodeValue.setOf(id, data, where)?.elements ?? [])
-			.some(v => v.type === 'logical' && v.value !== false);
+	const isSet = (ids: ReadonlySet<NodeId>): boolean => Array.from(ids).flatMap(id => NodeValue.setOf(id, data, where)?.elements ?? [])
+		.some(v => v.type === 'logical' && v.value !== false);
 	const shouldAdd = addIds.size === 0 ? config.args.add?.default : isSet(addIds);
 	const shouldBeAfter = afterIds.size === 0 ? config.args.after?.default : isSet(afterIds);
 
 	const info = res.information;
-	const hooks: HookInformation[] = Array.from(wrappedFunctions, id => ({
+	/* `on.exit()` registers nothing, which replaces the hooks registered before unless it adds */
+	const hooks: HookInformation[] = Array.from(wrappedFunctions.size === 0 ? [rootId] : wrappedFunctions, id => ({
 		type:  config.hook,
 		id,
 		cds:   data.cds,

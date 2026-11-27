@@ -10,9 +10,7 @@ import { type Enrichment, type EnrichmentElementArguments, enrichElement } from 
 import { type Mapper, type MapperArguments, map } from './search-mappers';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
-/**
- * This is a union of all possible transformer node types
- */
+/** This is a union of all possible transformer node types */
 export type FlowrSearchTransformerNode = {
 	[K in TransformerNames]:
 	FlowrSearchTransformerNodeBase<K,
@@ -24,9 +22,7 @@ export type TransformerNames = keyof typeof transformers;
 
 export type GetOutputOfTransformer<Name extends TransformerNames> = ReturnType<typeof transformers[Name]>;
 
-/**
- * All supported generators!
- */
+/** All supported generators! */
 export const transformers = {
 	first:  getFirst,
 	last:   getLast,
@@ -42,14 +38,12 @@ export const transformers = {
 	map:    getMap
 } as const;
 
-/**
- * Gets a search-api transformer function for the given name.
- */
-export function getTransformer<Name extends TransformerNames>(name: Name): typeof transformers[Name] {
-	if(!transformers[name]) {
-		throw new Error(`Unknown transformer: ${name}`);
+/** Runs the search-api transformer described by the given node */
+export function runTransformer(node: FlowrSearchTransformerNode, input: ReadonlyFlowrAnalysisProvider, elements: FlowrSearchElements<ParentInformation>): FlowrSearchElements<ParentInformation> | Promise<FlowrSearchElements<ParentInformation>> {
+	if(!transformers[node.name]) {
+		throw new Error(`Unknown transformer: ${node.name}`);
 	}
-	return transformers[name];
+	return (transformers[node.name] as (input: ReadonlyFlowrAnalysisProvider, elements: FlowrSearchElements<ParentInformation>, args: typeof node.args) => FlowrSearchElements<ParentInformation> | Promise<FlowrSearchElements<ParentInformation>>)(input, elements, node.args);
 }
 
 function compareByLocation({ node: a }: FlowrSearchElement<ParentInformation>, { node: b }: FlowrSearchElement<ParentInformation>): number {

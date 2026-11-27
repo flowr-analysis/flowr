@@ -2,22 +2,29 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	type PotentiallyEmptyRArgument,
+	RFunctionCall,
+	EmptyArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import {
+	type InGraphIdentifierDefinition,
+	type NamedInGraphIdentifierDefinition,
+	ReferenceType
+} from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { envirOf, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, routeWrittenToEnvir, unknownIfAmbiguous } from './built-in-envir-utils';
+import { envirOf, resolveEnvirArgOrAmbiguous, resolveFirstEnvirArg, routeWrittenToEnvir, suppliesArg, unknownIfAmbiguous } from './built-in-envir-utils';
 import { linkFieldReads } from '../../../../linker';
 import type { FnSig } from '../../../../../environments/built-in-props';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { REnvironment } from '../../../../../environments/environment';
+import { noteOwnMethod, noteUnknownMethods } from './built-in-expression-list';
 
 /**
  * Processes a call listing what an environment holds (`ls`, `objects`), which reads every binding in it: the
@@ -28,15 +35,16 @@ export function processEnvContents<OtherInfo>(
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { sig?: FnSig } = {}
+	{ sig }: { sig?: FnSig } = {}
 ): DataflowInformation {
 	const result = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.EnvContents }).information;
 
-	const resolution = resolveFirstEnvirArg(args, data, config.sig, ['envir', 'name']);
-	if(!resolution) {
+	const formals = ['envir', 'name'];
+	const resolution = resolveFirstEnvirArg(args, data, sig, formals);
+	if(!resolution && suppliesArg(args, sig, formals)) {
 		return result;
 	}
-	for(const defs of resolution.envDef.envState.current.memory.values()) {
+	for(const defs of (resolution?.envDef.envState ?? data.environment).current.memory.values()) {
 		linkFieldReads(result.graph, rootId, defs, false);
 	}
 	return result;
@@ -86,6 +94,7 @@ export function processListToEnv<OtherInfo>(
 	const literal = listLiteralOf(first, data);
 	if(literal === undefined) {
 		handleUnknownSideEffect(result.graph, result.environment, rootId);
+		noteUnknownMethods(result.environment, rootId);
 		return result;
 	}
 
@@ -94,25 +103,21 @@ export function processListToEnv<OtherInfo>(
 		if(RArgument.isEmpty(arg) || arg.name === undefined || arg.value === undefined) {
 			continue;
 		}
-		written.push({
-			type:      ReferenceType.Variable,
-			name:      arg.name.content,
-			nodeId:    arg.info.id,
-			definedAt: rootId,
-			cds:       data.cds
-		});
+		written.push({ type: ReferenceType.Variable, name: arg.name.content, nodeId: arg.info.id, definedAt: rootId, cds: data.cds });
 		result.graph.addEdge(arg.info.id, arg.value.info.id, EdgeType.DefinedBy);
 		result.graph.addEdge(arg.info.id, rootId, EdgeType.DefinedBy);
 		result.graph.addEdge(rootId, arg.value.info.id, EdgeType.Reads);
 	}
 	if(written.length === 0) {
 		handleUnknownSideEffect(result.graph, result.environment, rootId);
+		noteUnknownMethods(result.environment, rootId);
 		return result;
 	}
 
 	let environment = result.environment;
 	for(const definition of written) {
 		environment = REnvironment.define(definition, false, environment);
+		noteOwnMethod(definition.name, environment, data.ctx);
 	}
 	const defined = { ...result, environment, out: [...result.out, ...written] };
 

@@ -40,9 +40,9 @@ describe('Function Info Query', withTreeSitter(parser => {
 
 	describe('shared function-origin helper (builtinModelsOf)', () => {
 		test('reports flowR\'s own definition for a base function', async() => {
+			/* `config::get` is modeled as well, under its own package */
 			const models = builtinModelsOf('get', await contextOf());
-			expect(models).toHaveLength(1);
-			expect(models[0]).toMatchObject({ kind: 'function', namespace: 'base', processor: 'builtin:get', evalHandler: 'eval:get' });
+			expect(models.filter(m => m.namespace === 'base')).toMatchObject([{ kind: 'function', processor: 'builtin:get', evalHandler: 'eval:get' }]);
 		});
 
 		test('a name a later entry deliberately overrides is reported once, not once per entry', async() => {
@@ -131,8 +131,7 @@ describe('Function Info Query', withTreeSitter(parser => {
 		test('a name no database package exports still answers from flowR\'s built-in table', async() => {
 			const out = await runQuery([{ type: 'function-info', name: 'get' }]);
 			expect(out.packages).toEqual([]);
-			expect(out.builtin).toHaveLength(1);
-			expect(out.builtin[0]).toMatchObject({ kind: 'function', namespace: 'base' });
+			expect(out.builtin).toContainEqual(expect.objectContaining({ kind: 'function', namespace: 'base' }));
 		});
 
 		test('a name nothing knows about answers with nothing', async() => {

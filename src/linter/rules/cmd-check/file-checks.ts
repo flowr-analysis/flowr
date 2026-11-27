@@ -1,5 +1,5 @@
-import { prettyPrint, LintingResultCertainty } from '../../linter-format';
-import { SourceLocation } from '../../../util/range';
+import { type LintingPrettyPrintContext, prettyPrint, LintingResultCertainty  } from '../../linter-format';
+import { SourceLocation, type Line } from '../../../util/range';
 import { type CmdCheckResult, type PackageInfo, packageInfo } from './cmd-check-util';
 import { type PackageFiles, packageFiles } from './package-files';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
@@ -14,11 +14,11 @@ export interface FileResult<K extends string> extends CmdCheckResult {
 /** Collects findings located at package files; findings of the kinds in `skip` are dropped. */
 export function fileFindings<K extends string>(pf: PackageFiles, skip: readonly K[] = []) {
 	const results: FileResult<K>[] = [];
-	const add = (kind: K, file: string, message: string, line?: number, certainty = LintingResultCertainty.Certain) => {
+	function add(kind: K, file: string, message: string, line?: Line, certainty = LintingResultCertainty.Certain) {
 		if(!skip.includes(kind)) {
 			results.push({ certainty, involvedId: undefined, loc: pf.locate(file, line), kind, file, message });
 		}
-	};
+	}
 	return { results, add };
 }
 
@@ -43,5 +43,12 @@ export function firstLine(pf: PackageFiles, file: string, pattern: RegExp): numb
 	return i < 0 ? undefined : i + 1;
 }
 
+/** Pretty printing of a file finding as its kind, file and location, in full as its message and location. */
+export function prettyPrintKindInFile(): { readonly [C in LintingPrettyPrintContext]: (r: FileResult<string>, metadata: unknown) => string } {
+	return prettyPrint(r => `${r.kind} in ${r.file} at ${SourceLocation.format(r.loc)}`, r => `${r.message} (at ${SourceLocation.format(r.loc)})`);
+}
+
 /** Pretty printing of a finding as its message and location. */
-export const MessageAtLocation = prettyPrint((r: { readonly message: string, readonly loc: SourceLocation }) => `${r.message} at ${SourceLocation.format(r.loc)}`);
+export function prettyPrintMessageAtLocation(): { readonly [C in LintingPrettyPrintContext]: (r: { readonly message: string, readonly loc: SourceLocation | undefined }, metadata: unknown) => string } {
+	return prettyPrint(r => `${r.message} at ${SourceLocation.format(r.loc)}`);
+}

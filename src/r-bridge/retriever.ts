@@ -13,10 +13,7 @@ export const fileProtocol = 'file://';
 
 export interface RParseRequestFromFile {
 	readonly request: 'file';
-	/**
-	 * The path to the file represented in the {@link FlowrAnalyzerFilesContext}.
-	 * See {@link RParseRequests} for multiple files.
-	 */
+	/** The path to the file represented in the {@link FlowrAnalyzerFilesContext}. See {@link RParseRequests} for multiple files. */
 	readonly content: string;
 }
 
@@ -37,14 +34,10 @@ export interface RParseRequestFromText {
 }
 
 export type RParseRequest = RParseRequestFromFile | RParseRequestFromText;
-/**
- * Several requests that can be passed along to {@link retrieveParseDataFromRCode}.
- */
+/** Several requests that can be passed along to {@link retrieveParseDataFromRCode}. */
 export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>;
 
-/**
- * Type guard for {@link RParseRequest}
- */
+/** Type guard for {@link RParseRequest} */
 export function isParseRequest(request: unknown): request is RParseRequest {
 	if(typeof request !== 'object' || request === null) {
 		return false;
@@ -71,25 +64,16 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}` | stri
 	const file = content.startsWith(fileProtocol);
 
 	if(file) {
-		return {
-			request: 'file',
-			content: content.slice(fileProtocol.length),
-		};
+		return { request: 'file', content: content.slice(fileProtocol.length) };
 	} else {
-		return {
-			request: 'text',
-			content
-		};
+		return { request: 'text', content };
 	}
 }
 
-/**
- * Checks whether the given {@link RParseRequest} is empty (has no content).
- */
+/** Checks whether the given {@link RParseRequest} is empty (has no content). */
 export function isEmptyRequest(request: RParseRequest): boolean {
 	return request.content.trim().length === 0;
 }
-
 
 export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell): Promise<string>;
 export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShellExecutor): string;
@@ -137,9 +121,7 @@ export async function retrieveNormalizedAstFromRCode(request: RParseRequest, she
 	}, deterministicCountingIdGenerator(0));
 }
 
-/**
- * Needs to be called *after* {@link retrieveParseDataFromRCode} (or {@link retrieveNormalizedAstFromRCode})
- */
+/** Needs to be called *after* {@link retrieveParseDataFromRCode} (or {@link retrieveNormalizedAstFromRCode}) */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell, ignoreComments = false): Promise<number> {
 	const rows = ignoreComments ? `flowr_output[flowr_output$token != "${RawRType.Comment}", ]` : 'flowr_output';
 	const result = await shell.sendCommandWithOutput(`cat(nrow(${rows}),${ts2r(shell.options.eol)})`);

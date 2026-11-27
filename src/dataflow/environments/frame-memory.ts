@@ -84,6 +84,26 @@ export class Frame implements MemoryView {
 		return new Frame(new Map(this.bindings), false);
 	}
 
+	/** The names of {@link keys} starting with `prefix`, in their order, asking a lazily bound base for its index rather than walking its names. */
+	public namesWithPrefix(prefix: string): BrandedIdentifier[] {
+		if(this.base === undefined) {
+			return namesWithPrefix(this.bindings, prefix);
+		}
+		const base = this.base;
+		const names = namesWithPrefix(base, prefix).filter(n => !this.removed?.has(n));
+		for(const name of this.bindings.keys()) {
+			if(name.startsWith(prefix) && (!base.has(name) || this.removed?.has(name))) {
+				names.push(name);
+			}
+		}
+		return names;
+	}
+
+	/** Whether this frame takes no writes, so whoever holds it may share it. */
+	public get isFrozen(): boolean {
+		return this.frozen;
+	}
+
 	/** The attached package this frame binds, as long as nothing was written to it, see {@link LazyBindings}. */
 	public lazy(): LazyBindings | undefined {
 		return this.base === undefined && this.bindings instanceof LazyBindings ? this.bindings : undefined;
@@ -171,7 +191,7 @@ export class Frame implements MemoryView {
 
 	public forEach(fn: (defs: IdentifierDefinition[], name: BrandedIdentifier, map: MemoryView) => void, thisArg?: unknown): void {
 		if(this.base === undefined) {
-			this.bindings.forEach(fn as never, thisArg);
+			this.bindings.forEach(fn, thisArg);
 			return;
 		}
 		for(const [name, defs] of this.entries()) {
@@ -229,9 +249,9 @@ const EmptyFrame = Frame.of(new Map<BrandedIdentifier, IdentifierDefinition[]>()
  */
 export class LazyBindings implements MemoryView {
 	private readonly built = new Map<BrandedIdentifier, IdentifierDefinition[]>();
+	private prefixed?: Map<string, readonly BrandedIdentifier[]>;
 
 	/**
-	 * @param names  - the names this binds
 	 * @param bind   - builds the definitions of one name
 	 * @param origin - what, besides the names, decides what `bind` returns, so the bindings can be told apart without building them
 	 */
@@ -254,6 +274,17 @@ export class LazyBindings implements MemoryView {
 
 	public has(name: BrandedIdentifier): boolean {
 		return this.names.has(name);
+	}
+
+	/** The names starting with `prefix`, kept per prefix as the names never change. */
+	public namesWithPrefix(prefix: string): BrandedIdentifier[] {
+		this.prefixed ??= new Map<string, readonly BrandedIdentifier[]>();
+		let names = this.prefixed.get(prefix);
+		if(names === undefined) {
+			names = this.names.values().filter(n => n.startsWith(prefix)).toArray();
+			this.prefixed.set(prefix, names);
+		}
+		return names.slice();
 	}
 
 	public get size(): number {
@@ -285,4 +316,12 @@ export class LazyBindings implements MemoryView {
 			fn.call(thisArg, defs, name, this);
 		}
 	}
+}
+
+/** The names of `view` starting with `prefix`, in the order of its keys, see {@link Frame#namesWithPrefix}. */
+export function namesWithPrefix(view: MemoryView, prefix: string): BrandedIdentifier[] {
+	if(view instanceof Frame || view instanceof LazyBindings) {
+		return view.namesWithPrefix(prefix);
+	}
+	return view.keys().filter(n => n.startsWith(prefix)).toArray();
 }

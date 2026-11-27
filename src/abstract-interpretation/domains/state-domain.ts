@@ -1,48 +1,30 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AnyAbstractDomain } from './abstract-domain';
 
-/**
- * An interface for state-like domains that store abstract values for AST nodes.
- */
+/** An interface for state-like domains that store abstract values for AST nodes. */
 export interface StateDomain<Domain extends AnyAbstractDomain = AnyAbstractDomain> {
-	/**
-	 * The underlying value domain of the state domain.
-	 */
+	/** The underlying value domain of the state domain. */
 	get domain(): Domain;
 
-	/**
-	 * Gets the inferred abstract value for an AST node ID.
-	 */
+	/** Gets the inferred abstract value for an AST node ID. */
 	get(node: NodeId): Domain | undefined;
 
-	/**
-	 * Checks whether the state domain has an inferred value for an AST node ID.
-	 */
+	/** Checks whether the state domain has an inferred value for an AST node ID. */
 	has(node: NodeId): boolean;
 
-	/**
-	 * Removes the inferred value for an AST node ID from the state domain.
-	 */
+	/** Removes the inferred value for an AST node ID from the state domain. */
 	remove(node: NodeId): void;
 
-	/**
-	 * Sets the inferred value for an AST node ID from the state domain.
-	 */
+	/** Sets the inferred value for an AST node ID from the state domain. */
 	set(node: NodeId, value: Domain): void;
 
-	/**
-	 * Gets the AST node IDs in the state domain that are mapped to Bottom.
-	 */
+	/** Gets the AST node IDs in the state domain that are mapped to Bottom. */
 	getBottomNodes(): NodeId[];
 
-	/**
-	 * Returns all node-value pairs of the state domain.
-	 */
+	/** Returns all node-value pairs of the state domain. */
 	entries(): readonly [NodeId, Domain][];
 
-	/**
-	 * Whether the state is Bottom.
-	 */
+	/** Whether the state is Bottom. */
 	isBottom(): boolean;
 }
 

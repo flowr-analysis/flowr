@@ -1,8 +1,7 @@
 import { LintingRuleTag } from '../linter/linter-tags';
 import { prefixLines } from './doc-util/doc-general';
 import { type LintingRuleNames, LintingRules } from '../linter/linter-rules';
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 
 /* this prints the yaml configuration for the GitHub issue template to request a new linter rule / an update */
 
@@ -13,9 +12,7 @@ function summarizeIfTooLong(text: string, maxLength = 52): string {
 	return text.slice(0, maxLength - 1) + '…';
 }
 
-/**
- * https://github.com/flowr-analysis/flowr/blob/main/.github/ISSUE_TEMPLATE/linting-rule.yaml
- */
+/** https://github.com/flowr-analysis/flowr/blob/main/.github/ISSUE_TEMPLATE/linting-rule.yaml */
 export class IssueLintingRule extends DocMaker<'.github/ISSUE_TEMPLATE/linting-rule.yaml'> {
 	constructor() {
 		super('.github/ISSUE_TEMPLATE/linting-rule.yaml', module.filename, '', false);

@@ -2,8 +2,8 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SummarizedSlicerStats}).
  * @module
  */
-import type { ElapsedTime, PerSliceMeasurements } from './stats';
-import type { Reduction, SummarizedPerSliceStats, SummarizedSlicerStats, UltimateSlicerStats } from '../summarizer/data';
+import type { CommonSlicerMeasurements, ElapsedTime, PerSliceMeasurements, SlicerStatsDataflow, SlicerStatsInput } from './stats';
+import type { Reduction, SummarizedPerSliceStats, SummarizedSlicerStats, TimePerToken, UltimateSlicerStats } from '../summarizer/data';
 import { guard } from '../../util/assert';
 import type { SummarizedMeasurement } from '../../util/summarizer';
 
@@ -13,9 +13,7 @@ function pad<T>(string: T) {
 	return String(string).padStart(padSize, ' ');
 }
 
-/**
- * Formats the given nanoseconds into a human-readable string.
- */
+/** Formats the given nanoseconds into a human-readable string. */
 export function formatNanoseconds(nanoseconds: bigint | number): string {
 	if(nanoseconds < 0) {
 		return '??';
@@ -35,7 +33,6 @@ export function formatNanoseconds(nanoseconds: bigint | number): string {
 		return pad(`${millis}:${String(nanos).padStart(6, '0')}ms`);
 	}
 }
-
 
 function print<K>(measurements: Map<K, ElapsedTime>, key: K) {
 	const time = measurements.get(key);
@@ -73,6 +70,28 @@ function formatSummarizedMeasure(measure: SummarizedMeasurement | undefined, fmt
 	return `${fmt(measure.min)} - ${fmt(measure.max)} (median: ${fmt(measure.median)}, mean: ${fmt(measure.mean)}, std: ${fmt(measure.std)})`;
 }
 
+function inputAndDataflow2String<T>(input: SlicerStatsInput<T>, dataflow: SlicerStatsDataflow<T>, fmt: (value: T) => string, bytes: (value: T) => string): string {
+	return `Input:
+  Number of lines:                     ${fmt(input.numberOfLines)}
+  Number of non empty lines:           ${fmt(input.numberOfNonEmptyLines)}
+  Number of characters:                ${fmt(input.numberOfCharacters)}
+  Number of characters (w/o comments): ${fmt(input.numberOfCharactersNoComments)}
+  Number of non whitespace characters: ${fmt(input.numberOfNonWhitespaceCharacters)}
+  Number of n. w. c. (w/o comments):   ${fmt(input.numberOfNonWhitespaceCharactersNoComments)}
+  Number of tokens:                    ${fmt(input.numberOfRTokens)}
+  Number of tokens (w/o comments):     ${fmt(input.numberOfRTokensNoComments)}
+  Normalized R tokens:                 ${fmt(input.numberOfNormalizedTokens)}
+  Normalized R tokens (w/o comments):  ${fmt(input.numberOfNormalizedTokensNoComments)}
+
+Dataflow:
+  Number of nodes:               ${fmt(dataflow.numberOfNodes)}
+  Number of edges:               ${fmt(dataflow.numberOfEdges)}
+  Number of control flow edges:  ${fmt(dataflow.numberOfControlFlowEdges)}
+  Number of calls:               ${fmt(dataflow.numberOfCalls)}
+  Number of function defs:       ${fmt(dataflow.numberOfFunctionDefinitions)}
+  Size of graph:                 ${bytes(dataflow.sizeOfObject)}`;
+}
+
 function printSummarizedMeasurements(stats: SummarizedPerSliceStats, key: PerSliceMeasurements): string {
 	const measure = stats.measurements.get(key);
 	guard(measure !== undefined, `Measurement for ${JSON.stringify(key)} not found`);
@@ -96,43 +115,24 @@ function convertNumberToNiceBytes(x: number) {
 	return pad((x < 0 ? '-' : '') + n.toFixed(n < 10 && l > 0 ? 1 : 0) + ' ' + units[l]);
 }
 
-/**
- * Converts the given stats to a human-readable string.
- * You may have to {@link summarizeSlicerStats | summarize} the stats first.
- */
+/** The phases every run times per token, by label, measurement, and the field holding the time per token; the optional ones only print when measured. */
+const TokenPhases = [['AST retrieval', 'retrieve AST from R code', 'retrieveTimePerToken'], ['AST normalization', 'normalize R AST', 'normalizeTimePerToken'], ['Dataflow creation', 'produce dataflow information', 'dataflowTimePerToken']] as const;
+const OptionalTokenPhases = [['Control flow extraction', 'extract control flow graph', 'controlFlowTimePerToken'], ['Call graph extraction', 'extract call graph', 'callGraphTimePerToken'], ['Dataframe shape inference', 'infer data frame shapes', 'dataFrameShapeTimePerToken']] as const;
+type PhaseKey = (typeof TokenPhases | typeof OptionalTokenPhases)[number][2] | 'totalCommonTimePerToken';
+
+/** The time of each phase and its time per token, a phase timed by `time`, a time per token formatted by `format`. */
+function phases2String<T>(stats: { readonly commonMeasurements: ReadonlyMap<CommonSlicerMeasurements, unknown> } & { readonly [K in PhaseKey]?: TimePerToken<T> }, time: (phase: CommonSlicerMeasurements) => string, format: (value: T) => string): string {
+	const line = (label: string, value: string) => `\n${(label + ':').padEnd(38)}${value}`;
+	const perToken = (label: string, of: TimePerToken<T> | undefined) => of === undefined ? '' : line(label + ' per token', format(of.normalized)) + line(label + ' per R token', format(of.raw));
+	const phase = ([label, measurement, key]: readonly [string, CommonSlicerMeasurements, PhaseKey]) => line(label, time(measurement)) + perToken(label, stats[key]);
+	return line('Shell init time', time('initialize R session')) + TokenPhases.map(phase).join('') + perToken('Total common time', stats.totalCommonTimePerToken)
+		+ OptionalTokenPhases.filter(([, measurement, key]) => stats.commonMeasurements.has(measurement) && stats[key] !== undefined).map(phase).join('');
+}
+
+/** Converts the given stats to a human-readable string. You may have to {@link summarizeSlicerStats | summarize} the stats first. */
 export function stats2string(stats: SummarizedSlicerStats): string {
 	let result = `
-Request: ${JSON.stringify(stats.request)}
-Shell init time:                      ${print(stats.commonMeasurements, 'initialize R session')}
-AST retrieval:                        ${print(stats.commonMeasurements, 'retrieve AST from R code')}
-AST retrieval per token:              ${formatNanoseconds(stats.retrieveTimePerToken.normalized)}
-AST retrieval per R token:            ${formatNanoseconds(stats.retrieveTimePerToken.raw)}
-AST normalization:                    ${print(stats.commonMeasurements, 'normalize R AST')}
-AST normalization per token:          ${formatNanoseconds(stats.normalizeTimePerToken.normalized)}
-AST normalization per R token:        ${formatNanoseconds(stats.normalizeTimePerToken.raw)}
-Dataflow creation:                    ${print(stats.commonMeasurements, 'produce dataflow information')}
-Dataflow creation per token:          ${formatNanoseconds(stats.dataflowTimePerToken.normalized)}
-Dataflow creation per R token:        ${formatNanoseconds(stats.dataflowTimePerToken.raw)}
-Total common time per token:          ${formatNanoseconds(stats.totalCommonTimePerToken.normalized)}
-Total common time per R token:        ${formatNanoseconds(stats.totalCommonTimePerToken.raw)}`;
-	if(stats.commonMeasurements.has('extract control flow graph') && stats.controlFlowTimePerToken !== undefined) {
-		result += `
-Control flow extraction:              ${print(stats.commonMeasurements, 'extract control flow graph')}
-Control flow extraction per token:    ${formatNanoseconds(stats.controlFlowTimePerToken.normalized)}
-Control flow extraction per R token:  ${formatNanoseconds(stats.controlFlowTimePerToken.raw)}`;
-	}
-	if(stats.commonMeasurements.has('extract call graph') && stats.callGraphTimePerToken !== undefined) {
-		result += `
-Call graph extraction:                ${print(stats.commonMeasurements, 'extract call graph')}
-Call graph extraction per token:      ${formatNanoseconds(stats.callGraphTimePerToken.normalized)}
-Call graph extraction per R token:    ${formatNanoseconds(stats.callGraphTimePerToken.raw)}`;
-	}
-	if(stats.commonMeasurements.has('infer data frame shapes') && stats.dataFrameShapeTimePerToken !== undefined) {
-		result += `
-Dataframe shape inference:            ${print(stats.commonMeasurements, 'infer data frame shapes')}
-Dataframe shape inference per token:  ${formatNanoseconds(stats.dataFrameShapeTimePerToken.normalized)}
-Dataframe shape inference per R token:${formatNanoseconds(stats.dataFrameShapeTimePerToken.raw)}`;
-	}
+Request: ${JSON.stringify(stats.request)}${phases2String(stats, key => print(stats.commonMeasurements, key), formatNanoseconds)}`;
 
 	if(stats.perSliceMeasurements.numberOfSlices > 0) {
 		result += `
@@ -166,25 +166,7 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
 Shell close:                         ${print(stats.commonMeasurements, 'close R session')}
 Total:                               ${print(stats.commonMeasurements, 'total')}
 
-Input:
-  Number of lines:                     ${pad(stats.input.numberOfLines)}
-  Number of non empty lines:           ${pad(stats.input.numberOfNonEmptyLines)}
-  Number of characters:                ${pad(stats.input.numberOfCharacters)}
-  Number of characters (w/o comments): ${pad(stats.input.numberOfCharactersNoComments)}
-  Number of non whitespace characters: ${pad(stats.input.numberOfNonWhitespaceCharacters)}
-  Number of n. w. c. (w/o comments):   ${pad(stats.input.numberOfNonWhitespaceCharactersNoComments)}
-  Number of tokens:                    ${pad(stats.input.numberOfRTokens)}
-  Number of tokens (w/o comments):     ${pad(stats.input.numberOfRTokensNoComments)}
-  Normalized R tokens:                 ${pad(stats.input.numberOfNormalizedTokens)}
-  Normalized R tokens (w/o comments):  ${pad(stats.input.numberOfNormalizedTokensNoComments)}
-
-Dataflow:
-  Number of nodes:               ${pad(stats.dataflow.numberOfNodes)}
-  Number of edges:               ${pad(stats.dataflow.numberOfEdges)}
-  Number of control flow edges:  ${pad(stats.dataflow.numberOfControlFlowEdges)}
-  Number of calls:               ${pad(stats.dataflow.numberOfCalls)}
-  Number of function defs:       ${pad(stats.dataflow.numberOfFunctionDefinitions)}
-  Size of graph:                 ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`;
+${inputAndDataflow2String(stats.input, stats.dataflow, pad, convertNumberToNiceBytes)}`;
 
 	if(stats.dataFrameShape !== undefined) {
 		result += `
@@ -215,43 +197,10 @@ Dataframe shape inference:
 	return result;
 }
 
-
-/**
- * Converts reduction stats to a human-readable string.
- */
+/** Converts reduction stats to a human-readable string. */
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
 	let result = `
-Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices
-Shell init time:                      ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('initialize R session'))}
-AST retrieval:                        ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve AST from R code'))}
-AST retrieval per token:              ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.normalized)}
-AST retrieval per R token:            ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.raw)}
-AST normalization:                    ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('normalize R AST'))}
-AST normalization per token:          ${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.normalized)}
-AST normalization per R token:        ${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.raw)}
-Dataflow creation:                    ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('produce dataflow information'))}
-Dataflow creation per token:          ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.normalized)}
-Dataflow creation per R token:        ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.raw)}
-Total common time per token:          ${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.normalized)}
-Total common time per R token:        ${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.raw)}`;
-	if(stats.commonMeasurements.has('extract control flow graph') && stats.controlFlowTimePerToken !== undefined) {
-		result += `
-Control flow extraction:              ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('extract control flow graph'))}
-Control flow extraction per token:    ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.normalized)}
-Control flow extraction per R token:  ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.raw)}`;
-	}
-	if(stats.commonMeasurements.has('extract call graph') && stats.callGraphTimePerToken !== undefined) {
-		result += `
-Call graph extraction:                ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('extract call graph'))}
-Call graph extraction per token:      ${formatSummarizedTimeMeasure(stats.callGraphTimePerToken.normalized)}
-Call graph extraction per R token:    ${formatSummarizedTimeMeasure(stats.callGraphTimePerToken.raw)}`;
-	}
-	if(stats.commonMeasurements.has('infer data frame shapes') && stats.dataFrameShapeTimePerToken !== undefined) {
-		result += `
-Dataframe shape inference:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('infer data frame shapes'))}
-Dataframe shape inference per token:  ${formatSummarizedTimeMeasure(stats.dataFrameShapeTimePerToken.normalized)}
-Dataframe shape inference per R token:${formatSummarizedTimeMeasure(stats.dataFrameShapeTimePerToken.raw)}`;
-	}
+Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices${phases2String(stats, key => formatSummarizedTimeMeasure(stats.commonMeasurements.get(key)), formatSummarizedTimeMeasure)}`;
 
 	result += `
 
@@ -300,25 +249,7 @@ ${reduction2String('Reductions without comments and empty lines', stats.reductio
 Shell close:                        ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('close R session'))}
 Total:                              ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('total'))}
 
-Input:
-  Number of lines:                     ${formatSummarizedMeasure(stats.input.numberOfLines)}
-  Number of non empty lines:           ${formatSummarizedMeasure(stats.input.numberOfNonEmptyLines)}
-  Number of characters:                ${formatSummarizedMeasure(stats.input.numberOfCharacters)}
-  Number of characters (w/o comments): ${formatSummarizedMeasure(stats.input.numberOfCharactersNoComments)}
-  Number of non whitespace characters: ${formatSummarizedMeasure(stats.input.numberOfNonWhitespaceCharacters)}
-  Number of n. w. c. (w/o comments):   ${formatSummarizedMeasure(stats.input.numberOfNonWhitespaceCharactersNoComments)}
-  Number of tokens:                    ${formatSummarizedMeasure(stats.input.numberOfRTokens)}
-  Number of tokens (w/o comments):     ${formatSummarizedMeasure(stats.input.numberOfRTokensNoComments)}
-  Normalized R tokens:                 ${formatSummarizedMeasure(stats.input.numberOfNormalizedTokens)}
-  Normalized R tokens (w/o comments):  ${formatSummarizedMeasure(stats.input.numberOfNormalizedTokensNoComments)}
-
-Dataflow:
-  Number of nodes:               ${formatSummarizedMeasure(stats.dataflow.numberOfNodes)}
-  Number of edges:               ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
-  Number of control flow edges:  ${formatSummarizedMeasure(stats.dataflow.numberOfControlFlowEdges)}
-  Number of calls:               ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
-  Number of function defs:       ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
-  Size of graph:                 ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}`;
+${inputAndDataflow2String(stats.input, stats.dataflow, m => formatSummarizedMeasure(m), m => formatSummarizedMeasure(m, convertNumberToNiceBytes))}`;
 
 	if(stats.dataFrameShape !== undefined) {
 		result += `

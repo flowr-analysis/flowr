@@ -2,11 +2,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElement, FlowrSearchElements, FlowrSearchGetFilter } from './flowr-search';
 import type { FlowrFilter, FlowrFilterExpression } from './flowr-search-filters';
 import type { FlowrSearchGeneratorNode, GeneratorNames } from './search-executor/search-generators';
-import type {
-	FlowrSearchTransformerNode,
-	GetOutputOfTransformer,
-	TransformerNames
-} from './search-executor/search-transformer';
+import type { FlowrSearchTransformerNode, GetOutputOfTransformer, TransformerNames } from './search-executor/search-transformer';
 import { optimize } from './search-optimizer/search-optimizer';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -20,9 +16,7 @@ import type TreeSitter from 'web-tree-sitter';
 type FlowrCriteriaReturn<C extends SlicingCriteria> = FlowrSearchElements<ParentInformation, C extends [] ? never : C extends [infer _] ?
 	[FlowrSearchElement<ParentInformation>] : FlowrSearchElement<ParentInformation>[]>;
 
-/**
- * Returns all elements (nodes/dataflow vertices) from the given data without any filters.
- */
+/** Returns all elements (nodes/dataflow vertices) from the given data without any filters. */
 function all(): FlowrSearchBuilder<'all'>;
 /**
  * Returns all elements (nodes/dataflow vertices) that match the given file path regex.
@@ -54,6 +48,13 @@ export const FlowrSearchGenerator = {
 	 * Initializes a new search query based on the results of the given JSON query or queries.
 	 * Internally, the {@link SupportedQuery#flattenInvolvedNodes} function is used to flatten the resulting nodes of the query.
 	 * Please note that, due to the fact that not every query involves dataflow nodes, the search may not contain any elements at all for certain queries.
+	 * Keep in mind that the query runs when the search is executed, which may be expensive (a `code-clones` query indexes
+	 * the whole project), and that the `certainty` is only passed on to queries that report their involved nodes by certainty.
+	 * @example
+	 * ```ts
+	 * const search = Q.fromQuery({ type: 'dependencies', enabledCategories: ['write'] }).first();
+	 * const elements = await analyzer.runSearch(search);
+	 * ```
 	 */
 	fromQuery(from: Query | readonly Query[], certainty?: LintingResultCertainty): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 		const queries = Array.isArray(from) ? from as readonly Query[] : [from as Query];
@@ -66,9 +67,7 @@ export const FlowrSearchGenerator = {
 	syntax(source: TreeSitter.Query | string, ...captures: readonly string[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'syntax', args: { source, captures } });
 	},
-	/**
-	 * Returns all elements (nodes/dataflow vertices) from the given data without any (or with a filename filter).
-	 */
+	/** Returns all elements (nodes/dataflow vertices) from the given data without any (or with a filename filter). */
 	all: all,
 	/**
 	 * Returns all elements that match the given {@link FlowrSearchGetFilter|filters}.
@@ -170,7 +169,6 @@ export interface FlowrSearch<
 	readonly search:    readonly FlowrSearchTransformerNode[];
 }
 
-
 type FlowrSearchBuilderOut<Generator extends GeneratorNames, Transformers extends TransformerNames[], Info, Transformer extends TransformerNames> = FlowrSearchBuilder<Generator, [...Transformers, Transformer], Info, GetOutputOfTransformer<Transformer>>;
 
 /**
@@ -190,67 +188,51 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 		this.generator = generator;
 	}
 
-	/**
-	 * only returns the elements that match the given filter.
-	 */
+	/** only returns the elements that match the given filter. */
 	filter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'filter'> {
 		this.search.push({ type: 'transformer', name: 'filter', args: { filter: filter as FlowrFilterExpression } });
 		return this;
 	}
 
-	/**
-	 * first either returns the first element of the search or nothing, if no elements are present.
-	 */
+	/** first either returns the first element of the search or nothing, if no elements are present. */
 	first(): FlowrSearchBuilderOut<Generator, Transformers, Info, 'first'> {
 		this.search.push({ type: 'transformer', name: 'first', args: undefined });
 		return this;
 	}
 
-	/**
-	 * last either returns the last element of the search or nothing, if no elements are present.
-	 */
+	/** last either returns the last element of the search or nothing, if no elements are present. */
 	last(): FlowrSearchBuilderOut<Generator, Transformers, Info, 'last'> {
 		this.search.push({ type: 'transformer', name: 'last', args: undefined });
 		return this;
 	}
-	/**
-	 * index returns the element at the given index if it exists
-	 */
+	/** index returns the element at the given index if it exists */
 	index<Idx extends number>(index: Idx): FlowrSearchBuilderOut<Generator, Transformers, Info, 'index'> {
 		guard(index >= 0, 'Index must be greater or equal to 0, but was ' + index);
 		this.search.push({ type: 'transformer', name: 'index', args: { index } });
 		return this;
 	}
 
-	/**
-	 * tail returns all elements of the search except the first one.
-	 */
+	/** tail returns all elements of the search except the first one. */
 	tail(): FlowrSearchBuilderOut<Generator, Transformers, Info, 'tail'> {
 		this.search.push({ type: 'transformer', name: 'tail', args: undefined });
 		return this;
 	}
 
-	/**
-	 * take returns the first `count` elements of the search.
-	 */
+	/** take returns the first `count` elements of the search. */
 	take<Count extends number>(count: Count): FlowrSearchBuilderOut<Generator, Transformers, Info, 'take'> {
 		guard(count >= 0, 'Count must be greater or equal to 0, but was ' + count);
 		this.search.push({ type: 'transformer', name: 'take', args: { count } });
 		return this;
 	}
 
-	/**
-	 * skip returns all elements of the search except the first `count` ones.
-	 */
+	/** skip returns all elements of the search except the first `count` ones. */
 	skip<Count extends number>(count: Count): FlowrSearchBuilderOut<Generator, Transformers, Info, 'skip'> {
 		guard(count >= 0, 'Count must be greater or equal to 0, but was ' + count);
 		this.search.push({ type: 'transformer', name: 'skip', args: { count } });
 		return this;
 	}
 
-	/**
-	 * select returns only the elements at the given indices.
-	 */
+	/** select returns only the elements at the given indices. */
 	select<Select extends number[]>(...select: Select): FlowrSearchBuilderOut<Generator, Transformers, Info, 'select'> {
 		guard(select.length > 0, 'At least one index must be provided');
 		guard(select.every(i => i >= 0), () => 'All indices must be greater or equal to 0, but were ' + JSON.stringify(select));
@@ -267,24 +249,18 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 		return this;
 	}
 
-	/**
-	 * Maps the elements of the search to new values using the given mapper function.
-	 */
+	/** Maps the elements of the search to new values using the given mapper function. */
 	map<MapperType extends Mapper>(mapper: MapperType, args: MapperArguments<MapperType>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'map'> {
 		this.search.push({ type: 'transformer', name: 'map', args: { mapper: mapper, args: args as MapperArguments<Mapper> } });
 		return this;
 	}
 
-	/**
-	 * A convenience function that combines {@link with} and the {@link Mapper.Enrichment} mapper to immediately add an enrichment and then map to its value(s).
-	 */
+	/** A convenience function that combines {@link with} and the {@link Mapper.Enrichment} mapper to immediately add an enrichment and then map to its value(s). */
 	to<ConcreteEnrichment extends Enrichment>(enrichment: ConcreteEnrichment, args?: EnrichmentElementArguments<ConcreteEnrichment>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with' | 'map'> {
 		return this.with(enrichment, args).map(Mapper.Enrichment, enrichment);
 	}
 
-	/**
-	 * merge combines the search results with those of another search.
-	 */
+	/** merge combines the search results with those of another search. */
 	merge<Generator2 extends GeneratorNames, Transformers2 extends TransformerNames[], OtherElementType extends FlowrSearchElements<Info, FlowrSearchElement<Info>[]>>(
 		other: FlowrSearchBuilder<Generator2, Transformers2, Info, OtherElementType> /* | FlowrSearch<Info, Generator2, Transformers2, OtherElementType> */
 	): FlowrSearchBuilder<Generator, Transformers, Info> {
@@ -292,9 +268,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 		return this;
 	}
 
-	/**
-	 * Removes duplicate elements based on the ids of the elements.
-	 */
+	/** Removes duplicate elements based on the ids of the elements. */
 	unique(): FlowrSearchBuilderOut<Generator, Transformers, Info, 'unique'> {
 		this.search.push({ type: 'transformer', name: 'unique', args: undefined });
 		return this;
@@ -305,10 +279,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	 * @param shouldOptimize - This may optimize the search.
 	 */
 	build(shouldOptimize = true): FlowrSearch<Info, Generator, Transformers, ElementType> {
-		return shouldOptimize ? optimize(this.generator, this.search) : {
-			generator: this.generator,
-			search:    this.search
-		};
+		return shouldOptimize ? optimize(this.generator, this.search) : { generator: this.generator, search: this.search };
 	}
 }
 
@@ -324,9 +295,7 @@ export type FlowrSearchLike<Info = ParentInformation,
 
 export type SearchOutput<Search> = Search extends FlowrSearch ? Search : Search extends FlowrSearchBuilderType<infer Generator, infer Transformers, infer Info, infer Elements> ? FlowrSearch<Info, Generator, Transformers, Elements> : never;
 
-/**
- * Freezes any accepted {@link FlowrSearchLike} into a {@link FlowrSearch}.
- */
+/** Freezes any accepted {@link FlowrSearchLike} into a {@link FlowrSearch}. */
 export function getFlowrSearch<Search extends FlowrSearchLike>(search: Search, optimizeIfBuild = true): SearchOutput<Search> {
 	if(search instanceof FlowrSearchBuilder) {
 		return search.build(optimizeIfBuild) as SearchOutput<Search>;

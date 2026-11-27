@@ -1,8 +1,9 @@
 import { type LintingResult, type LintingRule, prettyPrint, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import { SourceLocation } from '../../util/range';
-import { Unknown, type DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { SourceLocation, type Line } from '../../util/range';
+import type { DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { ConsoleStreams, Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
@@ -22,7 +23,7 @@ export interface OverwrittenFileResult extends LintingResult {
 	/** the file written again */
 	readonly file:      string
 	/** the line of the earlier write the later one replaces */
-	readonly firstLine: number | undefined
+	readonly firstLine: Line | undefined
 }
 
 export interface OverwrittenFileConfig extends MergeableRecord {
@@ -35,16 +36,15 @@ export interface OverwrittenFileMetadata extends MergeableRecord {
 	readonly totalFiles: number
 }
 
-/** what goes to the console is printed, not written over */
-const ConsoleStreams: ReadonlySet<string> = new Set(['stdout', 'stderr']);
-
 /** `append = TRUE`, or a connection opened in an append mode like `file(p, "a")` */
 function appends(id: NodeId, idMap: AstIdMap, opens: (id: NodeId) => boolean): boolean {
 	const node = idMap.get(id);
 	if(!RFunctionCall.is(node)) {
 		return false;
 	}
-	const named = (a: typeof node.arguments[number], name: string) => a !== EmptyArgument && a.name !== undefined && Identifier.getName(a.name.content) === name;
+	const named = (a: typeof node.arguments[number], name: string) => {
+		return a !== EmptyArgument && a.name !== undefined && Identifier.getName(a.name.content) === name;
+	};
 	const mode = node.arguments.find(a => named(a, 'open')) ?? (opens(id) ? node.arguments[1] : undefined);
 	return node.arguments.some(a => named(a, 'append') && a !== EmptyArgument && RLogical.is(a.value) && a.value.content)
 		|| (mode !== undefined && mode !== EmptyArgument && (mode.name === undefined || named(mode, 'open')) && RString.is(mode.value) && /^a[tb+]*$/.test(mode.value.content.str));
@@ -125,8 +125,6 @@ export const OVERWRITTEN_FILE = {
 		description:   'Finds files the script writes more than once, so the later write replaces what the earlier one wrote, as two figures saved under the same name.',
 		tags:          [LintingRuleTag.Bug, LintingRuleTag.Reproducibility],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: () => ({
-			additionalWriteFunctions: []
-		})
+		defaultConfig: () => ({ additionalWriteFunctions: [] })
 	}
 } as const satisfies LintingRule<OverwrittenFileResult, OverwrittenFileMetadata, OverwrittenFileConfig>;

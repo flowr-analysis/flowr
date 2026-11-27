@@ -7,12 +7,12 @@ import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument
 import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import { NodeValue } from '../../../dataflow/eval/resolve/node-value';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 import type { AstIdMap, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import { builtInOf, callsBuiltIn } from '../../linter-util';
@@ -34,7 +34,7 @@ export interface NamespaceTamperingResult extends CmdCheckResult {
 	/** the namespace tampered with, if known */
 	readonly namespace?: string
 	/** for `.Internal`, the internal function called */
-	readonly internal?:  string
+	readonly internal?:  BrandedIdentifier
 }
 
 export interface NamespaceTamperingConfig extends MergeableRecord {
@@ -45,8 +45,7 @@ export interface NamespaceTamperingConfig extends MergeableRecord {
 export type NamespaceTamperingMetadata = MergeableRecord;
 
 /** the calls that name a namespace by the package name they are handed */
-const NamespaceGetters: ReadonlySet<string> = new Set(['asNamespace', 'getNamespace', 'loadNamespace']);
-
+const NamespaceGetters: ReadonlySet<BrandedIdentifier> = new Set(['asNamespace', 'getNamespace', 'loadNamespace']);
 
 /** the package a namespace argument names, `'own'` for the package's own one, `undefined` if unknown */
 function namespaceOf(node: RNode<ParentInformation> | undefined, info: ResolveInfo, own: string | undefined, depth = 0): string | 'own' | undefined {
@@ -87,7 +86,7 @@ function namespaceOfVariable(node: RSymbol<ParentInformation>, info: ResolveInfo
 	const answers = new Set<string | undefined>();
 	for(const def of Dataflow.targetsOf(graph, node.info.id, EdgeType.Reads)) {
 		const target = idMap.get(def);
-		const assignment = target?.info.parent === undefined ? undefined : idMap.get(target.info.parent);
+		const assignment = target === undefined ? undefined : RNode.directParent(target, idMap);
 		const value = RBinaryOp.is(assignment) ? (assignment.lhs === target ? assignment.rhs : assignment.rhs === target ? assignment.lhs : undefined) : undefined;
 		answers.add(value === undefined ? undefined : namespaceOf(value, info, own, depth + 1));
 	}
@@ -96,8 +95,8 @@ function namespaceOfVariable(node: RSymbol<ParentInformation>, info: ResolveInfo
 
 /** whether the call is the one a `.Internal` call is handed, which is reported with the `.Internal` */
 function isInternalArgument(node: RNode<ParentInformation>, idMap: AstIdMap, graph: DataflowGraph): boolean {
-	const arg = node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
-	const call = arg?.info.parent === undefined ? undefined : idMap.get(arg.info.parent);
+	const arg = RNode.directParent(node, idMap);
+	const call = arg === undefined ? undefined : RNode.directParent(arg, idMap);
 	return call !== undefined && callsBuiltIn(graph, call.info.id, '.Internal');
 }
 
@@ -118,32 +117,22 @@ export const NAMESPACE_TAMPERING = {
 		const results: NamespaceTamperingResult[] = [];
 		const add = (node: RNode<ParentInformation>, result: Omit<NamespaceTamperingResult, 'loc' | 'involvedId' | 'certainty'>, certain = true) => results.push({ ...at(node, certain), ...result });
 		for(const { name, node, vertex: call } of packageCalls(df.graph, idMap, pkg)) {
-			const arg = (formals: Record<string, string>, formal: string) => {
+			function arg(formals: Record<string, string>, formal: string) {
 				const ids = FunctionSemantics.call.match.toSpec(call.args, formals).get(formal);
 				return ids?.length === 1 ? idMap.get(ids[0]) : undefined;
-			};
+			}
 			switch(name) {
-				case 'unlockBinding': {
-					if(isInternalArgument(node, idMap, df.graph)) {
+				case 'unlockBinding': case 'assignInNamespace': {
+					const unlock = name === 'unlockBinding';
+					if(unlock && isInternalArgument(node, idMap, df.graph)) {
 						break;
 					}
-					const ns = namespaceOf(arg({ sym: 'sym', env: 'env' }, 'env'), info, pkg.name);
+					const ns = namespaceOf(unlock ? arg({ sym: 'sym', env: 'env' }, 'env') : arg({ x: 'x', value: 'value', ns: 'ns', pos: 'pos', envir: 'envir' }, 'ns'), info, pkg.name);
 					if(ns !== 'own') {
 						add(node, {
-							kind:    'unlock-binding',
+							kind:    unlock ? 'unlock-binding' : 'assign-in-namespace',
 							...(ns !== undefined ? { namespace: ns } : {}),
-							message: `unlockBinding() ${ns === undefined ? 'of a binding outside of the package' : `in the namespace of '${ns}'`} changes code the package does not own`
-						}, ns !== undefined);
-					}
-					break;
-				}
-				case 'assignInNamespace': {
-					const ns = namespaceOf(arg({ x: 'x', value: 'value', ns: 'ns', pos: 'pos', envir: 'envir' }, 'ns'), info, pkg.name);
-					if(ns !== 'own') {
-						add(node, {
-							kind:    'assign-in-namespace',
-							...(ns !== undefined ? { namespace: ns } : {}),
-							message: `assignInNamespace() ${ns === undefined ? 'into a namespace outside of the package' : `into the namespace of '${ns}'`} changes code the package does not own`
+							message: `${name}() ${ns === undefined ? `${unlock ? 'of a binding' : 'into a namespace'} outside of the package` : `${unlock ? 'in' : 'into'} the namespace of '${ns}'`} changes code the package does not own`
 						}, ns !== undefined);
 					}
 					break;
@@ -185,8 +174,6 @@ export const NAMESPACE_TAMPERING = {
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.CmdCheck, LintingRuleTag.Robustness, LintingRuleTag.Security],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds `unlockBinding()` and `assignInNamespace()` on other namespaces, `.Internal()` calls, and `library.dynam()` given a file extension.',
-		defaultConfig: () => ({
-			checkInternal: true
-		})
+		defaultConfig: () => ({ checkInternal: true })
 	}
 } as const satisfies LintingRule<NamespaceTamperingResult, NamespaceTamperingMetadata, NamespaceTamperingConfig>;

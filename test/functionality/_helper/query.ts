@@ -1,8 +1,5 @@
+import type { FlowrConfig } from '../../../src/config';
 import { RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
-import type {
-	DEFAULT_DATAFLOW_PIPELINE,
-	TREE_SITTER_DATAFLOW_PIPELINE
-} from '../../../src/core/steps/pipeline/default-pipelines';
 import {
 	type Query,
 	type QueryArgumentsWithType,
@@ -16,19 +13,18 @@ import type { VirtualQueryArgumentsWithType } from '../../../src/queries/virtual
 import { label, type TestLabel, decorateLabelContext } from './label';
 import type { VirtualCompoundConstraint } from '../../../src/queries/virtual-query/compound-query';
 import { log } from '../../../src/util/log';
-import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
+import type { NormalizedAst, AstIdMap } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowInformation } from '../../../src/dataflow/info';
+import { analyze } from './analyzer';
 import { assert, test } from 'vitest';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import type { KnownParser } from '../../../src/r-bridge/parser';
-import type { AstIdMap } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { extractCfg } from '../../../src/control-flow/control-flow-graph';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import { withSigDb } from './linter';
 import type { SigDbSource } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
-import { applyAssumedPackages, assumedPackagesOf } from './shell';
+import { assumedPackagesOf } from './shell';
 
 function normalizeResults<Queries extends Query>(result: unknown): QueryResultsWithoutMeta<Queries> {
 	return JSON.parse(JSON.stringify(result, (key: unknown, value: unknown) => {
@@ -37,6 +33,12 @@ function normalizeResults<Queries extends Query>(result: unknown): QueryResultsW
 		}
 		return value;
 	})) as QueryResultsWithoutMeta<Queries>;
+}
+
+/** What an expectation computed from the analysis of a query test gets to see. */
+export interface QueryTestAnalysis {
+	readonly normalize: NormalizedAst
+	readonly dataflow:  DataflowInformation
 }
 
 /**
@@ -51,7 +53,7 @@ export function assertQuery<
 	parser: KnownParser,
 	code: string,
 	queries: readonly (Queries | VirtualQueryArgumentsWithType<Queries['type'], VirtualArguments>)[],
-	expected?: QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>)),
+	expected?: QueryResultsWithoutMeta<Queries> | ((info: QueryTestAnalysis) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>)),
 	runFull = false,
 	/** packages this query's code may use without attaching them, overriding the file's {@link assumeLoadedPackages} */
 	assumeLoaded?: readonly string[],
@@ -79,9 +81,7 @@ export function assertQuery<
 			}
 		}
 
-		const builder = applyAssumedPackages(new FlowrAnalyzerBuilder().setParser(parser), assumed);
-		const analyzer = await (sigDb === undefined ? builder : withSigDb(builder, sigDb)).build();
-		analyzer.addRequest(code);
+		const analyzer = await analyze(parser, code, { assumeLoaded: assumed, sigDb });
 		if(runFull) {
 			// we run the dfa analysis to make sure normalization post-patches are ready!
 			await analyzer.runFull();
@@ -103,7 +103,6 @@ export function assertQuery<
 		try {
 			const expectedNormalized = normalizeResults(typeof expected === 'function' ? await expected(
 				{
-					parse:     await analyzer.parse(),
 					normalize: await analyzer.normalize(),
 					dataflow:  await analyzer.dataflow()
 				}
@@ -125,10 +124,10 @@ export function assertQuery<
 export async function runQuery<Type extends SupportedQueryTypes>(
 	parser: KnownParser,
 	code: string,
-	query: QueryArgumentsWithType<Type>
+	query: QueryArgumentsWithType<Type>,
+	config?: FlowrConfig
 ): Promise<{ result: QueryResults<Type>[Type], idMap: AstIdMap, analyzer: FlowrAnalyzer }> {
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-	analyzer.addRequest(code);
+	const analyzer = await analyze(parser, code, { config });
 	const result = await analyzer.query<Type>([query]);
 	const idMap = (await analyzer.normalize()).idMap;
 	return { result: result[query.type], idMap, analyzer };

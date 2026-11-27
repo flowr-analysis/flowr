@@ -4,9 +4,7 @@ import { SemVer } from 'semver';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { MetaPriority } from '../../context/flowr-analyzer-meta-context';
 
-/**
- * This plugin extracts package meta information from R `DESCRIPTION` files.
- */
+/** This plugin extracts package meta information from R `DESCRIPTION` files. */
 export class FlowrAnalyzerMetaDescriptionFilePlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name = 'flowr-analyzer-meta-file-plugin';
 	public readonly description = 'Extracts package meta information from DESCRIPTION files.';

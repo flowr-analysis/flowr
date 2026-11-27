@@ -1,60 +1,33 @@
-import {
-	FlowrAnalyzerFilesContext,
-	type RAnalysisRequest,
-	type ReadOnlyFlowrAnalyzerFilesContext
-} from './flowr-analyzer-files-context';
+import { FlowrAnalyzerFilesContext, type RAnalysisRequest, type ReadOnlyFlowrAnalyzerFilesContext } from './flowr-analyzer-files-context';
 import type { ProjectKind } from './project-kind';
-import {
-	FlowrAnalyzerDependenciesContext,
-	type ReadOnlyFlowrAnalyzerDependenciesContext
-} from './flowr-analyzer-dependencies-context';
+import { FlowrAnalyzerDependenciesContext, type ReadOnlyFlowrAnalyzerDependenciesContext } from './flowr-analyzer-dependencies-context';
 import type { Range } from 'semver';
 import { type FlowrAnalyzerPlugin, PluginType } from '../plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerLoadingOrderContext } from './flowr-analyzer-loading-order-context';
-import type {
-	FlowrAnalyzerLoadingOrderPlugin
-} from '../plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
-import type {
-	FlowrAnalyzerPackageVersionsPlugin
-} from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
-import type {
-	FlowrAnalyzerProjectDiscoveryPlugin
-} from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
+import type { FlowrAnalyzerLoadingOrderPlugin } from '../plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
+import type { FlowrAnalyzerPackageVersionsPlugin } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
+import type { FlowrAnalyzerProjectDiscoveryPlugin } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import type { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
 import { FlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 import { arraysGroupBy } from '../../util/collections/arrays';
-import type { fileProtocol, RParseRequestFromFile, RParseRequests } from '../../r-bridge/retriever';
-import { requestFromInput } from '../../r-bridge/retriever';
+import { type fileProtocol, type RParseRequestFromFile, type RParseRequests, requestFromInput } from '../../r-bridge/retriever';
 import { FlowrConfig, resolveAssumedRVersion } from '../../config';
 import { deepMergeObject } from '../../util/objects';
 import { setLogLevel, type LogLevelName } from '../../util/log';
 import type { DeepPartial } from 'ts-essentials';
-import type { FlowrFileProvider } from './flowr-file';
-import { FlowrInlineTextFile } from './flowr-file';
-import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
-import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
-import type { ReadOnlyFlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
-import { FlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
-import type { FlowrAnalyzer } from '../flowr-analyzer';
-import type {
-	ReadOnlyFlowrAnalyzerIncrementalAnalysisContext
-} from './flowr-analyzer-incremental-analysis-context';
-import {
-	FlowrAnalyzerIncrementalAnalysisContext
-} from './flowr-analyzer-incremental-analysis-context';
-import type {
-	InvalidationEvent,
-	InvalidationEventReceiver } from '../cache/flowr-cache';
-import {
-	InvalidationEventType
-} from '../cache/flowr-cache';
-import {
-	FlowrAnalyzerGasContext,
-	type ReadOnlyFlowrAnalyzerGasContext
-} from './flowr-analyzer-gas-context';
+import { type FileRole, type FlowrFileProvider, FlowrInlineTextFile } from './flowr-file';
+import { type ReadOnlyFlowrAnalyzerEnvironmentContext, FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
+import { type ReadOnlyFlowrAnalyzerMetaContext, FlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
+import type { FlowrAnalyzer, ForkOptions } from '../flowr-analyzer';
+import { type ReadOnlyFlowrAnalyzerIncrementalAnalysisContext, FlowrAnalyzerIncrementalAnalysisContext } from './flowr-analyzer-incremental-analysis-context';
+import { type InvalidationEvent, type InvalidationEventReceiver, InvalidationEventType } from '../cache/flowr-cache';
+import { FlowrAnalyzerGasContext, type ReadOnlyFlowrAnalyzerGasContext } from './flowr-analyzer-gas-context';
 import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
-import { type FnInfo, fnInfo } from '../../dataflow/environments/query-fn-props';
+import type { FlowrAnalyzerIncrementalDataflowUpdateTypePlugin } from '../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-update-type-plugin';
+import type { FlowrAnalyzerIncrementalDataflowHeuristicPlugin } from '../plugins/incremental/incremental-dataflow/flowr-analyzer-incremental-dataflow-heuristic-plugin';
+import { type FnInfo, type FnInfoOptions, fnInfo } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
+import { CacheScope, GlobalCaches } from '../../util/global-caches';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -77,7 +50,7 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	/** class names of plugins that activated (produced a result) since the last reset; only filled when `config.repl.showPlugins` is set */
 	readonly activatedPlugins: ReadonlySet<string>;
 	/** What flowR knows about the function `name` (a bare or `pkg::` name), from its built-ins and the signature database, see {@link fnInfo}. */
-	functionInfo(name: Identifier | string, version?: string): FnInfo | undefined;
+	functionInfo(name: Identifier | string, options?: FnInfoOptions): FnInfo | undefined;
 	/** The project kind the effective {@link config} is specialized for and the overrides it applies, or `undefined` when no specialization is in effect. */
 	configSpecialization(): { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> } | undefined;
 	/** The R version analysis assumes when resolving versioned (base-R) exports (see `solver.sigdb.assumedRVersion`). */
@@ -132,9 +105,8 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	public readonly activatedPlugins = new Set<string>();
 	public readonly gas:   FlowrAnalyzerGasContext;
 	private _analyzer:     FlowrAnalyzer | undefined;
-	/** an auto-detected R version (from the engine), recorded once at the analyzer boundary; see {@link resolvedRVersion} */
-	private _detectedR:    string | undefined;
 
+	public readonly plugins:    ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
 	/** the configuration as given, i.e. before {@link FlowrConfig.specializeConfig} is applied */
 	public readonly baseConfig: FlowrConfig;
 	/** {@link baseConfig}, specialized for {@link _configKind} */
@@ -158,17 +130,12 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	 */
 	public get config(): FlowrConfig {
 		const specialized = this.specializedConfig();
-		let cfg: FlowrConfig;
-		if(this.runtimeOverrides === undefined) {
-			cfg = specialized;
-		} else {
-			if(this._effective === undefined || this._effectiveOf !== specialized) {
-				// a fresh object, so neither the shared base nor the memoized specialized config is mutated
-				this._effective = deepMergeObject(specialized, this.runtimeOverrides) as FlowrConfig;
-				this._effectiveOf = specialized;
-			}
-			cfg = this._effective;
+		if(this.runtimeOverrides !== undefined && (this._effective === undefined || this._effectiveOf !== specialized)) {
+			// a fresh object, so neither the shared base nor the memoized specialized config is mutated
+			this._effective = deepMergeObject(specialized, this.runtimeOverrides) as FlowrConfig;
+			this._effectiveOf = specialized;
 		}
+		const cfg = this.runtimeOverrides === undefined ? specialized : this._effective ?? specialized;
 		if(cfg.logLevel !== undefined && cfg.logLevel !== this._appliedLogLevel) {
 			this._appliedLogLevel = cfg.logLevel;
 			setLogLevel(cfg.logLevel);
@@ -247,18 +214,35 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]> | readonly FlowrAnalyzerPlugin[] = []) {
 		const byType = Array.isArray(plugins) ? arraysGroupBy(plugins as readonly FlowrAnalyzerPlugin[], p => p.type)
 			: plugins as ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
+		this.plugins = byType;
 		this.baseConfig = config;
 		this._config = config;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, byType.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (byType.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(byType.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.env = new FlowrAnalyzerEnvironmentContext(this);
-		this.inc = new FlowrAnalyzerIncrementalAnalysisContext();
+		this.inc = new FlowrAnalyzerIncrementalAnalysisContext(
+			(byType.get(PluginType.IncrementalDataflowUpdateType) ?? []) as FlowrAnalyzerIncrementalDataflowUpdateTypePlugin[],
+			(byType.get(PluginType.IncrementalDataflowHeuristic) ?? []) as FlowrAnalyzerIncrementalDataflowHeuristicPlugin[]);
 		const functions = new FlowrAnalyzerFunctionsContext(this);
 		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (byType.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		// the plugins contributing the metadata are the ones the dependency context runs on demand
 		this.meta = new FlowrAnalyzerMetaContext(() => this.deps.ensureStaticsLoaded());
 		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (byType.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
+	}
+
+	/** Clone state from the source context into this context */
+	public fork(source: FlowrAnalyzerContext, options?: ForkOptions): void {
+		for(const plugin of source.activatedPlugins) {
+			this.activatedPlugins.add(plugin);
+		}
+
+		this.files.fork(source.files, options);
+		this.inc.fork(source.inc);
+		this.gas.fork(source.gas);
+		this.deps.fork(source.deps);
+		this.env.fork(source.env);
+		this.meta.fork(source.meta);
 	}
 
 	/**
@@ -276,12 +260,12 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 
 	/** Record the engine's auto-detected R version (used when `solver.sigdb.assumedRVersion` is `"auto"`). */
 	public setDetectedRVersion(version: string): void {
-		this._detectedR = version;
+		this.deps.setDetectedRVersion(version);
 	}
 
 	/** The R version analysis assumes when resolving versioned (base-R) exports (see {@link resolveAssumedRVersion}). */
 	public get resolvedRVersion(): string {
-		return resolveAssumedRVersion(this.config, this._detectedR);
+		return resolveAssumedRVersion(this.config, this.deps.getDetectedRVersion());
 	}
 
 	/** Whether {@link resolvedRVersion} is a genuine signal (a config pin, project metadata, or engine detection) rather than the fallback default. */
@@ -296,7 +280,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 			return RVersionOrigin.Config;
 		} else if(this.meta.getRVersion() !== undefined) {
 			return RVersionOrigin.Metadata;
-		} else if(this._detectedR !== undefined && this._detectedR !== 'none' && this._detectedR !== 'unknown') {
+		} else if(this.deps.getDetectedRVersion() !== undefined && this.deps.getDetectedRVersion() !== 'none' && this.deps.getDetectedRVersion() !== 'unknown') {
 			return RVersionOrigin.Engine;
 		}
 		return RVersionOrigin.Default;
@@ -318,8 +302,8 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this.gas.reset();
 	}
 
-	public addFile(f: string | FlowrFileProvider | RParseRequestFromFile): void {
-		this.files.addFile(f);
+	public addFile(f: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]): void {
+		this.files.addFile(f, roles);
 		this.gas.reset();
 	}
 
@@ -337,14 +321,16 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		return this;
 	}
 
-	public functionInfo(name: Identifier | string, version?: string): FnInfo | undefined {
-		return fnInfo(typeof name === 'string' ? Identifier.parse(name) : name, this, version);
+	public functionInfo(name: Identifier | string, options?: FnInfoOptions): FnInfo | undefined {
+		return fnInfo(typeof name === 'string' ? Identifier.parse(name) : name, this, options);
 	}
 
 	/**
 	 * Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders.
+	 * This also releases the module-level caches holding data of the analyzed program (see {@link GlobalCaches}).
 	 */
 	public reset(): void {
+		GlobalCaches.clear(CacheScope.Analysis);
 		this.files.reset();
 		this.deps.reset();
 		this.meta.reset();
@@ -370,19 +356,10 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
  * @see {@link requestFromInput} - for details on how inputs are processed into requests.
  * @see {@link contextFromSources} - to create a context from source code strings directly.
  */
-export function contextFromInput(
-	input: `${typeof fileProtocol}${string}` | string | readonly string[] | RParseRequests,
-	config = FlowrConfig.default(),
-	plugins?: FlowrAnalyzerPlugin[],
-): FlowrAnalyzerContext {
+export function contextFromInput(input: `${typeof fileProtocol}${string}` | string | readonly string[] | RParseRequests, config = FlowrConfig.default(), plugins?: FlowrAnalyzerPlugin[]): FlowrAnalyzerContext {
 	const context = new FlowrAnalyzerContext(config, plugins);
-	if(typeof input === 'string' || Array.isArray(input) && input.every(i => typeof i === 'string')) {
-		const requests = requestFromInput(input);
-		context.addRequests(Array.isArray(requests) ? requests : [requests]);
-	} else {
-		const requests: RParseRequests = Array.isArray(input) ? input : [input];
-		context.addRequests(requests);
-	}
+	const requests = typeof input === 'string' || Array.isArray(input) && input.every(i => typeof i === 'string') ? requestFromInput(input) : input;
+	context.addRequests(Array.isArray(requests) ? requests : [requests]);
 	return context;
 }
 
@@ -394,16 +371,10 @@ export function contextFromInput(
  * @see {@link contextFromInput}    - to create a context from input requests.
  * @see {@link FlowrInlineTextFile} - to create inline text files for the sources.
  */
-export function contextFromSources(
-	sources: Record<string, string>,
-	config = FlowrConfig.default(),
-	plugins?: FlowrAnalyzerPlugin[],
-): FlowrAnalyzerContext {
+export function contextFromSources(sources: Record<string, string>, config = FlowrConfig.default(), plugins?: FlowrAnalyzerPlugin[]): FlowrAnalyzerContext {
 	const context = new FlowrAnalyzerContext(config, plugins);
-
 	for(const [p, c] of Object.entries(sources)) {
 		context.addFile(new FlowrInlineTextFile(p, c));
 	}
-
 	return context;
 }

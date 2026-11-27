@@ -1,0 +1,128 @@
+name: "Test Suite (macOS)"
+# GitHub cancels a hosted job that no runner acquires within 15 minutes, and the macOS arm64 pool is often
+# congested. So we try the arm64 pool first and only fall back to the separate intel pool if the first job
+# never started. Test failures still fail, but finding no macOS runner at all only warns.
+
+'on':
+  workflow_call:
+    inputs:
+      r-version:
+        description: "The R version to test with, defaults to the global configuration"
+        required: false
+        default: ""
+        type: string
+      test-command:
+        description: "The flowR npm command that runs the tests"
+        required: true
+        type: string
+      system-tests:
+        description: "Whether to run the system tests as well"
+        required: false
+        default: false
+        type: boolean
+      codecov:
+        description: "Whether to upload the coverage reports to Codecov"
+        required: false
+        default: false
+        type: boolean
+    outputs:
+      verdict:
+        description: "'passed' if a macOS leg passed, 'no-runner' if no macOS runner was acquired, 'failed' otherwise"
+        value: ${{ jobs.verdict.outputs.verdict }}
+
+# the probes read the jobs of the run, so callers must grant actions: read
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  arm64:
+    name: "🍏 macOS (arm64)"
+    runs-on: macos-latest
+    timeout-minutes: 65
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: "🧪 Test"
+        uses: ./.github/actions/macos-test-suite
+        with:
+          r-version: ${{ inputs.r-version }}
+          test-command: ${{ inputs.test-command }}
+          system-tests: ${{ inputs.system-tests }}
+          codecov-token: ${{ inputs.codecov && secrets.CODECOV_TOKEN || '' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # GitHub cancels a job no runner acquired within 15 minutes, but a timed out job is cancelled as well
+  arm64-probe:
+    name: "🍏 macOS (arm64) Runner Probe"
+    needs: [ arm64 ]
+    if: ${{ !cancelled() && needs.arm64.result == 'cancelled' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      acquired: ${{ steps.probe.outputs.acquired }}
+    steps:
+      - name: "🛒 Checkout Scripts"
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/workflows/scripts
+
+      - name: "🔍 Probe"
+        id: probe
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "acquired=$(bash .github/workflows/scripts/runner-acquired.sh "🍏 macOS (arm64)")" >> "$GITHUB_OUTPUT"
+
+  intel:
+    name: "🍏 macOS (intel fallback)"
+    needs: [ arm64-probe ]
+    if: ${{ !cancelled() && needs.arm64-probe.outputs.acquired == 'false' }}
+    runs-on: macos-15-intel
+    timeout-minutes: 65
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: "🧪 Test"
+        uses: ./.github/actions/macos-test-suite
+        with:
+          r-version: ${{ inputs.r-version }}
+          test-command: ${{ inputs.test-command }}
+          system-tests: ${{ inputs.system-tests }}
+          codecov-token: ${{ inputs.codecov && secrets.CODECOV_TOKEN || '' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  verdict:
+    name: "🍏 macOS Verdict"
+    needs: [ arm64, arm64-probe, intel ]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      verdict: ${{ steps.verdict.outputs.verdict }}
+    steps:
+      - name: "🛒 Checkout Scripts"
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/workflows/scripts
+
+      - name: "⚖️ Decide"
+        id: verdict
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARM64: ${{ needs.arm64.result }}
+          ARM64_ACQUIRED: ${{ needs.arm64-probe.outputs.acquired }}
+          INTEL: ${{ needs.intel.result }}
+        run: |
+          intel_acquired=""
+          if [ "$INTEL" = "cancelled" ]; then
+            intel_acquired=$(bash .github/workflows/scripts/runner-acquired.sh "🍏 macOS (intel fallback)")
+          fi
+          verdict=$(bash .github/workflows/scripts/macos-verdict.sh "$ARM64" "$ARM64_ACQUIRED" "$INTEL" "$intel_acquired")
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+          [ "$verdict" != failed ]

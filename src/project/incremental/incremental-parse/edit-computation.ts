@@ -1,6 +1,5 @@
 import type Parser from 'web-tree-sitter';
 
-
 /**
  *  Computes a single minimal change region ({@link Parser.Edit}) that contains all modifications.
  *  @param oldContent - The original content.
@@ -37,16 +36,8 @@ export function computeEditRegion(oldContent: string, newContent: string): Parse
 	const [startPosition, oldEndPosition] = indexesToPoints(oldContent, [startIndex, oldEndIndex]);
 	const [newEndPosition] = indexesToPoints(newContent, [newEndIndex]);
 
-	return {
-		startIndex,
-		oldEndIndex,
-		newEndIndex,
-		startPosition,
-		oldEndPosition,
-		newEndPosition,
-	};
+	return { startIndex, oldEndIndex, newEndIndex, startPosition, oldEndPosition, newEndPosition };
 }
-
 
 function indexesToPoints(text: string, orderedIndexes: readonly number[]): Parser.Point[] {
 	let row = 0;

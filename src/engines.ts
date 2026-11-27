@@ -5,10 +5,7 @@ import { TreeSitterExecutor } from './r-bridge/lang-4.x/tree-sitter/tree-sitter-
 import { log } from './util/log';
 import { SecureMode } from './util/secure-mode';
 
-/**
- * Retrieve all requested engine instance.
- * Please make sure that if this includes the R engine, that you properly shut it down again!
- */
+/** Retrieve all requested engine instance. Please make sure that if this includes the R engine, that you properly shut it down again! */
 export async function retrieveEngineInstances(config: FlowrConfig, defaultOnly = false): Promise<{ engines: KnownEngines, default: keyof KnownEngines }> {
 	const engines: KnownEngines = {};
 	const rShellWanted = FlowrConfig.getForEngine(config, 'r-shell') && (!defaultOnly || config.defaultEngine === 'r-shell');

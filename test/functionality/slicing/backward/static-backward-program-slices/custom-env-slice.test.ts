@@ -37,6 +37,13 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 		keepsAll(`${name} with includeCallees`, capabilities, code, criteria, { includeCallees: true });
 	}
 
+	/** the call surely replaces what the second line of `code` writes, so only that line is dropped */
+	function dropsReplacedWithAndWithoutCallees(name: string, capabilities: readonly FlowrCapabilityId[], code: string, criteria: SlicingCriteria) {
+		const kept = code.split('\n').filter((_, i) => i !== 1).join('\n');
+		assertSliced(label(name, capabilities), shell, code, criteria, kept);
+		assertSliced(label(`${name} with includeCallees`, capabilities), shell, code, criteria, kept, { includeCallees: true });
+	}
+
 	describe('assign and get', () => {
 		const e1New = 'e1 <- new.env()';
 		const e1AssignX = 'assign("x", 42, envir=e1)';
@@ -63,6 +70,9 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 
 		keepsAll('slice of x after attach(e) traces through assign and new.env', ['dynamic-environment-resolution', 'environment-sharing'],
 			`${envWithX}\nattach(e)\nx`, ['4@x']);
+
+		keepsAll('attach reports the global binding it masks', ['dynamic-environment-resolution'],
+			'att <- 1\nattach(list(att = 5), name = "mine")', ['2@attach']);
 
 		const cfgHead = 'cfg <- new.env()\nassign("alpha", 0.05, envir=cfg)';
 		const cfgTail = 'lr <- get("alpha", envir=cfg)\nlr';
@@ -217,6 +227,96 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 
 		keepsAll('with() partial arg name: dat= matches data param', ['dynamic-environment-resolution', 'environment-with'],
 			`${envWithX}\nwith(dat=e, x)`, ['3@with']);
+
+		/* a data frame we cannot pin down must not turn `with`/`within` into an unknown side effect that every later slice keeps */
+		assertSliced(label('with(df, levels(x)) on a local data frame stays out of an unrelated slice', ['dynamic-environment-resolution', 'environment-with']),
+			shell,
+			'v$r <- 1\ng <- with(v, levels(level))\nd <- 5\ny <- d',
+			['4@d'],
+			'd <- 5\nd'
+		);
+		assertSliced(label('with(df, f(x)) with an unknown f stays out of an unrelated slice', ['dynamic-environment-resolution', 'environment-with']),
+			shell,
+			'v <- data.frame(level = 1)\ng <- with(v, unknownFn(level))\nd <- 5\ny <- d',
+			['4@d'],
+			'd <- 5\nd'
+		);
+		assertSliced(label('within(df, { y <- x }) only writes into the copy it returns', ['dynamic-environment-resolution', 'environment-with']),
+			shell,
+			'v$x <- 1\ng <- within(v, { y <- x + 1 })\nd <- 5\nz <- d',
+			['4@d'],
+			'd <- 5\nd'
+		);
+		assertSliced(label('with(df, f(x)) with an unknown f is kept for a later use of the data', ['dynamic-environment-resolution', 'environment-with']),
+			shell,
+			'v <- foo()\nwith(v, unknownFn(level))\nprint(v)',
+			['3@v'],
+			'v <- foo()\nwith(v, unknownFn(level))\nv'
+		);
+		assertSliced(label('within(df, {...}) keeps every definition of the body for the copy it returns', ['dynamic-environment-resolution', 'environment-with']),
+			shell,
+			'g$m <- 1\ng <- within(g, { u <- m + 1; l <- m - 1 })\nprint(g)',
+			['3@g'],
+			'g$m <- 1\ng <- within(g, { u <- m + 1; l <- m - 1 })\ng'
+		);
+		assertSliced(label('within(unknown, {...}) keeps every definition of the body for the copy it returns', ['dynamic-environment-resolution', 'environment-with']),
+			shell,
+			'g <- within(h, { u <- m + 1; l <- m - 1 })\nprint(g)',
+			['2@g'],
+			'g <- within(h, { u <- m + 1; l <- m - 1 })\ng'
+		);
+		/* a definition may still land in an environment we cannot see, which may be the global one */
+		assertSliced(label('with(e, y <- 1) on an untracked value still may define y', ['dynamic-environment-resolution', 'environment-with']),
+			shell,
+			'e <- foo()\nwith(e, y <- 1)\nprint(y)',
+			['3@y'],
+			'e <- foo()\nwith(e, y <- 1)\ny'
+		);
+	});
+
+	describe('a value that surely is no environment is no ambiguous envir', () => {
+		/* `eval`, `local` and `with` evaluate in a fresh frame built from a list or a data frame, so nothing they write reaches another binding */
+		const caps = ['dynamic-environment-resolution', 'environment-with'] as const;
+		const unrelated = 'd <- 5\ny <- d';
+		const cases: [string, string][] = [
+			['eval(expr, data.frame)', 'v <- data.frame(a = 1)\nr <- eval(quote(a + 1), v)'],
+			['eval(expr, data.frame) defining a name', 'v <- data.frame(a = 1)\neval(quote(b <- a + 1), v)'],
+			['eval(expr, list)', 'v <- list(a = 1)\nr <- eval(quote(a + 1), v)'],
+			['evalq(expr, data.frame)', 'v <- data.frame(a = 1)\nr <- evalq(a + 1, v)'],
+			['local(expr, list)', 'v <- list(a = 1)\nr <- local(a + 1, v)'],
+			['with(data.frame, { def })', 'v <- data.frame(a = 1)\nr <- with(v, { b <- a + 1; b })'],
+			['with(read.csv(...), { def })', 'v <- read.csv("x.csv")\nr <- with(v, { b <- a + 1; b })'],
+			['with(expand.grid(...), { def })', 'v <- expand.grid(a = 1:2, b = 3:4)\nr <- with(v, { s <- a + b; s })'],
+			['with(copy of a data.frame, { def })', 'w <- data.frame(a = 1)\nv <- w\nr <- with(v, { b <- a + 1; b })'],
+			['eval(expr, copy of a list rebound after the copy)', 'w <- list(a = 1)\nv <- w\nw <- new.env()\nr <- eval(quote(b <- a + 1), v)'],
+			['with(invisible(data.frame), { def })', 'v <- invisible(data.frame(a = 1))\nr <- with(v, { b <- a + 1; b })'],
+			['with(constant, { def })', 'v <- 42\nr <- with(v, { b <- 1; b })']
+		];
+		for(const [name, code] of cases) {
+			assertSliced(label(`${name} stays out of an unrelated slice`, [...caps]), shell, `${code}\n${unrelated}`, [`${code.split('\n').length + 2}@d`], 'd <- 5\nd');
+		}
+		/* what may still be an environment keeps the call a possible writer of anything */
+		assertSliced(label('eval(expr, v) after an unknown side effect that may rebind v still may define anything', [...caps]), shell,
+			'v <- data.frame(a = 1)\nsource(foo)\neval(quote(y <- 1), v)\nprint(y)', ['4@y'],
+			'v <- data.frame(a = 1)\nsource(foo)\neval(quote(y <- 1), v)\ny');
+		assertSliced(label('within a function, eval(expr, p) on a parameter still may define anything', [...caps]), shell,
+			'f <- function(p) eval(quote(y <- 1), p)\nf(data.frame(a = 1))\nprint(y)', ['3@y'],
+			'f <- function(p) eval(quote(y <- 1), p)\nf(data.frame(a = 1))\ny');
+		assertSliced(label('with(f(), y <- 1) on a data.frame of a function shadowing the built-in still may define y', [...caps]), shell,
+			'data.frame <- function(...) foo()\nv <- data.frame(a = 1)\nwith(v, y <- 1)\nprint(y)', ['4@y'],
+			'data.frame <- function(...) foo()\nv <- data.frame(a = 1)\nwith(v, y <- 1)\ny');
+		assertSliced(label('with(v, y <- 1) on a value only changed by a replacement still may define y', [...caps]), shell,
+			'v$a <- 1\nwith(v, y <- 1)\nprint(y)', ['3@y'],
+			'v$a <- 1\nwith(v, y <- 1)\ny');
+		assertSliced(label('eval(expr, v) on a copy of an environment whose source is rebound to a data.frame still writes into it', [...caps]), shell,
+			'w <- new.env()\nv <- w\nw <- data.frame(a = 1)\neval(quote(x <- 1), v)\nprint(get("x", envir = v))', ['5@print'],
+			'w <- new.env()\nv <- w\neval(quote(x <- 1), v)\nprint(get("x", envir = v))');
+		assertSliced(label('with(v, y <- 1) on a copy of an unknown value whose source is rebound to a data.frame still may define y', [...caps]), shell,
+			'w <- foo()\nv <- w\nw <- data.frame(a = 1)\nwith(v, y <- 1)\nprint(y)', ['5@y'],
+			'w <- foo()\nv <- w\nwith(v, y <- 1)\ny');
+		assertSliced(label('eval(expr, invisible(new.env())) still writes into the environment', [...caps]), shell,
+			'e <- invisible(new.env())\neval(quote(x <- 1), e)\nprint(get("x", envir = e))', ['3@print'],
+			'e <- invisible(new.env())\neval(quote(x <- 1), e)\nprint(get("x", envir = e))');
 	});
 
 	describe('local with an explicit envir', () => {
@@ -246,10 +346,10 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 	});
 
 	describe('envir argument is a function parameter (unresolvable at definition time)', () => {
-		keepsAllWithAndWithoutCallees('assign(envir=parameter) inside a function keeps f and its call site', ['dynamic-environment-resolution', 'local-envir-argument'],
+		dropsReplacedWithAndWithoutCallees('assign(envir=parameter) inside a function keeps f and its call site, not the write it replaces', ['dynamic-environment-resolution', 'local-envir-argument'],
 			paramEnvProgram('a', 'assign("a", 42, envir = en)'), ['6@print']);
 
-		keepsAllWithAndWithoutCallees('local(expr, envir=parameter) inside a function keeps f and its call site', ['dynamic-environment-resolution', 'local-envir-argument'],
+		dropsReplacedWithAndWithoutCallees('local(expr, envir=parameter) inside a function keeps f and its call site, not the write it replaces', ['dynamic-environment-resolution', 'local-envir-argument'],
 			paramEnvProgram('x', 'local(x <- 42, envir = en)'), ['6@print']);
 
 		keepsAllWithAndWithoutCallees('list2env(envir=parameter) inside a function keeps f and its call site', ['dynamic-environment-resolution', 'local-envir-argument'],
@@ -325,7 +425,7 @@ describe('Custom Environment Slicing', { concurrent: false }, withShell(shell =>
 			shell,
 			envWithXThenX,
 			['3@x'],
-			`${assignX42}\nx`,
+			envWithXThenX,
 			{ flowrConfig: noTrack }
 		);
 	});

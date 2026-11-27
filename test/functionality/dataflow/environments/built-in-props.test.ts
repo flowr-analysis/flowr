@@ -1,11 +1,26 @@
 import { assert, describe, test } from 'vitest';
+import { Ambient, AmbientVerb, withImpliedAmbient } from '../../../../src/dataflow/environments/ambient-effect';
 import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
 import type { DecodedFunction } from '../../../../src/project/sigdb/decode';
 import type { PackageSignatureSource } from '../../../../src/project/sigdb/reader';
-import type { BaseBuiltInDefinition, BuiltInDefinitions, BuiltInFunctionDefinition } from '../../../../src/dataflow/environments/built-in-config';
-import { getDefaultBuiltInDefinitions } from '../../../../src/dataflow/environments/built-in-config';
-import type { BuiltInFnInfo, StatedProps, CallProps, FnSig } from '../../../../src/dataflow/environments/built-in-props';
-import { ArgProp, CallProp, ExclusiveCallProps, fnInfoFromSignature, InputProps, SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
+import {
+	type BaseBuiltInDefinition,
+	type BuiltInDefinitions,
+	type BuiltInFunctionDefinition,
+	getDefaultBuiltInDefinitions
+} from '../../../../src/dataflow/environments/built-in-config';
+import {
+	type BuiltInFnInfo,
+	type StatedProps,
+	type CallProps,
+	type FnSig,
+	ArgProp,
+	CallProp,
+	ExclusiveCallProps,
+	fnInfoFromSignature,
+	InputProps,
+	SemanticCallTag
+} from '../../../../src/dataflow/environments/built-in-props';
 import { builtInNames, BuiltInIndex, inferFnProps, queryFnProps } from '../../../../src/dataflow/environments/query-fn-props';
 import type { BuiltInIdentifierDefinition } from '../../../../src/dataflow/environments/built-in';
 import { DefaultBuiltinConfig, WrittenBuiltinDefinitions } from '../../../../src/dataflow/environments/default-builtin-config';
@@ -15,11 +30,14 @@ import { defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { label } from '../../_helper/label';
 import { uniqueArray } from '../../../../src/util/collections/arrays';
 import { withTreeSitter } from '../../_helper/shell';
+import { namesWithGuardFacts } from '../../../../src/dataflow/environments/default-builtin-config/guards';
 import { controlledSigDb } from '../../_helper/linter';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
+import { FnProp } from '../../../../src/project/sigdb/schema';
+import { fakeSigDb } from '../../_helper/sigdb';
 
 /** a handful of definitions to query, so the assertions do not depend on the default configuration */
 const TestDefinitions = [
@@ -53,7 +71,7 @@ const TestSignatures = {
  */
 const ExpectedLabels: readonly (readonly [Identifier, StatedProps])[] = [
 	[Identifier.from(['sum', PkgName.Base]), { props: CallProp.Pure | CallProp.Generic | CallProp.Primitive }],
-	[Identifier.from(['nchar', PkgName.Base]), { props: CallProp.Pure | CallProp.Primitive, tags: [SemanticCallTag.Narrows] }],
+	[Identifier.from(['nchar', PkgName.Base]), { props: CallProp.Pure | CallProp.Generic | CallProp.Primitive, tags: [SemanticCallTag.Narrows] }],
 	[Identifier.from(['lapply', PkgName.Base]), { props: CallProp.MayPure | CallProp.Primitive }],
 	[Identifier.from(['print', PkgName.Base]), { props: CallProp.Invisible | CallProp.Generic, tags: [SemanticCallTag.Prints] }],
 	[Identifier.from(['stop', PkgName.Base]), { props: CallProp.Throws | CallProp.Primitive }],
@@ -66,11 +84,11 @@ const ExpectedLabels: readonly (readonly [Identifier, StatedProps])[] = [
 /** and the shapes a signature comes in */
 const ExpectedSigs: readonly (readonly [Identifier, FnSig])[] = [
 	[Identifier.from(['+', PkgName.Base]), [['e1', ArgProp.Forced | ArgProp.Value | ArgProp.Atomic], ['e2', ArgProp.Forced | ArgProp.Value | ArgProp.Atomic]]],
-	[Identifier.from(['sum', PkgName.Base]), [['...', ArgProp.Forced | ArgProp.Value]]],
+	[Identifier.from(['sum', PkgName.Base]), [['...', ArgProp.Forced | ArgProp.Value], ['na.rm', ArgProp.Forced | ArgProp.Value]]],
 	[Identifier.from(['missing', PkgName.Base]), [['x', ArgProp.Presence]]],
 	/* `Alias` is what states the argument handed back, so these have to keep declaring it */
 	[Identifier.from(['identity', PkgName.Base]), [['x', ArgProp.Alias | ArgProp.Forced]]],
-	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Forced | ArgProp.Value], ['choices', ArgProp.Forced | ArgProp.Bounds]]],
+	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Forced | ArgProp.Value], ['choices', ArgProp.Forced | ArgProp.Bounds], ['several.ok', 0]]],
 	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Forced | ArgProp.Resource], ['header', ArgProp.Forced | ArgProp.Flag],
 		['sep', ArgProp.Forced | ArgProp.Value], ['quote', ArgProp.Forced | ArgProp.Value], ['dec', ArgProp.Forced | ArgProp.Value],
 		['fill', ArgProp.Forced | ArgProp.Flag], ['comment.char', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]]]
@@ -128,14 +146,14 @@ describe('Built-in properties', () => {
 			assert.isTrue(pure.has('base::sum'), 'sum is pure');
 			assert.isFalse(pure.has('base::tempfile'), 'tempfile is not');
 			assert.isTrue(index.with(SemanticCallTag.TempFile).some(i => Identifier.getName(i) === 'tempfile'));
-			assert.strictEqual(index.propsOf('nchar'), CallProp.Pure | CallProp.Primitive);
+			assert.strictEqual(index.propsOf('nchar'), CallProp.Pure | CallProp.Generic | CallProp.Primitive);
 			assert.deepStrictEqual(index.get('nchar')?.tags, [SemanticCallTag.Narrows]);
 			const foldable = new Set(BuiltInIndex.default().foldable.map(Identifier.getName));
 			assert.isTrue(foldable.has('+'), 'arithmetic is folded');
 			assert.isTrue(foldable.has('paste'));
 			assert.isFalse(foldable.has('read.csv'), 'reading a file is not');
 			const registered = BuiltInIndex.ofEnvironment(getDefaultBuiltInDefinitions());
-			assert.strictEqual(registered.propsOf('nchar'), CallProp.Pure | CallProp.Primitive);
+			assert.strictEqual(registered.propsOf('nchar'), CallProp.Pure | CallProp.Generic | CallProp.Primitive);
 			assert.deepStrictEqual(registered.get('nchar')?.tags, [SemanticCallTag.Narrows]);
 			assert.isTrue(registered.with(SemanticCallTag.Process).some(i => Identifier.getName(i) === 'system'));
 			/* `DBI` is not attached at startup, so it is in the package memory the index walks, not the built-in one */
@@ -168,7 +186,7 @@ describe('Built-in properties', () => {
 			assert.strictEqual((info?.props ?? 0) & CallProp.Pure, CallProp.Pure);
 			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Forced | ArgProp.Shape], ['type', ArgProp.Forced | ArgProp.Value],
 				['allowNA', ArgProp.Forced | ArgProp.Flag], ['keepNA', ArgProp.Forced | ArgProp.Flag]]);
-			const env = defaultEnv().defineFunction('nchar', '0', '0');
+			const env = defaultEnv().defineFunction('nchar', 0, 0);
 			assert.isUndefined(queryFnProps('nchar', { environment: env }));
 		});
 	});
@@ -227,6 +245,17 @@ describe('Built-in properties', () => {
 			});
 	});
 
+	test(label('every name with guard facts is defined in its package and carries them', ['name-normal'], ['other']), () => {
+		/* a replacement function carries them by the name R calls, like `names<-` */
+		const carried = new Set(DefaultBuiltinConfig.flatMap(d => d.type === 'constant' ? [] : (d.names as readonly Identifier[])
+			.map(id => d.type === 'replacement' ? [Identifier.getNamespace(id), `${Identifier.getName(id)}<-`] as const : [Identifier.getNamespace(id), Identifier.getName(id)] as const)
+			.filter(([, name]) => d.config?.guards?.[name] !== undefined)
+			.map(([namespace, name]) => `${namespace ?? PkgName.Base}::${name}`)));
+		for(const [namespace, name] of namesWithGuardFacts()) {
+			assert.isTrue(carried.has(`${namespace}::${name}`), `${namespace}::${name} has facts but no definition`);
+		}
+	});
+
 	describe('The configuration stays consistent', () => {
 		const withInfo = DefaultBuiltinConfig
 			.flatMap(d => {
@@ -243,6 +272,11 @@ describe('Built-in properties', () => {
 					if(FunctionSemantics.call.props.hasAny(info, prop)) {
 						assert.isFalse(FunctionSemantics.call.props.hasAny(info, forbidden), `${who()} states ${FunctionSemantics.call.props.names(prop).join(', ')} together with what it rules out`);
 					}
+				}
+				/* a pure call may read global state to compute its result (`paste` reads `scipen`), never change it */
+				if(FunctionSemantics.call.props.hasAny(info, CallProp.Pure)) {
+					const changes = Ambient.list(withImpliedAmbient(info).ambient).filter(e => e.access !== AmbientVerb.Reads);
+					assert.isEmpty(changes.map(e => `${e.access} ${e.family}`), `${who()} is pure yet changes global state`);
 				}
 				const sig = info.sig ?? [];
 				if(sig.some(([, p]) => (p & ArgProp.Resource) !== 0)) {
@@ -322,12 +356,12 @@ describe('Built-in properties', () => {
 		const registered = new Map(DefaultBuiltinConfig.flatMap(d => builtInNames(d).map(n => [Identifier.toString(n), d] as const)));
 		/* the two labeling passes the written definitions go through, and the only bits they may add */
 		const labeled = CallProp.Generic | CallProp.Primitive;
-		test(label('every definition stays registered, and nothing but the `Generic` and `Primitive` bits change', ['name-normal'], ['other']), () => {
+		test(label('every definition stays registered, and nothing but the `Generic` and `Primitive` bits, the guard facts and the formals of R change', ['name-normal'], ['other']), () => {
 			assert.deepStrictEqual([...registered.keys()].sort(), [...written.keys()].sort());
 			for(const [name, def] of registered) {
 				const before = written.get(name) as typeof def;
 				const info = (d: typeof def) => (d as { config?: BuiltInFnInfo }).config;
-				assert.deepStrictEqual({ ...info(def), props: undefined }, { ...info(before), props: undefined }, name);
+				assert.deepStrictEqual({ ...info(def), props: undefined, guards: undefined, sig: undefined }, { ...info(before), props: undefined, guards: undefined, sig: undefined }, name);
 				assert.deepStrictEqual(info(def)?.tags, info(before)?.tags);
 				assert.deepStrictEqual((def as { processor?: string }).processor, (before as { processor?: string }).processor, name);
 				assert.deepStrictEqual((def as { evalHandler?: string }).evalHandler, (before as { evalHandler?: string }).evalHandler, name);
@@ -339,6 +373,26 @@ describe('Built-in properties', () => {
 	});
 
 	describe('Reading a signature-database entry', () => {
+		test(label('a qualified callee carries over as well', ['name-normal'], ['other']), () => {
+			const src = fakeSigDb({ p: [{ name: 'fan', props: FnProp.Exported, params: [], callees: ['future::future'], line: 1 }] });
+			assert.ok((inferFnProps(src, 'p', 'fan')?.props ?? 0) & CallProp.Concurrent, 'future::future runs its expression elsewhere');
+		});
+		test(label('sending work to a cluster runs it in parallel, and so does a function doing so', ['name-normal'], ['other']), () => {
+			const src = fakeSigDb({ p: [
+				{ name: 'fit', props: FnProp.Exported, params: [], callees: ['snow::parLapply'], line: 1 },
+				{ name: 'boot', props: FnProp.Exported, params: [], callees: ['snow::clusterApply'], line: 2 }
+			] });
+			for(const fn of ['fit', 'boot']) {
+				assert.ok((inferFnProps(src, 'p', fn)?.props ?? 0) & CallProp.Concurrent, fn);
+			}
+		});
+		test(label('a pure entry carries over nothing impure of what it calls', ['name-normal'], ['other']), () => {
+			const src = fakeSigDb({ p: [{ name: 'wrap', props: FnProp.Exported | FnProp.Pure, params: [], callees: ['base::.Call', 'base::stop'], line: 1 }] });
+			const props = inferFnProps(src, 'p', 'wrap')?.props ?? 0;
+			assert.ok(props & CallProp.Pure, 'the database vouches for it');
+			assert.notOk(props & CallProp.Ffi, 'the native routine it calls is pure');
+			assert.ok(props & CallProp.Throws, 'it may still fail');
+		});
 		test(label('what a package function calls carries over to it, and forced parameters keep their order', ['name-normal'], ['other']), () => {
 			const info = inferFnProps(TestSignatures, 'base', 'known');
 			/* `system` runs a command, `paste` is pure and hands nothing on */
@@ -355,8 +409,7 @@ describe('Built-in properties', () => {
 
 describe('Functions several packages export', () => {
 	const builtIns = getDefaultBuiltInDefinitions();
-	const defOf = (pkg: string, name: string) =>
-		builtIns.forPackage(pkg)?.get(name as never)?.[0] as BuiltInIdentifierDefinition | undefined;
+	const defOf = (pkg: string, name: string) => builtIns.forPackage(pkg)?.get(name as never)?.[0] as BuiltInIdentifierDefinition | undefined;
 
 	/** a name, the package owning it, and the packages re-exporting that very function */
 	const ReExported: readonly (readonly [string, string, readonly string[]])[] = [

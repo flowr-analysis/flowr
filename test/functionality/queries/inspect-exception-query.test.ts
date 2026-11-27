@@ -38,10 +38,15 @@ describe('Inspect Exception Query', withTreeSitter(parser => {
 		'function(e) 0':                                            false,
 		'function() { f(); tryCatch(f(), error = function(e) 0) }': true
 	});
-	testEachException('a handler raising through a call throws in turn', 'f <- function() stop("x")\ng <- function() tryCatch(0, error = function(e) f())', {
+	testEachException('a handler raising through a call throws in turn', 'f <- function() stop("x")\ng <- function() tryCatch(stop("y"), error = function(e) f())', {
+		'function() stop("x")':                                    true,
+		'function(e) f()':                                         true,
+		'function() tryCatch(stop("y"), error = function(e) f())': true
+	});
+	testEachException('a handler for a block that cannot raise never runs', 'f <- function() stop("x")\ng <- function() tryCatch(0, error = function(e) f())', {
 		'function() stop("x")':                            true,
 		'function(e) f()':                                 true,
-		'function() tryCatch(0, error = function(e) f())': true
+		'function() tryCatch(0, error = function(e) f())': false
 	});
 
 	/* a handler catches an error only when it is named for a class the error carries */

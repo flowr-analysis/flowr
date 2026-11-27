@@ -14,9 +14,7 @@ export interface AstCommentCounts {
 	readonly commentCharsNoWhitespace: number;
 }
 
-/**
- * Counts the nodes of the given AST and the source characters its attached comments take up.
- */
+/** Counts the nodes of the given AST and the source characters its attached comments take up. */
 export function countAstComments(ast: Parameters<typeof RProject.visitAst>[0]): AstCommentCounts {
 	let nodes = 0;
 	let nodesNoComments = 0;

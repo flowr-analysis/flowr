@@ -3,7 +3,7 @@ import type { MergeableRecord } from '../../../util/objects';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingRuleTag } from '../../linter-tags';
 import { SourceLocation } from '../../../util/range';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
 import { callFnProps } from '../../../dataflow/environments/query-fn-props';
@@ -30,7 +30,7 @@ export type ForeignFunctionCallIssue =
 export interface ForeignFunctionCallsResult extends CmdCheckResult {
 	readonly issue:    ForeignFunctionCallIssue
 	/** the foreign function interface called, e.g. `.Call` */
-	readonly call:     string
+	readonly call:     BrandedIdentifier
 	/** the routine the call names, if flowR can tell */
 	readonly routine?: string
 	/** the `PACKAGE` the call names, for all issues but a missing one */
@@ -75,10 +75,10 @@ export const FOREIGN_FUNCTION_CALLS = {
 		const dlls = loadedDlls(ctx);
 		const declared = new Set(DependencyFields.filter(f => f !== 'LinkingTo').flatMap(f => pkg.declared.get(f) ?? []));
 		const info = Resolve.info(df.graph, ctx);
-		const text = (id: NodeId | undefined) => {
+		function text(id: NodeId | undefined) {
 			const node = id === undefined ? undefined : idMap.get(id);
 			return node === undefined ? undefined : RString.is(node) ? node.content.str : config.resolveValues ? NodeValue.singleStringOf(node.info.id, info) : undefined;
-		};
+		}
 		const results: ForeignFunctionCallsResult[] = [];
 		let considered = 0;
 		const ffiNames = new Set(ctx.env.builtInIndex.with(CallProp.Ffi).map(n => Identifier.getName(n)));
@@ -95,10 +95,10 @@ export const FOREIGN_FUNCTION_CALLS = {
 			const bound = FunctionSemantics.call.match.toSpec(vertex.args, Formals);
 			/* a named argument is bound by the node naming it, the value lies below */
 			const values = new Map(vertex.args.filter(FunctionArgument.isNamed).map(a => [a.nodeId, a.valueId]));
-			const valueOf = (formal: 'name' | 'package') => {
+			function valueOf(formal: 'name' | 'package') {
 				const arg = bound.get(formal)?.[0];
 				return arg === undefined ? undefined : values.has(arg) ? values.get(arg) : arg;
-			};
+			}
 			const call = Identifier.getName(vertex.name);
 			const loc = SourceLocation.fromNode(node);
 			if(loc === undefined) {
@@ -137,8 +137,6 @@ export const FOREIGN_FUNCTION_CALLS = {
 		tags:          [LintingRuleTag.CmdCheck, LintingRuleTag.Bug, LintingRuleTag.Robustness],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds problems in `.Call`, `.C`, `.External`, and `.Fortran` calls: a missing or empty `PACKAGE`, calls into base or other packages, and undeclared packages. Routine and package names are resolved through variables.',
-		defaultConfig: () => ({
-			resolveValues: true
-		})
+		defaultConfig: () => ({ resolveValues: true })
 	}
 } as const satisfies LintingRule<ForeignFunctionCallsResult, ForeignFunctionCallsMetadata, ForeignFunctionCallsConfig>;

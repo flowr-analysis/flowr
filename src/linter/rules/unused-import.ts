@@ -1,4 +1,4 @@
-import { prettyPrint, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFix } from '../linter-format';
+import { prettyPrintAt, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFix } from '../linter-format';
 import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -7,12 +7,11 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import { type DataflowGraph, UnknownSideEffect } from '../../dataflow/graph/graph';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { DfgVertex } from '../../dataflow/graph/vertex';
-import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { type BrandedIdentifier, type BrandedNamespace, Identifier } from '../../dataflow/environments/identifier';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
-import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import { attachesPackage } from '../../queries/catalog/dependencies-query/function-info/library-functions';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
@@ -21,17 +20,18 @@ import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { PackageSignatureSource } from '../../project/sigdb/reader';
 import { DepType } from '../../project/sigdb/schema';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
+import { memoize } from '../../util/collections/defaultmap';
 
 export interface UnusedImportResult extends LintingResult {
 	/** the package the flagged call attaches */
-	readonly package: string
+	readonly package: BrandedNamespace
 	/** the version whose exports the finding was checked against, as the signature database resolved it */
 	readonly version: string
 }
 
 export interface UnusedImportConfig extends MergeableRecord {
 	/** packages that do their work on load and hence should never be reported, however unused they look */
-	whitelist: readonly string[]
+	whitelist: readonly BrandedNamespace[]
 }
 
 export interface UnusedImportMetadata extends MergeableRecord {
@@ -50,16 +50,16 @@ interface Attachment {
 	readonly id:       NodeId;
 	readonly node:     RNode<ParentInformation>;
 	readonly loc:      SourceLocation;
-	readonly name:     string;
+	readonly name:     BrandedNamespace;
 	readonly version:  string;
 	/** the exports a bare call in this program could bind to */
-	readonly callable: ReadonlySet<string>;
+	readonly callable: ReadonlySet<BrandedIdentifier>;
 	/** the packages it imports from, whose exports it may re-export, as dplyr does tibble's `glimpse` */
-	readonly imports:  ReadonlySet<string>;
+	readonly imports:  ReadonlySet<BrandedNamespace>;
 }
 
 /** The packages `name` imports from apart from base R, whose exports it may re-export. */
-export function nonBaseImports(src: PackageSignatureSource, name: string, version?: string): string[] {
+export function nonBaseImports(src: PackageSignatureSource, name: BrandedNamespace, version?: string): BrandedNamespace[] {
 	return src.dependencies(name, version)?.filter(d => d.type === DepType.Imports && !src.isBaseR(d.name)).map(d => d.name) ?? [];
 }
 
@@ -69,22 +69,37 @@ function isUnbound(graph: DataflowGraph, id: NodeId): boolean {
 	return origins === undefined || origins.every(o => o.type === OriginType.BuiltInFunctionOrigin);
 }
 
-/** whether removing the call would empty a slot the syntax requires, as in an unbraced `if(c) library(x)` */
+/**
+ * Whether removing the call would empty a slot the syntax requires: the attach is an operand or argument, as in
+ * `ok <- require(x)` or `suppressMessages(library(x))`, the lone statement of an unbraced `if(c) library(x)`, or in `(library(x))`.
+ */
 function removalWouldBreakSyntax(node: RNode<ParentInformation>, idMap: AstIdMap): boolean {
 	const parent = RNode.directParent(node, idMap);
-	return RExpressionList.isImplicit(parent) && parent.children.length === 1 && parent.info.role !== RoleInParent.Root;
+	if(!RExpressionList.is(parent)) {
+		return true;
+	}
+	if(RExpressionList.isImplicit(parent)) {
+		return parent.children.length === 1 && parent.info.role !== RoleInParent.Root;
+	}
+	return RExpressionList.groupStart(parent)?.lexeme !== '{';
+}
+
+/** a bare call nothing binds reads the whole search path; whether it is a use is up to the package exports */
+function isUnboundCall(graph: DataflowGraph, id: NodeId): boolean {
+	const vertex = graph.getVertex(id);
+	return DfgVertex.isFunctionCall(vertex) && Identifier.getNamespace(vertex.name) === undefined && isUnbound(graph, id);
 }
 
 /** whether anything reads out of the attach itself */
 function isReadFrom(graph: DataflowGraph, id: NodeId): boolean {
-	return graph.edgesTo(id).values().some(edge => DfEdge.includesType(edge, EdgeType.Reads));
+	return graph.edgesTo(id).entries().some(([from, edge]) => DfEdge.includesType(edge, EdgeType.Reads) && !isUnboundCall(graph, from));
 }
 
 /**
  * Which of the `attachments` the program never makes use of. A call that resolves names its package outright;
  * one that does not bind yet (a call in a function body) keeps every attached package exporting its name.
  */
-function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph, src: PackageSignatureSource): ReadonlySet<string> {
+function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph, src: PackageSignatureSource): ReadonlySet<BrandedNamespace> {
 	const pending = new Set(attachments.map(a => a.name));
 	for(const [, qualified] of Dataflow.qualifyAll(graph)) {
 		const namespace = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
@@ -95,7 +110,7 @@ function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph
 	/* a call or a read of a name the code binds nowhere, like `percent` in `scale_y_continuous(labels = percent)` */
 	const unbound = new Set<BrandedIdentifier>();
 	for(const [id, vertex] of graph.vertices(true)) {
-		if(DfgVertex.isFunctionCall(vertex) && Identifier.getNamespace(vertex.name) === undefined && isUnbound(graph, id)) {
+		if(DfgVertex.isFunctionCall(vertex) && isUnboundCall(graph, id)) {
 			unbound.add(Identifier.getName(vertex.name));
 		} else if(DfgVertex.isUse(vertex) && isUnbound(graph, id)) {
 			const name = NodeId.recoverName(id, graph.idMap);
@@ -104,8 +119,10 @@ function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph
 			}
 		}
 	}
+	/* what each imported package exports, read once: asking which packages export a name searches the whole database */
+	const exports = memoize((pkg: BrandedNamespace): ReadonlySet<BrandedIdentifier> => new Set(src.lookup(pkg)?.exported));
 	for(const { name, callable, imports } of attachments) {
-		const usesPackage = (call: string) => callable.has(call) || src.packagesExporting(call).some(p => imports.has(p));
+		const usesPackage = (call: BrandedIdentifier) => callable.has(call) || imports.values().some(p => exports(p).has(call));
 		if(pending.has(name) && unbound.values().some(usesPackage)) {
 			pending.delete(name);
 		}
@@ -182,7 +199,7 @@ export const UNUSED_IMPORT = {
 		const idMap = (await data.normalize()).idMap;
 		/* code a `source()` flowR could not resolve runs as well and may use any attached package */
 		const unseen = graph.unknownSideEffects.values().some(e => DfgVertex.hasOrigin(graph.getVertex(UnknownSideEffect.id(e)), BuiltInProcName.Source));
-		const unused = unseen ? new Set<string>() : unusedPackages(attachments, graph, src);
+		const unused = unseen ? new Set<BrandedNamespace>() : unusedPackages(attachments, graph, src);
 
 		const results = attachments.filter(
 			({ id, name }) => unused.has(name) && !isReadFrom(graph, id)
@@ -198,17 +215,12 @@ export const UNUSED_IMPORT = {
 		metadata.totalUnused = results.length;
 		return { results, '.meta': metadata };
 	},
-	prettyPrint: prettyPrint(
-		result => `Import of ${result.package} at ${SourceLocation.format(result.loc)}`,
-		result => `Import of ${result.package} at ${SourceLocation.format(result.loc)} is unused (checked v${result.version}).`
-	),
-	info: {
+	prettyPrint: prettyPrintAt(result => `Import of ${result.package}`, result => `is unused (checked v${result.version}).`),
+	info:        {
 		name:          'Unused Import',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.QuickFix],
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Finds packages that are attached but never used, so the code runs just the same without them. Requires a signature database, and packages that only do their work on load should be whitelisted in the configuration.',
-		defaultConfig: () => ({
-			whitelist: []
-		})
+		defaultConfig: () => ({ whitelist: [] })
 	}
 } as const satisfies LintingRule<UnusedImportResult, UnusedImportMetadata, UnusedImportConfig>;

@@ -10,7 +10,7 @@ import * as Joi from 'joi';
  */
 export interface ExecuteRequestMessage extends IdMessageBase {
 	type:       'request-repl-execution',
-	/** Should ansi formatting be enabled for the response? Is `false` by default.  */
+	/** Should ansi formatting be enabled for the response? Is `false` by default. */
 	ansi?:      boolean,
 	/** The expression to execute */
 	expression: string
@@ -61,5 +61,4 @@ export const responseExecuteReplEndMessage: MessageDefinition<ExecuteEndMessage>
 		id:   Joi.string().optional().description('The id of the message, will be the same for the request.')
 	})
 };
-
 

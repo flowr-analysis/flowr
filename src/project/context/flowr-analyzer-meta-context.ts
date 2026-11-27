@@ -1,6 +1,5 @@
 import type { SemVer } from 'semver';
-import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
-import { resetOnFullInvalidation } from '../cache/flowr-cache';
+import { type InvalidationEvent, type InvalidationEventReceiver, resetOnFullInvalidation } from '../cache/flowr-cache';
 import type { RAuthorInfo } from '../../util/r-author';
 import type { RLicenseElementInfo } from '../../util/r-license';
 import type { Package } from '../plugins/package-version-plugins/package';
@@ -17,7 +16,6 @@ export enum MetaPriority {
 	/** declared in a `DESCRIPTION` file, which identifies an actual R package */
 	Description = 2
 }
-
 
 /**
  * The packages a project declares, grouped as a `DESCRIPTION` groups them. A source without such groups
@@ -57,46 +55,22 @@ export interface ProjectMetaFields {
 }
 
 export interface ReadOnlyFlowrAnalyzerMetaContext {
-	/**
-	 * The name of this context.
-	 */
+	/** The name of this context. */
 	readonly name: string;
-	/**
-	 * Get the project name.
-	 */
 	getProjectName(): string | undefined;
-	/**
-	 * Get the project title.
-	 */
 	getProjectTitle(): string | undefined;
-	/**
-	 * Get the project version.
-	 */
 	getProjectVersion(): SemVer & { str: string } | undefined;
-	/**
-	 * Get the R version the project targets, if any source declares one.
-	 */
+	/** Get the R version the project targets, if any source declares one. */
 	getRVersion(): string | undefined;
-	/**
-	 * Get the project namespace.
-	 * Any symbol resolve like `a::b` will resolve against this, if `a` matches the namespace.
-	 */
+	/** Get the project namespace. Any symbol resolve like `a::b` will resolve against this, if `a` matches the namespace. */
 	getNamespace(): string | undefined;
-	/**
-	 * Get the project authors.
-	 */
+	/** Get the project authors. */
 	getAuthors(): RAuthorInfo[] | undefined;
-	/**
-	 * Get the encoding the project's files are written in.
-	 */
+	/** Get the encoding the project's files are written in. */
 	getEncoding(): string | undefined;
-	/**
-	 * Get the project licenses.
-	 */
+	/** Get the project licenses. */
 	getLicenses(): RLicenseElementInfo[] | undefined;
-	/**
-	 * Get the packages the project declares, grouped by how they are declared.
-	 */
+	/** Get the packages the project declares, grouped by how they are declared. */
 	getDeclaredPackages(): DeclaredPackages;
 }
 
@@ -123,6 +97,18 @@ export class FlowrAnalyzerMetaContext implements ReadOnlyFlowrAnalyzerMetaContex
 		this.fields.clear();
 	}
 
+	fork(source: FlowrAnalyzerMetaContext): void {
+		this.fields.clear();
+		source.fields.forEach((field, key) => {
+			this.fields.set(key, {
+				priority: field.priority,
+				value:    Array.isArray(field.value)
+					? field.value.slice()
+					: field.value
+			});
+		});
+	}
+
 	receive(event: InvalidationEvent): void {
 		resetOnFullInvalidation(this, event);
 	}
@@ -130,7 +116,6 @@ export class FlowrAnalyzerMetaContext implements ReadOnlyFlowrAnalyzerMetaContex
 	/**
 	 * Contribute what a source declares about the project; `undefined` fields are ignored, so a plugin can pass
 	 * whatever it happens to know.
-	 * @param fields   - the metadata to contribute
 	 * @param priority - how much to trust these fields against other sources
 	 */
 	public contribute(fields: ProjectMetaFields, priority: MetaPriority): this {

@@ -6,10 +6,8 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { ProductReduction } from '../../abstract-interpretation/domains/partial-product-domain';
 import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
 import type { ReportTemplate } from './report-template';
-import type { TaintFnCategory } from '../function-categories';
-import { resolveCategoryToTaintMappings } from '../function-categories';
-import type { TaintMapping, TaintConditionFunction } from '../taint-mapping';
-import { TaintMapper, TaintRole  } from '../taint-mapping';
+import { type TaintFnCategory, resolveCategoryToTaintMappings } from '../function-categories';
+import { type TaintMapping, type TaintConditionFunction, TaintMapper, TaintRole } from '../taint-mapping';
 
 export type TaintAnalysisName<Definition> =
 	Definition extends RunnableTaintAnalysisDefinition<infer Name> ? Name : never;
@@ -196,11 +194,7 @@ export class CompositeTaintAnalysisDefinition<Name extends string> implements Ru
 	}
 
 	public createVisitor({ fnCallHook: _hook, ...config }: TaintVisitorConfiguration, _fnCategories?: TaintFnCategory[]): TaintInterpreter {
-		const components: TaintComponent[] = this.definitions.map(def => ({
-			name:   def.name,
-			domain: def.domain,
-			mapper: def.mapper,
-		}));
+		const components: TaintComponent[] = this.definitions.map(def => ({ name: def.name, domain: def.domain, mapper: def.mapper }));
 		return new TaintInterpreter(components, config, this.reductions);
 	}
 

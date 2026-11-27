@@ -3,9 +3,9 @@ import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { label } from '../../../_helper/label';
-import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { VertexType } from '../../../../../src/dataflow/graph/vertex';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
+import { analyze } from '../../../_helper/analyzer';
 
 /**
  * `a + b - c`, `a %>% f() %>% g()` and friends nest on their left operand, so they are folded with an explicit
@@ -65,8 +65,7 @@ describe('Left-associative operator chains', withTreeSitter(ts => {
 		for(let i = 0; i < levels; i++) {
 			code += ` ${op(i)} x`;
 		}
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-		analyzer.addRequest(code);
+		const analyzer = await analyze(ts, code);
 		const df = await analyzer.dataflow();
 		// every level of the chain has to survive the fold, not just the outermost one
 		const operators = new Set(Array.from({ length: levels }, (_, i) => op(i)));

@@ -12,6 +12,8 @@ export enum PlaygroundBox {
 	Deps  = 'deps',
 	/** what the linter found */
 	Lints = 'lints',
+	/** what the functions of the script ask of their calls */
+	Contracts = 'contracts',
 	/** what the DESCRIPTION of the project says */
 	Project = 'project'
 }
@@ -228,23 +230,27 @@ export const Playground = {
 		return hash.replace(/[.,:;')]$/, character => encodeURIComponent(character));
 	},
 	/**
+	 * The parts of a mark `<line>[:<column>][@<name>]`, `undefined` for a line that is no positive number.
+	 * A name may carry an `@` itself, as `object@slot` does, so only the first one separates.
+	 */
+	parseMark(this: void, mark: string): { readonly line: number, readonly column?: number, readonly name?: string } | undefined {
+		const cut = mark.indexOf('@');
+		const [lineText, columnText] = (cut < 0 ? mark : mark.slice(0, cut)).split(':');
+		const line = Number(lineText);
+		return Number.isInteger(line) && line > 0 ? { line, column: columnText === undefined ? undefined : Number(columnText), name: cut < 0 ? undefined : mark.slice(cut + 1) } : undefined;
+	},
+	/**
 	 * Where a criterion points in the given code, as the `<line>:<column>` the page opens the cursor on.
 	 * `12@sum` is the name `sum` in line 12, `12:5` that column, `12` the first name on the line.
 	 */
 	positionOf(this: void, code: string, criterion: string): string | undefined {
-		if(!CodeMarkPattern.test(criterion)) {
+		const mark = CodeMarkPattern.test(criterion) ? Playground.parseMark(criterion) : undefined;
+		const text = mark === undefined ? undefined : code.split('\n')[mark.line - 1];
+		if(mark === undefined || text === undefined) {
 			return undefined;
 		}
-		const cut = criterion.indexOf('@');
-		const [lineText, columnText] = (cut < 0 ? criterion : criterion.slice(0, cut)).split(':');
-		const name = cut < 0 ? undefined : criterion.slice(cut + 1);
-		const line = Number(lineText);
-		const text = code.split('\n')[line - 1];
-		if(!Number.isInteger(line) || line < 1 || text === undefined) {
-			return undefined;
-		}
-		if(columnText !== undefined) {
-			const column = Number(columnText);
+		const { line, column, name } = mark;
+		if(column !== undefined) {
 			return Number.isInteger(column) && column > 0 ? `${line}:${column}` : undefined;
 		}
 		const wanted = name ?? /[A-Za-z.][\w._]*/.exec(text)?.[0];

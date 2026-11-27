@@ -1,6 +1,6 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
 import { parseToQuads } from '../../../print/parse-printer';
-import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep, PipelineStepStage, requires } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { QuadSerializationConfiguration } from '../../../../util/quads';
 import { type ParseRequiredInput, parseRequests } from '../../../../r-bridge/parser';
@@ -17,5 +17,5 @@ export const PARSE_WITH_R_SHELL_STEP = {
 		[StepOutputFormat.RdfQuads]: (p, config: QuadSerializationConfiguration) => parseToQuads(p.files[0].parsed, config)
 	},
 	dependencies:  [],
-	requiredInput: undefined as unknown as ParseRequiredInput<string>
+	requiredInput: requires<ParseRequiredInput<string>>()
 } as const satisfies DeepReadonly<IPipelineStep<'parse', typeof parseRequests<string>>>;

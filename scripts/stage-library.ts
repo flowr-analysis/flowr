@@ -23,7 +23,7 @@ const RepositoryOnly = new Set(['scripts', 'devDependencies', 'release-it', 'typ
 /** The manifest as the package needs it: entry points named from the package root, tooling fields dropped. */
 function stagedManifest(): string {
 	const manifest = JSON.parse(fs.readFileSync('package.json', 'utf-8')) as Record<string, unknown> & { main?: string, types?: string };
-	const fromPackageRoot = (field: 'main' | 'types') => {
+	function fromPackageRoot(field: 'main' | 'types') {
 		const value = manifest[field];
 		if(value === undefined) {
 			return;
@@ -31,7 +31,7 @@ function stagedManifest(): string {
 		const prefix = `${Staged.replaceAll(path.sep, '/')}/`;
 		guard(value.startsWith(prefix), `package.json "${field}" has to point into ${prefix}, got "${value}"`);
 		manifest[field] = value.slice(prefix.length);
-	};
+	}
 	fromPackageRoot('main');
 	fromPackageRoot('types');
 	const kept = Object.fromEntries(Object.entries(manifest).filter(([field]) => !RepositoryOnly.has(field)));

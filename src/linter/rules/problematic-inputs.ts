@@ -3,8 +3,11 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
-import type { InputClassifierConfig, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
-import { InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
+import {
+	type InputClassifierConfig,
+	type InputSources,
+	InputType
+} from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
@@ -13,10 +16,12 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { ArgProp, CallProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { escapeRegex } from '../../util/text/strings';
 import { type BuiltInIndex, quotedForWorker } from '../../dataflow/environments/query-fn-props';
 import { boundArgumentIndex } from '../../dataflow/eval/resolve/resolve-argument';
+import { NodeValue } from '../../dataflow/eval/resolve/node-value';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
 
 /** what runs a command, and what evaluates code beyond looking up a name (`get`) or calling a function it is handed (`do.call`) */
 function defaultConsider(index: BuiltInIndex): readonly ConsiderSpec[] {
@@ -107,18 +112,18 @@ function isProblematicForAllowed(sources: InputSources, evalValues: string[], al
 }
 
 /** A path starting with `|` runs a command, so anything but a constant path, user input included, may start one. */
-function getPipeCommandValue(sources: InputSources, allowedValues?: RegExp, disallowedValues?: RegExp): string | undefined {
-	for(const s of sources) {
-		if(typeof s.value !== 'string' || !s.value.startsWith('|')) {
+function getPipeCommandValue(values: readonly unknown[], allowedValues?: RegExp, disallowedValues?: RegExp): string | undefined {
+	for(const value of values) {
+		if(typeof value !== 'string' || !value.startsWith('|')) {
 			continue;
 		}
-		if(allowedValues !== undefined && allowedValues.test(s.value)) {
+		if(allowedValues !== undefined && allowedValues.test(value)) {
 			continue;
 		}
-		if(disallowedValues !== undefined && !disallowedValues.test(s.value)) {
+		if(disallowedValues !== undefined && !disallowedValues.test(value)) {
 			continue;
 		}
-		return s.value;
+		return value;
 	}
 	return undefined;
 }
@@ -132,15 +137,17 @@ function resolveFileArgId(graph: DataflowGraph, vertex: DataflowGraphVertexInfo 
 }
 
 export interface ProblematicInputsResult extends LintingResult {
-	name:         string
+	name:         BrandedIdentifier
 	sources:      InputSources
 	pipeCommand?: string
 }
 
 export interface ProblematicInputsConfig extends MergeableRecord {
-	consider?:             string | string[] | ConsiderSpec | ConsiderSpec[]
-	inputFns?:             InputClassifierConfig
-	pipeCommandFunctions?: PipeCommandFunctionSpec | PipeCommandFunctionSpec[]
+	consider?:               string | string[] | ConsiderSpec | ConsiderSpec[]
+	/** report a considered call without {@link ConsiderSpec.allowedInputTypes} even if it only receives constants (`system("ls")`), off by default */
+	reportConstantCommands?: boolean
+	inputFns?:               InputClassifierConfig
+	pipeCommandFunctions?:   PipeCommandFunctionSpec | PipeCommandFunctionSpec[]
 }
 
 export const PROBLEMATIC_INPUTS = {
@@ -175,11 +182,12 @@ export const PROBLEMATIC_INPUTS = {
 				continue;
 			}
 			const [criterion, call] = [SlicingCriterion.fromId(target), SlicingCriterion.fromId(nid)];
-			const res = (await data.query([{ type: 'input-sources', criterion: target === nid ? call : [criterion, call], config: config.inputFns }]))['input-sources']?.results;
-			const own = res?.[criterion] ?? [];
+			const res = (await data.query({ type: 'input-sources', criterion: target === nid ? call : [criterion, call], config: config.inputFns })).results;
+			const own = res[criterion] ?? [];
 			/* a file argument that is an input itself (`pdf(readline())`) only shows as a source of the call */
-			const sources = target === nid || own.some(s => s.id === target) ? own : own.concat((res?.[call] ?? []).filter(s => s.id === target));
-			const pipeCommand = pipeSpec === undefined ? undefined : getPipeCommandValue(sources, pipeSpec.allowedValues, pipeSpec.disallowedValues);
+			const sources = target === nid || own.some(s => s.id === target) ? own : own.concat((res[call] ?? []).filter(s => s.id === target));
+			/* a constant path is one of the values it may hold (`if(a) "|lpr" else "a.pdf"`), not only the one all of them agree on */
+			const pipeCommand = pipeSpec === undefined ? undefined : getPipeCommandValue([...sources.map(s => s.value), ...NodeValue.knownStringsOf(target, Resolve.info(df.graph, data.inspectContext()))], pipeSpec.allowedValues, pipeSpec.disallowedValues);
 			const evalValues: string[] = [];
 			if(consider?.resolveSourceArgs) {
 				for(const source of sources) {
@@ -189,7 +197,7 @@ export const PROBLEMATIC_INPUTS = {
 					}
 				}
 			}
-			if(pipeCommand !== undefined || isProblematicForAllowed(sources, evalValues, consider?.allowedInputTypes ?? (pipeSpec !== undefined || sources.some(s => s.types.includes(InputType.TempFile)) ? tempFileAccept : []), consider?.allowedValues, consider?.disallowedValues)) {
+			if(pipeCommand !== undefined || isProblematicForAllowed(sources, evalValues, consider?.allowedInputTypes ?? (!config.reportConstantCommands || pipeSpec !== undefined || sources.some(s => s.types.includes(InputType.TempFile)) ? tempFileAccept : []), consider?.allowedValues, consider?.disallowedValues)) {
 				seen.add(nid);
 				const uncertain = pipeCommand === undefined && hasUnknownSource(sources);
 				results.push({
@@ -225,9 +233,6 @@ export const PROBLEMATIC_INPUTS = {
 		description:   'Finds dynamic calls (e.g. eval, system) with non-constant inputs, and graphics-device calls (pdf, postscript) where a filename starts with \'|\' indicating a pipe command injection.',
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.Performance],
 		certainty:     LintingRuleCertainty.BestEffort,
-		defaultConfig: ctx => ({
-			consider:             ctx.env.deriveFromIndex(defaultConsider),
-			pipeCommandFunctions: defaultPipeCommandFunctions
-		})
+		defaultConfig: ctx => ({ consider: ctx.env.deriveFromIndex(defaultConsider), reportConstantCommands: false, pipeCommandFunctions: defaultPipeCommandFunctions })
 	}
 } as const satisfies LintingRule<ProblematicInputsResult, never, ProblematicInputsConfig>;

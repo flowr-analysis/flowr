@@ -52,8 +52,6 @@ jobs:
         os: [ ubuntu-latest ]
         include:
            - r-version: '4.5.0'
-             os: macos-latest
-           - r-version: '4.5.0'
              os: windows-latest
     runs-on: ${{ matrix.os }}
     concurrency:
@@ -97,7 +95,7 @@ jobs:
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
 
-      # `test:full` excludes them, so the matrix is the only place they meet macOS and windows. They shell out to
+      # `test:full` excludes them, so the release is the only place they meet macOS and windows. They shell out to
       # the cli, and the windows leg has never run them, so it reports without holding up a release until it is green.
       - name: "⚙️ Run System Tests"
         continue-on-error: ${{ matrix.os == 'windows-latest' }}
@@ -126,20 +124,41 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
 
+  test-macos:
+    name: "🧪 Test Suite (full, macOS)"
+    needs: ['lint']
+    if: startsWith(github.event.head_commit.message, '[release:minor]') ||
+        startsWith(github.event.head_commit.message, '[release:major]') ||
+        startsWith(github.event.head_commit.message, '[release:patch]')
+    uses: ./.github/workflows/test-macos.yaml
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+    with:
+      r-version: '4.5.0'
+      test-command: "test:full -- --allowOnly=false"
+      system-tests: true
+      codecov: true
+
   release:
     name: "📦 Release"
     runs-on: ubuntu-latest
     timeout-minutes: 75
-    needs: ['test-full']
+    # a missing macOS runner must not block the release, failing macOS tests must
+    needs: ['test-full', 'test-macos']
     permissions:
       contents: read
       id-token: write
     concurrency:
       group: release-main
       cancel-in-progress: false
-    if: startsWith(github.event.head_commit.message, '[release:minor]') ||
-        startsWith(github.event.head_commit.message, '[release:major]') ||
-        startsWith(github.event.head_commit.message, '[release:patch]')
+    # a cancelled arm64 leg marks test-macos as not successful, so we judge it by its verdict
+    if: ${{
+              !cancelled()
+          && needs.test-full.result == 'success'
+          && contains(fromJSON('["passed", "no-runner"]'), needs.test-macos.outputs.verdict)
+      }}
     steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v6
@@ -304,54 +323,15 @@ jobs:
           path: "flowr-${{ env.THE_FLOWR_VERSION }}${{ env.ARTIFACT_SUFFIX }}.tar.gz"
 
   performance-test:
-    name: "⏱️ Performance Test"
     needs: ['release']
     # we do not run if the release workflow runs it with pushing
     if: startsWith(github.event.head_commit.message, '[release:minor]') ||
       startsWith(github.event.head_commit.message, '[release:major]') ||
       startsWith(github.event.head_commit.message, '[release:patch]')
-    runs-on: ubuntu-22.04
-    timeout-minutes: 75
-    strategy:
-      fail-fast: true
-      matrix:
-        # currently we have a duplication, add your benchmark names here and in `performance-test-upload`
-        name: ['artificial', 'real-world']
-        parser: ["tree-sitter", "r-shell"]
-    steps:
-      - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v6
-        with:
-            submodules: true
-
-      - name: "🌍 Load Versions to Use"
-        run: bash .github/workflows/scripts/global-configuration.sh
-
-      - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.ACTION_NODE_VERSION }}
-          registry-url: "https://registry.npmjs.org/"
-          cache: npm
-
-      - name: "⬇️ Setup R"
-        uses: ./.github/actions/setup-r
-        timeout-minutes: 45
-        with:
-          r-version: ${{ env.ACTION_R_VERSION }}
-          packages: 'true'
-
-      - name: "⏱️ Run the performance benchmarks"
-        run: bash .github/workflows/scripts/run-flowr-command.sh test:performance -- 1 2 "${{ matrix.name }}" "${{ matrix.parser }}"
-
-      - name: "⬆️ Upload Benchmark Results"
-        uses: actions/upload-artifact@v6
-        with:
-          name: benchmark-results-${{ matrix.name }}-${{ matrix.parser }}
-          path: test/performance/results/
-          if-no-files-found: error
-    outputs:
-      version: ${{ needs.release.outputs.version }}
+    uses: ./.github/workflows/performance-test.yaml
+    with:
+      runs: 2
+      r-packages: true
 
   performance-test-upload:
     name: "⬆️ Upload Performance Test Results"
@@ -393,38 +373,13 @@ jobs:
           name: test-label-details
           path: test-labels/
 
-      # add new benchmark suites and parsers here and in the matrix of `performance-test`
-      - name: "⬆️ Benchmark (artificial, r-shell)"
-        uses: ./.github/actions/upload-benchmark
+      - name: "⬆️ Benchmarks"
+        uses: ./.github/actions/upload-benchmarks
         with:
-          suite:  artificial
-          parser: r-shell
           token:  ${{ secrets.RELEASE_TOKEN }}
           mutation-results: false
-
-      - name: "⬆️ Benchmark (artificial, tree-sitter)"
-        uses: ./.github/actions/upload-benchmark
-        with:
-          suite:  artificial
-          parser: tree-sitter
-          token:  ${{ secrets.RELEASE_TOKEN }}
-          mutation-results: false
-
-      - name: "⬆️ Benchmark (real-world, r-shell)"
-        uses: ./.github/actions/upload-benchmark
-        with:
-          suite:  real-world
-          parser: r-shell
-          token:  ${{ secrets.RELEASE_TOKEN }}
-          mutation-results: false
-
-      - name: "⬆️ Benchmark (real-world, tree-sitter)"
-        uses: ./.github/actions/upload-benchmark
-        with:
-          suite:  real-world
-          parser: tree-sitter
-          token:  ${{ secrets.RELEASE_TOKEN }}
-          mutation-results: false
+          # the pull requests fail on a regression already, a release only reports it
+          guard: warn
 
       - name: "⬆️ Pull latest to avoid conflicts"
         run: git pull origin main --no-edit

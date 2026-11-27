@@ -2,8 +2,6 @@ import { assert, describe, test } from 'vitest';
 import { mapProblematicNodesToIds, withTreeSitter } from '../../_helper/shell';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { label } from '../../_helper/label';
-import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../_helper/dataflow/environment-builder';
@@ -13,13 +11,13 @@ import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 import { CallGraph } from '../../../../src/dataflow/graph/call-graph';
+import { analyze } from '../../_helper/analyzer';
 
 describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 	function checkSubCallGraph(testName: string, code: string, entries: NodeId[], expectedGraph: CallGraph | DataflowGraph): void {
 		const n = label(testName, [], ['call-graph']);
 		test(n, async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-			analyzer.addRequest(requestFromInput(code));
+			const analyzer = await analyze(ts, code);
 			const cg = await analyzer.callGraph();
 			const idMap = (await analyzer.normalize()).idMap;
 			const resolvedEntries = entries.map(e => SlicingCriterion.parse(e as SlicingCriterion, idMap));
@@ -59,12 +57,9 @@ describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 		emptyGraph()
 			.call(11, '{', [argumentInCall('1@10')], { omitArgs: true, onlyBuiltIn: true })
 			.defineFunction('1@function', [{ nodeId: 10, cds: undefined, type: ExitPointType.Return }], {
-				out:               [],
-				in:                [],
-				unknownReferences: [],
-				entryPoint:        '2@return',
-				graph:             new Set([1, 6, 7, 8, 10, 11]),
-				environment:       defaultEnv().pushEnv().defineParameter('x', '1@x', '1@x')
+				entryPoint:  '2@return',
+				graph:       new Set([1, 6, 7, 8, 10, 11]),
+				environment: defaultEnv().pushEnv().defineParameter('x', '1@x', '1@x')
 			}, { readParams: [[1, true]] })
 			.calls('1@function', [11, '2@return'])
 			.calls(11, [10, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)])

@@ -5,7 +5,7 @@ ARG SIGDB_IMAGE=busybox:stable
 FROM ${SIGDB_IMAGE} AS sigdb-full
 RUN mkdir -p /data/sigdb
 
-FROM node:25.3-alpine3.23 AS builder
+FROM node:26-alpine3.24 AS builder
 
 WORKDIR /app
 
@@ -37,7 +37,7 @@ RUN npx ts-node --transpile-only scripts/sigdb-bake.ts dist/src/data/sigdb && np
 RUN mv dist/src/data/sigdb /app/sigdb-bundle
 
 
-FROM node:25.3-alpine3.23 AS flowr
+FROM node:26-alpine3.24 AS flowr
 
 LABEL author="Florian Sihler" git="https://github.com/flowr-analysis/flowr"
 
@@ -54,9 +54,9 @@ COPY ./package.json ./package-lock.json /app/
 
 # install deps, make new user and clean up the test files
 # the optional deps ship in the image on purpose (quad export needs `n3`), only the dev ones are dropped
-RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force && \
-    echo "http://dl-cdn.alpinelinux.org/alpine/edge/community\nhttp://dl-cdn.alpinelinux.org/alpine/edge/main"  \
-          >> /etc/apk/repositories; apk add --no-cache icu-libs=76.1-r1 R=4.5.2-r0 && \
+# upgrade the base packages first, a pinned base image otherwise ships whatever openssl it was built with
+RUN apk upgrade --no-cache && apk add --no-cache icu-libs R && \
+    npm ci --omit=dev --ignore-scripts && npm cache clean --force && \
     rm -rf /app/package.json /app/node_modules/**/*.md /app/node_modules/.bin  \
            /app/node_modules/**/LICENSE /app/package-lock.json \
            /app/**/tsconfig.tsbuildinfo /app/**/*.d.ts /app/test/* && \

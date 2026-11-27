@@ -9,7 +9,7 @@ export interface SummarizedMeasurement<T = number> {
 	min:    T
 	max:    T
 	median: T
-	/** total may be useless for some measurements, especially if they are weighted before (it is just the sum...)*/
+	/** total may be useless for some measurements, especially if they are weighted before (it is just the sum...) */
 	total:  T
 	/** average */
 	mean:   number
@@ -32,16 +32,11 @@ export abstract class Summarizer<Output, Configuration extends CommonSummarizerC
 	 */
 	public abstract preparationPhase(): Promise<void>;
 
-	/**
-	 * Second phase of the summary, can be used to combine the data from the first phase
-	 * and produce some kind of "ultimate results".
-	 */
+	/** Second phase of the summary, can be used to combine the data from the first phase and produce some kind of "ultimate results". */
 	public abstract summarizePhase(): Promise<Output>;
 }
 
-/**
- * Summarizes the given measurement data.
- */
+/** Summarizes the given measurement data. */
 export function summarizeMeasurement(data: number[], totalNumberOfDataPoints?: number): SummarizedMeasurement {
 	// just to avoid in-place modification
 	const sorted = [...data].sort((a, b) => a - b);

@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { ControlDependency, DataflowInformation } from '../../../../../info';
+import { type ControlDependency, type DataflowInformation, ExitPointType } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -32,12 +32,7 @@ export function processSpecialBinOp<OtherInfo>(
 	/* the very dependency the right-hand side runs under, carried by its vertices and by the branch alike */
 	const evalsRhs: ControlDependency = { id: rootId, when: config.evalRhsWhen ?? true };
 	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data,
-		patchData: (d, i) => {
-			if(config.lazy && i === 1) {
-				return { ...d, cds: [...d.cds ?? [], evalsRhs] };
-			}
-			return d;
-		},
+		patchData:         (d, i) => config.lazy && i === 1 ? { ...d, cds: [...d.cds ?? [], evalsRhs] } : d,
 		customControlFlow: config.lazy,
 		origin:            BuiltInProcName.SpecialBinOp
 	});
@@ -59,7 +54,9 @@ export function processSpecialBinOp<OtherInfo>(
 			ControlFlow.continuesWith(graph, rhs, rootId);
 		}
 		ControlFlow.branchesTo(graph, lhs, rootId, { id: rootId, when: !evalsRhs.when });
-		return { ...information, cfgEntry: ControlFlow.entryOf(lhs), cfgExit: rootId };
+		/* a jump within the right-hand side (`x || return(1)`) happens under the very dependency the side runs under, which it carries */
+		const rhsJumps = rhs?.exitPoints.filter(e => e.type !== ExitPointType.Default) ?? [];
+		return { ...information, exitPoints: information.exitPoints.concat(rhsJumps), cfgEntry: ControlFlow.entryOf(lhs), cfgExit: rootId };
 	}
 
 	return information;

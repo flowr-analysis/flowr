@@ -21,13 +21,7 @@ export function executeFunctionInfoQuery({ analyzer }: BasicQueryData, queries: 
 	const packages: FunctionInfoPackageHit[] = [...matching.filter(p => isBaseRPackage(p)), ...matching.filter(p => !isBaseRPackage(p))].map(pkg => {
 		const id = Identifier.make(query.name, pkg);
 		const fn = sigDb.functionOf(id) ?? sigDb.rawFunctionOf(id);
-		return {
-			package:    pkg,
-			exported:   fn?.exported ?? true,
-			parameters: fn?.signature.map(p => p.name),
-			file:       fn?.file,
-			line:       fn?.line
-		};
+		return { package: pkg, exported: fn?.exported ?? true, parameters: fn?.signature.map(p => p.name), file: fn?.file, line: fn?.line };
 	});
 	return Promise.resolve({
 		...metaSince(start),

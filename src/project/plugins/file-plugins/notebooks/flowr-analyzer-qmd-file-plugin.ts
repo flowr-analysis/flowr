@@ -2,9 +2,7 @@ import { FlowrAnalyzerRMarkdownFilePlugin } from './flowr-analyzer-rmarkdown-fil
 
 const QmdPattern = /\.qmd$/i;
 
-/**
- * The plugin provides support for Quarto R Markdown (`.qmd`) files
- */
+/** The plugin provides support for Quarto R Markdown (`.qmd`) files */
 export class FlowrAnalyzerQmdFilePlugin extends FlowrAnalyzerRMarkdownFilePlugin {
 	public readonly name =    'qmd-file-plugin';
 	public readonly description = 'Parses Quarto R Markdown files';

@@ -1,6 +1,5 @@
 import { assertAst, withShell } from '../../../_helper/shell';
-import { arg, call, callExpr, exprList, parameter, sym } from '../../../_helper/ast-builder';
-import type { Pos } from '../../../_helper/ast-builder';
+import { arg, call, callExpr, exprList, parameter, sym, type Pos } from '../../../_helper/ast-builder';
 import { MIN_VERSION_PIPE, MIN_VERSION_PIPE_BIND } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { label } from '../../../_helper/label';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';

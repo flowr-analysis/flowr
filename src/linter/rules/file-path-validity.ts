@@ -1,23 +1,23 @@
 import { DataSetExtensions } from './cmd-check/cmd-check-util';
-import { type LintingResult, type LintingRule, type LintQuickFixReplacement, prettyPrint, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, type LintQuickFixReplacement, prettyPrintAt, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { isUrl, fileUrlToPath } from '../../util/text/strings';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
-import { Constant, Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Constant, Unknown } from '../../queries/catalog/dependencies-query/dependency-values';
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { Ternary } from '../../util/logic';
-import { happensBefore } from '../../control-flow/happens-before';
+import { happensBefore, happensBeforeEach } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { readFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import { attachesPackage } from '../../queries/catalog/dependencies-query/function-info/library-functions';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 import { WorkingDirectory } from '../../dataflow/eval/resolve/resolve-working-directory';
 import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } from '../../config';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
-import { RFunctionCall, EmptyArgument  } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -52,9 +52,7 @@ export interface FilePathValidityConfig extends MergeableRecord {
 	 * Entries in this array use the {@link FunctionInfo} format from the dependencies query.
 	 */
 	additionalWriteFunctions: readonly FunctionInfo[]
-	/**
-	 * Whether unknown file paths should be included as linting results.
-	 */
+	/** Whether unknown file paths should be included as linting results. */
 	includeUnknown:           boolean
 	/**
 	 * Whether URLs should be validated by checking the endpoint exists.
@@ -71,8 +69,10 @@ export interface FilePathValidityMetadata extends MergeableRecord {
 	totalValid:              number
 }
 
+const PackageArguments: readonly BrandedIdentifier[] = ['package', 'lib.loc'];
+
 function namesPackage(node: RNode<ParentInformation>): boolean {
-	return RFunctionCall.is(node) && node.arguments.some(a => a !== EmptyArgument && a.name !== undefined && ['package', 'lib.loc'].includes(Identifier.getName(a.name.content)));
+	return RFunctionCall.is(node) && node.arguments.some(a => a !== EmptyArgument && a.name !== undefined && PackageArguments.includes(Identifier.getName(a.name.content)));
 }
 
 async function urlExists(url: string): Promise<boolean> {
@@ -93,12 +93,7 @@ export const FILE_PATH_VALIDITY = {
 	}).with(Enrichment.CfgInformation),
 	processSearchResult: async(elements, config, data): Promise<{ results: FilePathValidityResult[], '.meta': FilePathValidityMetadata }> => {
 		const cfg = elements.enrichmentContent(Enrichment.CfgInformation).cfg.graph;
-		const metadata: FilePathValidityMetadata = {
-			totalReads:              0,
-			totalUnknown:            0,
-			totalWritesBeforeAlways: 0,
-			totalValid:              0
-		};
+		const metadata: FilePathValidityMetadata = { totalReads: 0, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 };
 		const results = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'];
 		const ctx = data.inspectContext();
 		const df = await data.dataflow();
@@ -109,12 +104,9 @@ export const FILE_PATH_VALIDITY = {
 		const namesOnly = new Set(readFunctions(ctx).concat(config.additionalReadFunctions).filter(f => f.resolveValue === 'library').map(f => f.name));
 		const attached = (results.library ?? []).filter(attachesPackage);
 		const atTopLevel = (id: NodeId) => dfg.idMap === undefined || RNode.findEnclosing(id, dfg.idMap, RFunctionDefinition.is) === undefined;
-		const librariesLoadedBefore = (read: NodeId) => attached.some(l => l.nodeId === undefined || !atTopLevel(l.nodeId) || !atTopLevel(read)
-			|| !cfg.hasVertex(l.nodeId) || happensBefore(cfg, l.nodeId, read) !== Ternary.Never);
+		const librariesLoadedBefore = (read: NodeId) => attached.some(l => l.nodeId === undefined || !atTopLevel(l.nodeId) || !atTopLevel(read) || !cfg.hasVertex(l.nodeId) || happensBefore(cfg, l.nodeId, read) !== Ternary.Never);
 		const uniqueElements = [...new Map(elements.getElements().map(e => [e.node.info.id, e])).values()];
-		const reads = uniqueElements.flatMap(element => results.read
-			.filter(r => r.nodeId === element.node.info.id)
-			.map(matchingRead => ({ element, matchingRead })));
+		const reads = uniqueElements.flatMap(element => results.read.filter(r => r.nodeId === element.node.info.id).map(matchingRead => ({ element, matchingRead })));
 		const findings = await Promise.all(reads.map(async({ element, matchingRead }): Promise<FilePathValidityResult[]> => {
 			const { nodeId, value } = matchingRead;
 			/* data built from constants, like `matrix(1:6, 2)`, reads no file */
@@ -124,73 +116,55 @@ export const FILE_PATH_VALIDITY = {
 			const { id, file } = element.node.info;
 			const loc = SourceLocation.fromNode(element.node);
 			const referenceChain = file ? [file] : [];
-			const verdict = (valid: boolean, filePath: string, certainty: LintingResultCertainty, quickFix?: LintQuickFixReplacement[]): FilePathValidityResult[] => {
+			function verdict(valid: boolean, filePath: string, certainty: LintingResultCertainty, quickFix?: LintQuickFixReplacement[]): FilePathValidityResult[] {
 				if(valid) {
 					metadata.totalValid++;
 					return [];
 				}
-				return [{ involvedId: nodeId, loc: loc as SourceLocation, filePath, certainty, ...(quickFix ? { quickFix } : {}) }];
-			};
+				return [{ involvedId: nodeId, loc: loc, filePath, certainty, ...(quickFix ? { quickFix } : {}) }];
+			}
 			if(namesOnly.has(Identifier.getName(matchingRead.functionName))) {
-				if(!loc || typeof value !== 'string' || value === Unknown
-					|| librariesLoadedBefore(id) || BaseDatasets.has(value) || namesPackage(element.node)) {
+				if(!loc || typeof value !== 'string' || value === Unknown || librariesLoadedBefore(id) || BaseDatasets.has(value) || namesPackage(element.node)) {
 					return [];
 				}
 				metadata.totalReads++;
 				const find = finderAt(resolveSource, wdRootsFor(id, file), file, ctx);
-				const exists = DataSetExtensions.some(ext => find(`data/${value}.${ext}`).length);
-				return verdict(exists, `data/${value}`, LintingResultCertainty.Uncertain);
+				return verdict(DataSetExtensions.some(ext => find(`data/${value}.${ext}`).length), `data/${value}`, LintingResultCertainty.Uncertain);
 			}
 			metadata.totalReads++;
 			if(!loc) {
 				return [];
-			}
-			// check if we can't parse the file path statically
-			if(value === Unknown) {
+			} else if(value === Unknown) {
 				metadata.totalUnknown++;
 				return config.includeUnknown ? [{ involvedId: nodeId, loc, filePath: Unknown, certainty: LintingResultCertainty.Uncertain }] : [];
 			}
 			const path = value as string;
-			// file:// URIs are local paths; resolve and check existence directly
+			/* file:// URIs are local paths, remote URLs are only checked on request and never in the secure mode, which forbids network access */
 			const localFromFileUrl = fileUrlToPath(path);
 			if(localFromFileUrl !== undefined) {
-				const exists = !!findSource(resolveSource, localFromFileUrl, { referenceChain, ctx })?.length;
-				return verdict(exists, localFromFileUrl, LintingResultCertainty.Certain);
-			}
-			// handle remote URLs separately from file paths
-			if(isUrl(path)) {
-				// the secure mode forbids network access, so the URL stays unchecked as if checkUrls was off
+				return verdict(!!findSource(resolveSource, localFromFileUrl, { referenceChain, ctx })?.length, localFromFileUrl, LintingResultCertainty.Certain);
+			} else if(isUrl(path)) {
 				return config.checkUrls && !SecureMode.isEnabled() ? verdict(await urlExists(path), path, LintingResultCertainty.Uncertain) : [];
 			}
-			// check if any write to the same file happens before the read, and exclude this case if so
-			const writesToFile = results.write.filter((r): r is typeof r & { nodeId: NodeId } =>
-				r.nodeId !== undefined && samePath(r.value as string, path, resolveSource?.ignoreCapitalization));
-			const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, id));
-			if(writesBefore.includes(Ternary.Always)) {
+			/* a write to the same file that always happens before the read excludes it */
+			const writers = new Set(results.write.filter(r => r.nodeId !== undefined && samePath(r.value as string, path, resolveSource?.ignoreCapitalization)).map(w => w.nodeId as NodeId));
+			const writesBefore = happensBeforeEach(cfg, writers, id);
+			if(writesBefore.values().some(w => w === Ternary.Always)) {
 				metadata.totalWritesBeforeAlways++;
 				return [];
 			}
-			// check if the file exists, resolving relative paths against the effective working directory
 			const wdRoots = wdRootsFor(id, file);
 			if(finderAt(resolveSource, wdRoots, file, ctx)(path).length) {
 				return verdict(true, path, LintingResultCertainty.Certain);
 			}
 			/* a lax retry (drop leading dirs, ignore case) may surface a near match to offer as a quick fix */
-			const laxOptions: FlowrLaxSourcingOptions = {
-				...searchingFrom(resolveSource, wdRoots.roots),
-				ignoreCapitalization: true,
-				dropPaths:            DropPathsOption.All
-			};
-			const near = findSource(laxOptions, path, { referenceChain, ctx });
+			const near = findSource({ ...searchingFrom(resolveSource, wdRoots.roots), ignoreCapitalization: true, dropPaths: DropPathsOption.All }, path, { referenceChain, ctx });
 			const quickFix = dfg.idMap && near?.length ? buildDidYouMeanFix(dfg.idMap, nodeId, path, near[0]) : undefined;
-			const maybeWrittenBefore = writesBefore.length > 0 && writesBefore.every(w => w === Ternary.Maybe);
+			const maybeWrittenBefore = writers.size > 0 && writesBefore.size === writers.size;
 			const uncertain = maybeWrittenBefore || guardedByFileQuery(df, id, path, data);
 			return verdict(false, path, uncertain ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain, quickFix);
 		}));
-		return {
-			results: findings.flat(),
-			'.meta': metadata
-		};
+		return { results: findings.flat(), '.meta': metadata };
 	},
 	info: {
 		name:          'File Path Validity',
@@ -198,17 +172,9 @@ export const FILE_PATH_VALIDITY = {
 		// checks all found paths for whether they're valid to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug, LintingRuleTag.QuickFix],
-		defaultConfig: () => ({
-			additionalReadFunctions:  [],
-			additionalWriteFunctions: [],
-			includeUnknown:           false,
-			checkUrls:                false
-		})
+		defaultConfig: () => ({ additionalReadFunctions: [], additionalWriteFunctions: [], includeUnknown: false, checkUrls: false })
 	},
-	prettyPrint: prettyPrint(
-		result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)}`,
-		result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)} does not point to a valid file`
-	)
+	prettyPrint: prettyPrintAt(result => `Path \`${result.filePath}\``, () => 'does not point to a valid file')
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig>;
 
 /** Whether the read only runs depending on a condition that queries the same file, as in `if(file.exists(p)) readLines(p)`. */
@@ -244,20 +210,13 @@ function finderAt(resolveSource: FlowrLaxSourcingOptions | undefined, { roots, p
 }
 
 function samePath(a: string, b: string, ignoreCapitalization: boolean | undefined): boolean {
-	if(ignoreCapitalization === true) {
-		a = a.toLowerCase();
-		b = b.toLowerCase();
-	}
-	return a === b;
+	return ignoreCapitalization === true ? a.toLowerCase() === b.toLowerCase() : a === b;
 }
 
 /** the string-literal path argument of a call whose resolved value is `value`, for anchoring a quick fix */
 export function pathArgStringNode(idMap: AstIdMap, callId: NodeId, value: string): RString | undefined {
 	const call = idMap.get(callId);
-	if(!RFunctionCall.is(call)) {
-		return undefined;
-	}
-	return call.arguments.map(RArgument.valueOf).find(v => RString.is(v) && v.content.str === value) as RString | undefined;
+	return RFunctionCall.is(call) ? call.arguments.map(RArgument.valueOf).find(v => RString.is(v) && v.content.str === value) as RString | undefined : undefined;
 }
 
 /** rewrite the read path to `found`, an existing file surfaced by the lax retry */
@@ -270,10 +229,5 @@ function buildDidYouMeanFix(idMap: AstIdMap, callId: NodeId, value: string, foun
 	}
 	/* R reads a backslash in a string as an escape, so a windows path is written with forward slashes */
 	const fixed = RPath.of(found);
-	return [{
-		type:        'replace',
-		loc,
-		description: `Replace with existing path \`${fixed}\``,
-		replacement: str.content.quotes + fixed + str.content.quotes
-	}];
+	return [{ type: 'replace', loc, description: `Replace with existing path \`${fixed}\``, replacement: str.content.quotes + fixed + str.content.quotes }];
 }

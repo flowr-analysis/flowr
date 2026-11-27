@@ -1,7 +1,7 @@
 import type { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
 import type { FlowrConfig } from '../../../src/config';
-import { executeQueries } from '../../../src/queries/query';
+import { Query } from '../../../src/queries/query';
 import type {
 	GuessDepVersionsQuery,
 	GuessDepVersionsQueryResult,
@@ -53,13 +53,12 @@ export interface GuessScenario {
 	readonly config?:   FlowrConfig;
 }
 
-const dayMs = (date: string): number => {
+function dayMs(date: string): number {
 	const [y, m, d] = date.split('-').map(Number);
 	return Date.UTC(y, m - 1, d);
-};
+}
 
-const fnInfo = (name: string, params: readonly string[], s3Owner: boolean): SigFunctionInfo =>
-	({ ...expFn(name), props: FnProp.Exported | (s3Owner ? FnProp.S3Owner : 0), params: params.map(p => ({ name: p })) });
+const fnInfo = (name: string, params: readonly string[], s3Owner: boolean): SigFunctionInfo => ({ ...expFn(name), props: FnProp.Exported | (s3Owner ? FnProp.S3Owner : 0), params: params.map(p => ({ name: p })) });
 
 function versionInfo(v: ScenarioVersion): SigVersionInfo {
 	const owned = new Set(v.s3Classes ?? []);
@@ -80,7 +79,7 @@ function versionInfo(v: ScenarioVersion): SigVersionInfo {
 }
 
 /** turn a declarative scenario into an in-memory {@link SigDb} */
-export function buildGuessDb(packages: Readonly<Record<string, ScenarioPackage>>): SigDb {
+function buildGuessDb(packages: Readonly<Record<string, ScenarioPackage>>): SigDb {
 	const b = new SigDbBuilder();
 	for(const [name, spec] of Object.entries(packages)) {
 		const versions = Object.keys(spec.versions);
@@ -106,8 +105,8 @@ export async function buildGuessAnalyzer(ts: TreeSitterExecutor, scenario: Guess
 /** build the scenario's database + analyzer, inject declared constraints, and run the `guess-dep-versions` query */
 export async function runGuess(ts: TreeSitterExecutor, scenario: GuessScenario): Promise<GuessDepVersionsQueryResult> {
 	const analyzer = await buildGuessAnalyzer(ts, scenario);
-	const results = await executeQueries({ analyzer }, [{ type: 'guess-dep-versions', ...scenario.query }]);
-	return results['guess-dep-versions'];
+	const results = await Query.one({ analyzer }, { type: 'guess-dep-versions', ...scenario.query });
+	return results;
 }
 
 /** the guessed dependency for `pkg`, or `undefined` if the query did not report it */

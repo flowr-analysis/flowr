@@ -269,6 +269,7 @@ export interface AbstractSemantics<Domain extends StateDomain> {
 	 * @param vertex - The dataflow graph vertex of the condition of the branch
 	 * @param ctx    - The context of the abstract interpretation analysis
 	 * @param branch - Whether the branch is taken if the condition evaluates to `TRUE` or to `FALSE`
+	 * @param target - The vertex the branch enters, which tells the arms of a `switch` apart (each is entered on `TRUE`)
 	 */
-	handleConditionBranch?(state: Domain, vertex: DataflowGraphVertexArgument, ctx: AbsintContext<Domain>, branch: typeof RTrue | typeof RFalse): void;
+	handleConditionBranch?(state: Domain, vertex: DataflowGraphVertexArgument, ctx: AbsintContext<Domain>, branch: typeof RTrue | typeof RFalse, target?: NodeId): void;
 }

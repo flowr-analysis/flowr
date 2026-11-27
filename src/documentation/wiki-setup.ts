@@ -1,12 +1,9 @@
-import type { DocMakerArgs } from './wiki-mk/doc-maker';
-import { DocMaker } from './wiki-mk/doc-maker';
+import { type DocMakerArgs, DocMaker } from './wiki-mk/doc-maker';
 import { RemoteFlowrFilePathBaseRef, FlowrSiteBaseRef } from './doc-util/doc-files';
 import { minimumNodeMajor } from '../util/node-version';
 import { linkToPlayground } from './doc-util/doc-playground';
 
-/**
- * https://github.com/flowr-analysis/flowr/wiki/Setup
- */
+/** https://github.com/flowr-analysis/flowr/wiki/Setup */
 export class WikiSetup extends DocMaker<'wiki/Setup.md'> {
 	constructor() {
 		super('wiki/Setup.md', module.filename, 'setup instructions');

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-21, 19:58:49 UTC (v2.17.9, R v4.6.1), do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-11-27, 07:23:13 UTC (v2.17.13, R v4.6.1), do not edit directly._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
@@ -38,6 +38,8 @@ We support the following **active** queries (which we refer to as a `query`):
 
 1. [Abstract Interpretation Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Abstract-Interpretation) (`absint`):\
     Returns the abstract values inferred for every expression or at specific locations.
+1. [Aliases Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Aliases) (`aliases`):\
+    Returns all aliases of a given identifier.
 1. [Ambient Access Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Ambient-Access) (`ambient-access`):\
     What code reads and writes of the global state
 1. [Call-Context Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context) (`call-context`):\
@@ -660,6 +662,15 @@ Valid item types:
                 Valid item types:
                     - (string)
                 - **file** [optional] _The file the positions are in, if the analysis holds more than one._ (string)
+            - _The alias query returns all aliases of the identifiers given as slicing criteria or node ids._ (object)
+                - **type** [required] _The type of the query._ (string)
+                    Only allows: 'aliases'
+                - **criteria** [optional] _The slicing criteria of the nodes we want to find the alias for._ (array)
+                Valid item types:
+                    - (string)
+                - **id** [optional] _The NodeId of the nodes we want to find the alias for._ (array)
+                Valid item types:
+                    - (number)
         - _Virtual queries (used for structure)_ (alternatives)
             - _Compound query used to combine queries of the same type_ (object)
                 - **type** [required] _The type of the query._ (string)

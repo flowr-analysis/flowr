@@ -23,7 +23,7 @@ export const securityDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bottom,
 	.build();
 
 /** Matches network protocols in a path argument. */
-const NetworkProtocolRegex = /^(https?|ftps?):\/\//;
+export const NetworkProtocolRegex = /^(https?|ftps?):\/\//;
 
 /** Maps a resolved path argument to a network or file taint depending on its protocol. */
 const protocolTaint: TaintConditionFunction<typeof securityDomain> =

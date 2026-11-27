@@ -49,8 +49,7 @@ import { type DiceQuery, DiceQueryDefinition } from './catalog/dice-query/dice-q
 import { type GuessDepVersionsQuery, GuessDepVersionsQueryDefinition } from './catalog/guess-dep-versions-query/guess-dep-versions-query-format';
 import { AbsintQueryDefinition, type AbsintQuery } from './catalog/absint-query/absint-query-format';
 import { type FunctionInfoQuery, FunctionInfoQueryDefinition } from './catalog/function-info-query/function-info-query-format';
-import { AliasesQueryDefinition } from './catalog/aliases-query/aliases-query-format';
-import type { AliasesQuery } from './catalog/aliases-query/aliases-query-format';
+import { type AliasesQuery, AliasesQueryDefinition } from './catalog/aliases-query/aliases-query-format';
 import { type CodeClonesQuery, CodeClonesQueryDefinition } from './catalog/code-clones-query/code-clones-query-format';
 import { type DataColumnsQuery, DataColumnsQueryDefinition } from './catalog/data-columns-query/data-columns-query-format';
 
@@ -171,8 +170,8 @@ function runExecutor(data: BasicQueryData, type: SupportedQueryTypes, queries: r
 }
 
 /** Groups the queries by type in the order the types first occur, unfolding virtual queries into the queries they stand for. */
-function groupQueriesByType(queries: Queries): Map<SupportedQueryTypes, Query[]> {
-	return Map.groupBy(queries.flatMap((q): readonly Query[] => q.type === 'compound' ? SupportedVirtualQueries[q.type](q) : [q]), q => q.type);
+function groupQueriesByType(queries: readonly BaseQueryFormat[]): Map<SupportedQueryTypes, Query[]> {
+	return Map.groupBy((queries as Queries).flatMap((q): readonly Query[] => q.type === 'compound' ? SupportedVirtualQueries[q.type](q) : [q]), q => q.type);
 }
 
 /* a record mapping the query type present to its respective result */

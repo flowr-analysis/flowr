@@ -48,16 +48,17 @@ import type { LintingResult, LintingResultCertainty } from '../linter/linter-for
 import { type DiceQuery, DiceQueryDefinition } from './catalog/dice-query/dice-query-format';
 import { type GuessDepVersionsQuery, GuessDepVersionsQueryDefinition } from './catalog/guess-dep-versions-query/guess-dep-versions-query-format';
 import { AbsintQueryDefinition, type AbsintQuery } from './catalog/absint-query/absint-query-format';
+import { type FunctionInfoQuery, FunctionInfoQueryDefinition } from './catalog/function-info-query/function-info-query-format';
+import { type AliasesQuery, AliasesQueryDefinition } from './catalog/aliases-query/aliases-query-format';
 import { type CodeClonesQuery, CodeClonesQueryDefinition } from './catalog/code-clones-query/code-clones-query-format';
 import { type DataColumnsQuery, DataColumnsQueryDefinition } from './catalog/data-columns-query/data-columns-query-format';
-import { type FunctionInfoQuery, FunctionInfoQueryDefinition } from './catalog/function-info-query/function-info-query-format';
 
 /** These are all queries that can be executed from within flowR */
 export type Query = CallContextQuery | ConfigQuery | SearchQuery | DataflowQuery | DoesCallQuery | CallGraphQuery | ControlFlowQuery | DataflowLensQuery | FilesQuery
 	| AbsintQuery | NormalizedAstQuery | IdMapQuery | DataflowClusterQuery | StaticSliceQuery | DependenciesQuery | LocationMapQuery | HappensBeforeQuery
 	| InspectExceptionQuery | InspectHigherOrderQuery | InspectRecursionQuery | InspectFnPropsQuery | InspectFnGuardsQuery | AmbientAccessQuery
 	| ResolveValueQuery | ProjectQuery | SignatureQuery | OriginQuery | LinterQuery | ProvenanceQuery | InputSourcesQuery | TaintQuery | DiceQuery
-	| GuessDepVersionsQuery | FunctionInfoQuery | CodeClonesQuery | DataColumnsQuery;
+	| GuessDepVersionsQuery | FunctionInfoQuery | CodeClonesQuery | DataColumnsQuery | AliasesQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -138,7 +139,8 @@ export const SupportedQueries = {
 	'guess-dep-versions':   GuessDepVersionsQueryDefinition,
 	'function-info':        FunctionInfoQueryDefinition,
 	'code-clones':          CodeClonesQueryDefinition,
-	'data-columns':         DataColumnsQueryDefinition
+	'data-columns':         DataColumnsQueryDefinition,
+	'aliases':              AliasesQueryDefinition
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

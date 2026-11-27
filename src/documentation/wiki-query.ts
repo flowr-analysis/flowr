@@ -1145,6 +1145,25 @@ package/version in the database directly, reach for the ${linkToQueryOfName('sig
 }
 		`);
 
+registerQueryDocumentation('aliases', {
+	type:             'active',
+	shortDescription: 'Returns all aliases of a given identifier.',
+	buildExplanation: async(shell: RShell, _: GeneralDocContext) => {
+		const exampleCode = 'x <- 1\ng <- x\nh <- g';
+		const criteria = ['1@x'] as SlicingCriteria;
+		const id = [3];
+		return `
+If the identifier is given as a NodeId the aliases will be returned as NodeId as well. If the identifier uses a slicing criterion the location of the corresponding aliases will be returned.
+The following example uses both functionalities:
+Given the code ${codeBlock('r', exampleCode)}. Here '2@g' resolves to NodeId 3.
+Then the following query will return the location of the aliases of x and the NodeIds of the aliases of g.
+${
+	await showQuery(shell, exampleCode, [{ type: 'aliases', criteria: criteria, id: id }])
+}
+	`;
+	}
+});
+
 /** https://github.com/flowr-analysis/flowr/wiki/Query-API */
 export class WikiQuery extends DocMaker<'wiki/Query API.md'> {
 	constructor() {

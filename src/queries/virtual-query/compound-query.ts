@@ -20,9 +20,9 @@ export interface CompoundQueryFormat<
 	 * You do not have to re-state the type, this is automatically filled with the type for 'query'
 	 * Additionally all arguments given in `commonArguments` are now enforced optional.
 	 */
-	readonly arguments:       ReadonlyArray<StrictOmit<
-		StrictOmit<QueryArgumentsWithType<SubQueryType>, 'type'>,
-		CommonArguments /* we cannot use mark optional / some-partial constructions here as it trips up the type checker, hence we work around by union inclusion */
+	readonly arguments:       ReadonlyArray<Omit<
+		QueryArgumentsWithType<SubQueryType>,
+		'type' | CommonArguments /* we cannot use mark optional / some-partial constructions here as it trips up the type checker, hence we work around by union inclusion */
 	> & Partial<QueryArgumentsWithType<SubQueryType>>>;
 }
 

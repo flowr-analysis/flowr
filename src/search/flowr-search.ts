@@ -69,30 +69,56 @@ export interface FlowrSearchGetFilter extends Record<string, unknown> {
 /** Intentionally, we abstract away from an array to avoid the use of conventional typescript operations */
 export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
 	private elements:    Elements = [] as unknown as Elements;
+	private iterator?:	 IteratorObject<FlowrSearchElement<Info>>;
+	private isLazy = false;
 	private enrichments: { [E in Enrichment]?: EnrichmentSearchContent<E> } = {};
 
-	public constructor(elements?: Elements) {
+	public constructor(elements?: Elements & FlowrSearchElement<Info>[] | IteratorObject<FlowrSearchElement<Info>>) {
 		if(elements) {
-			this.elements = elements;
-		}
+			if(Array.isArray(elements)) {
+				this.elements = elements;
+			} else {
+				this.iterator = elements;
+				this.isLazy = true;
+			}
+		} 
 	}
 
 	public add(element: FlowrSearchElement<Info>): this {
-		this.elements.push(element);
+		this.asElements().push(element);
 		return this;
 	}
 
 	public addAll(elements: FlowrSearchElement<Info>[]): this {
-		this.elements.push(...elements);
+		this.asElements().push(...elements);
 		return this;
 	}
 
 	public getElements(): Readonly<Elements> {
+		return this.asElements();
+	}
+
+	private asElements(): Elements {
+		if(this.isLazy) {
+			this.elements = this.iterator!.toArray() as unknown as Elements;
+			this.iterator = undefined;
+			this.isLazy = false;
+		}
 		return this.elements;
 	}
 
+	private asIterator(): IteratorObject<FlowrSearchElement<Info>> {
+		if(this.isLazy) {
+			const iter = this.iterator!;
+			this.iterator = undefined;
+			this.isLazy = false;
+			return iter;
+		}
+		return Iterator.from<FlowrSearchElement<Info>>(this.elements);
+	}
+
 	public mutate<OutElements extends Elements>(mutator: (elements: Elements) => OutElements | Promise<OutElements>): this | Promise<this> {
-		const result = mutator(this.elements);
+		const result = mutator(this.asElements());
 		if(result instanceof Promise) {
 			return result.then(resolvedElements => {
 				this.elements = resolvedElements;
@@ -102,6 +128,13 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 			this.elements = result;
 			return this;
 		}
+	}
+
+	// 
+	public mutateIter(mutator: (iterator: IteratorObject<FlowrSearchElement<Info>>) => IteratorObject<FlowrSearchElement<Info>>): this {
+		this.iterator = mutator(this.asIterator());
+		this.isLazy = true;
+		return this;
 	}
 
 	/**

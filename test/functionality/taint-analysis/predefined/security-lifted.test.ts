@@ -19,7 +19,6 @@ describe('Lifted Security Taint Analysis', () => {
 		testSecurityLifted('file.choose is UserInput', 'x <- file.choose()', { '1@x': UserInput });
 		testSecurityLifted('menu is UserInput', 'x <- menu(c("a", "b"))', { '1@x': UserInput });
 		testSecurityLifted('scan is left unmapped (ambiguous source), so its result defaults to Top', 'x <- scan()', { '1@x': Top });
-		// testSecurityLifted('z is ', 'x <- readline()\ny <- read.table("http://exmaple.com/data.csv"\nz <- c(x, y))', { '3@z': new Set([UserInput, NetworkInput]) });
 	});
 
 	describe('Connection Argument Aware', () => {
@@ -32,6 +31,16 @@ describe('Lifted Security Taint Analysis', () => {
 		testSecurityLifted('readLines with a named URL connection is NetworkInput', 'x <- readLines(con = "http://example.com/f")', { '1@x': NetworkInput });
 		testSecurityLifted('readLines with a positional local path is FileInput', 'x <- readLines("data.txt")', { '1@x': FileInput });
 		testSecurityLifted('readChar with a named URL connection is NetworkInput', 'x <- readChar(con = "https://example.com/f", 10)', { '1@x': NetworkInput });
+	});
+
+	describe('Sets', () => {
+		testSecurityLifted('z is UserInput and NetworkInput', 'x <- readline()\ny <- read.table("http://exmaple.com/data.csv")\nz <- c(x, y)', { '3@z': new Set([UserInput, NetworkInput]) });
+		testSecurityLifted('z is FileInput and UserInput', 'x <- readline()\ny <- read.table("data.csv")\nz <- c(x, y)', { '3@z': new Set([UserInput, FileInput]) });
+		testSecurityLifted('z is NetworkInput and FileInput', 'x <- read.table("http://example.com/data.csv")\ny <- read.table("data.csv")\nz <- c(x, y)', { '3@z': new Set([NetworkInput, FileInput]) });
+		testSecurityLifted('z is UserInput, NetworkInput, and FileInput', 'x <- readline()\ny <- read.table("http://example.com/data.csv")\nw <- read.table("data.csv")\nz <- c(x, y, w)', { '4@z': new Set([UserInput, NetworkInput, FileInput]) });
+		testSecurityLifted('combining a source with Top yields Top', 'x <- readline()\ny <- scan()\nz <- c(x, y)', { '3@z': Top });
+		testSecurityLifted('a sink reached by UserInput, FileInput yields Bottom', 'u <- readline()\nf <- read.table("data.csv")\nx <- serialize(u, f)', { '3@x': Bottom });
+		testSecurityLifted('a sink reached by UserInput, NetworkInput yields Bottom', 'u <- readline()\nn <- read.table("http://example.com/data.csv")\nx <- source(c(u, n))', { '3@x': Bottom });
 	});
 
 	describe('Hand-written sink rules', () => {

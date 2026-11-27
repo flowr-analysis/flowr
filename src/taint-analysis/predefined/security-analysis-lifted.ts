@@ -23,10 +23,13 @@ const protocolTaintLifted: TaintConditionFunction<typeof securityDomainLifted> =
 		: FileInputLifted.value;
 
 const securitySinkConditionLifted: TaintConditionFunction<typeof securityDomainLifted> =
-	(_args, taints) => taints.some(
-		taint => taint.equals(UserInputLifted) // this is wrong for lifted domains {UserInput, NetworkInput} should evaluate to Bottom too
-        || taint.equals(NetworkInputLifted) // something like taint.contains operating on the super/subset properties of the reduced value of the taints should be useable?
-        || taint.equals(FileInputLifted)) // calling the conditionFunction on all elements of the set in a lifted taint may also be viable? to be discussed
+	(_args, taints) => taints.some(taint => {
+		const value = taint.value;
+		const hasSource = value.has(UserInput) //temporary - just to check if current domain behavior is correct
+        || value.has(NetworkInput)
+        || value.has(FileInput);
+		return hasSource && !taint.isTop();
+	})
 		? BottomLifted.value
 		: taints.length > 0 ? AbstractDomain.joinAll(taints).value : TopLifted.value;
 

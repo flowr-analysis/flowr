@@ -66,33 +66,95 @@ export interface FlowrSearchGetFilter extends Record<string, unknown> {
 	readonly innermostOnly?: boolean;
 }
 
-/** Intentionally, we abstract away from an array to avoid the use of conventional typescript operations */
+/** Intentionally, we abstract away from an array (or iterator) to avoid the use of conventional typescript operations */
 export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
 	private elements:    Elements = [] as unknown as Elements;
+	private iterator?:   IteratorObject<FlowrSearchElement<Info>>;
 	private enrichments: { [E in Enrichment]?: EnrichmentSearchContent<E> } = {};
+	private isLazy:      boolean = false;
 
-	public constructor(elements?: Elements) {
+	public constructor(
+		elements?: Elements & FlowrSearchElement<Info>[] | IteratorObject<FlowrSearchElement<Info>>
+	) {
 		if(elements) {
-			this.elements = elements;
+			if(Array.isArray(elements)) {
+				this.elements = elements;
+			} else {
+				this.iterator = elements;
+				this.isLazy = true;
+			}
 		}
 	}
 
+	public hasLazy(): boolean {
+		return this.isLazy;
+	}
+
+	public asIterable(): Iterable<FlowrSearchElement<Info>> {
+		return this.isLazy ? (this.iterator ?? this.elements) : this.elements;
+	}
+
 	public add(element: FlowrSearchElement<Info>): this {
-		this.elements.push(element);
+		if(this.isLazy) {
+			this.addAll([element]);
+		} else {
+			this.elements.push(element);
+		}
 		return this;
 	}
 
-	public addAll(elements: FlowrSearchElement<Info>[]): this {
-		this.elements.push(...elements);
+	public addAll(elements: readonly FlowrSearchElement<Info>[] | Iterable<FlowrSearchElement<Info>>): this {
+		const iterator = this.iterator;
+		if(this.isLazy && iterator !== undefined) {
+			this.iterator = Iterator.from([iterator, elements]).flatMap(it => it);
+		} else if(Array.isArray(elements)) {
+			this.elements = this.elements.concat(elements) as Elements;
+		} else {
+			this.iterator = Iterator.from([this.elements, elements]).flatMap(it => it);
+			this.elements = [] as unknown as Elements;
+			this.isLazy = true;
+		}
 		return this;
 	}
 
 	public getElements(): Readonly<Elements> {
+		return this.asElements();
+	}
+
+	private asElements(): Elements {
+		const iterator = this.iterator;
+		if(this.isLazy && iterator !== undefined) {
+			this.elements = iterator.toArray() as unknown as Elements;
+			this.isLazy = false;
+		}
 		return this.elements;
 	}
 
+	public transform(
+		eager: (elements: Elements) => Elements,
+		lazy: (iterator: IteratorObject<FlowrSearchElement<Info>>) => IteratorObject<FlowrSearchElement<Info>>
+	): this {
+		const iterator = this.iterator;
+		if(this.isLazy && iterator !== undefined) {
+			this.iterator = lazy(iterator);
+		} else {
+			this.elements = eager(this.elements);
+		}
+		return this;
+	}
+
+	/** Compresses the current elements/iterator into one element*/
+	public reduceToElement(
+		reducer: (elements: Iterable<FlowrSearchElement<Info>>) => FlowrSearchElement<Info> | undefined
+	): this {
+		const picked = reducer(this.asIterable());
+		this.elements = (picked === undefined ? [] : [picked]) as unknown as Elements;
+		this.isLazy = false;
+		return this;
+	}
+
 	public mutate<OutElements extends Elements>(mutator: (elements: Elements) => OutElements | Promise<OutElements>): this | Promise<this> {
-		const result = mutator(this.elements);
+		const result = mutator(this.asElements());
 		if(result instanceof Promise) {
 			return result.then(resolvedElements => {
 				this.elements = resolvedElements;

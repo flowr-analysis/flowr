@@ -1,5 +1,4 @@
 import { type FlowrSearchElement, type FlowrSearchGeneratorNodeBase, type FlowrSearchGetFilter, FlowrSearchElements } from '../flowr-search';
-import type { TailTypesOrUndefined } from '../../util/collections/arrays';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SlicingCriterion, type SlicingCriteria } from '../../slicing/criterion/parse';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -17,13 +16,22 @@ import type TreeSitter from 'web-tree-sitter';
 import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { ParserName } from '../../r-bridge/parser';
 
+const DefaultThreshold = 50;
+
+export interface FlowrSearchOptions {
+	/** minimum requirement of elements to be lazy */
+	readonly lazyThreshold?: number;
+}
+
+
 /** This is a union of all possible generator node types */
 export type FlowrSearchGeneratorNode = {
 	[K in GeneratorNames]:
 	FlowrSearchGeneratorNodeBase<K,
-		TailTypesOrUndefined<Parameters<typeof generators[K]>>
+		Parameters<typeof generators[K]>[1]
 	>
 }[GeneratorNames];
+
 
 export type GeneratorNames = keyof typeof generators;
 
@@ -37,27 +45,41 @@ export const generators = {
 	syntax:       generateSyntax
 } as const;
 
-async function generateAll(data: ReadonlyFlowrAnalysisProvider): Promise<FlowrSearchElements<ParentInformation>> {
-	return new FlowrSearchElements((await getAllNodes(data)).map(node => ({ node })));
+async function generateAll(data: ReadonlyFlowrAnalysisProvider, _args?: undefined, options?: FlowrSearchOptions): Promise<FlowrSearchElements<ParentInformation>> {
+	return new FlowrSearchElements((await getAllNodes(data, options)).map(node => ({ node })));
 }
 
-async function getAllNodes(data: ReadonlyFlowrAnalysisProvider): Promise<RNodeWithParent[]> {
+async function getAllNodes(data: ReadonlyFlowrAnalysisProvider, options?: FlowrSearchOptions): Promise<IteratorObject<RNodeWithParent> | RNodeWithParent[]> {
 	const normalize = await data.normalize();
-	// the id map holds some nodes under more than one id, so dedup; filled in place to skip the two
-	// intermediate arrays a spread plus `map` would build
-	const byId = new Map<NodeId, RNodeWithParent>();
-	for(const n of normalize.idMap.values()) {
-		byId.set(n.info.id, n);
+	const threshold = options?.lazyThreshold ?? DefaultThreshold;
+	// the id map holds some nodes under more than one id, so dedup
+	if(normalize.idMap.size > threshold) {
+		const seen = new Set<NodeId>();
+		return Iterator.from(normalize.idMap.values()).filter(n => {
+			if(seen.has(n.info.id)) {
+				return false;
+			}
+			seen.add(n.info.id);
+			return true;
+		});
+	} else {
+		// the id map holds some nodes under more than one id, so dedup; filled in place to skip the two
+		// intermediate arrays a spread plus `map` would build
+		const byId = new Map<NodeId, RNodeWithParent>();
+		for(const n of normalize.idMap.values()) {
+			byId.set(n.info.id, n);
+		}
+		return [...byId.values()];
 	}
-	return [...byId.values()];
 }
 
-async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex, filePathRegex, fuzzy, innermostOnly } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
+async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex, filePathRegex, fuzzy, innermostOnly } }: { filter: FlowrSearchGetFilter }, options?: FlowrSearchOptions): Promise<FlowrSearchElements<ParentInformation>> {
 	const normalize = await input.normalize();
-	let potentials = (id ?
+	const rawPotentials = id ?
 		[normalize.idMap.get(id)].filter(isNotUndefined) :
-		await getAllNodes(input)
-	);
+		await getAllNodes(input, options);
+	let potentials: IteratorObject<RNodeWithParent> = Iterator.from(rawPotentials);
+
 	if(filePathRegex) {
 		const filePathFilter = new RegExp(filePathRegex);
 		potentials = potentials.filter(({ info }: RNodeWithParent) => filePathFilter.test(info.file ?? ''));
@@ -65,21 +87,32 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 
 	if(line && line < 0) {
 		guard(normalize.ast.files.length === 1, 'Currently, negative line numbers are only supported for single-file inputs');
-		const maxLines = SourceRange.getEndLine(normalize.ast.files[0].root.info.fullRange) ??
-			(id ? (await getAllNodes(input)) : potentials).reduce(
+		let maxLines = SourceRange.getEndLine(normalize.ast.files[0].root.info.fullRange);
+		if(maxLines === undefined) {
+			let fallback: IteratorObject<RNodeWithParent>;
+			if(id) {
+				fallback = Iterator.from(await getAllNodes(input, options));
+			} else {
+				const arr = potentials.toArray();
+				potentials = Iterator.from(arr);
+				fallback = Iterator.from(arr);
+			}
+			maxLines = fallback.reduce(
 				(maxLine, { location }) => location && location[2] > maxLine ? location[2] : maxLine,
 				0
 			);
+		}
 
 		line = maxLines + line + 1;
 	}
 
 	if(fuzzy) {
 		guard(line, 'Fuzzy location matching requires line to be provided');
-		potentials = SourceRange.nodesContaining(potentials, line, column);
+		let fuzzyPotentials = SourceRange.nodesContaining(potentials.toArray(), line, column);
 		if(innermostOnly) {
-			potentials = SourceRange.innermostNodes(potentials);
+			fuzzyPotentials = SourceRange.innermostNodes(fuzzyPotentials);
 		}
+		potentials = Iterator.from(fuzzyPotentials);
 	} else if(line && column) {
 		potentials = potentials.filter(({ location }: RNodeWithParent) => location?.[0] === line && location?.[1] === column);
 	} else if(line) {
@@ -89,15 +122,19 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 	}
 	if(nameIsRegex && name) {
 		const nameFilter = new RegExp(name);
-		potentials = potentials.filter(({ lexeme }: RNodeWithParent) => lexeme && nameFilter.test(lexeme));
+		potentials = potentials.filter(({ lexeme }: RNodeWithParent) => Boolean(lexeme && nameFilter.test(lexeme)));
 	} else if(name) {
 		potentials = potentials.filter(({ lexeme }: RNodeWithParent) => lexeme === name);
 	}
-	return new FlowrSearchElements(potentials.map(node => ({ node })));
+
+	const mapped = potentials.map(node => ({ node }));
+	return new FlowrSearchElements(Array.isArray(rawPotentials) ? mapped.toArray() : mapped);
 }
 
-function generateFrom(_input: ReadonlyFlowrAnalysisProvider, args: { from: FlowrSearchElement<ParentInformation> | FlowrSearchElement<ParentInformation>[] }): FlowrSearchElements<ParentInformation> {
-	return new FlowrSearchElements(Array.isArray(args.from) ? args.from : [args.from]);
+function generateFrom(_input: ReadonlyFlowrAnalysisProvider, args: { from: FlowrSearchElement<ParentInformation> | FlowrSearchElement<ParentInformation>[] }, options?: FlowrSearchOptions): FlowrSearchElements<ParentInformation> {
+	const threshold = options?.lazyThreshold ?? DefaultThreshold;
+	const ret = Array.isArray(args.from) ? args.from : [args.from];
+	return new FlowrSearchElements(ret.length > threshold ? Iterator.from(ret) : ret);
 }
 
 async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
@@ -139,7 +176,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	})));
 }
 
-async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] }): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] }, options?: FlowrSearchOptions): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 	// if the user didn't specify a specific capture, we want to capture the outermost item
 	if(!args.captures?.length) {
 		guard(typeof args.source === 'string', `Cannot use default capture name for pre-compiled query ${JSON.stringify(args.source)}, specify captures explicitly`);
@@ -179,20 +216,21 @@ async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { sour
 			searchLogger.debug(`tree-sitter node ${capture.node.id} with type ${capture.node.type} does not have a corresponding normalized ast node`);
 		}
 	}
-	return new FlowrSearchElements(ret);
+	const threshold = options?.lazyThreshold ?? DefaultThreshold;
+	return new FlowrSearchElements(ret.length > threshold ? Iterator.from(ret) : ret);
 }
 
-async function generateCriterion(input: ReadonlyFlowrAnalysisProvider, args: { criterion: SlicingCriteria }): Promise<FlowrSearchElements<ParentInformation>> {
+async function generateCriterion(input: ReadonlyFlowrAnalysisProvider, args: { criterion: SlicingCriteria }, options?: FlowrSearchOptions): Promise<FlowrSearchElements<ParentInformation>> {
+	const threshold = options?.lazyThreshold ?? DefaultThreshold;
 	const idMap = (await input.normalize()).idMap;
-	return new FlowrSearchElements(
-		args.criterion.map(c => ({ node: idMap.get(SlicingCriterion.parse(c, idMap)) as RNodeWithParent }))
-	);
+	const ret = args.criterion.map(c => ({ node: idMap.get(SlicingCriterion.parse(c, idMap)) as RNodeWithParent }));
+	return new FlowrSearchElements(ret.length > threshold ? Iterator.from(ret) : ret);
 }
 
 /** Runs the search generator described by the given node */
-export function runGenerator(node: FlowrSearchGeneratorNode, input: ReadonlyFlowrAnalysisProvider): Promise<FlowrSearchElements<ParentInformation>> {
+export function runGenerator(node: FlowrSearchGeneratorNode, input: ReadonlyFlowrAnalysisProvider, options?: FlowrSearchOptions): Promise<FlowrSearchElements<ParentInformation>> {
 	if(!generators[node.name]) {
 		throw new Error(`Unknown generator: ${node.name}`);
 	}
-	return (generators[node.name] as (input: ReadonlyFlowrAnalysisProvider, args: typeof node.args) => Promise<FlowrSearchElements<ParentInformation>>)(input, node.args);
+	return (generators[node.name] as (input: ReadonlyFlowrAnalysisProvider, args: typeof node.args, options?: FlowrSearchOptions) => Promise<FlowrSearchElements<ParentInformation>>)(input, node.args, options);
 }

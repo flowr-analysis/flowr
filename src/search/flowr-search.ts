@@ -110,9 +110,9 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 		} else if(Array.isArray(elements)) {
 			this.elements = this.elements.concat(elements) as Elements;
 		} else {
-			for(const e of elements) {
-				this.elements.push(e);
-			}
+			this.iterator = Iterator.from([this.elements, elements]).flatMap(it => it);
+			this.elements = [] as unknown as Elements;
+			this.isLazy = true;
 		}
 		return this;
 	}
@@ -125,7 +125,6 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 		const iterator = this.iterator;
 		if(this.isLazy && iterator !== undefined) {
 			this.elements = iterator.toArray() as unknown as Elements;
-			this.iterator = undefined;
 			this.isLazy = false;
 		}
 		return this.elements;
@@ -150,7 +149,6 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 	): this {
 		const picked = reducer(this.asIterable());
 		this.elements = (picked === undefined ? [] : [picked]) as unknown as Elements;
-		this.iterator = undefined;
 		this.isLazy = false;
 		return this;
 	}

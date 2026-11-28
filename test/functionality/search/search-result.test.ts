@@ -3,7 +3,6 @@ import { withTreeSitter } from '../_helper/shell';
 import { analyze } from '../_helper/analyzer';
 import { FlowrSearchGenerator as Q } from '../../../src/search/flowr-search-builder';
 import { runSearch } from '../../../src/search/flowr-search-executor';
-import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { FlowrFilter } from '../../../src/search/flowr-search-filters';
 
 describe('flowR search, eager and lazy', withTreeSitter(parser => {
